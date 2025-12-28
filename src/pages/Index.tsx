@@ -72,9 +72,10 @@ const Index = () => {
             size="lg"
           />
 
-          <ContentRow
+          <TabbedContentRow
             title="Trending Now"
-            items={trending}
+            moviesItems={trending.filter(item => item.media_type === 'movie')}
+            tvItems={trending.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
           />
 

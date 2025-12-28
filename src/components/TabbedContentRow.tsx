@@ -49,9 +49,9 @@ export const TabbedContentRow = ({
               if (scrollRef.current) scrollRef.current.scrollLeft = 0;
             }}
             className={cn(
-              "tab-glow-button px-2 py-1 text-sm font-medium transition-all duration-300",
+              "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
               activeTab === "movies"
-                ? "text-foreground"
+                ? "text-foreground tab-glow-active"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -63,9 +63,9 @@ export const TabbedContentRow = ({
               if (scrollRef.current) scrollRef.current.scrollLeft = 0;
             }}
             className={cn(
-              "tab-glow-button px-2 py-1 text-sm font-medium transition-all duration-300",
+              "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
               activeTab === "tv"
-                ? "text-foreground"
+                ? "text-foreground tab-glow-active"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
