@@ -427,5 +427,15 @@
         filter: blur(2px);
       }
     }
+
+    /* Exclude navbar from page transition animations */
+    .page-transition nav,
+    .page-enter nav,
+    .page-exit nav {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+    }
   }
 }
