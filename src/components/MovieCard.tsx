@@ -23,23 +23,27 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md" }: Movie
     lg: "w-48 sm:w-56",
   };
 
+  const rankSizeClasses = showRank ? "ml-10 sm:ml-14" : "";
+
   return (
     <Link
       to={`/${mediaType}/${movie.id}`}
-      className={cn("group relative flex-shrink-0", sizeClasses[size])}
+      className={cn("group relative flex-shrink-0", sizeClasses[size], rankSizeClasses)}
     >
       {/* Rank Number */}
       {showRank && index !== undefined && (
-        <div className="absolute -left-4 sm:-left-8 bottom-0 z-10 pointer-events-none">
-          <span
-            className="text-[6rem] sm:text-[8rem] font-black leading-none"
-            style={{
-              WebkitTextStroke: "3px hsl(var(--muted-foreground))",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            {index + 1}
-          </span>
+        <div className="relative flex items-end">
+          <div className="absolute -left-10 sm:-left-14 bottom-2 z-20 pointer-events-none transition-all duration-300 group-hover:drop-shadow-[0_0_20px_hsl(var(--primary))]">
+            <span
+              className="text-[4rem] sm:text-[5rem] font-black leading-none transition-all duration-300"
+              style={{
+                WebkitTextStroke: "2px hsl(var(--primary))",
+                WebkitTextFillColor: "hsl(var(--primary) / 0.3)",
+              }}
+            >
+              {index + 1}
+            </span>
+          </div>
         </div>
       )}
 
