@@ -84,12 +84,12 @@
 }
 
 .tab-glow-button:hover::after,
-.tab-glow-button.bg-primary\/20::after {
+.tab-glow-button.text-foreground::after {
   transform: translateX(-50%) scaleX(1);
 }
 
 .tab-glow-button:hover,
-.tab-glow-button.bg-primary\/20 {
+.tab-glow-button.text-foreground {
   text-shadow: 0 0 10px hsl(0, 84%, 60% / 0.6);
 }
 
