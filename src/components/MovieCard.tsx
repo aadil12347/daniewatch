@@ -74,7 +74,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md" }: Movie
 
       {/* Info */}
       <div className="mt-3 px-1">
-        <h3 className="title-glow-underline font-medium text-sm line-clamp-2">
+        <h3 className="title-glow-underline font-medium text-sm truncate max-w-full">
           {title}
         </h3>
         <div className="flex items-center gap-2 mt-1">
