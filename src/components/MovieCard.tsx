@@ -8,9 +8,10 @@ interface MovieCardProps {
   index?: number;
   showRank?: boolean;
   size?: "sm" | "md" | "lg";
+  animationDelay?: number;
 }
 
-export const MovieCard = ({ movie, index, showRank = false, size = "md" }: MovieCardProps) => {
+export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0 }: MovieCardProps) => {
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
@@ -26,7 +27,10 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md" }: Movie
   const rankSizeClasses = showRank ? "ml-10 sm:ml-14" : "";
 
   return (
-    <div className={cn("group relative flex-shrink-0", showRank && "pl-6 sm:pl-10")}>
+    <div 
+      className={cn("group relative flex-shrink-0 card-reveal", showRank && "pl-6 sm:pl-10")}
+      style={{ animationDelay: `${animationDelay}ms` }}
+    >
       {/* Rank Number - Default: behind poster, white outline, black fill */}
       {showRank && index !== undefined && (
         <div className="absolute left-0 bottom-12 transition-all duration-700 ease-out z-0 group-hover:z-20 group-hover:left-1 group-hover:bottom-16 group-hover:drop-shadow-[0_0_30px_hsl(var(--primary))] pointer-events-none">
