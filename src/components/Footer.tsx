@@ -11,10 +11,12 @@ export const Footer = () => {
             <span className="text-foreground">Danie</span><span className="text-primary">Watch</span>
           </span>
           . Created by{" "}
-          <span className="relative text-primary font-semibold group">
+          <span className="relative text-primary font-semibold">
             Daniyal
-            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full bg-gradient-to-r from-transparent via-primary to-transparent animate-[glow-pulse_2s_ease-in-out_infinite]" />
-            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full bg-gradient-to-r from-red-500 via-primary to-red-500 blur-sm animate-[glow-slide_3s_linear_infinite]" />
+            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full bg-primary/30" />
+            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full overflow-hidden">
+              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-primary to-transparent blur-[1px] animate-[glow-slide_2s_linear_infinite]" />
+            </span>
           </span>
         </p>
       </div>
