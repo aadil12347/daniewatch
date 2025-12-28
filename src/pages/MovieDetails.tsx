@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
+import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -85,6 +86,7 @@ const MovieDetails = () => {
   const trailer = movie.videos?.results.find(
     (v) => v.type === "Trailer" && v.site === "YouTube"
   );
+  const trailerKey = trailer?.key || null;
 
   return (
     <>
@@ -98,19 +100,12 @@ const MovieDetails = () => {
 
         {/* Hero Section - Full viewport height */}
         <div className="relative h-screen min-h-[700px]">
-          {/* Background Image */}
-          <div className="absolute inset-0">
-            {backdropUrl && (
-              <img
-                src={backdropUrl}
-                alt={movie.title}
-                className="w-full h-full object-cover"
-              />
-            )}
-            {/* Gradient overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
-          </div>
+          {/* Background Trailer */}
+          <BackgroundTrailer 
+            videoKey={trailerKey} 
+            backdropUrl={backdropUrl} 
+            title={movie.title} 
+          />
 
           {/* Content - Bottom left positioned */}
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 lg:p-16">
