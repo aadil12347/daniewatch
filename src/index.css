@@ -392,31 +392,39 @@
     }
   }
 
-  /* Desktop: Subtle fade animation */
+  /* Desktop: Smooth fade animation */
   @media (min-width: 1024px) {
     .page-enter {
-      animation: pageFadeEnter 0.3s ease-out forwards;
+      animation: pageFadeEnter 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
 
     .page-exit {
-      animation: pageFadeExit 0.2s ease-out forwards;
+      animation: pageFadeExit 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
 
     @keyframes pageFadeEnter {
       0% {
         opacity: 0;
+        transform: scale(0.995);
+        filter: blur(4px);
       }
       100% {
         opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
       }
     }
 
     @keyframes pageFadeExit {
       0% {
         opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
       }
       100% {
         opacity: 0;
+        transform: scale(1.005);
+        filter: blur(2px);
       }
     }
   }
