@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Volume2, VolumeX, Volume1 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -17,7 +17,6 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const controlsRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
   // YouTube embed URL with autoplay, mute, and loop
@@ -55,31 +54,7 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
     }
   };
 
-  const handleButtonClick = () => {
-    if (isMobile) {
-      // On mobile/tablet: toggle slider visibility on click
-      setShowVolumeSlider(!showVolumeSlider);
-    } else {
-      // On desktop: toggle mute on click
-      toggleMute();
-    }
-  };
-
   const VolumeIcon = volume === 0 ? VolumeX : volume < 50 ? Volume1 : Volume2;
-
-  // Close slider when clicking outside (mobile only)
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const handleClickOutside = (event: MouseEvent) => {
-      if (controlsRef.current && !controlsRef.current.contains(event.target as Node)) {
-        setShowVolumeSlider(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMobile]);
 
   return (
     <div className="absolute inset-0">
@@ -117,37 +92,38 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
       {/* Volume control - top right */}
       {videoKey && (
         <div 
-          ref={controlsRef}
-          className="absolute top-20 right-6 z-20 flex items-center gap-3 group"
+          className="absolute top-20 right-6 z-20 flex items-center gap-3"
           onMouseEnter={() => !isMobile && setShowVolumeSlider(true)}
           onMouseLeave={() => !isMobile && setShowVolumeSlider(false)}
         >
-          {/* Volume slider */}
-          <div 
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 transition-all duration-300",
-              showVolumeSlider 
-                ? "opacity-100 translate-x-0" 
-                : "opacity-0 translate-x-4 pointer-events-none"
-            )}
-          >
-            <Slider
-              value={[volume]}
-              onValueChange={handleVolumeChange}
-              max={100}
-              step={1}
-              className="w-24"
-            />
-            <span className="text-xs text-muted-foreground w-8 text-right">
-              {volume}%
-            </span>
-          </div>
+          {/* Volume slider - desktop only */}
+          {!isMobile && (
+            <div 
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full bg-background/70 backdrop-blur-sm border border-border/50 transition-all duration-300",
+                showVolumeSlider 
+                  ? "opacity-100 translate-x-0" 
+                  : "opacity-0 translate-x-4 pointer-events-none"
+              )}
+            >
+              <Slider
+                value={[volume]}
+                onValueChange={handleVolumeChange}
+                max={100}
+                step={1}
+                className="w-24"
+              />
+              <span className="text-xs text-muted-foreground w-8 text-right">
+                {volume}%
+              </span>
+            </div>
+          )}
 
           {/* Volume button */}
           <Button
             size="icon"
             variant="ghost"
-            onClick={handleButtonClick}
+            onClick={toggleMute}
             className="w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-300"
           >
             <VolumeIcon className="w-5 h-5" />
