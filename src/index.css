@@ -392,24 +392,23 @@
     }
   }
 
-  /* Desktop: Simple crossfade */
+  /* Desktop: Smooth crossfade without flash */
   @media (min-width: 1024px) {
+    .page-transition {
+      background: hsl(var(--background));
+    }
+
     .page-enter {
-      animation: simpleFadeIn 0.3s ease forwards;
+      animation: smoothFadeIn 0.25s ease-out forwards;
     }
 
     .page-exit {
-      animation: simpleFadeOut 0.15s ease forwards;
+      display: none;
     }
 
-    @keyframes simpleFadeIn {
-      from { opacity: 0; }
+    @keyframes smoothFadeIn {
+      from { opacity: 0.6; }
       to { opacity: 1; }
-    }
-
-    @keyframes simpleFadeOut {
-      from { opacity: 1; }
-      to { opacity: 0; }
     }
 
     /* Exclude navbar from page transition animations */
