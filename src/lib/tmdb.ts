@@ -137,6 +137,15 @@ export const getTVCredits = (id: number) =>
 export const getSimilarTV = (id: number) =>
   fetchTMDB<TMDBResponse<Movie>>(`/tv/${id}/similar`);
 
+// Discover TV with filters
+export const discoverTV = (page: number = 1, genreIds: number[] = [], sortBy: string = "popularity.desc") =>
+  fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+    page: page.toString(),
+    with_genres: genreIds.join(","),
+    sort_by: sortBy,
+    with_original_language: "ja",
+  });
+
 // Search
 export const searchMulti = (query: string) =>
   fetchTMDB<TMDBResponse<Movie>>("/search/multi", { query });

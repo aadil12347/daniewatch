@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
@@ -68,6 +68,20 @@ export const Navbar = () => {
           >
             <Tv className="w-4 h-4" />
             TV Shows
+          </Link>
+          <Link
+            to="/anime"
+            className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            Anime
+          </Link>
+          <Link
+            to="/watchlist"
+            className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
+          >
+            <Bookmark className="w-4 h-4" />
+            Watch List
           </Link>
         </div>
 
@@ -147,6 +161,22 @@ export const Navbar = () => {
             >
               <Tv className="w-5 h-5" />
               TV Shows
+            </Link>
+            <Link
+              to="/anime"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+            >
+              <Sparkles className="w-5 h-5" />
+              Anime
+            </Link>
+            <Link
+              to="/watchlist"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+            >
+              <Bookmark className="w-5 h-5" />
+              Watch List
             </Link>
           </div>
         </div>

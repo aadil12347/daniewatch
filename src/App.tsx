@@ -9,6 +9,8 @@ import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
 import Movies from "./pages/Movies";
 import TVShows from "./pages/TVShows";
+import Anime from "./pages/Anime";
+import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +29,8 @@ const App = () => (
             <Route path="/tv/:id" element={<TVDetails />} />
             <Route path="/movies" element={<Movies />} />
             <Route path="/tv" element={<TVShows />} />
+            <Route path="/anime" element={<Anime />} />
+            <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/search" element={<Search />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
