@@ -64,35 +64,35 @@ export const Navbar = () => {
         <div className="hidden md:flex items-center gap-8">
           <Link
             to="/"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
+            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
           >
             <Home className="w-4 h-4" />
             Home
           </Link>
           <Link
             to="/movies"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
+            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
           >
             <Film className="w-4 h-4" />
             Movies
           </Link>
           <Link
             to="/tv"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
+            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
           >
             <Tv className="w-4 h-4" />
             TV Shows
           </Link>
           <Link
             to="/anime"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
+            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
           >
             <Sparkles className="w-4 h-4" />
             Anime
           </Link>
           <Link
             to="/watchlist"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
+            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
           >
             <Bookmark className="w-4 h-4" />
             Watch List
