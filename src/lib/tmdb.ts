@@ -143,7 +143,10 @@ export const getUpcomingMovies = () =>
   fetchTMDB<TMDBResponse<Movie>>("/movie/upcoming");
 
 export const getMovieDetails = (id: number) =>
-  fetchTMDB<MovieDetails>(`/movie/${id}`, { append_to_response: "videos" });
+  fetchTMDB<MovieDetails>(`/movie/${id}`, { append_to_response: "videos,images", include_image_language: "en,null" });
+
+export const getMovieImages = (id: number) =>
+  fetchTMDB<{ logos: { file_path: string; iso_639_1: string | null }[] }>(`/movie/${id}/images`, { include_image_language: "en,null" });
 
 export const getMovieCredits = (id: number) =>
   fetchTMDB<{ cast: Cast[] }>(`/movie/${id}/credits`);
@@ -162,7 +165,10 @@ export const getTopRatedTV = () =>
   fetchTMDB<TMDBResponse<Movie>>("/tv/top_rated");
 
 export const getTVDetails = (id: number) =>
-  fetchTMDB<TVDetails>(`/tv/${id}`, { append_to_response: "videos" });
+  fetchTMDB<TVDetails>(`/tv/${id}`, { append_to_response: "videos,images", include_image_language: "en,null" });
+
+export const getTVImages = (id: number) =>
+  fetchTMDB<{ logos: { file_path: string; iso_639_1: string | null }[] }>(`/tv/${id}/images`, { include_image_language: "en,null" });
 
 export const getTVCredits = (id: number) =>
   fetchTMDB<{ cast: Cast[] }>(`/tv/${id}/credits`);

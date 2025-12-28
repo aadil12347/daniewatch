@@ -13,11 +13,12 @@ import {
   getMovieDetails,
   getMovieCredits,
   getSimilarMovies,
+  getMovieImages,
   MovieDetails as MovieDetailsType,
   Cast,
   Movie,
   getBackdropUrl,
-  getPosterUrl,
+  getImageUrl,
   formatRuntime,
   getYear,
 } from "@/lib/tmdb";
@@ -27,6 +28,7 @@ const MovieDetails = () => {
   const [movie, setMovie] = useState<MovieDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -35,15 +37,22 @@ const MovieDetails = () => {
       setIsLoading(true);
 
       try {
-        const [movieRes, creditsRes, similarRes] = await Promise.all([
+        const [movieRes, creditsRes, similarRes, imagesRes] = await Promise.all([
           getMovieDetails(Number(id)),
           getMovieCredits(Number(id)),
           getSimilarMovies(Number(id)),
+          getMovieImages(Number(id)),
         ]);
 
         setMovie(movieRes);
         setCast(creditsRes.cast.slice(0, 12));
         setSimilar(similarRes.results.slice(0, 14));
+        
+        // Get the first English logo or any available logo
+        const logo = imagesRes.logos?.find(l => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
+        if (logo) {
+          setLogoUrl(getImageUrl(logo.file_path, "w500"));
+        }
       } catch (error) {
         console.error("Failed to fetch movie details:", error);
       } finally {
@@ -84,7 +93,6 @@ const MovieDetails = () => {
   }
 
   const backdropUrl = getBackdropUrl(movie.backdrop_path);
-  const posterUrl = getPosterUrl(movie.poster_path, "w500");
   const trailer = movie.videos?.results.find(
     (v) => v.type === "Trailer" && v.site === "YouTube"
   );
@@ -109,88 +117,82 @@ const MovieDetails = () => {
             title={movie.title} 
           />
 
-          {/* Content - Bottom left positioned with poster */}
+          {/* Content - Bottom left positioned */}
           <div className="absolute bottom-0 left-0 p-4 md:p-8 lg:p-12">
-            <div className="flex items-end gap-4 md:gap-6 animate-slide-up">
-              {/* Poster */}
-              <div className="hidden sm:block flex-shrink-0 w-32 md:w-40 lg:w-48 rounded-lg overflow-hidden shadow-card">
-                {posterUrl ? (
-                  <img src={posterUrl} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
-                ) : (
-                  <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">
-                    <span className="text-muted-foreground text-xs">{movie.title}</span>
-                  </div>
+            <div className="animate-slide-up max-w-xl lg:max-w-2xl">
+              {/* Logo */}
+              {logoUrl ? (
+                <img 
+                  src={logoUrl} 
+                  alt={movie.title} 
+                  className="h-16 md:h-20 lg:h-24 object-contain object-left mb-4"
+                />
+              ) : (
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                  {movie.title}
+                </h1>
+              )}
+
+              {/* Meta info */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-background/50 backdrop-blur-sm">
+                  <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                  <span className="font-semibold text-sm">{movie.vote_average?.toFixed(1)}</span>
+                </div>
+                <span className="text-muted-foreground text-sm">{getYear(movie.release_date)}</span>
+                {movie.runtime && (
+                  <>
+                    <span className="text-muted-foreground text-sm">•</span>
+                    <span className="text-muted-foreground text-sm">{formatRuntime(movie.runtime)}</span>
+                  </>
                 )}
               </div>
 
-              {/* Info card */}
-              <div className="max-w-md lg:max-w-lg">
-                {/* Meta info */}
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-background/50 backdrop-blur-sm">
-                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                    <span className="font-semibold text-xs">{movie.vote_average?.toFixed(1)}</span>
-                  </div>
-                  <span className="text-muted-foreground text-xs">{getYear(movie.release_date)}</span>
-                  {movie.runtime && (
-                    <>
-                      <span className="text-muted-foreground text-xs">•</span>
-                      <span className="text-muted-foreground text-xs">{formatRuntime(movie.runtime)}</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Title */}
-                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">
-                  {movie.title}
-                </h1>
-
-                {/* Genres */}
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {movie.genres?.slice(0, 3).map((genre) => (
-                    <span
-                      key={genre.id}
-                      className="px-2 py-0.5 rounded-full bg-secondary/60 backdrop-blur-sm text-xs font-medium"
-                    >
-                      {genre.name}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Overview */}
-                <p className="text-muted-foreground text-xs md:text-sm mb-4 line-clamp-2">
-                  {movie.overview}
-                </p>
-
-                {/* Action buttons */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    className="gradient-red text-foreground font-semibold px-6 hover:opacity-90 transition-opacity shadow-glow"
-                    onClick={() => {
-                      if (trailer) {
-                        window.open(`https://www.youtube.com/watch?v=${trailer.key}`, "_blank");
-                      }
-                    }}
+              {/* Genres */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {movie.genres?.slice(0, 3).map((genre) => (
+                  <span
+                    key={genre.id}
+                    className="px-2.5 py-1 rounded-full bg-secondary/60 backdrop-blur-sm text-xs font-medium"
                   >
-                    <Play className="w-4 h-4 mr-1.5 fill-current" />
-                    Play
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="w-9 h-9 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="w-9 h-9 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                </div>
+                    {genre.name}
+                  </span>
+                ))}
+              </div>
+
+              {/* Overview */}
+              <p className="text-muted-foreground text-sm md:text-base mb-5 line-clamp-3">
+                {movie.overview}
+              </p>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-3">
+                <Button
+                  size="default"
+                  className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
+                  onClick={() => {
+                    if (trailer) {
+                      window.open(`https://www.youtube.com/watch?v=${trailer.key}`, "_blank");
+                    }
+                  }}
+                >
+                  <Play className="w-4 h-4 mr-2 fill-current" />
+                  Play
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           </div>
