@@ -13,9 +13,8 @@ export const Footer = () => {
           . Created by{" "}
           <span className="relative text-primary font-semibold">
             Daniyal
-            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full bg-primary/30" />
-            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full overflow-hidden">
-              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-primary to-transparent blur-[1px] animate-[glow-slide_2s_linear_infinite]" />
+            <span className="absolute -bottom-1 left-0 w-full h-[3px] rounded-full overflow-hidden">
+              <span className="absolute h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent blur-[2px] shadow-[0_0_15px_hsl(0,84%,60%),0_0_30px_hsl(0,84%,60%)] animate-[glow-slide_1.5s_ease-in-out_infinite]" />
             </span>
           </span>
         </p>
