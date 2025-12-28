@@ -80,7 +80,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
       </div>
 
       {/* Content */}
-      <div className="relative container mx-auto h-full flex items-center px-4">
+      <div className="relative container mx-auto h-full flex items-end pb-24 px-4">
         <div className="max-w-xl animate-slide-up">
           {/* Meta info */}
           <div className="flex items-center gap-3 mb-3">
