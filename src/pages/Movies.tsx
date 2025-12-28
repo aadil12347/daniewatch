@@ -1,44 +1,95 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPopularMovies, getNowPlayingMovies, getTopRatedMovies, getUpcomingMovies, Movie } from "@/lib/tmdb";
+import { Loader2 } from "lucide-react";
 
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [activeTab, setActiveTab] = useState<"popular" | "now_playing" | "top_rated" | "upcoming">("popular");
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchMovies = async () => {
+  const fetchMovies = useCallback(async (pageNum: number, reset: boolean = false) => {
+    if (reset) {
       setIsLoading(true);
-      try {
-        let response;
-        switch (activeTab) {
-          case "now_playing":
-            response = await getNowPlayingMovies();
-            break;
-          case "top_rated":
-            response = await getTopRatedMovies();
-            break;
-          case "upcoming":
-            response = await getUpcomingMovies();
-            break;
-          default:
-            response = await getPopularMovies();
-        }
-        setMovies(response.results);
-      } catch (error) {
-        console.error("Failed to fetch movies:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    } else {
+      setIsLoadingMore(true);
+    }
 
-    fetchMovies();
+    try {
+      let response;
+      switch (activeTab) {
+        case "now_playing":
+          response = await getNowPlayingMovies(pageNum);
+          break;
+        case "top_rated":
+          response = await getTopRatedMovies(pageNum);
+          break;
+        case "upcoming":
+          response = await getUpcomingMovies(pageNum);
+          break;
+        default:
+          response = await getPopularMovies(pageNum);
+      }
+
+      if (reset) {
+        setMovies(response.results);
+      } else {
+        setMovies(prev => [...prev, ...response.results]);
+      }
+      setHasMore(response.page < response.total_pages);
+    } catch (error) {
+      console.error("Failed to fetch movies:", error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
   }, [activeTab]);
+
+  // Reset and fetch when tab changes
+  useEffect(() => {
+    setPage(1);
+    setMovies([]);
+    setHasMore(true);
+    fetchMovies(1, true);
+  }, [activeTab]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [hasMore, isLoading, isLoadingMore]);
+
+  // Fetch more when page changes
+  useEffect(() => {
+    if (page > 1) {
+      fetchMovies(page);
+    }
+  }, [page, fetchMovies]);
 
   const tabs = [
     { key: "popular", label: "Popular" },
@@ -87,9 +138,22 @@ const Movies = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : movies.map((movie) => (
-                  <MovieCard key={movie.id} movie={{ ...movie, media_type: "movie" }} />
+              : movies.map((movie, index) => (
+                  <MovieCard key={`${movie.id}-${index}`} movie={{ ...movie, media_type: "movie" }} />
                 ))}
+          </div>
+
+          {/* Loading More Indicator */}
+          <div ref={loadMoreRef} className="flex justify-center py-8">
+            {isLoadingMore && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading more...</span>
+              </div>
+            )}
+            {!hasMore && movies.length > 0 && (
+              <p className="text-muted-foreground">You've reached the end</p>
+            )}
           </div>
         </div>
 

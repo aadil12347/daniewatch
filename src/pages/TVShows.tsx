@@ -1,31 +1,84 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPopularTV, getTopRatedTV, Movie } from "@/lib/tmdb";
+import { Loader2 } from "lucide-react";
 
 const TVShows = () => {
   const [shows, setShows] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [activeTab, setActiveTab] = useState<"popular" | "top_rated">("popular");
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const fetchShows = async () => {
+  const fetchShows = useCallback(async (pageNum: number, reset: boolean = false) => {
+    if (reset) {
       setIsLoading(true);
-      try {
-        const response = activeTab === "top_rated" ? await getTopRatedTV() : await getPopularTV();
-        setShows(response.results);
-      } catch (error) {
-        console.error("Failed to fetch TV shows:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    } else {
+      setIsLoadingMore(true);
+    }
 
-    fetchShows();
+    try {
+      const response = activeTab === "top_rated" 
+        ? await getTopRatedTV(pageNum) 
+        : await getPopularTV(pageNum);
+
+      if (reset) {
+        setShows(response.results);
+      } else {
+        setShows(prev => [...prev, ...response.results]);
+      }
+      setHasMore(response.page < response.total_pages);
+    } catch (error) {
+      console.error("Failed to fetch TV shows:", error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
   }, [activeTab]);
+
+  // Reset and fetch when tab changes
+  useEffect(() => {
+    setPage(1);
+    setShows([]);
+    setHasMore(true);
+    fetchShows(1, true);
+  }, [activeTab]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [hasMore, isLoading, isLoadingMore]);
+
+  // Fetch more when page changes
+  useEffect(() => {
+    if (page > 1) {
+      fetchShows(page);
+    }
+  }, [page, fetchShows]);
 
   const tabs = [
     { key: "popular", label: "Popular" },
@@ -72,9 +125,22 @@ const TVShows = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : shows.map((show) => (
-                  <MovieCard key={show.id} movie={{ ...show, media_type: "tv" }} />
+              : shows.map((show, index) => (
+                  <MovieCard key={`${show.id}-${index}`} movie={{ ...show, media_type: "tv" }} />
                 ))}
+          </div>
+
+          {/* Loading More Indicator */}
+          <div ref={loadMoreRef} className="flex justify-center py-8">
+            {isLoadingMore && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading more...</span>
+              </div>
+            )}
+            {!hasMore && shows.length > 0 && (
+              <p className="text-muted-foreground">You've reached the end</p>
+            )}
           </div>
         </div>
 

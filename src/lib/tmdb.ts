@@ -127,20 +127,20 @@ interface TMDBResponse<T> {
 }
 
 // Movie endpoints
-export const getTrending = (timeWindow: "day" | "week" = "day") =>
-  fetchTMDB<TMDBResponse<Movie>>(`/trending/all/${timeWindow}`);
+export const getTrending = (timeWindow: "day" | "week" = "day", page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>(`/trending/all/${timeWindow}`, { page: page.toString() });
 
-export const getPopularMovies = () =>
-  fetchTMDB<TMDBResponse<Movie>>("/movie/popular");
+export const getPopularMovies = (page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>("/movie/popular", { page: page.toString() });
 
-export const getTopRatedMovies = () =>
-  fetchTMDB<TMDBResponse<Movie>>("/movie/top_rated");
+export const getTopRatedMovies = (page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>("/movie/top_rated", { page: page.toString() });
 
-export const getNowPlayingMovies = () =>
-  fetchTMDB<TMDBResponse<Movie>>("/movie/now_playing");
+export const getNowPlayingMovies = (page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>("/movie/now_playing", { page: page.toString() });
 
-export const getUpcomingMovies = () =>
-  fetchTMDB<TMDBResponse<Movie>>("/movie/upcoming");
+export const getUpcomingMovies = (page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>("/movie/upcoming", { page: page.toString() });
 
 export const getMovieDetails = (id: number) =>
   fetchTMDB<MovieDetails>(`/movie/${id}`, { append_to_response: "videos,images", include_image_language: "en,null" });
@@ -158,11 +158,11 @@ export const getMovieRecommendations = (id: number) =>
   fetchTMDB<TMDBResponse<Movie>>(`/movie/${id}/recommendations`);
 
 // TV endpoints
-export const getPopularTV = () =>
-  fetchTMDB<TMDBResponse<Movie>>("/tv/popular");
+export const getPopularTV = (page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>("/tv/popular", { page: page.toString() });
 
-export const getTopRatedTV = () =>
-  fetchTMDB<TMDBResponse<Movie>>("/tv/top_rated");
+export const getTopRatedTV = (page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>("/tv/top_rated", { page: page.toString() });
 
 export const getTVDetails = (id: number) =>
   fetchTMDB<TVDetails>(`/tv/${id}`, { append_to_response: "videos,images", include_image_language: "en,null" });
