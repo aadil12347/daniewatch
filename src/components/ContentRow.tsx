@@ -36,7 +36,21 @@ export const ContentRow = ({
     <section className="py-6">
       {/* Header */}
       <div className="container mx-auto px-4 flex items-center justify-between mb-4">
-        <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
+        {showRank ? (
+          <h2 className="group/title cursor-default">
+            <span 
+              className="text-3xl md:text-4xl font-black transition-all duration-300 group-hover/title:drop-shadow-[0_0_20px_hsl(var(--primary))]"
+              style={{
+                WebkitTextStroke: "2px hsl(var(--primary))",
+                WebkitTextFillColor: "hsl(var(--primary) / 0.3)",
+              }}
+            >
+              {title}
+            </span>
+          </h2>
+        ) : (
+          <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
+        )}
         <div className="flex items-center gap-2">
           <button
             onClick={() => scroll("left")}
@@ -56,10 +70,7 @@ export const ContentRow = ({
       {/* Scrollable Content */}
       <div
         ref={scrollRef}
-        className={cn(
-          "flex gap-4 overflow-x-auto hide-scrollbar px-4",
-          showRank && "pl-12 sm:pl-16"
-        )}
+        className="flex gap-4 overflow-x-auto hide-scrollbar px-4"
       >
         {isLoading
           ? Array.from({ length: 8 }).map((_, i) => (
