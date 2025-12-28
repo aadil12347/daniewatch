@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
@@ -11,6 +11,10 @@ export const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if we're on a details page
+  const isDetailsPage = location.pathname.startsWith('/movie/') || location.pathname.startsWith('/tv/');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,6 +36,24 @@ export const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  // Close menu when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setIsSearchOpen(false);
+  }, [location.pathname]);
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -41,187 +63,244 @@ export const Navbar = () => {
     }
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const navLinks = [
+    { to: "/", label: "Home", icon: Home },
+    { to: "/movies", label: "Movies", icon: Film },
+    { to: "/tv", label: "TV Shows", icon: Tv },
+    { to: "/anime", label: "Anime", icon: Sparkles },
+    { to: "/watchlist", label: "Watch List", icon: Bookmark },
+  ];
+
   return (
-    <nav
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out",
-        isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4",
-        isHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
-      )}
-    >
-      {/* Bottom glow effect */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-      <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
-      <div className="container mx-auto px-4 flex items-center justify-between relative">
-        {/* Mobile Menu Toggle - Left side on mobile/tablet */}
-        <div className="md:hidden flex items-center">
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
-          >
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-
-        {/* Logo - Centered on mobile/tablet, left on desktop */}
-        <Link to="/" className="flex items-center gap-2 group md:relative absolute left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0">
-          <div className="relative w-10 h-10 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
-            <svg viewBox="0 0 100 100" className="w-10 h-10 drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
-              <defs>
-                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(0, 84%, 65%)" />
-                  <stop offset="100%" stopColor="hsl(0, 84%, 50%)" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M25 15 C15 15 10 25 10 50 C10 75 15 85 25 85 L55 85 C75 85 90 70 90 50 C90 30 75 15 55 15 L40 15 L40 25 L55 25 C68 25 78 35 78 50 C78 65 68 75 55 75 L25 75 C22 75 22 70 22 50 C22 30 22 25 25 25 L25 15 Z M30 35 L30 65 L55 65 C60 65 65 60 65 50 C65 40 60 35 55 35 L30 35 Z"
-                fill="url(#logoGradient)"
-              />
-            </svg>
-          </div>
-          <span className="text-xl font-bold tracking-tight">
-            Danie<span className="text-primary">Watch</span>
-          </span>
-        </Link>
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
-          <Link
-            to="/"
-            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
-          >
-            <Home className="w-4 h-4" />
-            Home
-          </Link>
-          <Link
-            to="/movies"
-            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
-          >
-            <Film className="w-4 h-4" />
-            Movies
-          </Link>
-          <Link
-            to="/tv"
-            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
-          >
-            <Tv className="w-4 h-4" />
-            TV Shows
-          </Link>
-          <Link
-            to="/anime"
-            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
-          >
-            <Sparkles className="w-4 h-4" />
-            Anime
-          </Link>
-          <Link
-            to="/watchlist"
-            className="nav-link-glow flex items-center gap-2 text-foreground/80 hover:text-foreground transition-all duration-300"
-          >
-            <Bookmark className="w-4 h-4" />
-            Watch List
-          </Link>
-        </div>
-
-        {/* Search */}
-        <div className="flex items-center gap-4">
-          {/* Search Form */}
-          <form
-            onSubmit={handleSearch}
-            className={cn(
-              "flex items-center transition-all duration-300",
-              isSearchOpen ? "w-64" : "w-auto"
-            )}
-          >
-            {isSearchOpen ? (
-              <div className="relative w-full">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search movies, TV shows..."
-                  className="w-full bg-secondary/50 border border-border rounded-full px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsSearchOpen(false)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsSearchOpen(true)}
-                className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-            )}
-          </form>
-        </div>
-      </div>
-
-      {/* Mobile Menu with slide-in animation */}
-      <div 
+    <>
+      <nav
         className={cn(
-          "md:hidden fixed top-0 left-0 h-full w-64 glass z-50 transform transition-transform duration-300 ease-out",
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out",
+          isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4",
+          isHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
         )}
       >
-        <div className="flex flex-col gap-2 p-4 pt-20">
-          <Link
-            to="/"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-          >
-            <Home className="w-5 h-5" />
-            Home
-          </Link>
-          <Link
-            to="/movies"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-          >
-            <Film className="w-5 h-5" />
-            Movies
-          </Link>
-          <Link
-            to="/tv"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-          >
-            <Tv className="w-5 h-5" />
-            TV Shows
-          </Link>
-          <Link
-            to="/anime"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-          >
-            <Sparkles className="w-5 h-5" />
-            Anime
-          </Link>
-          <Link
-            to="/watchlist"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-          >
-            <Bookmark className="w-5 h-5" />
-            Watch List
-          </Link>
-        </div>
-      </div>
+        {/* Bottom glow effect */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+        <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
+        
+        <div className="container mx-auto px-4 flex items-center justify-between relative">
+          {/* Left side: Back button OR Menu toggle */}
+          <div className="flex items-center gap-2">
+            {isDetailsPage ? (
+              <button
+                onClick={handleBack}
+                className="p-2 rounded-full hover:bg-secondary/50 transition-colors flex items-center gap-2"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="hidden sm:inline text-sm font-medium">Back</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="md:hidden p-2 rounded-full hover:bg-secondary/50 transition-colors"
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+          </div>
 
-      {/* Backdrop overlay */}
-      {isMenuOpen && (
+          {/* Logo - Centered on mobile, left-aligned after back/menu on desktop */}
+          <Link 
+            to="/" 
+            className={cn(
+              "flex items-center gap-2 group",
+              "absolute left-1/2 -translate-x-1/2 md:relative md:left-0 md:translate-x-0"
+            )}
+          >
+            <div className="relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
+              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
+                <defs>
+                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(0, 84%, 65%)" />
+                    <stop offset="100%" stopColor="hsl(0, 84%, 50%)" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M25 15 C15 15 10 25 10 50 C10 75 15 85 25 85 L55 85 C75 85 90 70 90 50 C90 30 75 15 55 15 L40 15 L40 25 L55 25 C68 25 78 35 78 50 C78 65 68 75 55 75 L25 75 C22 75 22 70 22 50 C22 30 22 25 25 25 L25 15 Z M30 35 L30 65 L55 65 C60 65 65 60 65 50 C65 40 60 35 55 35 L30 35 Z"
+                  fill="url(#logoGradient)"
+                />
+              </svg>
+            </div>
+            <span className="text-lg md:text-xl font-bold tracking-tight">
+              Danie<span className="text-primary">Watch</span>
+            </span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={cn(
+                  "nav-link-glow flex items-center gap-2 transition-all duration-300",
+                  location.pathname === link.to 
+                    ? "text-foreground" 
+                    : "text-foreground/70 hover:text-foreground"
+                )}
+              >
+                <link.icon className="w-4 h-4" />
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="flex items-center">
+            <form
+              onSubmit={handleSearch}
+              className={cn(
+                "flex items-center transition-all duration-300",
+                isSearchOpen ? "w-48 md:w-64" : "w-auto"
+              )}
+            >
+              {isSearchOpen ? (
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search..."
+                    className="w-full bg-secondary/50 border border-border rounded-full px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setSearchQuery("");
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(true)}
+                  className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
+                  aria-label="Search"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div 
+        className={cn(
+          "md:hidden fixed inset-0 z-[100] transition-opacity duration-300",
+          isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+      >
+        {/* Backdrop */}
         <div 
-          className="md:hidden fixed inset-0 bg-background/60 backdrop-blur-sm z-40"
+          className="absolute inset-0 bg-background/80 backdrop-blur-md"
           onClick={() => setIsMenuOpen(false)}
         />
-      )}
-    </nav>
+
+        {/* Menu Panel */}
+        <div 
+          className={cn(
+            "absolute top-0 left-0 h-full w-72 bg-card/95 backdrop-blur-xl border-r border-border shadow-2xl transform transition-transform duration-300 ease-out",
+            isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          {/* Menu Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2">
+              <div className="w-8 h-8">
+                <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
+                  <defs>
+                    <linearGradient id="logoGradientMenu" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="hsl(0, 84%, 65%)" />
+                      <stop offset="100%" stopColor="hsl(0, 84%, 50%)" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M25 15 C15 15 10 25 10 50 C10 75 15 85 25 85 L55 85 C75 85 90 70 90 50 C90 30 75 15 55 15 L40 15 L40 25 L55 25 C68 25 78 35 78 50 C78 65 68 75 55 75 L25 75 C22 75 22 70 22 50 C22 30 22 25 25 25 L25 15 Z M30 35 L30 65 L55 65 C60 65 65 60 65 50 C65 40 60 35 55 35 L30 35 Z"
+                    fill="url(#logoGradientMenu)"
+                  />
+                </svg>
+              </div>
+              <span className="text-lg font-bold">
+                Danie<span className="text-primary">Watch</span>
+              </span>
+            </Link>
+            <button
+              onClick={() => setIsMenuOpen(false)}
+              className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Menu Links */}
+          <nav className="p-4">
+            <ul className="space-y-1">
+              {navLinks.map((link, index) => (
+                <li 
+                  key={link.to}
+                  style={{ 
+                    animationDelay: `${index * 50}ms`,
+                    opacity: isMenuOpen ? 1 : 0,
+                    transform: isMenuOpen ? 'translateX(0)' : 'translateX(-20px)',
+                    transition: `opacity 0.3s ease ${index * 50}ms, transform 0.3s ease ${index * 50}ms`
+                  }}
+                >
+                  <Link
+                    to={link.to}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200",
+                      location.pathname === link.to 
+                        ? "bg-primary/15 text-primary" 
+                        : "text-foreground/80 hover:bg-secondary/50 hover:text-foreground"
+                    )}
+                  >
+                    <link.icon className={cn(
+                      "w-5 h-5",
+                      location.pathname === link.to && "text-primary"
+                    )} />
+                    <span className="font-medium">{link.label}</span>
+                    {location.pathname === link.to && (
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Menu Footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
+            <p className="text-xs text-muted-foreground text-center">
+              © 2024 DanieWatch
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
