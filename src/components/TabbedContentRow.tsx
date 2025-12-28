@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Movie } from "@/lib/tmdb";
 import { MovieCard } from "./MovieCard";
@@ -22,6 +22,7 @@ export const TabbedContentRow = ({
 }: TabbedContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"movies" | "tv">("movies");
+  const [animationKey, setAnimationKey] = useState(0);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -30,6 +31,14 @@ export const TabbedContentRow = ({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
       });
+    }
+  };
+
+  const handleTabChange = (tab: "movies" | "tv") => {
+    if (tab !== activeTab) {
+      setActiveTab(tab);
+      setAnimationKey(prev => prev + 1);
+      if (scrollRef.current) scrollRef.current.scrollLeft = 0;
     }
   };
 
@@ -44,10 +53,7 @@ export const TabbedContentRow = ({
         {/* Tab Buttons */}
         <div className="flex items-center gap-4">
           <button
-            onClick={() => {
-              setActiveTab("movies");
-              if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-            }}
+            onClick={() => handleTabChange("movies")}
             className={cn(
               "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
               activeTab === "movies"
@@ -58,10 +64,7 @@ export const TabbedContentRow = ({
             Movies
           </button>
           <button
-            onClick={() => {
-              setActiveTab("tv");
-              if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-            }}
+            onClick={() => handleTabChange("tv")}
             className={cn(
               "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
               activeTab === "tv"
@@ -97,8 +100,9 @@ export const TabbedContentRow = ({
         </button>
 
         <div
+          key={animationKey}
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto hide-scrollbar px-4"
+          className="flex gap-4 overflow-x-auto hide-scrollbar px-4 tab-content-enter"
         >
           {isLoading
             ? Array.from({ length: 8 }).map((_, i) => (
