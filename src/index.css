@@ -44,7 +44,7 @@
 /* Title glow underline effect */
 .title-glow-underline {
   position: relative;
-  display: inline-block;
+  width: fit-content;
 }
 
 .title-glow-underline::after {
@@ -54,9 +54,9 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(90deg, hsl(0, 84%, 60%), hsl(0, 84%, 50%));
+  background: linear-gradient(90deg, transparent, hsl(0, 84%, 60%), transparent);
   transform: scaleX(0);
-  transform-origin: left;
+  transform-origin: center;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 0 8px hsl(0, 84%, 60%), 0 0 15px hsl(0, 84%, 60%);
 }
