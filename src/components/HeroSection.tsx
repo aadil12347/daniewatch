@@ -81,30 +81,30 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
       {/* Content */}
       <div className="relative container mx-auto h-full flex items-center px-4">
-        <div className="max-w-2xl animate-slide-up">
+        <div className="max-w-xl animate-slide-up">
           {/* Meta info */}
-          <div className="flex items-center gap-4 mb-4">
-            <span className="px-3 py-1 rounded-md glass text-sm font-medium uppercase">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="px-2 py-0.5 rounded text-xs font-medium uppercase glass">
               {mediaType === "tv" ? "TV Series" : "Movie"}
             </span>
-            <div className="flex items-center gap-1.5">
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-              <span className="font-semibold">{rating}</span>
+            <div className="flex items-center gap-1">
+              <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+              <span className="text-sm font-medium">{rating}</span>
             </div>
-            <span className="text-muted-foreground">{year}</span>
+            <span className="text-sm text-muted-foreground">{year}</span>
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 leading-tight">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 leading-tight">
             {title}
           </h1>
 
           {/* Genres */}
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="flex flex-wrap gap-1.5 mb-4">
             {genreNames.map((genre) => (
               <span
                 key={genre}
-                className="px-3 py-1 rounded-full bg-secondary/50 text-sm"
+                className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs"
               >
                 {genre}
               </span>
@@ -112,30 +112,30 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
           </div>
 
           {/* Overview */}
-          <p className="text-lg text-muted-foreground mb-8 line-clamp-3 max-w-xl">
+          <p className="text-sm text-muted-foreground mb-5 line-clamp-2 max-w-lg">
             {current.overview}
           </p>
 
           {/* Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Button
               asChild
-              size="lg"
-              className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
+              size="sm"
+              className="gradient-red text-foreground font-medium px-5 hover:opacity-90 transition-opacity shadow-glow"
             >
               <Link to={`/${mediaType}/${current.id}`}>
-                <Play className="w-5 h-5 mr-2 fill-current" />
+                <Play className="w-4 h-4 mr-1.5 fill-current" />
                 Play Now
               </Link>
             </Button>
             <Button
               asChild
-              size="lg"
+              size="sm"
               variant="outline"
               className="bg-secondary/50 border-border hover:bg-secondary/80"
             >
               <Link to={`/${mediaType}/${current.id}`}>
-                <Info className="w-5 h-5 mr-2" />
+                <Info className="w-4 h-4 mr-1.5" />
                 More Info
               </Link>
             </Button>
