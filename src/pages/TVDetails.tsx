@@ -279,39 +279,80 @@ const TVDetails = () => {
               <div className="tab-content-enter">
                 {/* Season selector and search */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="bg-secondary/50 border-border min-w-[140px] justify-between">
-                        Season {selectedSeason}
-                        <ChevronDown className="w-4 h-4 ml-2" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-                      {validSeasons.map((season) => (
-                        <DropdownMenuItem
-                          key={season.season_number}
-                          onClick={() => handleSeasonChange(season.season_number)}
-                          className={cn(
-                            selectedSeason === season.season_number && "bg-primary/20"
-                          )}
-                        >
-                          Season {season.season_number}
-                          <span className="ml-2 text-muted-foreground text-xs">
-                            ({season.episode_count} eps)
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {/* Mobile/Tablet: Side by side layout */}
+                  <div className="flex md:hidden items-center gap-2 w-full">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="bg-secondary/50 border-border flex-1 justify-between">
+                          Season {selectedSeason}
+                          <ChevronDown className="w-4 h-4 ml-2" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+                        {validSeasons.map((season) => (
+                          <DropdownMenuItem
+                            key={season.season_number}
+                            onClick={() => handleSeasonChange(season.season_number)}
+                            className={cn(
+                              selectedSeason === season.season_number && "bg-primary/20"
+                            )}
+                          >
+                            Season {season.season_number}
+                            <span className="ml-2 text-muted-foreground text-xs">
+                              ({season.episode_count} eps)
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search episode..."
-                      value={episodeSearch}
-                      onChange={(e) => setEpisodeSearch(e.target.value)}
-                      className="pl-10 bg-secondary/50 border-border"
-                    />
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search episode..."
+                        value={episodeSearch}
+                        onChange={(e) => setEpisodeSearch(e.target.value)}
+                        className="pl-10 bg-secondary/50 border-border"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Desktop: Original layout */}
+                  <div className="hidden md:flex items-center gap-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="bg-secondary/50 border-border min-w-[140px] justify-between">
+                          Season {selectedSeason}
+                          <ChevronDown className="w-4 h-4 ml-2" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+                        {validSeasons.map((season) => (
+                          <DropdownMenuItem
+                            key={season.season_number}
+                            onClick={() => handleSeasonChange(season.season_number)}
+                            className={cn(
+                              selectedSeason === season.season_number && "bg-primary/20"
+                            )}
+                          >
+                            Season {season.season_number}
+                            <span className="ml-2 text-muted-foreground text-xs">
+                              ({season.episode_count} eps)
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search episode..."
+                        value={episodeSearch}
+                        onChange={(e) => setEpisodeSearch(e.target.value)}
+                        className="pl-10 bg-secondary/50 border-border"
+                      />
+                    </div>
                   </div>
                 </div>
 
