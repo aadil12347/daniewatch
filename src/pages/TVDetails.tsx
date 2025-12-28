@@ -7,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
 import { EpisodeCard } from "@/components/EpisodeCard";
+import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -132,6 +133,7 @@ const TVDetails = () => {
   const trailer = show.videos?.results.find(
     (v) => v.type === "Trailer" && v.site === "YouTube"
   );
+  const trailerKey = trailer?.key || null;
   
   // Get valid seasons (usually season 0 is specials)
   const validSeasons = show.seasons?.filter(s => s.season_number > 0) || [];
@@ -148,19 +150,12 @@ const TVDetails = () => {
 
         {/* Hero Section - Full viewport height */}
         <div className="relative h-screen min-h-[700px]">
-          {/* Background Image */}
-          <div className="absolute inset-0">
-            {backdropUrl && (
-              <img
-                src={backdropUrl}
-                alt={title}
-                className="w-full h-full object-cover"
-              />
-            )}
-            {/* Gradient overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
-          </div>
+          {/* Background Trailer */}
+          <BackgroundTrailer 
+            videoKey={trailerKey} 
+            backdropUrl={backdropUrl} 
+            title={title} 
+          />
 
           {/* Content - Bottom left positioned */}
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 lg:p-16">
