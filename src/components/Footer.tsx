@@ -13,7 +13,7 @@ export const Footer = () => {
           . Created by{" "}
           <span className="relative text-primary font-semibold animate-[creator-glow_2s_ease-in-out_infinite]">
             Daniyal
-            <span className="absolute -bottom-1 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent rounded-full animate-[underline-pulse_2s_ease-in-out_infinite]" />
+            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-full h-4 bg-primary/60 blur-xl rounded-full animate-[glow-pulse-up_2s_ease-in-out_infinite]" />
           </span>
         </p>
       </div>
