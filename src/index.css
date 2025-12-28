@@ -392,34 +392,24 @@
     }
   }
 
-  /* Desktop: Clean minimal transition */
+  /* Desktop: Simple crossfade */
   @media (min-width: 1024px) {
     .page-enter {
-      animation: pageFadeIn 0.4s ease forwards;
+      animation: simpleFadeIn 0.3s ease forwards;
     }
 
     .page-exit {
-      animation: pageFadeOut 0.15s ease forwards;
+      animation: simpleFadeOut 0.15s ease forwards;
     }
 
-    @keyframes pageFadeIn {
-      0% {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    @keyframes simpleFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
-    @keyframes pageFadeOut {
-      0% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 0;
-      }
+    @keyframes simpleFadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
     }
 
     /* Exclude navbar from page transition animations */
@@ -428,7 +418,6 @@
     .page-exit nav {
       animation: none !important;
       opacity: 1 !important;
-      transform: translateY(0) !important;
     }
   }
 }
