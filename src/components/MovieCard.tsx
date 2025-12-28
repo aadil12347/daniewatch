@@ -26,29 +26,28 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md" }: Movie
   const rankSizeClasses = showRank ? "ml-10 sm:ml-14" : "";
 
   return (
-    <Link
-      to={`/${mediaType}/${movie.id}`}
-      className={cn("group relative flex-shrink-0", sizeClasses[size], rankSizeClasses)}
-    >
+    <div className={cn("group relative flex-shrink-0", showRank && "pl-8 sm:pl-12")}>
       {/* Rank Number */}
       {showRank && index !== undefined && (
-        <div className="relative flex items-end">
-          <div className="absolute -left-10 sm:-left-14 bottom-2 z-20 pointer-events-none transition-all duration-300 group-hover:drop-shadow-[0_0_20px_hsl(var(--primary))]">
-            <span
-              className="text-[4rem] sm:text-[5rem] font-black leading-none transition-all duration-300"
-              style={{
-                WebkitTextStroke: "2px hsl(var(--primary))",
-                WebkitTextFillColor: "hsl(var(--primary) / 0.3)",
-              }}
-            >
-              {index + 1}
-            </span>
-          </div>
+        <div className="absolute left-0 bottom-16 z-10 pointer-events-none transition-all duration-300 group-hover:drop-shadow-[0_0_25px_hsl(var(--primary))]">
+          <span
+            className="text-[5rem] sm:text-[6rem] font-black leading-none transition-all duration-300"
+            style={{
+              WebkitTextStroke: "2px hsl(var(--primary))",
+              WebkitTextFillColor: "hsl(var(--primary) / 0.4)",
+            }}
+          >
+            {index + 1}
+          </span>
         </div>
       )}
 
-      {/* Card */}
-      <div className="cinema-card relative aspect-[2/3] rounded-xl overflow-hidden bg-card">
+      <Link
+        to={`/${mediaType}/${movie.id}`}
+        className={cn("block", sizeClasses[size])}
+      >
+        {/* Card */}
+        <div className="cinema-card relative aspect-[2/3] rounded-xl overflow-hidden bg-card">
         {posterUrl ? (
           <img
             src={posterUrl}
@@ -89,6 +88,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md" }: Movie
           <span className="text-xs text-muted-foreground capitalize">• {mediaType}</span>
         </div>
       </div>
-    </Link>
+      </Link>
+    </div>
   );
 };
