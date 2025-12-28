@@ -8,12 +8,13 @@ export const Footer = () => {
           <Copyright className="w-4 h-4" />
           {new Date().getFullYear()}{" "}
           <span className="font-bold">
-            Danie<span className="text-primary">Watch</span>
+            <span className="text-foreground">Danie</span><span className="text-primary">Watch</span>
           </span>
           . Created by{" "}
-          <span className="relative text-primary font-semibold animate-pulse">
+          <span className="relative text-primary font-semibold group">
             Daniyal
-            <span className="absolute -bottom-0.5 left-0 w-full h-0.5 bg-gradient-to-r from-primary via-red-400 to-primary rounded-full animate-[pulse_2s_ease-in-out_infinite] shadow-[0_0_10px_hsl(var(--primary)),0_0_20px_hsl(var(--primary))]" />
+            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full bg-gradient-to-r from-transparent via-primary to-transparent animate-[glow-pulse_2s_ease-in-out_infinite]" />
+            <span className="absolute -bottom-1 left-0 w-full h-[2px] rounded-full bg-gradient-to-r from-red-500 via-primary to-red-500 blur-sm animate-[glow-slide_3s_linear_infinite]" />
           </span>
         </p>
       </div>
