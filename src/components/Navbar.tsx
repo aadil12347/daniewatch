@@ -65,7 +65,7 @@ export const Navbar = () => {
               />
             </svg>
           </div>
-          <span className="text-xl font-bold tracking-tight hidden sm:block">
+          <span className="text-xl font-bold tracking-tight">
             Danie<span className="text-primary">Watch</span>
           </span>
         </Link>
@@ -150,52 +150,63 @@ export const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden glass mt-2 mx-4 rounded-xl p-4 animate-fade-in">
-          <div className="flex flex-col gap-4">
-            <Link
-              to="/"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-            >
-              <Home className="w-5 h-5" />
-              Home
-            </Link>
-            <Link
-              to="/movies"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-            >
-              <Film className="w-5 h-5" />
-              Movies
-            </Link>
-            <Link
-              to="/tv"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-            >
-              <Tv className="w-5 h-5" />
-              TV Shows
-            </Link>
-            <Link
-              to="/anime"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-            >
-              <Sparkles className="w-5 h-5" />
-              Anime
-            </Link>
-            <Link
-              to="/watchlist"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-            >
-              <Bookmark className="w-5 h-5" />
-              Watch List
-            </Link>
-          </div>
+      {/* Mobile Menu with slide-in animation */}
+      <div 
+        className={cn(
+          "md:hidden fixed top-0 left-0 h-full w-64 glass z-50 transform transition-transform duration-300 ease-out",
+          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex flex-col gap-2 p-4 pt-20">
+          <Link
+            to="/"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+          >
+            <Home className="w-5 h-5" />
+            Home
+          </Link>
+          <Link
+            to="/movies"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+          >
+            <Film className="w-5 h-5" />
+            Movies
+          </Link>
+          <Link
+            to="/tv"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+          >
+            <Tv className="w-5 h-5" />
+            TV Shows
+          </Link>
+          <Link
+            to="/anime"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+          >
+            <Sparkles className="w-5 h-5" />
+            Anime
+          </Link>
+          <Link
+            to="/watchlist"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+          >
+            <Bookmark className="w-5 h-5" />
+            Watch List
+          </Link>
         </div>
+      </div>
+
+      {/* Backdrop overlay */}
+      {isMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-background/60 backdrop-blur-sm z-40"
+          onClick={() => setIsMenuOpen(false)}
+        />
       )}
     </nav>
   );
