@@ -35,6 +35,9 @@ export const Navbar = () => {
         isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4"
       )}
     >
+      {/* Bottom glow effect */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+      <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
       <div className="container mx-auto px-4 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
@@ -61,35 +64,35 @@ export const Navbar = () => {
         <div className="hidden md:flex items-center gap-8">
           <Link
             to="/"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
           >
             <Home className="w-4 h-4" />
             Home
           </Link>
           <Link
             to="/movies"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
           >
             <Film className="w-4 h-4" />
             Movies
           </Link>
           <Link
             to="/tv"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
           >
             <Tv className="w-4 h-4" />
             TV Shows
           </Link>
           <Link
             to="/anime"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
           >
             <Sparkles className="w-4 h-4" />
             Anime
           </Link>
           <Link
             to="/watchlist"
-            className="flex items-center gap-2 text-foreground/80 hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-foreground/80 hover:text-foreground hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.8)] transition-all duration-300"
           >
             <Bookmark className="w-4 h-4" />
             Watch List
