@@ -76,11 +76,38 @@
   position: absolute;
   bottom: 0;
   left: 50%;
-  transform: translateX(-50%) scaleX(1);
   width: 80%;
   height: 2px;
   background: linear-gradient(90deg, transparent, hsl(0, 84%, 60%), transparent);
   box-shadow: 0 0 8px hsl(0, 84%, 60%), 0 0 15px hsl(0, 84%, 60%);
+  animation: tabGlowIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes tabGlowIn {
+  0% {
+    transform: translateX(-50%) scaleX(0);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* Tab content transition */
+.tab-content-enter {
+  animation: tabContentIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes tabContentIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @tailwind base;
