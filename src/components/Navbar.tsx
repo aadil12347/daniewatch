@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -12,12 +14,23 @@ export const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      const currentScrollY = window.scrollY;
+      
+      setIsScrolled(currentScrollY > 50);
+      
+      // Hide when scrolling down, show when scrolling up
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsHidden(true);
+      } else {
+        setIsHidden(false);
+      }
+      
+      setLastScrollY(currentScrollY);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [lastScrollY]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,8 +44,9 @@ export const Navbar = () => {
   return (
     <nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4"
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out",
+        isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4",
+        isHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
       )}
     >
       {/* Bottom glow effect */}
