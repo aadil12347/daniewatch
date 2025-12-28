@@ -29,10 +29,8 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md" }: Movie
     <div className={cn("group relative flex-shrink-0", showRank && "pl-6 sm:pl-10")}>
       {/* Rank Number - Default: behind poster, white outline, black fill */}
       {showRank && index !== undefined && (
-        <div className="absolute left-0 bottom-12 transition-all duration-500 z-0 group-hover:z-20 group-hover:left-2 group-hover:bottom-20 group-hover:drop-shadow-[0_0_25px_hsl(var(--primary))] pointer-events-none">
-          <span
-            className="rank-number text-[5rem] sm:text-[6rem] font-black leading-none transition-all duration-500 group-hover:text-[3rem] sm:group-hover:text-[4rem]"
-          >
+        <div className="absolute left-0 bottom-12 transition-all duration-700 ease-out z-0 group-hover:z-20 group-hover:left-1 group-hover:bottom-16 group-hover:drop-shadow-[0_0_30px_hsl(var(--primary))] pointer-events-none">
+          <span className="rank-number text-[5rem] sm:text-[6rem] font-black leading-none">
             {index + 1}
           </span>
         </div>
