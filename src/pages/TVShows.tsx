@@ -149,10 +149,10 @@ const TVShows = () => {
         <Navbar />
 
         <div className="container mx-auto px-4 pt-24 pb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8">TV Shows</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">TV Shows</h1>
 
           {/* Category Tabs */}
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="flex flex-wrap gap-2 mb-6 content-reveal content-reveal-delay-1">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -169,7 +169,7 @@ const TVShows = () => {
           </div>
 
           {/* Genre Filters */}
-          <div className="mb-8">
+          <div className="mb-8 content-reveal content-reveal-delay-2">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm text-muted-foreground">Filter by genre:</span>
               {selectedGenres.length > 0 && (
@@ -210,7 +210,11 @@ const TVShows = () => {
                   </div>
                 ))
               : shows.map((show, index) => (
-                  <MovieCard key={`${show.id}-${index}`} movie={{ ...show, media_type: "tv" }} />
+                  <MovieCard 
+                    key={`${show.id}-${index}`} 
+                    movie={{ ...show, media_type: "tv" }} 
+                    animationDelay={Math.min(index * 30, 300)}
+                  />
                 ))}
           </div>
 
