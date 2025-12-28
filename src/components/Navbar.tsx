@@ -38,10 +38,19 @@ export const Navbar = () => {
       <div className="container mx-auto px-4 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="relative w-10 h-10 rounded-xl gradient-red flex items-center justify-center shadow-glow transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
-            <span className="text-2xl font-black text-foreground italic tracking-tighter drop-shadow-lg" style={{ fontFamily: 'Georgia, serif' }}>D</span>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-foreground/20 rounded-full blur-sm" />
+          <div className="relative w-10 h-10 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
+            <svg viewBox="0 0 100 100" className="w-10 h-10 drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
+              <defs>
+                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="hsl(0, 84%, 65%)" />
+                  <stop offset="100%" stopColor="hsl(0, 84%, 50%)" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M25 15 C15 15 10 25 10 50 C10 75 15 85 25 85 L55 85 C75 85 90 70 90 50 C90 30 75 15 55 15 L40 15 L40 25 L55 25 C68 25 78 35 78 50 C78 65 68 75 55 75 L25 75 C22 75 22 70 22 50 C22 30 22 25 25 25 L25 15 Z M30 35 L30 65 L55 65 C60 65 65 60 65 50 C65 40 60 35 55 35 L30 35 Z"
+                fill="url(#logoGradient)"
+              />
+            </svg>
           </div>
           <span className="text-xl font-bold tracking-tight hidden sm:block">
             Danie<span className="text-primary">Watch</span>
