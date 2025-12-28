@@ -38,9 +38,19 @@ export const Navbar = () => {
       {/* Bottom glow effect */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
       <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
+      <div className="container mx-auto px-4 flex items-center justify-between relative">
+        {/* Mobile Menu Toggle - Left side on mobile/tablet */}
+        <div className="md:hidden flex items-center">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
+          >
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {/* Logo - Centered on mobile/tablet, left on desktop */}
+        <Link to="/" className="flex items-center gap-2 group md:relative absolute left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0">
           <div className="relative w-10 h-10 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
             <svg viewBox="0 0 100 100" className="w-10 h-10 drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
               <defs>
@@ -99,7 +109,7 @@ export const Navbar = () => {
           </Link>
         </div>
 
-        {/* Search & Menu */}
+        {/* Search */}
         <div className="flex items-center gap-4">
           {/* Search Form */}
           <form
@@ -137,14 +147,6 @@ export const Navbar = () => {
               </button>
             )}
           </form>
-
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-full hover:bg-secondary/50 transition-colors"
-          >
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
       </div>
 
