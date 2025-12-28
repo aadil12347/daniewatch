@@ -33,7 +33,7 @@ export const ContentRow = ({
   };
 
   return (
-    <section className="py-6">
+    <section className="py-6 group/section">
       {/* Header */}
       <div className="container mx-auto px-4 flex items-center justify-between mb-4">
         {showRank ? (
@@ -47,44 +47,48 @@ export const ContentRow = ({
         ) : (
           <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
         )}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => scroll("left")}
-            className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => scroll("right")}
-            className="p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
-      {/* Scrollable Content */}
-      <div
-        ref={scrollRef}
-        className="flex gap-4 overflow-x-auto hide-scrollbar px-4"
-      >
-        {isLoading
-          ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex-shrink-0 w-40 sm:w-48">
-                <Skeleton className="aspect-[2/3] rounded-xl" />
-                <Skeleton className="h-4 w-3/4 mt-3" />
-                <Skeleton className="h-3 w-1/2 mt-2" />
-              </div>
-            ))
-          : items.map((movie, idx) => (
-              <MovieCard
-                key={movie.id}
-                movie={movie}
-                index={idx}
-                showRank={showRank}
-                size={size}
-              />
-            ))}
+      {/* Scrollable Content with Navigation Overlay */}
+      <div className="relative">
+        {/* Left Navigation Button */}
+        <button
+          onClick={() => scroll("left")}
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:bg-primary hover:border-primary hover:shadow-glow"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        {/* Right Navigation Button */}
+        <button
+          onClick={() => scroll("right")}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:bg-primary hover:border-primary hover:shadow-glow"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto hide-scrollbar px-4"
+        >
+          {isLoading
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-40 sm:w-48">
+                  <Skeleton className="aspect-[2/3] rounded-xl" />
+                  <Skeleton className="h-4 w-3/4 mt-3" />
+                  <Skeleton className="h-3 w-1/2 mt-2" />
+                </div>
+              ))
+            : items.map((movie, idx) => (
+                <MovieCard
+                  key={movie.id}
+                  movie={movie}
+                  index={idx}
+                  showRank={showRank}
+                  size={size}
+                />
+              ))}
+        </div>
       </div>
     </section>
   );
