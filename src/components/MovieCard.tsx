@@ -26,16 +26,12 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md" }: Movie
   const rankSizeClasses = showRank ? "ml-10 sm:ml-14" : "";
 
   return (
-    <div className={cn("group relative flex-shrink-0", showRank && "pl-8 sm:pl-12")}>
-      {/* Rank Number */}
+    <div className={cn("group relative flex-shrink-0", showRank && "pl-6 sm:pl-10")}>
+      {/* Rank Number - Default: behind poster, white outline, black fill */}
       {showRank && index !== undefined && (
-        <div className="absolute left-0 bottom-16 z-10 pointer-events-none transition-all duration-300 group-hover:drop-shadow-[0_0_25px_hsl(var(--primary))]">
+        <div className="absolute left-0 bottom-12 transition-all duration-500 z-0 group-hover:z-20 group-hover:left-2 group-hover:bottom-20 group-hover:drop-shadow-[0_0_25px_hsl(var(--primary))] pointer-events-none">
           <span
-            className="text-[5rem] sm:text-[6rem] font-black leading-none transition-all duration-300"
-            style={{
-              WebkitTextStroke: "2px hsl(var(--primary))",
-              WebkitTextFillColor: "hsl(var(--primary) / 0.4)",
-            }}
+            className="rank-number text-[5rem] sm:text-[6rem] font-black leading-none transition-all duration-500 group-hover:text-[3rem] sm:group-hover:text-[4rem]"
           >
             {index + 1}
           </span>
