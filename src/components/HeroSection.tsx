@@ -144,7 +144,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
       </div>
 
       {/* Indicators */}
-      <div className="absolute bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+      <div className="absolute bottom-14 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
         {featured.map((_, idx) => (
           <button
             key={idx}
