@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { PageTransition } from "./components/PageTransition";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -16,6 +17,26 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <PageTransition key={location.pathname}>
+      <Routes location={location}>
+        <Route path="/" element={<Index />} />
+        <Route path="/movie/:id" element={<MovieDetails />} />
+        <Route path="/tv/:id" element={<TVDetails />} />
+        <Route path="/movies" element={<Movies />} />
+        <Route path="/tv" element={<TVShows />} />
+        <Route path="/anime" element={<Anime />} />
+        <Route path="/watchlist" element={<Watchlist />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </PageTransition>
+  );
+};
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -23,17 +44,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/movie/:id" element={<MovieDetails />} />
-            <Route path="/tv/:id" element={<TVDetails />} />
-            <Route path="/movies" element={<Movies />} />
-            <Route path="/tv" element={<TVShows />} />
-            <Route path="/anime" element={<Anime />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AnimatedRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
