@@ -49,13 +49,16 @@ export const TabbedContentRow = ({
               if (scrollRef.current) scrollRef.current.scrollLeft = 0;
             }}
             className={cn(
-              "tab-glow-button px-2 py-1 text-sm font-medium transition-all duration-300",
+              "relative px-2 py-1 text-sm font-medium transition-all duration-300",
               activeTab === "movies"
                 ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground/50 hover:text-muted-foreground"
             )}
           >
             Movies
+            {activeTab === "movies" && (
+              <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full shadow-[0_0_10px_hsl(var(--primary)),0_0_20px_hsl(var(--primary))]" />
+            )}
           </button>
           <button
             onClick={() => {
@@ -63,13 +66,16 @@ export const TabbedContentRow = ({
               if (scrollRef.current) scrollRef.current.scrollLeft = 0;
             }}
             className={cn(
-              "tab-glow-button px-2 py-1 text-sm font-medium transition-all duration-300",
+              "relative px-2 py-1 text-sm font-medium transition-all duration-300",
               activeTab === "tv"
                 ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground/50 hover:text-muted-foreground"
             )}
           >
             TV Shows
+            {activeTab === "tv" && (
+              <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full shadow-[0_0_10px_hsl(var(--primary)),0_0_20px_hsl(var(--primary))]" />
+            )}
           </button>
         </div>
       </div>
