@@ -68,9 +68,42 @@ export interface TVDetails extends Movie {
   status: string;
   number_of_seasons: number;
   number_of_episodes: number;
+  seasons: Season[];
   videos?: {
     results: { key: string; type: string; site: string }[];
   };
+}
+
+export interface Season {
+  id: number;
+  name: string;
+  season_number: number;
+  episode_count: number;
+  air_date: string | null;
+  poster_path: string | null;
+  overview: string;
+}
+
+export interface Episode {
+  id: number;
+  name: string;
+  episode_number: number;
+  season_number: number;
+  overview: string;
+  still_path: string | null;
+  air_date: string | null;
+  runtime: number | null;
+  vote_average: number;
+}
+
+export interface SeasonDetails {
+  id: number;
+  name: string;
+  season_number: number;
+  episodes: Episode[];
+  air_date: string | null;
+  poster_path: string | null;
+  overview: string;
 }
 
 export interface Cast {
@@ -136,6 +169,9 @@ export const getTVCredits = (id: number) =>
 
 export const getSimilarTV = (id: number) =>
   fetchTMDB<TMDBResponse<Movie>>(`/tv/${id}/similar`);
+
+export const getTVSeasonDetails = (tvId: number, seasonNumber: number) =>
+  fetchTMDB<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
 
 // Discover TV with filters
 export const discoverTV = (page: number = 1, genreIds: number[] = [], sortBy: string = "popularity.desc") =>
