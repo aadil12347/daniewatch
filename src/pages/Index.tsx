@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
+import { TabbedContentRow } from "@/components/TabbedContentRow";
 import { Footer } from "@/components/Footer";
 import {
   getTrending,
@@ -51,7 +52,7 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>Cineby - Watch Movies & TV Shows Online Free</title>
+        <title>DanieWatch - Watch Movies & TV Shows Online Free</title>
         <meta
           name="description"
           content="Discover and stream millions of movies and TV shows. Get the latest information about trending content, top-rated films, and popular series."
@@ -77,27 +78,17 @@ const Index = () => {
             isLoading={isLoading}
           />
 
-          <ContentRow
-            title="Popular Movies"
-            items={popularMovies}
+          <TabbedContentRow
+            title="Popular"
+            moviesItems={popularMovies}
+            tvItems={popularTV}
             isLoading={isLoading}
           />
 
-          <ContentRow
-            title="Top Rated Movies"
-            items={topRatedMovies}
-            isLoading={isLoading}
-          />
-
-          <ContentRow
-            title="Popular TV Shows"
-            items={popularTV}
-            isLoading={isLoading}
-          />
-
-          <ContentRow
-            title="Top Rated TV Shows"
-            items={topRatedTV}
+          <TabbedContentRow
+            title="Top Rated"
+            moviesItems={topRatedMovies}
+            tvItems={topRatedTV}
             isLoading={isLoading}
           />
         </div>

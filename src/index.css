@@ -65,6 +65,34 @@
   transform: scaleX(1);
 }
 
+/* Tab button glow underline effect */
+.tab-glow-button {
+  position: relative;
+}
+
+.tab-glow-button::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 80%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(0, 84%, 60%), transparent);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px hsl(0, 84%, 60%), 0 0 15px hsl(0, 84%, 60%);
+}
+
+.tab-glow-button:hover::after,
+.tab-glow-button.bg-primary\/20::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+.tab-glow-button:hover,
+.tab-glow-button.bg-primary\/20 {
+  text-shadow: 0 0 10px hsl(0, 84%, 60% / 0.6);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
