@@ -155,7 +155,7 @@
   }
 
   .cinema-card:hover {
-    transform: scale(1.02);
+    transform: scale(1.01);
     box-shadow: var(--shadow-card-hover);
   }
 
