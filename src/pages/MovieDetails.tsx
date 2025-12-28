@@ -16,7 +16,6 @@ import {
   Cast,
   Movie,
   getBackdropUrl,
-  getPosterUrl,
   formatRuntime,
   getYear,
 } from "@/lib/tmdb";
@@ -58,7 +57,7 @@ const MovieDetails = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="h-[70vh] relative">
+        <div className="h-screen relative">
           <Skeleton className="absolute inset-0" />
         </div>
       </div>
@@ -83,7 +82,6 @@ const MovieDetails = () => {
   }
 
   const backdropUrl = getBackdropUrl(movie.backdrop_path);
-  const posterUrl = getPosterUrl(movie.poster_path, "w500");
   const trailer = movie.videos?.results.find(
     (v) => v.type === "Trailer" && v.site === "YouTube"
   );
@@ -91,16 +89,16 @@ const MovieDetails = () => {
   return (
     <>
       <Helmet>
-        <title>{movie.title} - Cineby</title>
+        <title>{movie.title} - DanieWatch</title>
         <meta name="description" content={movie.overview?.slice(0, 160)} />
       </Helmet>
 
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        {/* Hero Section */}
-        <div className="relative h-[80vh] min-h-[600px]">
-          {/* Background */}
+        {/* Hero Section - Full viewport height */}
+        <div className="relative h-screen min-h-[700px]">
+          {/* Background Image */}
           <div className="absolute inset-0">
             {backdropUrl && (
               <img
@@ -109,61 +107,41 @@ const MovieDetails = () => {
                 className="w-full h-full object-cover"
               />
             )}
-            <div className="absolute inset-0 gradient-hero" />
-            <div className="absolute inset-0 gradient-hero-bottom" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+            {/* Gradient overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
           </div>
 
-          {/* Content */}
-          <div className="relative container mx-auto h-full flex items-end pb-16 px-4">
-            <div className="flex flex-col md:flex-row gap-8 items-end md:items-end">
-              {/* Poster */}
-              <div className="hidden md:block flex-shrink-0 w-64 rounded-xl overflow-hidden shadow-card animate-scale-in">
-                {posterUrl ? (
-                  <img src={posterUrl} alt={movie.title} className="w-full" />
-                ) : (
-                  <div className="aspect-[2/3] bg-muted flex items-center justify-center">
-                    <span className="text-muted-foreground">{movie.title}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 animate-slide-up">
-                {/* Meta */}
-                <div className="flex flex-wrap items-center gap-4 mb-4">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-md glass">
+          {/* Content - Bottom left positioned */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 lg:p-16">
+            <div className="container mx-auto">
+              <div className="max-w-3xl animate-slide-up">
+                {/* Meta info */}
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-background/50 backdrop-blur-sm">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    <span className="font-semibold">{movie.vote_average?.toFixed(1)}</span>
+                    <span className="font-semibold text-sm">{movie.vote_average?.toFixed(1)}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    <span>{getYear(movie.release_date)}</span>
-                  </div>
+                  <span className="text-muted-foreground text-sm">{getYear(movie.release_date)}</span>
                   {movie.runtime && (
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatRuntime(movie.runtime)}</span>
-                    </div>
+                    <>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="text-muted-foreground text-sm">{formatRuntime(movie.runtime)}</span>
+                    </>
                   )}
                 </div>
 
                 {/* Title */}
-                <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4">
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 leading-tight">
                   {movie.title}
                 </h1>
 
-                {/* Tagline */}
-                {movie.tagline && (
-                  <p className="text-lg text-primary italic mb-4">{movie.tagline}</p>
-                )}
-
                 {/* Genres */}
-                <div className="flex flex-wrap gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {movie.genres?.map((genre) => (
                     <span
                       key={genre.id}
-                      className="px-4 py-1.5 rounded-full bg-secondary/50 text-sm font-medium"
+                      className="px-3 py-1 rounded-full bg-secondary/60 backdrop-blur-sm text-xs font-medium"
                     >
                       {genre.name}
                     </span>
@@ -171,12 +149,12 @@ const MovieDetails = () => {
                 </div>
 
                 {/* Overview */}
-                <p className="text-muted-foreground max-w-2xl mb-8 line-clamp-3 md:line-clamp-none">
+                <p className="text-muted-foreground text-sm md:text-base max-w-2xl mb-6 line-clamp-3">
                   {movie.overview}
                 </p>
 
-                {/* Actions */}
-                <div className="flex flex-wrap items-center gap-4">
+                {/* Action buttons */}
+                <div className="flex flex-wrap items-center gap-3">
                   <Button
                     size="lg"
                     className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
@@ -190,20 +168,18 @@ const MovieDetails = () => {
                     Play
                   </Button>
                   <Button
-                    size="lg"
+                    size="icon"
                     variant="outline"
-                    className="bg-secondary/50 border-border hover:bg-secondary/80"
+                    className="w-12 h-12 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
                   >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Add to List
+                    <Plus className="w-5 h-5" />
                   </Button>
                   <Button
-                    size="lg"
+                    size="icon"
                     variant="outline"
-                    className="bg-secondary/50 border-border hover:bg-secondary/80"
+                    className="w-12 h-12 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
                   >
-                    <Download className="w-5 h-5 mr-2" />
-                    Download
+                    <Download className="w-5 h-5" />
                   </Button>
                 </div>
               </div>
