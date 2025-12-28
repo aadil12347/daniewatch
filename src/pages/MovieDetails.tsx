@@ -17,6 +17,7 @@ import {
   Cast,
   Movie,
   getBackdropUrl,
+  getPosterUrl,
   formatRuntime,
   getYear,
 } from "@/lib/tmdb";
@@ -83,6 +84,7 @@ const MovieDetails = () => {
   }
 
   const backdropUrl = getBackdropUrl(movie.backdrop_path);
+  const posterUrl = getPosterUrl(movie.poster_path, "w500");
   const trailer = movie.videos?.results.find(
     (v) => v.type === "Trailer" && v.site === "YouTube"
   );
@@ -107,36 +109,48 @@ const MovieDetails = () => {
             title={movie.title} 
           />
 
-          {/* Content - Bottom left positioned */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 lg:p-16">
-            <div className="container mx-auto">
-              <div className="max-w-3xl animate-slide-up">
-                {/* Meta info */}
-                <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-background/50 backdrop-blur-sm">
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    <span className="font-semibold text-sm">{movie.vote_average?.toFixed(1)}</span>
+          {/* Content - Bottom left positioned with poster */}
+          <div className="absolute bottom-0 left-0 p-4 md:p-8 lg:p-12">
+            <div className="flex items-end gap-4 md:gap-6 animate-slide-up">
+              {/* Poster */}
+              <div className="hidden sm:block flex-shrink-0 w-32 md:w-40 lg:w-48 rounded-lg overflow-hidden shadow-card">
+                {posterUrl ? (
+                  <img src={posterUrl} alt={movie.title} className="w-full aspect-[2/3] object-cover" />
+                ) : (
+                  <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">
+                    <span className="text-muted-foreground text-xs">{movie.title}</span>
                   </div>
-                  <span className="text-muted-foreground text-sm">{getYear(movie.release_date)}</span>
+                )}
+              </div>
+
+              {/* Info card */}
+              <div className="max-w-md lg:max-w-lg">
+                {/* Meta info */}
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-background/50 backdrop-blur-sm">
+                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                    <span className="font-semibold text-xs">{movie.vote_average?.toFixed(1)}</span>
+                  </div>
+                  <span className="text-muted-foreground text-xs">{getYear(movie.release_date)}</span>
                   {movie.runtime && (
                     <>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground text-sm">{formatRuntime(movie.runtime)}</span>
+                      <span className="text-muted-foreground text-xs">•</span>
+                      <span className="text-muted-foreground text-xs">{formatRuntime(movie.runtime)}</span>
                     </>
                   )}
                 </div>
 
                 {/* Title */}
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 leading-tight">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">
                   {movie.title}
                 </h1>
 
                 {/* Genres */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {movie.genres?.map((genre) => (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {movie.genres?.slice(0, 3).map((genre) => (
                     <span
                       key={genre.id}
-                      className="px-3 py-1 rounded-full bg-secondary/60 backdrop-blur-sm text-xs font-medium"
+                      className="px-2 py-0.5 rounded-full bg-secondary/60 backdrop-blur-sm text-xs font-medium"
                     >
                       {genre.name}
                     </span>
@@ -144,37 +158,37 @@ const MovieDetails = () => {
                 </div>
 
                 {/* Overview */}
-                <p className="text-muted-foreground text-sm md:text-base max-w-2xl mb-6 line-clamp-3">
+                <p className="text-muted-foreground text-xs md:text-sm mb-4 line-clamp-2">
                   {movie.overview}
                 </p>
 
                 {/* Action buttons */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
                   <Button
-                    size="lg"
-                    className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
+                    size="sm"
+                    className="gradient-red text-foreground font-semibold px-6 hover:opacity-90 transition-opacity shadow-glow"
                     onClick={() => {
                       if (trailer) {
                         window.open(`https://www.youtube.com/watch?v=${trailer.key}`, "_blank");
                       }
                     }}
                   >
-                    <Play className="w-5 h-5 mr-2 fill-current" />
+                    <Play className="w-4 h-4 mr-1.5 fill-current" />
                     Play
                   </Button>
                   <Button
                     size="icon"
                     variant="outline"
-                    className="w-12 h-12 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                    className="w-9 h-9 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                   </Button>
                   <Button
                     size="icon"
                     variant="outline"
-                    className="w-12 h-12 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                    className="w-9 h-9 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
                   >
-                    <Download className="w-5 h-5" />
+                    <Download className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
