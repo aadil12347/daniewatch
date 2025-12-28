@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Volume1 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 interface BackgroundTrailerProps {
@@ -10,25 +11,61 @@ interface BackgroundTrailerProps {
 }
 
 export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTrailerProps) => {
-  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(0);
+  const [previousVolume, setPreviousVolume] = useState(50);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
 
   // YouTube embed URL with autoplay, mute, and loop
   const embedUrl = videoKey
     ? `https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&loop=1&playlist=${videoKey}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${window.location.origin}`
     : null;
 
-  const toggleMute = () => {
+  const sendYouTubeCommand = (func: string, args?: number) => {
     if (iframeRef.current?.contentWindow) {
-      const command = isMuted ? "unMute" : "mute";
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: command }),
-        "*"
-      );
-      setIsMuted(!isMuted);
+      const message = args !== undefined
+        ? JSON.stringify({ event: "command", func, args: [args] })
+        : JSON.stringify({ event: "command", func });
+      iframeRef.current.contentWindow.postMessage(message, "*");
     }
   };
+
+  const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume);
+    
+    if (newVolume === 0) {
+      sendYouTubeCommand("mute");
+    } else {
+      sendYouTubeCommand("unMute");
+      sendYouTubeCommand("setVolume", newVolume);
+    }
+  };
+
+  const toggleMute = () => {
+    if (volume > 0) {
+      setPreviousVolume(volume);
+      handleVolumeChange([0]);
+    } else {
+      handleVolumeChange([previousVolume || 50]);
+    }
+  };
+
+  const VolumeIcon = volume === 0 ? VolumeX : volume < 50 ? Volume1 : Volume2;
+
+  // Close slider when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (controlsRef.current && !controlsRef.current.contains(event.target as Node)) {
+        setShowVolumeSlider(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="absolute inset-0">
@@ -63,20 +100,50 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
 
-      {/* Volume control button - top right */}
+      {/* Volume control - top right */}
       {videoKey && (
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={toggleMute}
-          className="absolute top-20 right-6 z-20 w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-300"
+        <div 
+          ref={controlsRef}
+          className="absolute top-20 right-6 z-20 flex items-center gap-3"
         >
-          {isMuted ? (
-            <VolumeX className="w-5 h-5" />
-          ) : (
-            <Volume2 className="w-5 h-5" />
-          )}
-        </Button>
+          {/* Volume slider */}
+          <div 
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 transition-all duration-300",
+              showVolumeSlider 
+                ? "opacity-100 translate-x-0" 
+                : "opacity-0 translate-x-4 pointer-events-none"
+            )}
+          >
+            <Slider
+              value={[volume]}
+              onValueChange={handleVolumeChange}
+              max={100}
+              step={1}
+              className="w-24"
+            />
+            <span className="text-xs text-muted-foreground w-8 text-right">
+              {volume}%
+            </span>
+          </div>
+
+          {/* Volume button */}
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => {
+              if (showVolumeSlider) {
+                toggleMute();
+              } else {
+                setShowVolumeSlider(true);
+              }
+            }}
+            onDoubleClick={toggleMute}
+            className="w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-300"
+          >
+            <VolumeIcon className="w-5 h-5" />
+          </Button>
+        </div>
       )}
     </div>
   );
