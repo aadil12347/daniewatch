@@ -39,11 +39,7 @@ export const ContentRow = ({
         {showRank ? (
           <h2 className="group/title cursor-default">
             <span 
-              className="text-3xl md:text-4xl font-black transition-all duration-300 group-hover/title:drop-shadow-[0_0_20px_hsl(var(--primary))]"
-              style={{
-                WebkitTextStroke: "2px hsl(var(--primary))",
-                WebkitTextFillColor: "hsl(var(--primary) / 0.3)",
-              }}
+              className="text-3xl md:text-4xl font-black text-foreground transition-all duration-300 group-hover/title:drop-shadow-[0_0_20px_hsl(var(--primary))] group-hover/title:text-primary"
             >
               {title}
             </span>
