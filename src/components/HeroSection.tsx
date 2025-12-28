@@ -144,15 +144,16 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
       </div>
 
       {/* Indicators */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2">
+      <div className="absolute bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
         {featured.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentIndex(idx)}
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+            aria-label={`Go to slide ${idx + 1}`}
+            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
               idx === currentIndex
                 ? "w-8 bg-primary"
-                : "bg-foreground/30 hover:bg-foreground/50"
+                : "w-2 bg-foreground/30 hover:bg-foreground/50"
             }`}
           />
         ))}
