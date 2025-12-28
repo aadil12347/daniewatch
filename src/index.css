@@ -334,23 +334,25 @@
     }
   }
 
-  @keyframes glow-pulse {
+  @keyframes creator-glow {
     0%, 100% {
-      opacity: 0.5;
-      box-shadow: 0 0 5px hsl(0, 84%, 60%), 0 0 10px hsl(0, 84%, 60%);
+      text-shadow: 0 0 5px hsl(0, 84%, 60% / 0.5);
     }
     50% {
-      opacity: 1;
-      box-shadow: 0 0 10px hsl(0, 84%, 60%), 0 0 20px hsl(0, 84%, 60%), 0 0 30px hsl(0, 84%, 60%);
+      text-shadow: 0 0 10px hsl(0, 84%, 60%), 0 0 20px hsl(0, 84%, 60%), 0 0 30px hsl(0, 84%, 60% / 0.5);
     }
   }
 
-  @keyframes glow-slide {
-    0% {
-      left: -33%;
+  @keyframes underline-pulse {
+    0%, 100% {
+      transform: scaleX(0.8) translateY(0);
+      box-shadow: 0 0 5px hsl(0, 84%, 60%), 0 0 10px hsl(0, 84%, 60%);
+      opacity: 0.7;
     }
-    100% {
-      left: 100%;
+    50% {
+      transform: scaleX(1) translateY(-2px);
+      box-shadow: 0 0 10px hsl(0, 84%, 60%), 0 0 20px hsl(0, 84%, 60%), 0 0 30px hsl(0, 84%, 60%);
+      opacity: 1;
     }
   }
 }
