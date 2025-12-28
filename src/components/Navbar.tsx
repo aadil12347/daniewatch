@@ -39,10 +39,10 @@ export const Navbar = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 rounded-lg gradient-red flex items-center justify-center shadow-glow transition-transform group-hover:scale-110">
-            <Film className="w-6 h-6 text-foreground" />
+            <span className="text-xl font-bold text-foreground">D</span>
           </div>
           <span className="text-xl font-bold tracking-tight hidden sm:block">
-            Cine<span className="text-primary">by</span>
+            Danie<span className="text-primary">Watch</span>
           </span>
         </Link>
 
