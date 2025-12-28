@@ -392,39 +392,33 @@
     }
   }
 
-  /* Desktop: Smooth fade animation */
+  /* Desktop: Clean minimal transition */
   @media (min-width: 1024px) {
     .page-enter {
-      animation: pageFadeEnter 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: pageFadeIn 0.4s ease forwards;
     }
 
     .page-exit {
-      animation: pageFadeExit 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: pageFadeOut 0.15s ease forwards;
     }
 
-    @keyframes pageFadeEnter {
+    @keyframes pageFadeIn {
       0% {
         opacity: 0;
-        transform: scale(0.995);
-        filter: blur(4px);
+        transform: translateY(8px);
       }
       100% {
         opacity: 1;
-        transform: scale(1);
-        filter: blur(0);
+        transform: translateY(0);
       }
     }
 
-    @keyframes pageFadeExit {
+    @keyframes pageFadeOut {
       0% {
         opacity: 1;
-        transform: scale(1);
-        filter: blur(0);
       }
       100% {
         opacity: 0;
-        transform: scale(1.005);
-        filter: blur(2px);
       }
     }
 
@@ -434,8 +428,7 @@
     .page-exit nav {
       animation: none !important;
       opacity: 1 !important;
-      transform: none !important;
-      filter: none !important;
+      transform: translateY(0) !important;
     }
   }
 }
