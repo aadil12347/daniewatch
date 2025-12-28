@@ -392,7 +392,7 @@ const TVDetails = () => {
             {activeTab === "similars" && (
               <div className="tab-content-enter">
                 {similar.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 md:gap-4 px-2 md:px-0">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 justify-items-center md:justify-items-start">
                     {similar.map((item) => (
                       <MovieCard key={item.id} movie={{ ...item, media_type: "tv" }} size="sm" />
                     ))}
