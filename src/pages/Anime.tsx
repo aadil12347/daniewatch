@@ -5,17 +5,30 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { discoverTV, Movie } from "@/lib/tmdb";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
+// Anime-specific sub-genres/tags
+const ANIME_TAGS = [
+  { id: "action", label: "Action", genreId: 10759 },
+  { id: "comedy", label: "Comedy", genreId: 35 },
+  { id: "drama", label: "Drama", genreId: 18 },
+  { id: "fantasy", label: "Fantasy", genreId: 10765 },
+  { id: "romance", label: "Romance", genreId: 10749 },
+  { id: "mystery", label: "Mystery", genreId: 9648 },
+  { id: "scifi", label: "Sci-Fi", genreId: 10765 },
+  { id: "kids", label: "Kids", genreId: 10762 },
+];
+
 const Anime = () => {
   const [items, setItems] = useState<Movie[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "new">("popular");
+  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "airing">("popular");
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -23,8 +36,10 @@ const Anime = () => {
     switch (tab) {
       case "top_rated":
         return "vote_average.desc";
-      case "new":
+      case "latest":
         return "first_air_date.desc";
+      case "airing":
+        return "popularity.desc";
       default:
         return "popularity.desc";
     }
@@ -38,7 +53,22 @@ const Anime = () => {
     }
 
     try {
-      const response = await discoverTV(pageNum, [ANIME_GENRE_ID], getSortBy(activeTab));
+      const allGenres = [ANIME_GENRE_ID, ...selectedTags];
+      
+      // Build custom params for more control
+      const params = new URLSearchParams({
+        api_key: "fc6d85b3839330e3458701b975195487",
+        page: pageNum.toString(),
+        sort_by: getSortBy(activeTab),
+        with_genres: allGenres.join(","),
+        with_original_language: "ja",
+        ...(activeTab === "latest" && { "first_air_date.lte": new Date().toISOString().split("T")[0] }),
+        ...(activeTab === "airing" && { "air_date.gte": new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] }),
+        ...(activeTab === "top_rated" && { "vote_count.gte": "100" }),
+      });
+
+      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+      const response = await res.json();
 
       if (reset) {
         setItems(response.results);
@@ -52,15 +82,15 @@ const Anime = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [activeTab]);
+  }, [activeTab, selectedTags]);
 
-  // Reset and fetch when tab changes
+  // Reset and fetch when tab or tags change
   useEffect(() => {
     setPage(1);
     setItems([]);
     setHasMore(true);
     fetchAnime(1, true);
-  }, [activeTab]);
+  }, [activeTab, selectedTags]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -91,17 +121,30 @@ const Anime = () => {
     }
   }, [page, fetchAnime]);
 
+  const toggleTag = (genreId: number) => {
+    setSelectedTags(prev =>
+      prev.includes(genreId)
+        ? prev.filter(id => id !== genreId)
+        : [...prev, genreId]
+    );
+  };
+
+  const clearTags = () => {
+    setSelectedTags([]);
+  };
+
   const tabs = [
     { key: "popular", label: "Popular" },
+    { key: "latest", label: "Latest" },
     { key: "top_rated", label: "Top Rated" },
-    { key: "new", label: "New Releases" },
+    { key: "airing", label: "Airing Now" },
   ] as const;
 
   return (
     <>
       <Helmet>
         <title>Anime - Cineby</title>
-        <meta name="description" content="Watch the best anime series and movies" />
+        <meta name="description" content="Watch the best anime series - popular, latest, and top rated" />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -110,8 +153,8 @@ const Anime = () => {
         <div className="container mx-auto px-4 pt-24 pb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-8">Anime</h1>
 
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-2 mb-8">
+          {/* Category Tabs */}
+          <div className="flex flex-wrap gap-2 mb-6">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -125,6 +168,37 @@ const Anime = () => {
                 {tab.label}
               </button>
             ))}
+          </div>
+
+          {/* Genre/Tag Filters */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm text-muted-foreground">Filter by genre:</span>
+              {selectedTags.length > 0 && (
+                <button
+                  onClick={clearTags}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary rounded-full hover:bg-primary/30 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                  Clear all
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ANIME_TAGS.map((tag) => (
+                <button
+                  key={tag.id}
+                  onClick={() => toggleTag(tag.genreId)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    selectedTags.includes(tag.genreId)
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                      : "bg-secondary/30 hover:bg-secondary/50 text-foreground/70"
+                  }`}
+                >
+                  {tag.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Grid */}
@@ -141,6 +215,19 @@ const Anime = () => {
                   <MovieCard key={`${item.id}-${index}`} movie={{ ...item, media_type: "tv" }} />
                 ))}
           </div>
+
+          {/* No results message */}
+          {!isLoading && items.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No anime found with the selected filters.</p>
+              <button
+                onClick={clearTags}
+                className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
 
           {/* Loading More Indicator */}
           <div ref={loadMoreRef} className="flex justify-center py-8">
