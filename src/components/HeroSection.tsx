@@ -63,8 +63,8 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
   return (
     <div className="relative h-[85vh] min-h-[600px] overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0">
+      {/* Background Image - starts below header */}
+      <div className="absolute top-14 left-0 right-0 bottom-0">
         {backdropUrl && (
           <img
             key={current.id}
