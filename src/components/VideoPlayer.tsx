@@ -69,33 +69,26 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center animate-fade-in"
-      onClick={(e) => {
-        if (e.target === containerRef.current) {
-          onClose();
-        }
-      }}
+      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
     >
       {/* Close button */}
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-background/20 hover:bg-background/40 backdrop-blur-sm"
+        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
         onClick={onClose}
       >
         <X className="w-5 h-5" />
       </Button>
 
-      {/* Video iframe */}
-      <div className="w-full h-full max-w-[1600px] max-h-[900px] mx-4 my-8">
-        <iframe
-          src={getEmbedUrl()}
-          className="w-full h-full rounded-lg"
-          frameBorder="0"
-          allowFullScreen
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-        />
-      </div>
+      {/* Video iframe - Full screen */}
+      <iframe
+        src={getEmbedUrl()}
+        className="w-full h-full"
+        frameBorder="0"
+        allowFullScreen
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      />
     </div>
   );
 };
