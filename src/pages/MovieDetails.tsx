@@ -172,7 +172,10 @@ const MovieDetails = () => {
                 <Button
                   size="default"
                   className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
-                  onClick={() => setShowPlayer(true)}
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setShowPlayer(true);
+                  }}
                 >
                   <Play className="w-4 h-4 mr-2 fill-current" />
                   Play
