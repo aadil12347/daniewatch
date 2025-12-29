@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Plus, Download, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown } from "lucide-react";
+import { Play, Plus, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -247,18 +247,6 @@ const TVDetails = () => {
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
-                {bloggerResult?.downloadLink && (
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
-                    onClick={() => {
-                      window.open(bloggerResult.downloadLink, '_blank');
-                    }}
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                )}
               </div>
             </div>
           </div>
