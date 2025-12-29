@@ -1,33 +1,20 @@
-import { useEffect } from "react";
+import { forwardRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Helmet } from "react-helmet-async";
+import CustomVideoPlayer from "@/components/CustomVideoPlayer";
 
-const Watch = () => {
+const Watch = forwardRef<HTMLDivElement>((_, ref) => {
   const { type, id } = useParams<{ type: string; id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const season = Number(searchParams.get("season")) || 1;
   const episode = Number(searchParams.get("episode")) || 1;
+  const title = searchParams.get("title") || "";
 
   const handleBack = () => {
     navigate(-1);
   };
-
-  // Escape key to go back (note: if the iframe has focus, some browsers won't propagate key events)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        handleBack();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, []);
 
   // Build the VidKing embed URL
   const getEmbedUrl = () => {
@@ -46,47 +33,28 @@ const Watch = () => {
     }
   };
 
-
   return (
     <>
       <Helmet>
-        <title>Now Playing - DanieWatch</title>
+        <title>{title ? `${title} - Now Playing` : "Now Playing"} - DanieWatch</title>
       </Helmet>
 
       <div
+        ref={ref}
         className="fixed inset-0 w-screen h-screen bg-black z-[9999]"
         style={{ position: 'fixed', width: '100vw', height: '100vh', top: 0, left: 0 }}
       >
-        {/* Back button - Top left */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 left-4 z-[10000] w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
-          onClick={handleBack}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-
-        {/* Close button - Top right */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 right-4 z-[10000] w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
-          onClick={handleBack}
-        >
-          <X className="w-5 h-5" />
-        </Button>
-
-        {/* Video iframe - True full screen */}
-        <iframe
-          src={getEmbedUrl()}
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-          allowFullScreen
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        <CustomVideoPlayer
+          embedUrl={getEmbedUrl()}
+          title={title || undefined}
+          onBack={handleBack}
+          onClose={handleBack}
         />
       </div>
     </>
   );
-};
+});
+
+Watch.displayName = "Watch";
 
 export default Watch;
