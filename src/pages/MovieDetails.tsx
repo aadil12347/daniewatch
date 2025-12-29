@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Plus, Download, Star, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -7,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -25,12 +26,12 @@ import {
 
 const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [movie, setMovie] = useState<MovieDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPlayer, setShowPlayer] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -171,7 +172,7 @@ const MovieDetails = () => {
                 <Button
                   size="default"
                   className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
-                  onClick={() => navigate(`/watch/movie/${id}`)}
+                  onClick={() => setShowPlayer(true)}
                 >
                   <Play className="w-4 h-4 mr-2 fill-current" />
                   Play
@@ -224,6 +225,15 @@ const MovieDetails = () => {
         )}
 
         <Footer />
+
+        {/* Video Player Modal */}
+        {showPlayer && id && (
+          <VideoPlayer
+            tmdbId={Number(id)}
+            type="movie"
+            onClose={() => setShowPlayer(false)}
+          />
+        )}
       </div>
     </>
   );

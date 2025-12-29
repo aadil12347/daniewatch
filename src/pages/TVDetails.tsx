@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Plus, Download, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -8,6 +8,7 @@ import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
 import { EpisodeCard } from "@/components/EpisodeCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,6 @@ import {
 
 const TVDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [show, setShow] = useState<TVDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -46,6 +46,8 @@ const TVDetails = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false);
+  const [playingEpisode, setPlayingEpisode] = useState<{ season: number; episode: number } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -219,7 +221,10 @@ const TVDetails = () => {
                 <Button
                   size="default"
                   className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
-                  onClick={() => navigate(`/watch/tv/${id}?season=${selectedSeason}&episode=1`)}
+                  onClick={() => {
+                    setPlayingEpisode({ season: selectedSeason, episode: 1 });
+                    setShowPlayer(true);
+                  }}
                 >
                   <Play className="w-4 h-4 mr-2 fill-current" />
                   Play
@@ -371,7 +376,10 @@ const TVDetails = () => {
                       <EpisodeCard
                         key={episode.id}
                         episode={episode}
-                        onClick={() => navigate(`/watch/tv/${id}?season=${selectedSeason}&episode=${episode.episode_number}`)}
+                        onClick={() => {
+                          setPlayingEpisode({ season: selectedSeason, episode: episode.episode_number });
+                          setShowPlayer(true);
+                        }}
                       />
                     ))
                   ) : (
@@ -416,6 +424,20 @@ const TVDetails = () => {
         )}
 
         <Footer />
+
+        {/* Video Player Modal */}
+        {showPlayer && id && playingEpisode && (
+          <VideoPlayer
+            tmdbId={Number(id)}
+            type="tv"
+            season={playingEpisode.season}
+            episode={playingEpisode.episode}
+            onClose={() => {
+              setShowPlayer(false);
+              setPlayingEpisode(null);
+            }}
+          />
+        )}
       </div>
     </>
   );
