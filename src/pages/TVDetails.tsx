@@ -222,6 +222,7 @@ const TVDetails = () => {
                   size="default"
                   className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
                   onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                     setPlayingEpisode({ season: selectedSeason, episode: 1 });
                     setShowPlayer(true);
                   }}
@@ -377,6 +378,7 @@ const TVDetails = () => {
                         key={episode.id}
                         episode={episode}
                         onClick={() => {
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                           setPlayingEpisode({ season: selectedSeason, episode: episode.episode_number });
                           setShowPlayer(true);
                         }}
