@@ -92,7 +92,7 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
       {/* Volume control - top right */}
       {videoKey && (
         <div 
-          className="absolute top-20 md:top-24 right-4 md:right-6 z-20 flex items-center gap-3"
+          className="absolute top-20 right-6 z-20 flex items-center gap-3"
           onMouseEnter={() => !isMobile && setShowVolumeSlider(true)}
           onMouseLeave={() => !isMobile && setShowVolumeSlider(false)}
         >
