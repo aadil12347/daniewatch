@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,22 @@ const Watch = () => {
 
   const season = Number(searchParams.get("season")) || 1;
   const episode = Number(searchParams.get("episode")) || 1;
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  // Escape key to go back
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleBack();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Build the VidKing embed URL
   const getEmbedUrl = () => {
@@ -28,9 +45,6 @@ const Watch = () => {
     }
   };
 
-  const handleBack = () => {
-    navigate(-1);
-  };
 
   return (
     <>
