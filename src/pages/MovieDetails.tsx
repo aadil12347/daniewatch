@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
-import { VideoPlayer } from "@/components/VideoPlayer";
+import { CustomVideoPlayer } from "@/components/CustomVideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -229,9 +229,9 @@ const MovieDetails = () => {
 
         <Footer />
 
-        {/* Video Player Modal */}
+        {/* Custom Video Player Modal */}
         {showPlayer && id && (
-          <VideoPlayer
+          <CustomVideoPlayer
             tmdbId={Number(id)}
             type="movie"
             onClose={() => setShowPlayer(false)}
