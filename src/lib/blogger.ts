@@ -25,11 +25,15 @@ export interface BloggerVideoResult {
 // Fetch posts from Blogger and search for TMDB ID
 export async function searchBloggerForTmdbId(
   tmdbId: number,
-  type: "movie" | "tv"
+  type: "movie" | "tv",
+  season?: number
 ): Promise<BloggerVideoResult> {
   try {
-    // Search for posts containing the TMDB ID
-    const searchQuery = `${tmdbId}`;
+    // Build search query - for TV shows include season number
+    const searchQuery = type === "tv" && season 
+      ? `${tmdbId} S${String(season).padStart(2, '0')}`
+      : `${tmdbId}`;
+    
     const url = `https://www.googleapis.com/blogger/v3/blogs/${BLOGGER_ID}/posts/search?q=${encodeURIComponent(searchQuery)}&key=${BLOGGER_API_KEY}`;
     
     const response = await fetch(url);
@@ -46,13 +50,19 @@ export async function searchBloggerForTmdbId(
       return { found: false };
     }
     
-    // Find a post that matches the TMDB ID in title or content
+    // Find a post with title matching the ID (or ID + season for TV)
     for (const post of data.items) {
       const content = post.content || "";
       const title = post.title || "";
       
-      // Check if this post is for the correct TMDB ID
-      if (title.includes(String(tmdbId)) || content.includes(String(tmdbId))) {
+      // Check if post title contains the TMDB ID
+      const idMatch = title.includes(String(tmdbId));
+      // For TV shows, also check for season match
+      const seasonMatch = type !== "tv" || !season || 
+        title.toLowerCase().includes(`s${String(season).padStart(2, '0')}`) ||
+        title.toLowerCase().includes(`season ${season}`);
+      
+      if (idMatch && seasonMatch) {
         const result: BloggerVideoResult = {
           found: false,
           postTitle: post.title,
@@ -65,24 +75,48 @@ export async function searchBloggerForTmdbId(
           result.iframeSrc = iframeMatch[1];
         }
         
-        // Extract download link containing "dldclv"
-        const downloadMatch = content.match(/https:\/\/dldclv[^\s"'<>]+/gi);
-        if (downloadMatch && downloadMatch[0]) {
-          result.downloadLink = downloadMatch[0];
+        // Extract all download links containing "dldclv"
+        const downloadMatches = content.match(/https:\/\/dldclv[^\s"'<>]+/gi);
+        if (downloadMatches && downloadMatches.length > 0) {
+          result.downloadLink = downloadMatches[0];
         }
         
-        // Only return if we found an iframe
-        if (result.found) {
-          console.log("Found Blogger video for TMDB ID:", tmdbId, result);
+        // Also check for href links with dldclv
+        const hrefMatch = content.match(/href=["'](https:\/\/dldclv[^"']+)["']/gi);
+        if (hrefMatch && hrefMatch.length > 0) {
+          const linkMatch = hrefMatch[0].match(/href=["']([^"']+)["']/i);
+          if (linkMatch && linkMatch[1]) {
+            result.downloadLink = linkMatch[1];
+          }
+        }
+        
+        // Return if we found either iframe or download link
+        if (result.found || result.downloadLink) {
+          result.found = result.found || !!result.downloadLink;
+          console.log("Found Blogger content for TMDB ID:", tmdbId, result);
           return result;
         }
       }
     }
     
-    console.log("No iframe found in Blogger posts for TMDB ID:", tmdbId);
+    console.log("No matching content in Blogger posts for TMDB ID:", tmdbId);
     return { found: false };
   } catch (error) {
     console.error("Error searching Blogger:", error);
     return { found: false };
   }
+}
+
+// Function to trigger download
+export function triggerDownload(url: string, filename?: string) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  if (filename) {
+    link.download = filename;
+  }
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
