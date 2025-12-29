@@ -116,8 +116,8 @@ const MovieDetails = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        {/* Hero Section - Full viewport height */}
-        <div className="relative h-screen min-h-[700px]">
+        {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
+        <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
           {/* Background Trailer */}
           <BackgroundTrailer 
             videoKey={trailerKey} 
@@ -125,24 +125,24 @@ const MovieDetails = () => {
             title={movie.title} 
           />
 
-          {/* Content - Bottom left positioned */}
-          <div className="absolute bottom-0 left-0 p-4 md:p-8 lg:p-12">
+          {/* Content - Bottom left positioned, adjusted for mobile */}
+          <div className="absolute bottom-8 md:bottom-0 left-0 p-4 md:p-8 lg:p-12">
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (
                 <img 
                   src={logoUrl} 
                   alt={movie.title} 
-                  className="h-16 md:h-20 lg:h-24 object-contain object-left mb-4"
+                  className="h-12 md:h-20 lg:h-24 object-contain object-left mb-3 md:mb-4"
                 />
               ) : (
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 leading-tight">
                   {movie.title}
                 </h1>
               )}
 
               {/* Meta info */}
-              <div className="flex flex-wrap items-center gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-3 md:mb-4">
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-background/50 backdrop-blur-sm">
                   <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
                   <span className="font-semibold text-sm">{movie.vote_average?.toFixed(1)}</span>
@@ -157,7 +157,7 @@ const MovieDetails = () => {
               </div>
 
               {/* Genres */}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
                 {movie.genres?.slice(0, 3).map((genre) => (
                   <span
                     key={genre.id}
@@ -168,8 +168,8 @@ const MovieDetails = () => {
                 ))}
               </div>
 
-              {/* Overview */}
-              <p className="text-muted-foreground text-sm md:text-base mb-5 line-clamp-3">
+              {/* Overview - hidden on mobile to save space */}
+              <p className="hidden md:block text-muted-foreground text-sm md:text-base mb-5 line-clamp-3">
                 {movie.overview}
               </p>
 
@@ -177,7 +177,7 @@ const MovieDetails = () => {
               <div className="flex items-center gap-3">
                 <Button
                   size="default"
-                  className="gradient-red text-foreground font-semibold px-8 hover:opacity-90 transition-opacity shadow-glow"
+                  className="gradient-red text-foreground font-semibold px-6 md:px-8 hover:opacity-90 transition-opacity shadow-glow"
                   onClick={() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     setShowPlayer(true);
@@ -210,9 +210,9 @@ const MovieDetails = () => {
           </div>
         </div>
 
-        {/* Cast Section */}
+        {/* Cast Section - closer to hero on mobile */}
         {cast.length > 0 && (
-          <section className="py-10">
+          <section className="py-4 md:py-10 -mt-8 md:mt-0">
             <div className="container mx-auto px-4">
               <h2 className="text-2xl font-bold mb-6">Actors</h2>
               <div className="flex gap-6 overflow-x-auto hide-scrollbar pb-4">
