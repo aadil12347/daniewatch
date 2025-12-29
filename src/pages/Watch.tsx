@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Helmet } from "react-helmet-async";
 
@@ -50,6 +50,16 @@ const Watch = () => {
           onClick={handleBack}
         >
           <ArrowLeft className="w-5 h-5" />
+        </Button>
+
+        {/* Close button - Top right */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-4 right-4 z-[10000] w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
+          onClick={handleBack}
+        >
+          <X className="w-5 h-5" />
         </Button>
 
         {/* Video iframe - True full screen */}
