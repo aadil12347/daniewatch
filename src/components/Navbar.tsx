@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -12,6 +13,7 @@ export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   // Check if we're on a details page
   const isDetailsPage = location.pathname.startsWith('/movie/') || location.pathname.startsWith('/tv/');
@@ -86,7 +88,7 @@ export const Navbar = () => {
         className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out",
           isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4",
-          isHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
+          isHidden && !(isDetailsPage && isMobile) ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
         )}
       >
         {/* Bottom glow effect */}
