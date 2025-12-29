@@ -54,16 +54,6 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
         <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-background/80 text-xs font-semibold">
           {episode.episode_number}
         </div>
-        {/* Download button on thumbnail */}
-        {downloadLink && (
-          <button
-            onClick={handleDownload}
-            className="absolute top-2 right-2 p-1.5 rounded-full bg-primary/90 hover:bg-primary text-primary-foreground transition-colors z-10"
-            title="Download episode"
-          >
-            <Download className="w-3.5 h-3.5" />
-          </button>
-        )}
       </div>
 
       {/* Info */}
@@ -80,6 +70,17 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
           </span>
         )}
       </div>
+
+      {/* Download button */}
+      {downloadLink && (
+        <button
+          onClick={handleDownload}
+          className="flex-shrink-0 self-center p-3 rounded-lg border-2 border-foreground/80 text-foreground transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
+          title="Download episode"
+        >
+          <Download className="w-6 h-6" />
+        </button>
+      )}
     </div>
   );
 };
