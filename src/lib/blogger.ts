@@ -152,7 +152,6 @@ export async function searchBloggerForTmdbId(
       if (type === "tv" && season) {
         // Parse TV show content for season-specific links
         const tvResult = parseTVShowContent(content, season, episode);
-        console.log(`Blogger TV parsing - Season ${season}, Episode ${episode}:`, tvResult);
         
         if (tvResult.iframeSrc) {
           result.found = true;
@@ -163,6 +162,11 @@ export async function searchBloggerForTmdbId(
         }
         if (tvResult.seasonDownloadLinks) {
           result.seasonDownloadLinks = tvResult.seasonDownloadLinks;
+        }
+
+        // If we have season links (for episode cards) we should consider this a match too
+        if (result.seasonDownloadLinks?.length) {
+          result.found = result.found || true;
         }
       } else {
         // For movies, extract first iframe and download link
@@ -188,9 +192,9 @@ export async function searchBloggerForTmdbId(
         }
       }
       
-      // Return if we found iframe or download link
-      if (result.found || result.downloadLink) {
-        result.found = result.found || !!result.downloadLink;
+      // Return if we found iframe or download link or season links
+      if (result.found || result.downloadLink || (result.seasonDownloadLinks && result.seasonDownloadLinks.length > 0)) {
+        result.found = result.found || !!result.downloadLink || (result.seasonDownloadLinks && result.seasonDownloadLinks.length > 0);
         console.log("Found Blogger content for TMDB ID:", tmdbId, result);
         return result;
       }
