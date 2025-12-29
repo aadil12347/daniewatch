@@ -93,57 +93,43 @@ export const Navbar = () => {
         <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
         
         <div className="container mx-auto px-4 flex items-center justify-between relative">
-          {/* Left side: Back button OR Menu toggle */}
+          {/* Left side: Logo and menu toggle for mobile */}
           <div className="flex items-center gap-2">
-            {isDetailsPage ? (
-              <button
-                onClick={handleBack}
-                className="p-2 rounded-full hover:bg-secondary/50 transition-colors flex items-center gap-2"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span className="hidden sm:inline text-sm font-medium">Back</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden p-2 rounded-full hover:bg-secondary/50 transition-colors"
-                aria-label="Toggle menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            )}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 rounded-full hover:bg-secondary/50 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            
+            {/* Logo - Far left */}
+            <Link 
+              to="/" 
+              className="flex items-center gap-2 group"
+            >
+              <div className="relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
+                <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
+                  <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="hsl(0, 84%, 65%)" />
+                      <stop offset="100%" stopColor="hsl(0, 84%, 50%)" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M25 15 C15 15 10 25 10 50 C10 75 15 85 25 85 L55 85 C75 85 90 70 90 50 C90 30 75 15 55 15 L40 15 L40 25 L55 25 C68 25 78 35 78 50 C78 65 68 75 55 75 L25 75 C22 75 22 70 22 50 C22 30 22 25 25 25 L25 15 Z M30 35 L30 65 L55 65 C60 65 65 60 65 50 C65 40 60 35 55 35 L30 35 Z"
+                    fill="url(#logoGradient)"
+                  />
+                </svg>
+              </div>
+              <span className="hidden sm:inline text-lg md:text-xl font-bold tracking-tight">
+                Danie<span className="text-primary">Watch</span>
+              </span>
+            </Link>
           </div>
 
-          {/* Logo - Centered on mobile, left-aligned after back/menu on desktop */}
-          <Link 
-            to="/" 
-            className={cn(
-              "flex items-center gap-2 group",
-              "absolute left-1/2 -translate-x-1/2 md:relative md:left-0 md:translate-x-0"
-            )}
-          >
-            <div className="relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
-              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
-                <defs>
-                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="hsl(0, 84%, 65%)" />
-                    <stop offset="100%" stopColor="hsl(0, 84%, 50%)" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M25 15 C15 15 10 25 10 50 C10 75 15 85 25 85 L55 85 C75 85 90 70 90 50 C90 30 75 15 55 15 L40 15 L40 25 L55 25 C68 25 78 35 78 50 C78 65 68 75 55 75 L25 75 C22 75 22 70 22 50 C22 30 22 25 25 25 L25 15 Z M30 35 L30 65 L55 65 C60 65 65 60 65 50 C65 40 60 35 55 35 L30 35 Z"
-                  fill="url(#logoGradient)"
-                />
-              </svg>
-            </div>
-            <span className="text-lg md:text-xl font-bold tracking-tight">
-              Danie<span className="text-primary">Watch</span>
-            </span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          {/* Center: Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
@@ -161,7 +147,7 @@ export const Navbar = () => {
             ))}
           </div>
 
-          {/* Search */}
+          {/* Right side: Search */}
           <div className="flex items-center">
             <form
               onSubmit={handleSearch}
@@ -204,6 +190,20 @@ export const Navbar = () => {
             </form>
           </div>
         </div>
+
+        {/* Back button below header on details pages */}
+        {isDetailsPage && (
+          <div className="container mx-auto px-4 mt-2">
+            <button
+              onClick={handleBack}
+              className="p-2 rounded-full hover:bg-secondary/50 transition-colors flex items-center gap-2"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">Back</span>
+            </button>
+          </div>
+        )}
       </nav>
 
       {/* Mobile Menu Overlay */}
