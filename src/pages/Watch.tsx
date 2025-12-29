@@ -16,16 +16,17 @@ const Watch = () => {
     navigate(-1);
   };
 
-  // Escape key to go back
+  // Escape key to go back (note: if the iframe has focus, some browsers won't propagate key events)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         handleBack();
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
 
   // Build the VidKing embed URL
