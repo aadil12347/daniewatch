@@ -24,7 +24,7 @@ export interface BloggerVideoResult {
   seasonDownloadLinks?: string[]; // All download links for a season (indexed by episode - 1)
 }
 
-// Parse TV show content to extract season-specific watch online (byse) and download (dldclv) links
+// Parse TV show content using DOM-based parsing to extract season-specific links
 function parseTVShowContent(content: string, season: number, episode?: number): { 
   iframeSrc?: string; 
   downloadLink?: string; 
@@ -38,107 +38,116 @@ function parseTVShowContent(content: string, season: number, episode?: number): 
     seasonDownloadLinks?: string[] 
   } = {};
   
-  // Normalize content - replace common variations and decode HTML entities
-  const normalizedContent = content
-    .replace(/&nbsp;/g, ' ')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/&amp;/g, '&');
+  // Parse HTML content into a DOM
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, 'text/html');
   
-  // Split content by season markers (case insensitive)
-  // Look for patterns like "Season 1", "SEASON 1", "season 1", "S01", etc.
-  const seasonRegex = /(?:season\s*(\d+)|s(\d+)(?!\d))/gi;
-  const seasonMatches: { index: number; seasonNum: number }[] = [];
+  // Get all elements in document order
+  const allElements = Array.from(doc.body.querySelectorAll('*'));
   
-  let match;
-  while ((match = seasonRegex.exec(normalizedContent)) !== null) {
-    const seasonNum = parseInt(match[1] || match[2]);
-    seasonMatches.push({ index: match.index, seasonNum });
-  }
+  // Find season markers by looking at text content of elements
+  // Match "season 1", "Season 1", "SEASON 1", etc. but NOT "s01" in URLs
+  const seasonMarkerRegex = new RegExp(`\\bseason\\s*${season}\\b`, 'i');
   
-  let sectionToSearch = normalizedContent;
+  let seasonStartIndex = -1;
+  let seasonEndIndex = allElements.length;
   
-  if (seasonMatches.length > 0) {
-    // Find the section for the requested season
-    const targetSeasonMatch = seasonMatches.find(m => m.seasonNum === season);
-    if (!targetSeasonMatch) {
-      console.log(`Season ${season} not found in content. Available seasons:`, seasonMatches.map(m => m.seasonNum));
-      return result;
+  // Find where our target season starts
+  for (let i = 0; i < allElements.length; i++) {
+    const el = allElements[i];
+    const textContent = el.textContent?.trim() || '';
+    
+    // Check if this element's direct text (not children) contains the season marker
+    // This prevents matching URLs that contain "s01"
+    const directText = Array.from(el.childNodes)
+      .filter(node => node.nodeType === Node.TEXT_NODE)
+      .map(node => node.textContent)
+      .join('')
+      .trim();
+    
+    if (seasonMarkerRegex.test(directText) || 
+        (textContent.length < 20 && seasonMarkerRegex.test(textContent))) {
+      seasonStartIndex = i;
+      console.log(`Found season ${season} marker at element index ${i}:`, textContent);
+      break;
     }
-    
-    // Find the end of this season's section (start of next season or end of content)
-    const targetIndex = seasonMatches.indexOf(targetSeasonMatch);
-    const nextSeasonMatch = seasonMatches[targetIndex + 1];
-    
-    const sectionStart = targetSeasonMatch.index;
-    const sectionEnd = nextSeasonMatch ? nextSeasonMatch.index : normalizedContent.length;
-    sectionToSearch = normalizedContent.substring(sectionStart, sectionEnd);
   }
   
-  // Extract all watch online links containing "byse" in the URL
-  // Look for href attributes, src attributes, or raw URLs containing "byse"
+  // If we found the season, look for the next season marker to define the end
+  if (seasonStartIndex !== -1) {
+    const nextSeasonRegex = new RegExp(`\\bseason\\s*(${season + 1}|${season + 2}|${season + 3})\\b`, 'i');
+    
+    for (let i = seasonStartIndex + 1; i < allElements.length; i++) {
+      const el = allElements[i];
+      const textContent = el.textContent?.trim() || '';
+      
+      const directText = Array.from(el.childNodes)
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent)
+        .join('')
+        .trim();
+      
+      if (nextSeasonRegex.test(directText) || 
+          (textContent.length < 20 && nextSeasonRegex.test(textContent))) {
+        seasonEndIndex = i;
+        console.log(`Found next season marker at element index ${i}:`, textContent);
+        break;
+      }
+    }
+  }
+  
+  // If no season marker found, search the entire document
+  const elementsToSearch = seasonStartIndex !== -1 
+    ? allElements.slice(seasonStartIndex, seasonEndIndex)
+    : allElements;
+  
+  console.log(`Searching ${elementsToSearch.length} elements for season ${season} content`);
+  
+  // Collect all iframes with "byse" in src (watch online links)
   const watchLinks: string[] = [];
+  const iframes = elementsToSearch.filter(el => el.tagName === 'IFRAME');
   
-  // Method 1: Look for href/src attributes with byse URLs
-  const attrRegex = /(?:href|src)=["']([^"']*byse[^"']*)/gi;
-  let attrMatch;
-  while ((attrMatch = attrRegex.exec(sectionToSearch)) !== null) {
-    const link = attrMatch[1].replace(/&amp;/g, '&');
-    if (!watchLinks.includes(link)) {
-      watchLinks.push(link);
+  for (const iframe of iframes) {
+    const src = iframe.getAttribute('src') || '';
+    if (src.toLowerCase().includes('byse')) {
+      const cleanSrc = src.replace(/&amp;/g, '&');
+      if (!watchLinks.includes(cleanSrc)) {
+        watchLinks.push(cleanSrc);
+      }
     }
   }
   
-  // Method 2: Look for raw URLs containing byse (in case they're not in attributes)
-  const urlRegex = /https?:\/\/[^\s"'<>]*byse[^\s"'<>]*/gi;
-  let urlMatch;
-  while ((urlMatch = urlRegex.exec(sectionToSearch)) !== null) {
-    const link = urlMatch[0].replace(/&amp;/g, '&');
-    if (!watchLinks.includes(link)) {
-      watchLinks.push(link);
-    }
-  }
-  
-  console.log(`Found ${watchLinks.length} watch online links (byse) for season ${season}:`, watchLinks);
+  console.log(`Found ${watchLinks.length} watch online links (byse iframes) for season ${season}:`, watchLinks);
   
   if (watchLinks.length > 0) {
     result.seasonEpisodeLinks = watchLinks;
-    // Episode is 1-indexed, array is 0-indexed
     if (episode && watchLinks.length >= episode) {
       result.iframeSrc = watchLinks[episode - 1];
       console.log(`Using watch link for episode ${episode}:`, result.iframeSrc);
     }
   }
   
-  // Extract all download links containing "dldclv" in the URL
+  // Collect all anchor tags with "dldclv" in href (download links)
   const downloadLinks: string[] = [];
+  const anchors = elementsToSearch.filter(el => el.tagName === 'A');
   
-  // Method 1: Look for href/src attributes with dldclv URLs
-  const dlAttrRegex = /(?:href|src)=["']([^"']*dldclv[^"']*)/gi;
-  let dlAttrMatch;
-  while ((dlAttrMatch = dlAttrRegex.exec(sectionToSearch)) !== null) {
-    const link = dlAttrMatch[1].replace(/&amp;/g, '&');
-    if (!downloadLinks.includes(link)) {
-      downloadLinks.push(link);
+  for (const anchor of anchors) {
+    const href = anchor.getAttribute('href') || '';
+    if (href.toLowerCase().includes('dldclv')) {
+      const cleanHref = href.replace(/&amp;/g, '&');
+      if (!downloadLinks.includes(cleanHref)) {
+        downloadLinks.push(cleanHref);
+      }
     }
   }
   
-  // Method 2: Look for raw URLs containing dldclv (in case they're not in attributes)
-  const dlUrlRegex = /https?:\/\/[^\s"'<>]*dldclv[^\s"'<>]*/gi;
-  let dlUrlMatch;
-  while ((dlUrlMatch = dlUrlRegex.exec(sectionToSearch)) !== null) {
-    const link = dlUrlMatch[0].replace(/&amp;/g, '&');
-    if (!downloadLinks.includes(link)) {
-      downloadLinks.push(link);
-    }
-  }
-  
-  console.log(`Found ${downloadLinks.length} download links (dldclv) for season ${season}:`, downloadLinks);
+  console.log(`Found ${downloadLinks.length} download links (dldclv anchors) for season ${season}:`, downloadLinks);
   
   if (downloadLinks.length > 0) {
     result.seasonDownloadLinks = downloadLinks;
-    // If there are multiple download links (one per episode), try to get the right one
     if (episode && downloadLinks.length >= episode) {
       result.downloadLink = downloadLinks[episode - 1];
+      console.log(`Using download link for episode ${episode}:`, result.downloadLink);
     }
   }
   
