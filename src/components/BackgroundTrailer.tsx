@@ -119,12 +119,12 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
             </div>
           )}
 
-          {/* Volume button */}
+          {/* Volume button - 60% opacity on mobile */}
           <Button
             size="icon"
             variant="ghost"
             onClick={toggleMute}
-            className="w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-300"
+            className="w-10 h-10 rounded-full bg-background/50 md:bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-300 opacity-60 md:opacity-100"
           >
             <VolumeIcon className="w-5 h-5" />
           </Button>

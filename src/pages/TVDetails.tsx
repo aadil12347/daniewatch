@@ -252,8 +252,8 @@ const TVDetails = () => {
           </div>
         </div>
 
-        {/* Episodes / Similars Section */}
-        <section className="py-10">
+        {/* Episodes / Similars Section - closer to hero on mobile */}
+        <section className="py-4 md:py-10 -mt-8 md:mt-0">
           <div className="container mx-auto px-4">
             {/* Tabs */}
             <div className="flex items-center gap-6 mb-8">

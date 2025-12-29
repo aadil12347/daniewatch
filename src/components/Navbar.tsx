@@ -218,9 +218,9 @@ export const Navbar = () => {
 
       </nav>
 
-      {/* Sticky Back button on details pages - always visible */}
+      {/* Sticky Back button on details pages - hidden on mobile */}
       {isDetailsPage && (
-        <div className="fixed left-4 top-20 z-[60]">
+        <div className="hidden md:block fixed left-4 top-20 z-[60]">
           <button
             onClick={handleBack}
             className="p-2.5 rounded-full bg-background/90 backdrop-blur-md border border-border hover:bg-secondary/50 transition-colors flex items-center gap-2 shadow-lg"
