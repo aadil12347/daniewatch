@@ -58,23 +58,21 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
 
   return (
     <div className="absolute inset-0">
-      {/* Fallback backdrop image - starts below header */}
+      {/* Fallback backdrop image */}
       {backdropUrl && (
-        <div className="absolute top-14 left-0 right-0 bottom-0 overflow-hidden">
-          <img
-            src={backdropUrl}
-            alt={title}
-            className={cn(
-              "w-full h-full object-cover transition-opacity duration-1000",
-              isVideoLoaded && videoKey ? "opacity-0" : "opacity-100"
-            )}
-          />
-        </div>
+        <img
+          src={backdropUrl}
+          alt={title}
+          className={cn(
+            "w-full h-full object-cover transition-opacity duration-1000",
+            isVideoLoaded && videoKey ? "opacity-0" : "opacity-100"
+          )}
+        />
       )}
 
-      {/* YouTube video background - starts below header */}
+      {/* YouTube video background */}
       {embedUrl && (
-        <div className="absolute top-14 left-0 right-0 bottom-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
           <iframe
             ref={iframeRef}
             src={embedUrl}
@@ -94,7 +92,7 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
       {/* Volume control - top right */}
       {videoKey && (
         <div 
-          className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex items-center gap-3"
+          className="absolute top-20 md:top-24 right-4 md:right-6 z-20 flex items-center gap-3"
           onMouseEnter={() => !isMobile && setShowVolumeSlider(true)}
           onMouseLeave={() => !isMobile && setShowVolumeSlider(false)}
         >
