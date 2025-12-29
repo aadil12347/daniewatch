@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Plus, Download, Star, Clock, Calendar, ArrowLeft, Loader2 } from "lucide-react";
+import { Play, Plus, Download, Star, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -10,7 +10,7 @@ import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchBloggerForTmdbId, triggerDownload, BloggerVideoResult } from "@/lib/blogger";
+import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
 import {
   getMovieDetails,
   getMovieCredits,
@@ -34,7 +34,6 @@ const MovieDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showPlayer, setShowPlayer] = useState(false);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -199,20 +198,11 @@ const MovieDetails = () => {
                     size="icon"
                     variant="outline"
                     className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
-                    onClick={async () => {
-                      if (bloggerResult.downloadLink) {
-                        setIsDownloading(true);
-                        triggerDownload(bloggerResult.downloadLink, `movie_${id}.mp4`);
-                        setTimeout(() => setIsDownloading(false), 2000);
-                      }
+                    onClick={() => {
+                      window.open(bloggerResult.downloadLink, '_blank');
                     }}
-                    disabled={isDownloading}
                   >
-                    {isDownloading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4" />
-                    )}
+                    <Download className="w-4 h-4" />
                   </Button>
                 )}
               </div>
