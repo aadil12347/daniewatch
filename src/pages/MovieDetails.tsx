@@ -116,8 +116,8 @@ const MovieDetails = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        {/* Hero Section - Shorter on mobile, extends behind header */}
-        <div className="relative h-[70vh] md:h-screen md:min-h-[700px] -mt-16">
+        {/* Hero Section - Full viewport height */}
+        <div className="relative h-screen min-h-[700px]">
           {/* Background Trailer */}
           <BackgroundTrailer 
             videoKey={trailerKey} 
@@ -125,8 +125,8 @@ const MovieDetails = () => {
             title={movie.title} 
           />
 
-          {/* Content - positioned at bottom */}
-          <div className="absolute bottom-4 md:bottom-0 left-0 right-0 md:right-auto p-4 md:p-8 lg:p-12">
+          {/* Content - Bottom left positioned */}
+          <div className="absolute bottom-0 left-0 p-4 md:p-8 lg:p-12">
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (

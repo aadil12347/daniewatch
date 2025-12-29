@@ -171,8 +171,8 @@ const TVDetails = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        {/* Hero Section - Shorter on mobile, extends behind header */}
-        <div className="relative h-[60vh] md:h-screen md:min-h-[700px] -mt-16">
+        {/* Hero Section - Full viewport height */}
+        <div className="relative h-screen min-h-[700px]">
           {/* Background Trailer */}
           <BackgroundTrailer 
             videoKey={trailerKey} 
@@ -180,8 +180,8 @@ const TVDetails = () => {
             title={title} 
           />
 
-          {/* Content - positioned at bottom */}
-          <div className="absolute bottom-4 md:bottom-0 left-0 right-0 md:right-auto p-4 md:p-8 lg:p-12">
+          {/* Content - Bottom left positioned */}
+          <div className="absolute bottom-0 left-0 p-4 md:p-8 lg:p-12">
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (
@@ -253,10 +253,10 @@ const TVDetails = () => {
         </div>
 
         {/* Episodes / Similars Section */}
-        <section className="py-4 md:py-10">
+        <section className="py-10">
           <div className="container mx-auto px-4">
             {/* Tabs */}
-            <div className="flex items-center gap-6 mb-4 md:mb-8">
+            <div className="flex items-center gap-6 mb-8">
               <button
                 onClick={() => setActiveTab("episodes")}
                 className={cn(
