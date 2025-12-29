@@ -11,6 +11,7 @@ import TVDetails from "./pages/TVDetails";
 import Movies from "./pages/Movies";
 import TVShows from "./pages/TVShows";
 import Anime from "./pages/Anime";
+import Korean from "./pages/Korean";
 import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
@@ -29,6 +30,7 @@ const AnimatedRoutes = () => {
         <Route path="/movies" element={<Movies />} />
         <Route path="/tv" element={<TVShows />} />
         <Route path="/anime" element={<Anime />} />
+        <Route path="/korean" element={<Korean />} />
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/search" element={<Search />} />
         <Route path="*" element={<NotFound />} />

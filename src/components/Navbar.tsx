@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
@@ -76,6 +76,7 @@ export const Navbar = () => {
     { to: "/movies", label: "Movies", icon: Film },
     { to: "/tv", label: "TV Shows", icon: Tv },
     { to: "/anime", label: "Anime", icon: Sparkles },
+    { to: "/korean", label: "Korean", icon: Heart },
     { to: "/watchlist", label: "Watch List", icon: Bookmark },
   ];
 
