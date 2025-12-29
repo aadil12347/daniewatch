@@ -191,20 +191,26 @@ export const Navbar = () => {
           </div>
         </div>
 
-        {/* Back button below header on details pages */}
-        {isDetailsPage && (
-          <div className="container mx-auto px-4 mt-2">
-            <button
-              onClick={handleBack}
-              className="p-2 rounded-full hover:bg-secondary/50 transition-colors flex items-center gap-2"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Back</span>
-            </button>
-          </div>
-        )}
       </nav>
+
+      {/* Sticky Back button on details pages */}
+      {isDetailsPage && (
+        <div 
+          className={cn(
+            "fixed left-4 z-40 transition-all duration-300",
+            isScrolled ? "top-20" : "top-24"
+          )}
+        >
+          <button
+            onClick={handleBack}
+            className="p-2.5 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-secondary/50 transition-colors flex items-center gap-2 shadow-lg"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Back</span>
+          </button>
+        </div>
+      )}
 
       {/* Mobile Menu Overlay */}
       <div 
