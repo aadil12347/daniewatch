@@ -126,42 +126,42 @@ const MovieDetails = () => {
           />
 
           {/* Content - Bottom left positioned, adjusted for mobile */}
-          <div className="absolute bottom-8 md:bottom-0 left-0 p-4 md:p-8 lg:p-12">
+          <div className="absolute bottom-6 md:bottom-0 left-0 p-3 md:p-8 lg:p-12">
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (
                 <img 
                   src={logoUrl} 
                   alt={movie.title} 
-                  className="h-12 md:h-20 lg:h-24 object-contain object-left mb-3 md:mb-4"
+                  className="h-8 md:h-20 lg:h-24 object-contain object-left mb-2 md:mb-4"
                 />
               ) : (
-                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 leading-tight">
+                <h1 className="text-lg md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 leading-tight">
                   {movie.title}
                 </h1>
               )}
 
               {/* Meta info */}
-              <div className="flex flex-wrap items-center gap-2 mb-3 md:mb-4">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-background/50 backdrop-blur-sm">
-                  <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                  <span className="font-semibold text-sm">{movie.vote_average?.toFixed(1)}</span>
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-2 md:mb-4">
+                <div className="flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 py-0.5 md:py-1 rounded bg-background/50 backdrop-blur-sm">
+                  <Star className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-yellow-400 fill-yellow-400" />
+                  <span className="font-semibold text-[10px] md:text-sm">{movie.vote_average?.toFixed(1)}</span>
                 </div>
-                <span className="text-muted-foreground text-sm">{getYear(movie.release_date)}</span>
+                <span className="text-muted-foreground text-[10px] md:text-sm">{getYear(movie.release_date)}</span>
                 {movie.runtime && (
                   <>
-                    <span className="text-muted-foreground text-sm">•</span>
-                    <span className="text-muted-foreground text-sm">{formatRuntime(movie.runtime)}</span>
+                    <span className="text-muted-foreground text-[10px] md:text-sm">•</span>
+                    <span className="text-muted-foreground text-[10px] md:text-sm">{formatRuntime(movie.runtime)}</span>
                   </>
                 )}
               </div>
 
               {/* Genres */}
-              <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
+              <div className="flex flex-wrap gap-1 md:gap-2 mb-2 md:mb-4">
                 {movie.genres?.slice(0, 3).map((genre) => (
                   <span
                     key={genre.id}
-                    className="px-2.5 py-1 rounded-full bg-secondary/60 backdrop-blur-sm text-xs font-medium"
+                    className="px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-full bg-secondary/60 backdrop-blur-sm text-[10px] md:text-xs font-medium"
                   >
                     {genre.name}
                   </span>
@@ -174,35 +174,35 @@ const MovieDetails = () => {
               </p>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 <Button
-                  size="default"
-                  className="gradient-red text-foreground font-semibold px-6 md:px-8 hover:opacity-90 transition-opacity shadow-glow"
+                  size="sm"
+                  className="gradient-red text-foreground font-semibold px-4 md:px-8 text-xs md:text-sm hover:opacity-90 transition-opacity shadow-glow h-8 md:h-10"
                   onClick={() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     setShowPlayer(true);
                   }}
                 >
-                  <Play className="w-4 h-4 mr-2 fill-current" />
+                  <Play className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2 fill-current" />
                   Play
                 </Button>
                 <Button
                   size="icon"
                   variant="outline"
-                  className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                  className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3 h-3 md:w-4 md:h-4" />
                 </Button>
                 {bloggerResult?.downloadLink && (
                   <Button
                     size="icon"
                     variant="outline"
-                    className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                    className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
                     onClick={() => {
                       window.open(bloggerResult.downloadLink, '_blank');
                     }}
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className="w-3 h-3 md:w-4 md:h-4" />
                   </Button>
                 )}
               </div>
@@ -212,10 +212,10 @@ const MovieDetails = () => {
 
         {/* Cast Section - closer to hero on mobile */}
         {cast.length > 0 && (
-          <section className="py-4 md:py-10 -mt-8 md:mt-0">
-            <div className="container mx-auto px-4">
-              <h2 className="text-2xl font-bold mb-6">Actors</h2>
-              <div className="flex gap-6 overflow-x-auto hide-scrollbar pb-4">
+          <section className="py-3 md:py-10 -mt-6 md:mt-0">
+            <div className="container mx-auto px-3 md:px-4">
+              <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6">Actors</h2>
+              <div className="flex gap-3 md:gap-6 overflow-x-auto hide-scrollbar pb-2 md:pb-4">
                 {cast.map((actor) => (
                   <ActorCard key={actor.id} actor={actor} />
                 ))}
@@ -226,10 +226,10 @@ const MovieDetails = () => {
 
         {/* Similar Movies */}
         {similar.length > 0 && (
-          <section className="py-10">
-            <div className="container mx-auto px-4">
-              <h2 className="text-2xl font-bold mb-6">You may like</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+          <section className="py-3 md:py-10">
+            <div className="container mx-auto px-3 md:px-4">
+              <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6">You may like</h2>
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-2 md:gap-4">
                 {similar.map((item) => (
                   <MovieCard key={item.id} movie={{ ...item, media_type: "movie" }} size="sm" />
                 ))}
