@@ -13,6 +13,7 @@ import TVShows from "./pages/TVShows";
 import Anime from "./pages/Anime";
 import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
+import Watch from "./pages/Watch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const AnimatedRoutes = () => {
         <Route path="/" element={<Index />} />
         <Route path="/movie/:id" element={<MovieDetails />} />
         <Route path="/tv/:id" element={<TVDetails />} />
+        <Route path="/watch/:type/:id" element={<Watch />} />
         <Route path="/movies" element={<Movies />} />
         <Route path="/tv" element={<TVShows />} />
         <Route path="/anime" element={<Anime />} />
