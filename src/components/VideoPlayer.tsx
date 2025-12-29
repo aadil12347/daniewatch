@@ -69,23 +69,23 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+      className="fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-black"
+      style={{ position: 'fixed', width: '100vw', height: '100vh', top: 0, left: 0 }}
     >
       {/* Close button */}
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
+        className="absolute top-4 right-4 z-[10000] w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
         onClick={onClose}
       >
         <X className="w-5 h-5" />
       </Button>
 
-      {/* Video iframe - Full screen */}
+      {/* Video iframe - True full screen */}
       <iframe
         src={getEmbedUrl()}
-        className="w-full h-full"
-        frameBorder="0"
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
         allowFullScreen
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
       />
