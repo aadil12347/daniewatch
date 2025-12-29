@@ -60,7 +60,7 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
     <div className="absolute inset-0">
       {/* Fallback backdrop image - starts below header */}
       {backdropUrl && (
-        <div className="absolute top-16 md:top-20 left-0 right-0 bottom-0 overflow-hidden">
+        <div className="absolute top-14 left-0 right-0 bottom-0 overflow-hidden">
           <img
             src={backdropUrl}
             alt={title}
@@ -74,7 +74,7 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
 
       {/* YouTube video background - starts below header */}
       {embedUrl && (
-        <div className="absolute top-16 md:top-20 left-0 right-0 bottom-0 overflow-hidden">
+        <div className="absolute top-14 left-0 right-0 bottom-0 overflow-hidden">
           <iframe
             ref={iframeRef}
             src={embedUrl}
