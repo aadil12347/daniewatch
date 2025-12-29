@@ -54,24 +54,23 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
         <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-background/80 text-xs font-semibold">
           {episode.episode_number}
         </div>
+        {/* Download button on thumbnail */}
+        {downloadLink && (
+          <button
+            onClick={handleDownload}
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-primary/90 hover:bg-primary text-primary-foreground transition-colors z-10"
+            title="Download episode"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0 py-1">
-        <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-sm mb-1 line-clamp-1 group-hover/episode:text-primary transition-colors">
-            {episode.name}
-          </h4>
-          {downloadLink && (
-            <button
-              onClick={handleDownload}
-              className="flex-shrink-0 p-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-              title="Download episode"
-            >
-              <Download className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        <h4 className="font-semibold text-sm mb-1 line-clamp-1 group-hover/episode:text-primary transition-colors">
+          {episode.name}
+        </h4>
         <p className="text-muted-foreground text-xs line-clamp-2">
           {episode.overview || "No description available."}
         </p>
