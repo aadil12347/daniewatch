@@ -75,16 +75,30 @@ function parseTVShowContent(content: string, season: number, episode?: number): 
   }
   
   // Extract all watch online links containing "byse" in the URL
-  const linkRegex = /(?:href|src)=["']([^"']*byse[^"']*)/gi;
+  // Look for href attributes, src attributes, or raw URLs containing "byse"
   const watchLinks: string[] = [];
   
-  let linkMatch;
-  while ((linkMatch = linkRegex.exec(sectionToSearch)) !== null) {
-    const link = linkMatch[1].replace(/&amp;/g, '&');
-    watchLinks.push(link);
+  // Method 1: Look for href/src attributes with byse URLs
+  const attrRegex = /(?:href|src)=["']([^"']*byse[^"']*)/gi;
+  let attrMatch;
+  while ((attrMatch = attrRegex.exec(sectionToSearch)) !== null) {
+    const link = attrMatch[1].replace(/&amp;/g, '&');
+    if (!watchLinks.includes(link)) {
+      watchLinks.push(link);
+    }
   }
   
-  console.log(`Found ${watchLinks.length} watch online links (byse) for season ${season}`);
+  // Method 2: Look for raw URLs containing byse (in case they're not in attributes)
+  const urlRegex = /https?:\/\/[^\s"'<>]*byse[^\s"'<>]*/gi;
+  let urlMatch;
+  while ((urlMatch = urlRegex.exec(sectionToSearch)) !== null) {
+    const link = urlMatch[0].replace(/&amp;/g, '&');
+    if (!watchLinks.includes(link)) {
+      watchLinks.push(link);
+    }
+  }
+  
+  console.log(`Found ${watchLinks.length} watch online links (byse) for season ${season}:`, watchLinks);
   
   if (watchLinks.length > 0) {
     result.seasonEpisodeLinks = watchLinks;
@@ -96,17 +110,29 @@ function parseTVShowContent(content: string, season: number, episode?: number): 
   }
   
   // Extract all download links containing "dldclv" in the URL
-  const downloadRegex = /(?:href|src)=["']([^"']*dldclv[^"']*)/gi;
   const downloadLinks: string[] = [];
   
-  let downloadMatch;
-  while ((downloadMatch = downloadRegex.exec(sectionToSearch)) !== null) {
-    // Decode any remaining HTML entities
-    const link = downloadMatch[1].replace(/&amp;/g, '&');
-    downloadLinks.push(link);
+  // Method 1: Look for href/src attributes with dldclv URLs
+  const dlAttrRegex = /(?:href|src)=["']([^"']*dldclv[^"']*)/gi;
+  let dlAttrMatch;
+  while ((dlAttrMatch = dlAttrRegex.exec(sectionToSearch)) !== null) {
+    const link = dlAttrMatch[1].replace(/&amp;/g, '&');
+    if (!downloadLinks.includes(link)) {
+      downloadLinks.push(link);
+    }
   }
   
-  console.log(`Found ${downloadLinks.length} download links (dldclv) for season ${season}`);
+  // Method 2: Look for raw URLs containing dldclv (in case they're not in attributes)
+  const dlUrlRegex = /https?:\/\/[^\s"'<>]*dldclv[^\s"'<>]*/gi;
+  let dlUrlMatch;
+  while ((dlUrlMatch = dlUrlRegex.exec(sectionToSearch)) !== null) {
+    const link = dlUrlMatch[0].replace(/&amp;/g, '&');
+    if (!downloadLinks.includes(link)) {
+      downloadLinks.push(link);
+    }
+  }
+  
+  console.log(`Found ${downloadLinks.length} download links (dldclv) for season ${season}:`, downloadLinks);
   
   if (downloadLinks.length > 0) {
     result.seasonDownloadLinks = downloadLinks;
