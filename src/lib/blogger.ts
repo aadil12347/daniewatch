@@ -27,8 +27,11 @@ export interface BloggerVideoResult {
 function parseTVShowContent(content: string, season: number, episode?: number): { iframeSrc?: string; downloadLink?: string; seasonDownloadLinks?: string[] } {
   const result: { iframeSrc?: string; downloadLink?: string; seasonDownloadLinks?: string[] } = {};
   
-  // Normalize content - replace common variations
-  const normalizedContent = content.replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi, '\n');
+  // Normalize content - replace common variations and decode HTML entities
+  const normalizedContent = content
+    .replace(/&nbsp;/g, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/&amp;/g, '&');
   
   // Split content by season markers (case insensitive)
   // Look for patterns like "Season 1", "SEASON 1", "season 1", "S01", etc.
@@ -41,58 +44,63 @@ function parseTVShowContent(content: string, season: number, episode?: number): 
     seasonMatches.push({ index: match.index, seasonNum });
   }
   
-  if (seasonMatches.length === 0) {
-    // No season markers found, try to extract first iframe and download link
-    const iframeMatch = normalizedContent.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/i);
-    if (iframeMatch) {
-      result.iframeSrc = iframeMatch[1];
+  let sectionToSearch = normalizedContent;
+  
+  if (seasonMatches.length > 0) {
+    // Find the section for the requested season
+    const targetSeasonMatch = seasonMatches.find(m => m.seasonNum === season);
+    if (!targetSeasonMatch) {
+      console.log(`Season ${season} not found in content. Available seasons:`, seasonMatches.map(m => m.seasonNum));
+      return result;
     }
-    const downloadMatches = normalizedContent.match(/https:\/\/dldclv[^\s"'<>]+/gi);
-    if (downloadMatches && downloadMatches.length > 0) {
-      result.downloadLink = downloadMatches[0];
-      result.seasonDownloadLinks = downloadMatches;
-    }
-    return result;
+    
+    // Find the end of this season's section (start of next season or end of content)
+    const targetIndex = seasonMatches.indexOf(targetSeasonMatch);
+    const nextSeasonMatch = seasonMatches[targetIndex + 1];
+    
+    const sectionStart = targetSeasonMatch.index;
+    const sectionEnd = nextSeasonMatch ? nextSeasonMatch.index : normalizedContent.length;
+    sectionToSearch = normalizedContent.substring(sectionStart, sectionEnd);
   }
-  
-  // Find the section for the requested season
-  const targetSeasonMatch = seasonMatches.find(m => m.seasonNum === season);
-  if (!targetSeasonMatch) {
-    return result;
-  }
-  
-  // Find the end of this season's section (start of next season or end of content)
-  const targetIndex = seasonMatches.indexOf(targetSeasonMatch);
-  const nextSeasonMatch = seasonMatches[targetIndex + 1];
-  
-  const sectionStart = targetSeasonMatch.index;
-  const sectionEnd = nextSeasonMatch ? nextSeasonMatch.index : normalizedContent.length;
-  const seasonSection = normalizedContent.substring(sectionStart, sectionEnd);
   
   // Extract all iframe sources from this season's section
   const iframeRegex = /<iframe[^>]*src=["']([^"']+)["'][^>]*>/gi;
   const iframeSrcs: string[] = [];
   
   let iframeMatch;
-  while ((iframeMatch = iframeRegex.exec(seasonSection)) !== null) {
+  while ((iframeMatch = iframeRegex.exec(sectionToSearch)) !== null) {
     iframeSrcs.push(iframeMatch[1]);
   }
+  
+  console.log(`Found ${iframeSrcs.length} iframes for season ${season}`);
   
   // Episode is 1-indexed, array is 0-indexed
   if (episode && iframeSrcs.length > 0 && episode <= iframeSrcs.length) {
     result.iframeSrc = iframeSrcs[episode - 1];
+    console.log(`Using iframe for episode ${episode}:`, result.iframeSrc);
   }
   
-  // Extract all download links from this season's section
-  const downloadMatches = seasonSection.match(/https:\/\/dldclv[^\s"'<>]+/gi);
-  if (downloadMatches && downloadMatches.length > 0) {
-    result.seasonDownloadLinks = downloadMatches;
+  // Extract all download links - look for href with dldclv in the URL
+  const hrefRegex = /href=["']([^"']*dldclv[^"']*)["']/gi;
+  const downloadLinks: string[] = [];
+  
+  let hrefMatch;
+  while ((hrefMatch = hrefRegex.exec(sectionToSearch)) !== null) {
+    // Decode any remaining HTML entities
+    const link = hrefMatch[1].replace(/&amp;/g, '&');
+    downloadLinks.push(link);
+  }
+  
+  console.log(`Found ${downloadLinks.length} download links for season ${season}`);
+  
+  if (downloadLinks.length > 0) {
+    result.seasonDownloadLinks = downloadLinks;
     // If there are multiple download links (one per episode), try to get the right one
-    if (episode && downloadMatches.length >= episode) {
-      result.downloadLink = downloadMatches[episode - 1];
+    if (episode && downloadLinks.length >= episode) {
+      result.downloadLink = downloadLinks[episode - 1];
     } else if (episode) {
       // Otherwise just use the first download link for the season
-      result.downloadLink = downloadMatches[0];
+      result.downloadLink = downloadLinks[0];
     }
   }
   
@@ -141,9 +149,10 @@ export async function searchBloggerForTmdbId(
         postTitle: post.title,
       };
       
-      if (type === "tv" && season && episode) {
-        // Parse TV show content for season/episode specific links
+      if (type === "tv" && season) {
+        // Parse TV show content for season-specific links
         const tvResult = parseTVShowContent(content, season, episode);
+        console.log(`Blogger TV parsing - Season ${season}, Episode ${episode}:`, tvResult);
         
         if (tvResult.iframeSrc) {
           result.found = true;
@@ -151,6 +160,9 @@ export async function searchBloggerForTmdbId(
         }
         if (tvResult.downloadLink) {
           result.downloadLink = tvResult.downloadLink;
+        }
+        if (tvResult.seasonDownloadLinks) {
+          result.seasonDownloadLinks = tvResult.seasonDownloadLinks;
         }
       } else {
         // For movies, extract first iframe and download link
