@@ -171,8 +171,8 @@ const TVDetails = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        {/* Hero Section - Full viewport height with header offset */}
-        <div className="relative h-screen min-h-[600px] md:min-h-[700px] mt-16 md:mt-20">
+        {/* Hero Section - Full viewport height */}
+        <div className="relative h-screen min-h-[600px] md:min-h-[700px]">
           {/* Background Trailer */}
           <BackgroundTrailer 
             videoKey={trailerKey} 

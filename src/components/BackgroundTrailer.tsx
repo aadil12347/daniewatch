@@ -58,21 +58,23 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
 
   return (
     <div className="absolute inset-0">
-      {/* Fallback backdrop image */}
+      {/* Fallback backdrop image - starts below header */}
       {backdropUrl && (
-        <img
-          src={backdropUrl}
-          alt={title}
-          className={cn(
-            "w-full h-full object-cover transition-opacity duration-1000",
-            isVideoLoaded && videoKey ? "opacity-0" : "opacity-100"
-          )}
-        />
+        <div className="absolute top-16 md:top-20 left-0 right-0 bottom-0 overflow-hidden">
+          <img
+            src={backdropUrl}
+            alt={title}
+            className={cn(
+              "w-full h-full object-cover transition-opacity duration-1000",
+              isVideoLoaded && videoKey ? "opacity-0" : "opacity-100"
+            )}
+          />
+        </div>
       )}
 
-      {/* YouTube video background */}
+      {/* YouTube video background - starts below header */}
       {embedUrl && (
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-16 md:top-20 left-0 right-0 bottom-0 overflow-hidden">
           <iframe
             ref={iframeRef}
             src={embedUrl}
