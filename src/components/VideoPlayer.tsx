@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Download, Loader2 } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { searchBloggerForTmdbId, triggerDownload, BloggerVideoResult } from "@/lib/blogger";
+import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
 
 interface VideoPlayerProps {
   tmdbId: number;
@@ -27,16 +27,6 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
     
     checkBlogger();
   }, [tmdbId, type, season]);
-
-  // Handle download click
-  const handleDownload = () => {
-    if (bloggerResult?.downloadLink) {
-      const filename = type === "movie" 
-        ? `movie_${tmdbId}.mp4`
-        : `tv_${tmdbId}_S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}.mp4`;
-      triggerDownload(bloggerResult.downloadLink, filename);
-    }
-  };
 
   // Build the VidKing embed URL (fallback)
   const getVidKingUrl = () => {
@@ -121,17 +111,6 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
       >
         <X className="w-5 h-5" />
       </Button>
-
-      {/* Download button if available */}
-      {bloggerResult?.downloadLink && (
-        <button
-          onClick={handleDownload}
-          className="absolute top-4 right-16 z-[10000] flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          Download
-        </button>
-      )}
 
       {/* Video iframe */}
       {!isLoading && (
