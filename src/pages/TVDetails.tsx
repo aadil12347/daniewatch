@@ -392,6 +392,7 @@ const TVDetails = () => {
                       <EpisodeCard
                         key={episode.id}
                         episode={episode}
+                        downloadLink={bloggerResult?.seasonDownloadLinks?.[episode.episode_number - 1]}
                         onClick={() => {
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                           setPlayingEpisode({ season: selectedSeason, episode: episode.episode_number });

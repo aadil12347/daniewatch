@@ -20,11 +20,12 @@ export interface BloggerVideoResult {
   iframeSrc?: string;
   downloadLink?: string;
   postTitle?: string;
+  seasonDownloadLinks?: string[]; // All download links for a season (indexed by episode - 1)
 }
 
 // Parse TV show content to extract season-specific iframes and download links
-function parseTVShowContent(content: string, season: number, episode: number): { iframeSrc?: string; downloadLink?: string } {
-  const result: { iframeSrc?: string; downloadLink?: string } = {};
+function parseTVShowContent(content: string, season: number, episode?: number): { iframeSrc?: string; downloadLink?: string; seasonDownloadLinks?: string[] } {
+  const result: { iframeSrc?: string; downloadLink?: string; seasonDownloadLinks?: string[] } = {};
   
   // Normalize content - replace common variations
   const normalizedContent = content.replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi, '\n');
@@ -46,9 +47,10 @@ function parseTVShowContent(content: string, season: number, episode: number): {
     if (iframeMatch) {
       result.iframeSrc = iframeMatch[1];
     }
-    const downloadMatch = normalizedContent.match(/https:\/\/dldclv[^\s"'<>]+/i);
-    if (downloadMatch) {
-      result.downloadLink = downloadMatch[0];
+    const downloadMatches = normalizedContent.match(/https:\/\/dldclv[^\s"'<>]+/gi);
+    if (downloadMatches && downloadMatches.length > 0) {
+      result.downloadLink = downloadMatches[0];
+      result.seasonDownloadLinks = downloadMatches;
     }
     return result;
   }
@@ -77,17 +79,18 @@ function parseTVShowContent(content: string, season: number, episode: number): {
   }
   
   // Episode is 1-indexed, array is 0-indexed
-  if (iframeSrcs.length > 0 && episode <= iframeSrcs.length) {
+  if (episode && iframeSrcs.length > 0 && episode <= iframeSrcs.length) {
     result.iframeSrc = iframeSrcs[episode - 1];
   }
   
-  // Extract download links from this season's section
+  // Extract all download links from this season's section
   const downloadMatches = seasonSection.match(/https:\/\/dldclv[^\s"'<>]+/gi);
   if (downloadMatches && downloadMatches.length > 0) {
+    result.seasonDownloadLinks = downloadMatches;
     // If there are multiple download links (one per episode), try to get the right one
-    if (downloadMatches.length >= episode) {
+    if (episode && downloadMatches.length >= episode) {
       result.downloadLink = downloadMatches[episode - 1];
-    } else {
+    } else if (episode) {
       // Otherwise just use the first download link for the season
       result.downloadLink = downloadMatches[0];
     }

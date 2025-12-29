@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { Play, Download } from "lucide-react";
 import { Episode, getImageUrl } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 
@@ -6,12 +6,20 @@ interface EpisodeCardProps {
   episode: Episode;
   isActive?: boolean;
   onClick?: () => void;
+  downloadLink?: string;
 }
 
-export const EpisodeCard = ({ episode, isActive, onClick }: EpisodeCardProps) => {
+export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: EpisodeCardProps) => {
   const stillUrl = episode.still_path 
     ? getImageUrl(episode.still_path, "w300") 
     : null;
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (downloadLink) {
+      window.open(downloadLink, '_blank');
+    }
+  };
 
   return (
     <div
@@ -50,9 +58,20 @@ export const EpisodeCard = ({ episode, isActive, onClick }: EpisodeCardProps) =>
 
       {/* Info */}
       <div className="flex-1 min-w-0 py-1">
-        <h4 className="font-semibold text-sm mb-1 line-clamp-1 group-hover/episode:text-primary transition-colors">
-          {episode.name}
-        </h4>
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="font-semibold text-sm mb-1 line-clamp-1 group-hover/episode:text-primary transition-colors">
+            {episode.name}
+          </h4>
+          {downloadLink && (
+            <button
+              onClick={handleDownload}
+              className="flex-shrink-0 p-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+              title="Download episode"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          )}
+        </div>
         <p className="text-muted-foreground text-xs line-clamp-2">
           {episode.overview || "No description available."}
         </p>
