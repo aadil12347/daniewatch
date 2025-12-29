@@ -171,8 +171,8 @@ const TVDetails = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        {/* Hero Section - Full viewport height */}
-        <div className="relative h-screen min-h-[700px]">
+        {/* Hero Section - Full viewport height, extends behind header on mobile */}
+        <div className="relative h-[85vh] md:h-screen md:min-h-[700px] -mt-16 pt-16">
           {/* Background Trailer */}
           <BackgroundTrailer 
             videoKey={trailerKey} 
@@ -180,8 +180,8 @@ const TVDetails = () => {
             title={title} 
           />
 
-          {/* Content - Bottom left positioned */}
-          <div className="absolute bottom-0 left-0 p-4 md:p-8 lg:p-12">
+          {/* Content - positioned higher on mobile */}
+          <div className="absolute bottom-16 md:bottom-0 left-0 right-0 md:right-auto p-4 md:p-8 lg:p-12">
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (
