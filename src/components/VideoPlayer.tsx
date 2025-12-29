@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { X, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
 
 interface VideoPlayerProps {
   tmdbId: number;
@@ -12,12 +13,26 @@ interface VideoPlayerProps {
 
 export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: VideoPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
 
-  // Build the VidKing embed URL
-  const getEmbedUrl = () => {
+  // Check Blogger for video first
+  useEffect(() => {
+    const checkBlogger = async () => {
+      setIsLoading(true);
+      const result = await searchBloggerForTmdbId(tmdbId, type);
+      setBloggerResult(result);
+      setIsLoading(false);
+    };
+    
+    checkBlogger();
+  }, [tmdbId, type]);
+
+  // Build the VidKing embed URL (fallback)
+  const getVidKingUrl = () => {
     const baseUrl = "https://www.vidking.net/embed";
     const params = new URLSearchParams({
-      color: "dc2626", // Red color matching the theme
+      color: "dc2626",
       autoPlay: "true",
     });
 
@@ -28,6 +43,14 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
       params.append("episodeSelector", "true");
       return `${baseUrl}/tv/${tmdbId}/${season}/${episode}?${params.toString()}`;
     }
+  };
+
+  // Get the embed URL (Blogger iframe or VidKing fallback)
+  const getEmbedUrl = () => {
+    if (bloggerResult?.found && bloggerResult.iframeSrc) {
+      return bloggerResult.iframeSrc;
+    }
+    return getVidKingUrl();
   };
 
   // Listen for player events
@@ -72,6 +95,13 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
       className="fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-black"
       style={{ position: 'fixed', width: '100vw', height: '100vh', top: 0, left: 0 }}
     >
+      {/* Loading state */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        </div>
+      )}
+
       {/* Close button */}
       <Button
         variant="ghost"
@@ -82,13 +112,28 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
         <X className="w-5 h-5" />
       </Button>
 
-      {/* Video iframe - True full screen */}
-      <iframe
-        src={getEmbedUrl()}
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-        allowFullScreen
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-      />
+      {/* Download button if available */}
+      {bloggerResult?.downloadLink && (
+        <a
+          href={bloggerResult.downloadLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute top-4 right-16 z-[10000] flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Download
+        </a>
+      )}
+
+      {/* Video iframe */}
+      {!isLoading && (
+        <iframe
+          src={getEmbedUrl()}
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+          allowFullScreen
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        />
+      )}
     </div>
   );
 };
