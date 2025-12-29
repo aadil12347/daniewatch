@@ -20,13 +20,13 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
   useEffect(() => {
     const checkBlogger = async () => {
       setIsLoading(true);
-      const result = await searchBloggerForTmdbId(tmdbId, type, season);
+      const result = await searchBloggerForTmdbId(tmdbId, type, season, episode);
       setBloggerResult(result);
       setIsLoading(false);
     };
     
     checkBlogger();
-  }, [tmdbId, type, season]);
+  }, [tmdbId, type, season, episode]);
 
   // Build the VidKing embed URL (fallback)
   const getVidKingUrl = () => {
