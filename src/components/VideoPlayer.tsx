@@ -45,8 +45,17 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
     }
   };
 
-  // Get the embed URL (Blogger iframe or VidKing fallback)
+  // Get the embed URL (Blogger watch link or VidKing fallback)
   const getEmbedUrl = () => {
+    // For TV shows, check seasonEpisodeLinks first (links containing "byse")
+    if (type === "tv" && bloggerResult?.seasonEpisodeLinks && episode) {
+      const episodeLink = bloggerResult.seasonEpisodeLinks[episode - 1];
+      if (episodeLink) {
+        console.log(`Using Blogger episode link for S${season}E${episode}:`, episodeLink);
+        return episodeLink;
+      }
+    }
+    // Also check iframeSrc for backwards compatibility
     if (bloggerResult?.found && bloggerResult.iframeSrc) {
       return bloggerResult.iframeSrc;
     }

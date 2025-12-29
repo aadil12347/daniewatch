@@ -20,12 +20,23 @@ export interface BloggerVideoResult {
   iframeSrc?: string;
   downloadLink?: string;
   postTitle?: string;
+  seasonEpisodeLinks?: string[]; // All watch online links for a season (indexed by episode - 1)
   seasonDownloadLinks?: string[]; // All download links for a season (indexed by episode - 1)
 }
 
-// Parse TV show content to extract season-specific iframes and download links
-function parseTVShowContent(content: string, season: number, episode?: number): { iframeSrc?: string; downloadLink?: string; seasonDownloadLinks?: string[] } {
-  const result: { iframeSrc?: string; downloadLink?: string; seasonDownloadLinks?: string[] } = {};
+// Parse TV show content to extract season-specific watch online (byse) and download (dldclv) links
+function parseTVShowContent(content: string, season: number, episode?: number): { 
+  iframeSrc?: string; 
+  downloadLink?: string; 
+  seasonEpisodeLinks?: string[];
+  seasonDownloadLinks?: string[] 
+} {
+  const result: { 
+    iframeSrc?: string; 
+    downloadLink?: string; 
+    seasonEpisodeLinks?: string[];
+    seasonDownloadLinks?: string[] 
+  } = {};
   
   // Normalize content - replace common variations and decode HTML entities
   const normalizedContent = content
@@ -63,44 +74,45 @@ function parseTVShowContent(content: string, season: number, episode?: number): 
     sectionToSearch = normalizedContent.substring(sectionStart, sectionEnd);
   }
   
-  // Extract all iframe sources from this season's section
-  const iframeRegex = /<iframe[^>]*src=["']([^"']+)["'][^>]*>/gi;
-  const iframeSrcs: string[] = [];
+  // Extract all watch online links containing "byse" in the URL
+  const linkRegex = /(?:href|src)=["']([^"']*byse[^"']*)/gi;
+  const watchLinks: string[] = [];
   
-  let iframeMatch;
-  while ((iframeMatch = iframeRegex.exec(sectionToSearch)) !== null) {
-    iframeSrcs.push(iframeMatch[1]);
+  let linkMatch;
+  while ((linkMatch = linkRegex.exec(sectionToSearch)) !== null) {
+    const link = linkMatch[1].replace(/&amp;/g, '&');
+    watchLinks.push(link);
   }
   
-  console.log(`Found ${iframeSrcs.length} iframes for season ${season}`);
+  console.log(`Found ${watchLinks.length} watch online links (byse) for season ${season}`);
   
-  // Episode is 1-indexed, array is 0-indexed
-  if (episode && iframeSrcs.length > 0 && episode <= iframeSrcs.length) {
-    result.iframeSrc = iframeSrcs[episode - 1];
-    console.log(`Using iframe for episode ${episode}:`, result.iframeSrc);
+  if (watchLinks.length > 0) {
+    result.seasonEpisodeLinks = watchLinks;
+    // Episode is 1-indexed, array is 0-indexed
+    if (episode && watchLinks.length >= episode) {
+      result.iframeSrc = watchLinks[episode - 1];
+      console.log(`Using watch link for episode ${episode}:`, result.iframeSrc);
+    }
   }
   
-  // Extract all download links - look for href with dldclv in the URL
-  const hrefRegex = /href=["']([^"']*dldclv[^"']*)["']/gi;
+  // Extract all download links containing "dldclv" in the URL
+  const downloadRegex = /(?:href|src)=["']([^"']*dldclv[^"']*)/gi;
   const downloadLinks: string[] = [];
   
-  let hrefMatch;
-  while ((hrefMatch = hrefRegex.exec(sectionToSearch)) !== null) {
+  let downloadMatch;
+  while ((downloadMatch = downloadRegex.exec(sectionToSearch)) !== null) {
     // Decode any remaining HTML entities
-    const link = hrefMatch[1].replace(/&amp;/g, '&');
+    const link = downloadMatch[1].replace(/&amp;/g, '&');
     downloadLinks.push(link);
   }
   
-  console.log(`Found ${downloadLinks.length} download links for season ${season}`);
+  console.log(`Found ${downloadLinks.length} download links (dldclv) for season ${season}`);
   
   if (downloadLinks.length > 0) {
     result.seasonDownloadLinks = downloadLinks;
     // If there are multiple download links (one per episode), try to get the right one
     if (episode && downloadLinks.length >= episode) {
       result.downloadLink = downloadLinks[episode - 1];
-    } else if (episode) {
-      // Otherwise just use the first download link for the season
-      result.downloadLink = downloadLinks[0];
     }
   }
   
@@ -160,13 +172,16 @@ export async function searchBloggerForTmdbId(
         if (tvResult.downloadLink) {
           result.downloadLink = tvResult.downloadLink;
         }
+        if (tvResult.seasonEpisodeLinks) {
+          result.seasonEpisodeLinks = tvResult.seasonEpisodeLinks;
+        }
         if (tvResult.seasonDownloadLinks) {
           result.seasonDownloadLinks = tvResult.seasonDownloadLinks;
         }
 
         // If we have season links (for episode cards) we should consider this a match too
-        if (result.seasonDownloadLinks?.length) {
-          result.found = result.found || true;
+        if (result.seasonEpisodeLinks?.length || result.seasonDownloadLinks?.length) {
+          result.found = true;
         }
       } else {
         // For movies, extract first iframe and download link
