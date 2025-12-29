@@ -7,21 +7,26 @@ interface VideoPlayerProps {
   type: "movie" | "tv";
   season?: number;
   episode?: number;
-  language?: string;
   onClose: () => void;
 }
 
-export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, language = "hi", onClose }: VideoPlayerProps) => {
+export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: VideoPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Build the VidSrc embed URL with language support
+  // Build the VidKing embed URL
   const getEmbedUrl = () => {
-    const baseUrl = "https://vidsrc-embed.ru/embed";
-    
+    const baseUrl = "https://www.vidking.net/embed";
+    const params = new URLSearchParams({
+      color: "dc2626", // Red color matching the theme
+      autoPlay: "true",
+    });
+
     if (type === "movie") {
-      return `${baseUrl}/movie?tmdb=${tmdbId}&ds_lang=${language}&autoplay=1`;
+      return `${baseUrl}/movie/${tmdbId}?${params.toString()}`;
     } else {
-      return `${baseUrl}/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&ds_lang=${language}&autoplay=1&autonext=1`;
+      params.append("nextEpisode", "true");
+      params.append("episodeSelector", "true");
+      return `${baseUrl}/tv/${tmdbId}/${season}/${episode}?${params.toString()}`;
     }
   };
 

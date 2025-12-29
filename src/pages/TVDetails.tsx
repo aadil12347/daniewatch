@@ -8,7 +8,7 @@ import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
 import { EpisodeCard } from "@/components/EpisodeCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
-import { CustomVideoPlayer } from "@/components/CustomVideoPlayer";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -427,9 +427,9 @@ const TVDetails = () => {
 
         <Footer />
 
-        {/* Custom Video Player Modal */}
+        {/* Video Player Modal */}
         {showPlayer && id && playingEpisode && (
-          <CustomVideoPlayer
+          <VideoPlayer
             tmdbId={Number(id)}
             type="tv"
             season={playingEpisode.season}
