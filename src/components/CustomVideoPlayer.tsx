@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Globe, ChevronDown, Play, Volume2, VolumeX, Maximize, Minimize } from "lucide-react";
+import { X, Globe, ChevronDown, Play, Maximize, Minimize, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -53,6 +53,29 @@ export const CustomVideoPlayer = ({
     } else {
       return `${baseUrl}/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&ds_lang=${selectedLanguage.code}&autoplay=1&autonext=1`;
     }
+  };
+
+  // Build the download URL (same as embed but triggers download)
+  const getDownloadUrl = () => {
+    const baseUrl = "https://vidsrc-embed.ru/embed";
+    
+    if (type === "movie") {
+      return `${baseUrl}/movie?tmdb=${tmdbId}&ds_lang=${selectedLanguage.code}`;
+    } else {
+      return `${baseUrl}/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&ds_lang=${selectedLanguage.code}`;
+    }
+  };
+
+  const handleDownload = () => {
+    const downloadUrl = getDownloadUrl();
+    // Open in new tab - user can use browser's download functionality
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.target = '_blank';
+    link.download = type === 'movie' ? `movie-${tmdbId}.mp4` : `tv-${tmdbId}-S${season}E${episode}.mp4`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Close on escape key
@@ -185,6 +208,15 @@ export const CustomVideoPlayer = ({
 
           {/* Right Controls */}
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
+              onClick={handleDownload}
+              title="Download"
+            >
+              <Download className="w-5 h-5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
