@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Plus, Download, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown } from "lucide-react";
+import { Play, Plus, Download, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -12,6 +12,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { searchBloggerForTmdbId, triggerDownload, BloggerVideoResult } from "@/lib/blogger";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +49,8 @@ const TVDetails = () => {
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<{ season: number; episode: number } | null>(null);
+  const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,6 +82,10 @@ const TVDetails = () => {
         // Fetch first season episodes
         const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
         setEpisodes(seasonRes.episodes || []);
+
+        // Check Blogger for download link
+        const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", firstSeason);
+        setBloggerResult(bloggerRes);
       } catch (error) {
         console.error("Failed to fetch TV details:", error);
       } finally {
@@ -100,6 +107,10 @@ const TVDetails = () => {
     try {
       const seasonRes = await getTVSeasonDetails(Number(id), seasonNumber);
       setEpisodes(seasonRes.episodes || []);
+
+      // Check Blogger for download link for selected season
+      const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", seasonNumber);
+      setBloggerResult(bloggerRes);
     } catch (error) {
       console.error("Failed to fetch season:", error);
       setEpisodes([]);
@@ -237,13 +248,27 @@ const TVDetails = () => {
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
-                >
-                  <Download className="w-4 h-4" />
-                </Button>
+                {bloggerResult?.downloadLink && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="w-10 h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                    onClick={async () => {
+                      if (bloggerResult.downloadLink) {
+                        setIsDownloading(true);
+                        triggerDownload(bloggerResult.downloadLink, `tv_${id}_S${String(selectedSeason).padStart(2, '0')}.mp4`);
+                        setTimeout(() => setIsDownloading(false), 2000);
+                      }
+                    }}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
