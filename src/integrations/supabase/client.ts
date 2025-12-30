@@ -1,12 +1,7 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = 'https://amrjkvvmvhqoqqkxntna.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtcmprdnZtdmhxb3Fxa3hudG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwMzUzOTksImV4cCI6MjA4MjYxMTM5OX0.CQ4VlMVG5m80JdJdvOqZ4-11Ewq3kvmplxAcXuM3tOw';
 
-// Check if Supabase is configured
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-
-// Create a mock client or real client based on configuration
-export const supabase: SupabaseClient = isSupabaseConfigured
-  ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!)
-  : createClient('https://placeholder.supabase.co', 'placeholder-key');
+export const isSupabaseConfigured = true;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
