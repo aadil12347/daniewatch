@@ -365,6 +365,37 @@
     }
   }
 
+  /* Scroll hint animation for mobile vignette */
+  @keyframes scroll-hint-left {
+    0%, 100% {
+      opacity: 0.6;
+      transform: translateX(0);
+    }
+    50% {
+      opacity: 1;
+      transform: translateX(4px);
+    }
+  }
+
+  @keyframes scroll-hint-right {
+    0%, 100% {
+      opacity: 0.6;
+      transform: translateX(0);
+    }
+    50% {
+      opacity: 1;
+      transform: translateX(-4px);
+    }
+  }
+
+  .animate-scroll-hint-left {
+    animation: scroll-hint-left 1.5s ease-in-out 2;
+  }
+
+  .animate-scroll-hint-right {
+    animation: scroll-hint-right 1.5s ease-in-out 2;
+  }
+
   /* Page transition animations */
   .page-transition {
     will-change: opacity, transform;
