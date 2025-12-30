@@ -9,10 +9,31 @@ export const Navbar = () => {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchOpen, _setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const setIsSearchOpen = (next: boolean) => {
+    _setIsSearchOpen(next);
+    try {
+      sessionStorage.setItem("navbar_search_open", next ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  };
+
+  // Restore search open state after route changes (Navbar is remounted on navigation)
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("navbar_search_open");
+      if (saved === "1") {
+        _setIsSearchOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Close search bar when clicking outside
   useEffect(() => {
