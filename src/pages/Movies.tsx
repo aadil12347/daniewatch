@@ -16,7 +16,7 @@ const Movies = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "now_playing" | "top_rated" | "upcoming" | "latest">("latest");
+  const [activeTab, setActiveTab] = useState<"popular" | "now_playing" | "top_rated" | "upcoming" | "latest">("popular");
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
