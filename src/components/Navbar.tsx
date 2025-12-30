@@ -156,11 +156,9 @@ export const Navbar = () => {
 
     if (!searchQuery.trim()) return;
 
-    // Always force a fresh search even if the query text didn't change
-    // by adding a cache-busting param.
-    navigate(
-      `/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}&t=${Date.now()}`,
-    );
+    const nextUrl = `/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}&t=${Date.now()}`;
+    console.log("[search] navigate", nextUrl);
+    navigate(nextUrl);
   };
 
   const handleBack = () => {
