@@ -155,7 +155,12 @@ export const Navbar = () => {
     e.preventDefault();
 
     if (!searchQuery.trim()) return;
-    navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}`);
+
+    // Always force a fresh search even if the query text didn't change
+    // by adding a cache-busting param.
+    navigate(
+      `/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}&t=${Date.now()}`,
+    );
   };
 
   const handleBack = () => {

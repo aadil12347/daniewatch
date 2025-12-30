@@ -12,6 +12,7 @@ const Search = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const category = searchParams.get("category") || "";
+  const refreshKey = searchParams.get("t") || "";
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const requestIdRef = useRef(0);
@@ -63,7 +64,7 @@ const Search = () => {
     };
 
     fetchResults();
-  }, [query, category]);
+  }, [query, category, refreshKey]);
 
   return (
     <>
