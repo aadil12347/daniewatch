@@ -22,9 +22,11 @@ const Search = () => {
   };
 
   useEffect(() => {
+    // Clear old results immediately when query changes
+    setResults([]);
+    
     const fetchResults = async () => {
       if (!query.trim()) {
-        setResults([]);
         return;
       }
 
@@ -49,6 +51,7 @@ const Search = () => {
         }
       } catch (error) {
         console.error("Search failed:", error);
+        setResults([]);
       } finally {
         setIsLoading(false);
       }

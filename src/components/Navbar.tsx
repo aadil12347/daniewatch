@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,9 +12,22 @@ export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if we're on a details page
   const isDetailsPage = location.pathname.startsWith('/movie/') || location.pathname.startsWith('/tv/');
+
+  // Sync search query with URL when on search page
+  useEffect(() => {
+    if (location.pathname === '/search') {
+      const urlQuery = searchParams.get('q') || '';
+      setSearchQuery(urlQuery);
+      if (urlQuery) {
+        setIsSearchOpen(true);
+      }
+    }
+  }, [location.pathname, searchParams]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,7 +52,6 @@ export const Navbar = () => {
   // Close menu when route changes
   useEffect(() => {
     setIsMenuOpen(false);
-    setIsSearchOpen(false);
   }, [location.pathname]);
 
   // Prevent body scroll when menu is open
@@ -54,19 +66,49 @@ export const Navbar = () => {
     };
   }, [isMenuOpen]);
 
+  // Live search with debounce
+  const performSearch = (query: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      if (query.trim()) {
+        // Determine category filter based on current page or existing category
+        let categoryParam = "";
+        const currentCategory = searchParams.get('category');
+        
+        if (location.pathname === "/anime" || currentCategory === "anime") {
+          categoryParam = "&category=anime";
+        } else if (location.pathname === "/korean" || currentCategory === "korean") {
+          categoryParam = "&category=korean";
+        }
+        navigate(`/search?q=${encodeURIComponent(query.trim())}${categoryParam}`);
+      }
+    }, 300);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    performSearch(value);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
     if (searchQuery.trim()) {
-      // Determine category filter based on current page
       let categoryParam = "";
-      if (location.pathname === "/anime") {
+      const currentCategory = searchParams.get('category');
+      
+      if (location.pathname === "/anime" || currentCategory === "anime") {
         categoryParam = "&category=anime";
-      } else if (location.pathname === "/korean") {
+      } else if (location.pathname === "/korean" || currentCategory === "korean") {
         categoryParam = "&category=korean";
       }
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}${categoryParam}`);
-      setSearchQuery("");
-      setIsSearchOpen(false);
     }
   };
 
@@ -193,7 +235,7 @@ export const Navbar = () => {
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={handleSearchChange}
                     placeholder="Search..."
                     className="w-full bg-secondary/50 border border-border rounded-full px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground"
                     autoFocus
