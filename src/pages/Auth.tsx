@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Film, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +44,7 @@ const Auth = () => {
   return (
     <>
       <Helmet>
-        <title>Sign In - Cineby</title>
+        <title>Sign In - DanieWatch</title>
         <meta name="description" content="Sign in with Google to save your watchlist" />
       </Helmet>
 
@@ -55,17 +55,30 @@ const Auth = () => {
         {/* Content */}
         <div className="relative z-10 w-full max-w-md mx-4">
           {/* Logo */}
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-lg gradient-red flex items-center justify-center">
-              <Film className="w-6 h-6 text-foreground" />
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="relative w-12 h-12 flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
+                <defs>
+                  <linearGradient id="authLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(0, 84%, 65%)" />
+                    <stop offset="100%" stopColor="hsl(0, 84%, 50%)" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M25 15 C15 15 10 25 10 50 C10 75 15 85 25 85 L55 85 C75 85 90 70 90 50 C90 30 75 15 55 15 L40 15 L40 25 L55 25 C68 25 78 35 78 50 C78 65 68 75 55 75 L25 75 C22 75 22 70 22 50 C22 30 22 25 25 25 L25 15 Z M30 35 L30 65 L55 65 C60 65 65 60 65 50 C65 40 60 35 55 35 L30 35 Z"
+                  fill="url(#authLogoGradient)"
+                />
+              </svg>
             </div>
-            <span className="text-2xl font-bold">Cineby</span>
+            <span className="text-3xl font-bold tracking-tight">
+              Danie<span className="text-primary">Watch</span>
+            </span>
           </div>
 
           {/* Sign In Card */}
           <div className="glass rounded-2xl p-8">
             <h1 className="text-2xl font-bold text-center mb-2">
-              Welcome to Cineby
+              Welcome to <span className="text-primary">DanieWatch</span>
             </h1>
             <p className="text-muted-foreground text-center mb-8">
               Sign in to save movies and shows to your watchlist
