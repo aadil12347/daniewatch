@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface PageTransitionProps {
@@ -7,17 +6,32 @@ interface PageTransitionProps {
 }
 
 export const PageTransition = ({ children }: PageTransitionProps) => {
-  const location = useLocation();
   const [displayChildren, setDisplayChildren] = useState(children);
   const [transitionStage, setTransitionStage] = useState<"enter" | "exit">("enter");
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (children !== displayChildren) {
       setTransitionStage("exit");
+      
+      // Safety fallback: if onAnimationEnd doesn't fire within 300ms, force update
+      timeoutRef.current = setTimeout(() => {
+        setDisplayChildren(children);
+        setTransitionStage("enter");
+      }, 300);
     }
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [children, displayChildren]);
 
   const handleAnimationEnd = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     if (transitionStage === "exit") {
       setDisplayChildren(children);
       setTransitionStage("enter");
