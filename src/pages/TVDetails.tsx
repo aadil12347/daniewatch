@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Plus, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown } from "lucide-react";
+import { Play, Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +52,9 @@ const TVDetails = () => {
   const [showPlayer, setShowPlayer] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<{ season: number; episode: number } | null>(null);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+  const { isInWatchlist, toggleWatchlist } = useWatchlist();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -243,9 +248,34 @@ const TVDetails = () => {
                 <Button
                   size="icon"
                   variant="outline"
-                  className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
+                    isInWatchlist(show.id, 'tv') ? 'text-primary border-primary' : ''
+                  }`}
+                  onClick={async () => {
+                    if (isBookmarking) return;
+                    setIsBookmarking(true);
+                    const showData: Movie = {
+                      id: show.id,
+                      title: show.name || '',
+                      name: show.name,
+                      overview: show.overview,
+                      poster_path: show.poster_path,
+                      backdrop_path: show.backdrop_path,
+                      vote_average: show.vote_average,
+                      first_air_date: show.first_air_date,
+                      genre_ids: show.genres?.map(g => g.id) || [],
+                      media_type: 'tv',
+                    };
+                    await toggleWatchlist(showData);
+                    setIsBookmarking(false);
+                  }}
+                  disabled={isBookmarking}
                 >
-                  <Plus className="w-3 h-3 md:w-4 md:h-4" />
+                  {isBookmarking ? (
+                    <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
+                  ) : (
+                    <Bookmark className={`w-3 h-3 md:w-4 md:h-4 ${isInWatchlist(show.id, 'tv') ? 'fill-current' : ''}`} />
+                  )}
                 </Button>
               </div>
             </div>
