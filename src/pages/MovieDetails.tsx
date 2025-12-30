@@ -131,7 +131,7 @@ const MovieDetails = () => {
           />
 
           {/* Content - Bottom left positioned, adjusted for mobile */}
-          <div className="absolute bottom-6 md:bottom-0 left-0 p-3 md:p-8 lg:p-12">
+          <div className="absolute bottom-6 md:bottom-0 left-0 right-0 px-4 md:px-0 md:left-0 md:right-auto md:p-8 lg:p-12">
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (
@@ -242,7 +242,7 @@ const MovieDetails = () => {
         {/* Cast Section - closer to hero on mobile */}
         {cast.length > 0 && (
           <section className="py-3 md:py-10 mt-4 md:mt-0">
-            <div className="container mx-auto px-3 md:px-4">
+            <div className="container mx-auto px-4 md:px-4">
               <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6">Actors</h2>
               <div className="flex gap-3 md:gap-6 overflow-x-auto hide-scrollbar pb-2 md:pb-4">
                 {cast.map((actor) => (
