@@ -79,6 +79,10 @@ export const TabbedContentRow = ({
 
       {/* Scrollable Content with Navigation Overlay */}
       <div className="relative">
+        {/* Mobile scroll indicators - vignette effect */}
+        <div className="lg:hidden absolute left-0 top-0 bottom-8 z-10 w-4 bg-gradient-to-r from-background/80 to-transparent pointer-events-none" />
+        <div className="lg:hidden absolute right-0 top-0 bottom-8 z-10 w-4 bg-gradient-to-l from-background/80 to-transparent pointer-events-none" />
+
         {/* Left Navigation Button - Hidden on mobile/tablet */}
         <button
           onClick={() => scroll("left")}
