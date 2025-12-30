@@ -1,9 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 export const Navbar = () => {
+  const { user, signOut } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -258,8 +267,8 @@ export const Navbar = () => {
             ))}
           </div>
 
-          {/* Right side: Search */}
-          <div className="flex items-center" ref={searchRef}>
+          {/* Right side: Search + User */}
+          <div className="flex items-center gap-2" ref={searchRef}>
             <form
               onSubmit={handleSearch}
               className={cn(
@@ -295,6 +304,46 @@ export const Navbar = () => {
                 </button>
               )}
             </form>
+
+            {/* User Menu */}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-1 rounded-full hover:bg-secondary/50 transition-colors">
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                        {user.email?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">
+                    {user.email}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/watchlist" className="cursor-pointer">
+                      <Bookmark className="w-4 h-4 mr-2" />
+                      My Watchlist
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link
+                to="/auth"
+                className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
+                aria-label="Sign in"
+              >
+                <User className="w-5 h-5" />
+              </Link>
+            )}
           </div>
         </div>
 

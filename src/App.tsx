@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { AuthProvider } from "./contexts/AuthContext";
 import { PageTransition } from "./components/PageTransition";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
@@ -14,6 +15,7 @@ import Anime from "./pages/Anime";
 import Korean from "./pages/Korean";
 import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,7 @@ const AnimatedRoutes = () => {
         <Route path="/korean" element={<Korean />} />
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </PageTransition>
@@ -42,13 +45,15 @@ const AnimatedRoutes = () => {
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AnimatedRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnimatedRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>
 );

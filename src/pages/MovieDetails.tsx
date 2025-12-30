@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Plus, Download, Star, Clock, Calendar, ArrowLeft } from "lucide-react";
+import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -11,6 +11,8 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getMovieDetails,
   getMovieCredits,
@@ -34,6 +36,9 @@ const MovieDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showPlayer, setShowPlayer] = useState(false);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+  const { isInWatchlist, toggleWatchlist } = useWatchlist();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -189,9 +194,33 @@ const MovieDetails = () => {
                 <Button
                   size="icon"
                   variant="outline"
-                  className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
+                    isInWatchlist(movie.id, 'movie') ? 'text-primary border-primary' : ''
+                  }`}
+                  onClick={async () => {
+                    if (isBookmarking) return;
+                    setIsBookmarking(true);
+                    const movieData: Movie = {
+                      id: movie.id,
+                      title: movie.title,
+                      overview: movie.overview,
+                      poster_path: movie.poster_path,
+                      backdrop_path: movie.backdrop_path,
+                      vote_average: movie.vote_average,
+                      release_date: movie.release_date,
+                      genre_ids: movie.genres?.map(g => g.id) || [],
+                      media_type: 'movie',
+                    };
+                    await toggleWatchlist(movieData);
+                    setIsBookmarking(false);
+                  }}
+                  disabled={isBookmarking}
                 >
-                  <Plus className="w-3 h-3 md:w-4 md:h-4" />
+                  {isBookmarking ? (
+                    <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
+                  ) : (
+                    <Bookmark className={`w-3 h-3 md:w-4 md:h-4 ${isInWatchlist(movie.id, 'movie') ? 'fill-current' : ''}`} />
+                  )}
                 </Button>
                 {bloggerResult?.downloadLink && (
                   <Button
