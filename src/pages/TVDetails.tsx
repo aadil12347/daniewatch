@@ -186,7 +186,7 @@ const TVDetails = () => {
           />
 
           {/* Content - Bottom left positioned, adjusted for mobile */}
-          <div className="absolute bottom-6 md:bottom-0 left-0 p-3 md:p-8 lg:p-12">
+          <div className="absolute bottom-6 md:bottom-0 left-0 right-0 px-4 md:px-0 md:left-0 md:right-auto md:p-8 lg:p-12">
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (
@@ -284,7 +284,7 @@ const TVDetails = () => {
 
         {/* Episodes / Similars Section - closer to hero on mobile */}
         <section className="py-3 md:py-10 -mt-6 md:mt-0">
-          <div className="container mx-auto px-3 md:px-4">
+          <div className="container mx-auto px-4 md:px-4">
             {/* Tabs */}
             <div className="flex items-center gap-3 md:gap-6 mb-3 md:mb-8">
               <button
