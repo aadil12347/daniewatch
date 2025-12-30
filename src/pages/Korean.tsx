@@ -3,8 +3,9 @@ import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
+import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 // Korean drama sub-genres/tags
 const KOREAN_TAGS = [
@@ -25,7 +26,7 @@ const Korean = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "airing">("popular");
+  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "airing">("latest");
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -128,12 +129,8 @@ const Korean = () => {
     setSelectedTags([]);
   };
 
-  const tabs = [
-    { key: "popular", label: "Popular" },
-    { key: "latest", label: "Latest" },
-    { key: "top_rated", label: "Top Rated" },
-    { key: "airing", label: "Airing Now" },
-  ] as const;
+  // Convert tags to genre format for CategoryNav
+  const genresForNav = KOREAN_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
 
   return (
     <>
@@ -148,52 +145,16 @@ const Korean = () => {
         <div className="container mx-auto px-4 pt-24 pb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">Korean Dramas</h1>
 
-          {/* Category Tabs */}
-          <div className="flex flex-wrap gap-2 mb-6 content-reveal content-reveal-delay-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  activeTab === tab.key
-                    ? "gradient-red text-foreground"
-                    : "bg-secondary/50 hover:bg-secondary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Genre/Tag Filters */}
-          <div className="mb-8 content-reveal content-reveal-delay-2">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm text-muted-foreground">Filter by genre:</span>
-              {selectedTags.length > 0 && (
-                <button
-                  onClick={clearTags}
-                  className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary rounded-full hover:bg-primary/30 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                  Clear all
-                </button>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {KOREAN_TAGS.map((tag) => (
-                <button
-                  key={tag.id}
-                  onClick={() => toggleTag(tag.genreId)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    selectedTags.includes(tag.genreId)
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                      : "bg-secondary/30 hover:bg-secondary/50 text-foreground/70"
-                  }`}
-                >
-                  {tag.label}
-                </button>
-              ))}
-            </div>
+          {/* Category Navigation */}
+          <div className="mb-8">
+            <CategoryNav
+              activeTab={activeTab}
+              onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
+              genres={genresForNav}
+              selectedGenres={selectedTags}
+              onGenreToggle={toggleTag}
+              onClearGenres={clearTags}
+            />
           </div>
 
           {/* Grid */}
