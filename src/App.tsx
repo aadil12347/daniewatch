@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +18,19 @@ import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+
+// Disable right-click context menu
+const useDisableContextMenu = () => {
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    return () => document.removeEventListener("contextmenu", handleContextMenu);
+  }, []);
+};
 
 const queryClient = new QueryClient();
 
@@ -42,6 +56,11 @@ const AnimatedRoutes = () => {
   );
 };
 
+const AppContent = () => {
+  useDisableContextMenu();
+  return <AnimatedRoutes />;
+};
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -50,7 +69,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AnimatedRoutes />
+            <AppContent />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
