@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Movie } from '@/lib/tmdb';
@@ -23,7 +23,7 @@ export const useWatchlist = () => {
 
   // Fetch watchlist from Supabase
   const fetchWatchlist = useCallback(async () => {
-    if (!user) {
+    if (!user || !isSupabaseConfigured) {
       setWatchlist([]);
       setLoading(false);
       return;
