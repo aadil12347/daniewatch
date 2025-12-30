@@ -57,7 +57,14 @@ export const Navbar = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      // Determine category filter based on current page
+      let categoryParam = "";
+      if (location.pathname === "/anime") {
+        categoryParam = "&category=anime";
+      } else if (location.pathname === "/korean") {
+        categoryParam = "&category=korean";
+      }
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}${categoryParam}`);
       setSearchQuery("");
       setIsSearchOpen(false);
     }

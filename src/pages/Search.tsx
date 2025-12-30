@@ -1,18 +1,25 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Search as SearchIcon } from "lucide-react";
+import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMulti, Movie } from "@/lib/tmdb";
+import { searchMulti, searchAnime, searchKorean, Movie } from "@/lib/tmdb";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
+  const category = searchParams.get("category") || "";
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const getCategoryLabel = () => {
+    if (category === "anime") return "Anime";
+    if (category === "korean") return "Korean";
+    return "";
+  };
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -23,13 +30,23 @@ const Search = () => {
 
       setIsLoading(true);
       try {
-        const response = await searchMulti(query);
-        // Filter to only movies and TV shows
-        setResults(
-          response.results.filter(
-            (item) => item.media_type === "movie" || item.media_type === "tv"
-          )
-        );
+        let response;
+        
+        if (category === "anime") {
+          response = await searchAnime(query);
+          setResults(response.results);
+        } else if (category === "korean") {
+          response = await searchKorean(query);
+          setResults(response.results);
+        } else {
+          response = await searchMulti(query);
+          // Filter to only movies and TV shows
+          setResults(
+            response.results.filter(
+              (item) => item.media_type === "movie" || item.media_type === "tv"
+            )
+          );
+        }
       } catch (error) {
         console.error("Search failed:", error);
       } finally {
@@ -38,13 +55,13 @@ const Search = () => {
     };
 
     fetchResults();
-  }, [query]);
+  }, [query, category]);
 
   return (
     <>
       <Helmet>
-        <title>{query ? `Search: ${query}` : "Search"} - Cineby</title>
-        <meta name="description" content={`Search results for ${query}`} />
+        <title>{query ? `Search: ${query}${category ? ` in ${getCategoryLabel()}` : ""}` : "Search"} - DanieWatch</title>
+        <meta name="description" content={`Search results for ${query}${category ? ` in ${getCategoryLabel()}` : ""}`} />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -53,9 +70,18 @@ const Search = () => {
         <div className="container mx-auto px-4 pt-24 pb-8">
           {query ? (
             <>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                Search Results for "{query}"
-              </h1>
+              <div className="flex items-center gap-3 mb-2">
+                {category === "anime" && <Sparkles className="w-6 h-6 text-primary" />}
+                {category === "korean" && <Heart className="w-6 h-6 text-primary" />}
+                <h1 className="text-2xl md:text-3xl font-bold">
+                  {category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}
+                </h1>
+              </div>
+              {category && (
+                <p className="text-sm text-primary/80 mb-2">
+                  Showing only {getCategoryLabel()} content
+                </p>
+              )}
               <p className="text-muted-foreground mb-8">
                 {isLoading ? "Searching..." : `Found ${results.length} results`}
               </p>
