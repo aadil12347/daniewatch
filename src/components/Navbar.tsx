@@ -74,15 +74,20 @@ export const Navbar = () => {
     };
   }, [isMenuOpen]);
 
-  const getCategoryParam = () => {
-    const currentCategory = getUrlParam("category");
+  const getOriginalPath = () => {
+    if (location.pathname === "/anime" || getUrlParam("category") === "anime") {
+      return "/anime";
+    }
+    if (location.pathname === "/korean" || getUrlParam("category") === "korean") {
+      return "/korean";
+    }
+    return null;
+  };
 
-    if (location.pathname === "/anime" || currentCategory === "anime") {
-      return "&category=anime";
-    }
-    if (location.pathname === "/korean" || currentCategory === "korean") {
-      return "&category=korean";
-    }
+  const getCategoryParam = () => {
+    const originalPath = getOriginalPath();
+    if (originalPath === "/anime") return "&category=anime";
+    if (originalPath === "/korean") return "&category=korean";
     return "";
   };
 
@@ -91,9 +96,18 @@ export const Navbar = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(() => {
-      if (!query.trim()) return;
+      // If query is empty, navigate back to original page
+      if (!query.trim()) {
+        const originalPath = getOriginalPath();
+        if (originalPath) {
+          navigate(originalPath);
+        } else if (location.pathname === "/search") {
+          navigate("/");
+        }
+        return;
+      }
       navigate(`/search?q=${encodeURIComponent(query.trim())}${getCategoryParam()}`);
-    }, 300);
+    }, 200);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
