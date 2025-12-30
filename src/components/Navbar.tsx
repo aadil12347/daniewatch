@@ -10,9 +10,11 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if we're on a details page
   const isDetailsPage =
@@ -23,19 +25,17 @@ export const Navbar = () => {
     return sp.get(key) || "";
   };
 
-  // Sync search query with URL (but don't overwrite while user is typing)
+  // Only sync search query from URL when not actively typing
   useEffect(() => {
-    if (location.pathname !== "/search") return;
+    if (location.pathname !== "/search" || isTyping) return;
 
     const urlQuery = getUrlParam("q");
-    if (urlQuery !== searchQuery) {
-      setSearchQuery(urlQuery);
-    }
+    setSearchQuery(urlQuery);
     if (urlQuery) {
       setIsSearchOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, isTyping]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -100,25 +100,35 @@ export const Navbar = () => {
       if (!query.trim()) {
         const originalPath = getOriginalPath();
         if (originalPath) {
-          navigate(originalPath);
+          navigate(originalPath, { replace: true });
         } else if (location.pathname === "/search") {
-          navigate("/");
+          navigate("/", { replace: true });
         }
+        setIsTyping(false);
         return;
       }
-      navigate(`/search?q=${encodeURIComponent(query.trim())}${getCategoryParam()}`);
-    }, 200);
+      navigate(`/search?q=${encodeURIComponent(query.trim())}${getCategoryParam()}`, { replace: true });
+    }, 150);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
+    setIsTyping(true);
+    
+    // Reset typing flag after user stops typing
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 500);
+    
     performSearch(value);
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    setIsTyping(false);
 
     if (!searchQuery.trim()) return;
     navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}`);
