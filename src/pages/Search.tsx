@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
@@ -14,7 +14,7 @@ const Search = () => {
   const category = searchParams.get("category") || "";
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastSearchKey, setLastSearchKey] = useState("");
+  const requestIdRef = useRef(0);
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";
@@ -23,44 +23,42 @@ const Search = () => {
   };
 
   useEffect(() => {
-    // Create a unique key for this search
-    const searchKey = `${query}-${category}-${Date.now()}`;
-    
-    // Always clear results and start fresh for any new search
+    // Increment request id so late responses from older searches can't overwrite new results
+    const requestId = ++requestIdRef.current;
+
+    // Always clear results and show loading state for a fresh search
     setResults([]);
     setIsLoading(true);
-    setLastSearchKey(searchKey);
-    
+
     const fetchResults = async () => {
       if (!query.trim()) {
-        setIsLoading(false);
+        if (requestId === requestIdRef.current) setIsLoading(false);
         return;
       }
 
       try {
-        let response;
-        
-        if (category === "anime") {
-          response = await searchAnime(query);
-        } else if (category === "korean") {
-          response = await searchKorean(query);
-        } else {
-          response = await searchMulti(query);
-        }
+        const response =
+          category === "anime"
+            ? await searchAnime(query)
+            : category === "korean"
+              ? await searchKorean(query)
+              : await searchMulti(query);
 
-        // Only update if this is still the current search
+        if (requestId !== requestIdRef.current) return;
+
         setResults(
           category
             ? response.results
             : response.results.filter(
-                (item) => item.media_type === "movie" || item.media_type === "tv"
-              )
+                (item) => item.media_type === "movie" || item.media_type === "tv",
+              ),
         );
       } catch (error) {
+        if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);
         setResults([]);
       } finally {
-        setIsLoading(false);
+        if (requestId === requestIdRef.current) setIsLoading(false);
       }
     };
 
