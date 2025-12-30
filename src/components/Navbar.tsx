@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,8 +10,26 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Close search bar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    if (isSearchOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSearchOpen]);
 
   // Check if we're on a details page
   const isDetailsPage =
@@ -220,7 +238,7 @@ export const Navbar = () => {
           </div>
 
           {/* Right side: Search */}
-          <div className="flex items-center">
+          <div className="flex items-center" ref={searchRef}>
             <form
               onSubmit={handleSearch}
               className={cn(
@@ -239,14 +257,10 @@ export const Navbar = () => {
                     autoFocus
                   />
                   <button
-                    type="button"
-                    onClick={() => {
-                      setIsSearchOpen(false);
-                      setSearchQuery("");
-                    }}
+                    type="submit"
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="w-4 h-4" />
+                    <Search className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
