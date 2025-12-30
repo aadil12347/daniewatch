@@ -192,6 +192,50 @@ export const discoverTV = (page: number = 1, genreIds: number[] = [], sortBy: st
 export const searchMulti = (query: string) =>
   fetchTMDB<TMDBResponse<Movie>>("/search/multi", { query });
 
+// Search for anime (Japanese animation)
+export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> => {
+  const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
+  // Filter to only Japanese animation
+  const filteredResults = results.results.filter(
+    (item) => item.genre_ids?.includes(16) // Animation genre
+  );
+  
+  // Also search for Japanese origin
+  const detailedResults: Movie[] = [];
+  for (const item of filteredResults.slice(0, 20)) {
+    try {
+      const details = await fetchTMDB<any>(`/tv/${item.id}`);
+      if (details.origin_country?.includes("JP") || details.original_language === "ja") {
+        detailedResults.push({ ...item, media_type: "tv" });
+      }
+    } catch {
+      // Skip if can't fetch details
+    }
+  }
+  
+  return { ...results, results: detailedResults };
+};
+
+// Search for Korean dramas
+export const searchKorean = async (query: string): Promise<TMDBResponse<Movie>> => {
+  const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
+  
+  // Filter to only Korean content
+  const detailedResults: Movie[] = [];
+  for (const item of results.results.slice(0, 20)) {
+    try {
+      const details = await fetchTMDB<any>(`/tv/${item.id}`);
+      if (details.origin_country?.includes("KR") || details.original_language === "ko") {
+        detailedResults.push({ ...item, media_type: "tv" });
+      }
+    } catch {
+      // Skip if can't fetch details
+    }
+  }
+  
+  return { ...results, results: detailedResults };
+};
+
 // Genres
 export const getMovieGenres = () =>
   fetchTMDB<{ genres: Genre[] }>("/genre/movie/list");
