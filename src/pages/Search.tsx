@@ -22,15 +22,16 @@ const Search = () => {
   };
 
   useEffect(() => {
-    // Clear old results immediately when query changes
+    // Clear old results immediately when query or category changes
     setResults([]);
+    setIsLoading(true);
     
     const fetchResults = async () => {
       if (!query.trim()) {
+        setIsLoading(false);
         return;
       }
 
-      setIsLoading(true);
       try {
         let response;
         
