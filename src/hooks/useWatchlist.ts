@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,7 @@ export const useWatchlist = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Fetch watchlist from Supabase
   const fetchWatchlist = useCallback(async () => {
@@ -60,10 +62,11 @@ export const useWatchlist = () => {
   const addToWatchlist = async (movie: Movie) => {
     if (!user) {
       toast({
-        title: "Sign in required",
-        description: "Please sign in to add items to your watchlist.",
+        title: "Login required",
+        description: "Please login to use this feature.",
         variant: "destructive",
       });
+      navigate('/auth');
       return false;
     }
 
