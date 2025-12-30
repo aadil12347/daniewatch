@@ -10,7 +10,7 @@ export const ActorCard = ({ actor }: ActorCardProps) => {
 
   return (
     <div className="flex-shrink-0 w-28 sm:w-32 text-center group">
-      <div className="relative aspect-square rounded-lg overflow-hidden bg-card mx-auto mb-3 border-2 border-transparent group-hover:border-primary transition-colors">
+      <div className="relative aspect-square rounded-full overflow-hidden bg-card mx-auto mb-3 border-2 border-transparent group-hover:border-primary transition-colors">
         {profileUrl ? (
           <img
             src={profileUrl}
