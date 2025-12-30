@@ -193,10 +193,10 @@ const TVDetails = () => {
                 <img 
                   src={logoUrl} 
                   alt={title} 
-                  className="h-8 md:h-20 lg:h-24 object-contain object-left mb-2 md:mb-4"
+                  className="h-12 md:h-20 lg:h-24 object-contain object-left mb-2 md:mb-4"
                 />
               ) : (
-                <h1 className="text-lg md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 leading-tight">
+                <h1 className="text-xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 leading-tight">
                   {title}
                 </h1>
               )}
@@ -235,20 +235,20 @@ const TVDetails = () => {
               <div className="flex items-center gap-2 md:gap-3">
                 <Button
                   size="sm"
-                  className="gradient-red text-foreground font-semibold px-4 md:px-8 text-xs md:text-sm hover:opacity-90 transition-opacity shadow-glow h-8 md:h-10"
+                  className="gradient-red text-foreground font-semibold px-5 md:px-8 text-sm md:text-sm hover:opacity-90 transition-opacity shadow-glow h-9 md:h-10"
                   onClick={() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     setPlayingEpisode({ season: selectedSeason, episode: 1 });
                     setShowPlayer(true);
                   }}
                 >
-                  <Play className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2 fill-current" />
+                  <Play className="w-4 h-4 md:w-4 md:h-4 mr-2 md:mr-2 fill-current" />
                   Play
                 </Button>
                 <Button
                   size="icon"
                   variant="outline"
-                  className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
+                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
                     isInWatchlist(show.id, 'tv') ? 'text-primary border-primary' : ''
                   }`}
                   onClick={async () => {
@@ -272,9 +272,9 @@ const TVDetails = () => {
                   disabled={isBookmarking}
                 >
                   {isBookmarking ? (
-                    <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 md:w-4 md:h-4 animate-spin" />
                   ) : (
-                    <Bookmark className={`w-3 h-3 md:w-4 md:h-4 ${isInWatchlist(show.id, 'tv') ? 'fill-current' : ''}`} />
+                    <Bookmark className={`w-4 h-4 md:w-4 md:h-4 ${isInWatchlist(show.id, 'tv') ? 'fill-current' : ''}`} />
                   )}
                 </Button>
               </div>
@@ -431,7 +431,7 @@ const TVDetails = () => {
             {activeTab === "similars" && (
               <div className="tab-content-enter">
                 {similar.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 justify-items-center md:justify-items-start">
+                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 md:gap-4">
                     {similar.map((item) => (
                       <MovieCard key={item.id} movie={{ ...item, media_type: "tv" }} size="sm" />
                     ))}
