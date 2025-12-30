@@ -26,6 +26,7 @@ const Search = () => {
   useEffect(() => {
     // Increment request id so late responses from older searches can't overwrite new results
     const requestId = ++requestIdRef.current;
+    console.log("[search] start", { query, category, refreshKey, requestId });
 
     // Always clear results and show loading state for a fresh search
     setResults([]);
@@ -59,7 +60,10 @@ const Search = () => {
         console.error("Search failed:", error);
         setResults([]);
       } finally {
-        if (requestId === requestIdRef.current) setIsLoading(false);
+        if (requestId === requestIdRef.current) {
+          console.log("[search] done", { query, category, refreshKey, requestId, results: (category ? "category" : "multi") });
+          setIsLoading(false);
+        }
       }
     };
 
