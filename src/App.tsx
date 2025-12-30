@@ -38,7 +38,7 @@ const AnimatedRoutes = () => {
   const location = useLocation();
 
   return (
-    <PageTransition key={location.pathname}>
+    <PageTransition key={location.pathname + location.search}>
       <Routes location={location}>
         <Route path="/" element={<Index />} />
         <Route path="/movie/:id" element={<MovieDetails />} />
