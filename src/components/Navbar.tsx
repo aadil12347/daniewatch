@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,36 +12,44 @@ export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if we're on a details page
-  const isDetailsPage = location.pathname.startsWith('/movie/') || location.pathname.startsWith('/tv/');
+  const isDetailsPage =
+    location.pathname.startsWith("/movie/") || location.pathname.startsWith("/tv/");
 
-  // Sync search query with URL when on search page
+  const getUrlParam = (key: string) => {
+    const sp = new URLSearchParams(location.search);
+    return sp.get(key) || "";
+  };
+
+  // Sync search query with URL (but don't overwrite while user is typing)
   useEffect(() => {
-    if (location.pathname === '/search') {
-      const urlQuery = searchParams.get('q') || '';
+    if (location.pathname !== "/search") return;
+
+    const urlQuery = getUrlParam("q");
+    if (urlQuery !== searchQuery) {
       setSearchQuery(urlQuery);
-      if (urlQuery) {
-        setIsSearchOpen(true);
-      }
     }
-  }, [location.pathname, searchParams]);
+    if (urlQuery) {
+      setIsSearchOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
+
       setIsScrolled(currentScrollY > 50);
-      
+
       // Hide when scrolling down, show when scrolling up
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setIsHidden(true);
       } else {
         setIsHidden(false);
       }
-      
+
       setLastScrollY(currentScrollY);
     };
 
@@ -57,34 +65,34 @@ export const Navbar = () => {
   // Prevent body scroll when menu is open
   useEffect(() => {
     if (isMenuOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, [isMenuOpen]);
 
+  const getCategoryParam = () => {
+    const currentCategory = getUrlParam("category");
+
+    if (location.pathname === "/anime" || currentCategory === "anime") {
+      return "&category=anime";
+    }
+    if (location.pathname === "/korean" || currentCategory === "korean") {
+      return "&category=korean";
+    }
+    return "";
+  };
+
   // Live search with debounce
   const performSearch = (query: string) => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(() => {
-      if (query.trim()) {
-        // Determine category filter based on current page or existing category
-        let categoryParam = "";
-        const currentCategory = searchParams.get('category');
-        
-        if (location.pathname === "/anime" || currentCategory === "anime") {
-          categoryParam = "&category=anime";
-        } else if (location.pathname === "/korean" || currentCategory === "korean") {
-          categoryParam = "&category=korean";
-        }
-        navigate(`/search?q=${encodeURIComponent(query.trim())}${categoryParam}`);
-      }
+      if (!query.trim()) return;
+      navigate(`/search?q=${encodeURIComponent(query.trim())}${getCategoryParam()}`);
     }, 300);
   };
 
@@ -96,20 +104,10 @@ export const Navbar = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    if (searchQuery.trim()) {
-      let categoryParam = "";
-      const currentCategory = searchParams.get('category');
-      
-      if (location.pathname === "/anime" || currentCategory === "anime") {
-        categoryParam = "&category=anime";
-      } else if (location.pathname === "/korean" || currentCategory === "korean") {
-        categoryParam = "&category=korean";
-      }
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}${categoryParam}`);
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!searchQuery.trim()) return;
+    navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}`);
   };
 
   const handleBack = () => {
