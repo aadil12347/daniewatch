@@ -216,16 +216,25 @@ export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> =
   return { ...results, results: detailedResults };
 };
 
-// Search for Korean dramas
+// Search for Korean, Chinese, and Turkish dramas
 export const searchKorean = async (query: string): Promise<TMDBResponse<Movie>> => {
   const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
   
-  // Filter to only Korean content
+  // Supported countries and languages for this category
+  const supportedCountries = ["KR", "CN", "TW", "HK", "TR"]; // Korea, China, Taiwan, Hong Kong, Turkey
+  const supportedLanguages = ["ko", "zh", "tr"]; // Korean, Chinese, Turkish
+  
+  // Filter to only Korean, Chinese, and Turkish content
   const detailedResults: Movie[] = [];
-  for (const item of results.results.slice(0, 20)) {
+  for (const item of results.results.slice(0, 30)) {
     try {
       const details = await fetchTMDB<any>(`/tv/${item.id}`);
-      if (details.origin_country?.includes("KR") || details.original_language === "ko") {
+      const hasMatchingCountry = details.origin_country?.some((country: string) => 
+        supportedCountries.includes(country)
+      );
+      const hasMatchingLanguage = supportedLanguages.includes(details.original_language);
+      
+      if (hasMatchingCountry || hasMatchingLanguage) {
         detailedResults.push({ ...item, media_type: "tv" });
       }
     } catch {
