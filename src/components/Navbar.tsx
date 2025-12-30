@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,11 +10,8 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if we're on a details page
   const isDetailsPage =
@@ -25,9 +22,9 @@ export const Navbar = () => {
     return sp.get(key) || "";
   };
 
-  // Only sync search query from URL when not actively typing
+  // Sync search query from URL when navigating to search page
   useEffect(() => {
-    if (location.pathname !== "/search" || isTyping) return;
+    if (location.pathname !== "/search") return;
 
     const urlQuery = getUrlParam("q");
     setSearchQuery(urlQuery);
@@ -35,7 +32,7 @@ export const Navbar = () => {
       setIsSearchOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, isTyping]);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -91,44 +88,23 @@ export const Navbar = () => {
     return "";
   };
 
-  // Live search with debounce
-  const performSearch = (query: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    debounceRef.current = setTimeout(() => {
-      // If query is empty, navigate back to original page
-      if (!query.trim()) {
-        const originalPath = getOriginalPath();
-        if (originalPath) {
-          navigate(originalPath, { replace: true });
-        } else if (location.pathname === "/search") {
-          navigate("/", { replace: true });
-        }
-        setIsTyping(false);
-        return;
-      }
-      navigate(`/search?q=${encodeURIComponent(query.trim())}${getCategoryParam()}`, { replace: true });
-    }, 150);
-  };
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    setIsTyping(true);
     
-    // Reset typing flag after user stops typing
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 500);
-    
-    performSearch(value);
+    // If user clears the search bar, navigate back to original page
+    if (!value.trim()) {
+      const originalPath = getOriginalPath();
+      if (originalPath) {
+        navigate(originalPath, { replace: true });
+      } else if (location.pathname === "/search") {
+        navigate("/", { replace: true });
+      }
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setIsTyping(false);
 
     if (!searchQuery.trim()) return;
     navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}`);
