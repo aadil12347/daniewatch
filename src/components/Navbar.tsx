@@ -224,10 +224,13 @@ export const Navbar = () => {
             </Link>
           </div>
 
-          {/* Center: Logo for mobile/tablet */}
+          {/* Center: Logo for mobile/tablet - hidden when search is open */}
           <Link 
             to="/" 
-            className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center gap-2 group"
+            className={cn(
+              "md:hidden absolute left-1/2 -translate-x-1/2 flex items-center gap-2 group transition-all duration-300",
+              isSearchOpen && "opacity-0 pointer-events-none"
+            )}
           >
             <div className="relative w-8 h-8 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
               <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
@@ -268,12 +271,15 @@ export const Navbar = () => {
           </div>
 
           {/* Right side: Search + User */}
-          <div className="flex items-center gap-2" ref={searchRef}>
+          <div className={cn(
+            "flex items-center gap-2 transition-all duration-300",
+            isSearchOpen && "md:flex-none flex-1 ml-2"
+          )} ref={searchRef}>
             <form
               onSubmit={handleSearch}
               className={cn(
                 "flex items-center transition-all duration-300",
-                isSearchOpen ? "w-48 md:w-64" : "w-auto"
+                isSearchOpen ? "flex-1 md:flex-none md:w-64" : "w-auto"
               )}
             >
               {isSearchOpen ? (
