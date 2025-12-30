@@ -80,8 +80,8 @@ export const CategoryNav = ({
   };
 
   const tabs = [
-    { key: "latest", label: "Latest" },
     { key: "popular", label: "Popular" },
+    { key: "latest", label: "Latest" },
   ];
 
   return (

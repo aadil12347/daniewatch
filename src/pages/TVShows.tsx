@@ -16,7 +16,7 @@ const TVShows = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "on_air">("latest");
+  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "on_air">("popular");
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
