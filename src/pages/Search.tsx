@@ -14,6 +14,7 @@ const Search = () => {
   const category = searchParams.get("category") || "";
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSearchKey, setLastSearchKey] = useState("");
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";
@@ -22,9 +23,13 @@ const Search = () => {
   };
 
   useEffect(() => {
-    // Clear old results immediately when query or category changes
+    // Create a unique key for this search
+    const searchKey = `${query}-${category}-${Date.now()}`;
+    
+    // Always clear results and start fresh for any new search
     setResults([]);
     setIsLoading(true);
+    setLastSearchKey(searchKey);
     
     const fetchResults = async () => {
       if (!query.trim()) {
@@ -37,19 +42,20 @@ const Search = () => {
         
         if (category === "anime") {
           response = await searchAnime(query);
-          setResults(response.results);
         } else if (category === "korean") {
           response = await searchKorean(query);
-          setResults(response.results);
         } else {
           response = await searchMulti(query);
-          // Filter to only movies and TV shows
-          setResults(
-            response.results.filter(
-              (item) => item.media_type === "movie" || item.media_type === "tv"
-            )
-          );
         }
+
+        // Only update if this is still the current search
+        setResults(
+          category
+            ? response.results
+            : response.results.filter(
+                (item) => item.media_type === "movie" || item.media_type === "tv"
+              )
+        );
       } catch (error) {
         console.error("Search failed:", error);
         setResults([]);
