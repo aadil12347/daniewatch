@@ -234,7 +234,7 @@ export const Navbar = () => {
           </div>
 
           {/* Center: Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+          <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2" data-tutorial="navigation">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
@@ -287,6 +287,7 @@ export const Navbar = () => {
                   onClick={() => setIsSearchOpen(true)}
                   className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
                   aria-label="Search"
+                  data-tutorial="search"
                 >
                   <Search className="w-5 h-5" />
                 </button>

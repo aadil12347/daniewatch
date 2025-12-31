@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { MessageSquarePlus, X, Send, Phone } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { MessageSquarePlus, Send, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -7,40 +8,53 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RequestFormDialog } from "./RequestFormDialog";
 import { ContactAdminSection } from "./ContactAdminSection";
 import { useMedia } from "@/contexts/MediaContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/hooks/useAdmin";
 import { cn } from "@/lib/utils";
 
 export const FloatingRequestButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { currentMedia } = useMedia();
   const { user } = useAuth();
+  const { isAdmin, isOwner } = useAdmin();
+  const navigate = useNavigate();
 
-  // Hide for logged-out users and for the owner (owner shouldn't submit requests)
-  const OWNER_EMAIL = "mdaniyalaadil@gmail.com";
-  if (!user) return null;
-  if (user.email === OWNER_EMAIL) return null;
+  // Hide for admin/owner only
+  if (isAdmin || isOwner) return null;
+
+  const handleButtonClick = () => {
+    if (!user) {
+      // Redirect non-authenticated users to signup
+      navigate("/auth");
+      return;
+    }
+    setIsOpen(true);
+  };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button
-          size="icon"
-          className={cn(
-            "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg",
-            "bg-primary hover:bg-primary/90 text-primary-foreground",
-            "transition-all duration-300 hover:scale-110",
-            "animate-pulse-glow"
-          )}
-        >
-          <MessageSquarePlus className="w-6 h-6" />
-        </Button>
-      </SheetTrigger>
+    <>
+      {/* Floating Button */}
+      <Button
+        size="icon"
+        onClick={handleButtonClick}
+        data-tutorial="request"
+        className={cn(
+          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg",
+          "bg-primary hover:bg-primary/90 text-primary-foreground",
+          "transition-all duration-300 hover:scale-110",
+          "animate-pulse-glow"
+        )}
+      >
+        <MessageSquarePlus className="w-6 h-6" />
+      </Button>
+
+      {/* Sheet for authenticated users */}
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>How can we help?</SheetTitle>
@@ -77,6 +91,7 @@ export const FloatingRequestButton = () => {
           </Tabs>
         </div>
       </SheetContent>
-    </Sheet>
+      </Sheet>
+    </>
   );
 };

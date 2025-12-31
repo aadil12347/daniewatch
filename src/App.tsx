@@ -7,8 +7,10 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MediaProvider } from "./contexts/MediaContext";
+import { TutorialProvider } from "./contexts/TutorialContext";
 import { PageTransition } from "./components/PageTransition";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
+import { TutorialOverlay } from "./components/TutorialOverlay";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -71,16 +73,19 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MediaProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppContent />
-              <FloatingRequestButton />
-            </BrowserRouter>
-          </TooltipProvider>
-        </MediaProvider>
+        <TutorialProvider>
+          <MediaProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppContent />
+                <FloatingRequestButton />
+                <TutorialOverlay />
+              </BrowserRouter>
+            </TooltipProvider>
+          </MediaProvider>
+        </TutorialProvider>
       </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>
