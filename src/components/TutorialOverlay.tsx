@@ -128,7 +128,6 @@ export const TutorialOverlay = () => {
   const { isTutorialActive, currentStep, totalSteps, nextStep, skipTutorial } = useTutorial();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [hasConfettiFired, setHasConfettiFired] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile
@@ -217,67 +216,12 @@ export const TutorialOverlay = () => {
     playSound(WHOOSH_SOUND, 0.25);
   }, [playSound]);
 
-  const playCelebration = useCallback(() => {
-    playSound(CELEBRATION_SOUND, 0.4);
-  }, [playSound]);
-
   // Play whoosh sound on step transitions
   useEffect(() => {
     if (isTutorialActive && currentStep > 0) {
       playWhoosh();
     }
   }, [currentStep, isTutorialActive, playWhoosh]);
-
-  // Confetti celebration function
-  const fireConfetti = useCallback(() => {
-    const duration = 3000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 200 };
-
-    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
-
-    const interval = setInterval(() => {
-      const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
-      const particleCount = 50 * (timeLeft / duration);
-
-      // Confetti from left side
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        colors: ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'],
-      });
-
-      // Confetti from right side
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        colors: ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'],
-      });
-    }, 250);
-
-    // Initial burst from center
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { x: 0.5, y: 0.5 },
-      colors: ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'],
-      zIndex: 200,
-    });
-  }, []);
-
-  // Reset confetti flag when tutorial restarts (confetti removed)
-  useEffect(() => {
-    if (!isTutorialActive) {
-      setHasConfettiFired(false);
-    }
-  }, [isTutorialActive]);
 
   useEffect(() => {
     if (!isTutorialActive || !currentStepData?.targetSelector) {
