@@ -391,7 +391,8 @@ const AdminDashboard = () => {
     isLoading, 
     allRequests, 
     requestsError, 
-    updateRequestStatus, 
+    updateRequestStatus,
+    updateMultipleRequestsStatus,
     deleteRequest,
     deleteRequests,
     refetchRequests 
@@ -411,6 +412,42 @@ const AdminDashboard = () => {
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   const [isClearingCategory, setIsClearingCategory] = useState(false);
   const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done' | 'trash'>('new');
+  
+  // Bulk update state
+  const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<AdminRequest['status']>('completed');
+  const [bulkResponse, setBulkResponse] = useState('');
+  const [isUpdatingBulk, setIsUpdatingBulk] = useState(false);
+
+  // Handle bulk status update
+  const handleBulkUpdateStatus = async () => {
+    if (selectedIds.length === 0) return;
+    
+    setIsUpdatingBulk(true);
+    const { error, count } = await updateMultipleRequestsStatus(
+      selectedIds, 
+      bulkStatus, 
+      bulkResponse.trim() || undefined
+    );
+    setIsUpdatingBulk(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update requests.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Requests Updated",
+        description: `${count} requests have been updated to "${bulkStatus}". Users have been notified.`,
+      });
+      setSelectedIds([]);
+      setIsSelectionMode(false);
+      setIsBulkUpdateOpen(false);
+      setBulkResponse('');
+    }
+  };
 
   const handleUpdateStatus = async (id: string, status: AdminRequest['status'], response?: string) => {
     const { error } = await updateRequestStatus(id, status, response);
@@ -826,6 +863,67 @@ const AdminDashboard = () => {
                     >
                       Deselect All
                     </Button>
+                    {selectedIds.length > 0 && requestsTab !== 'trash' && (
+                      <Dialog open={isBulkUpdateOpen} onOpenChange={setIsBulkUpdateOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="default" size="sm" className="gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            Update Status ({selectedIds.length})
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Update {selectedIds.length} Requests</DialogTitle>
+                            <DialogDescription>
+                              Change the status and optionally send a message to all selected users.
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">New Status</label>
+                              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as AdminRequest['status'])}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="in_progress">In Progress</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="rejected">Rejected</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Message to All Users (optional)</label>
+                              <Textarea
+                                placeholder="This message will be sent to all selected users..."
+                                value={bulkResponse}
+                                onChange={(e) => setBulkResponse(e.target.value)}
+                                className="min-h-[100px]"
+                              />
+                            </div>
+                          </div>
+
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsBulkUpdateOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button onClick={handleBulkUpdateStatus} disabled={isUpdatingBulk}>
+                              {isUpdatingBulk ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Updating...
+                                </>
+                              ) : (
+                                `Update ${selectedIds.length} Requests`
+                              )}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                     {selectedIds.length > 0 && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

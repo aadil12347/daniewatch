@@ -190,6 +190,73 @@ export const useAdmin = () => {
     }
   };
 
+  // Update multiple requests status at once
+  const updateMultipleRequestsStatus = async (
+    requestIds: string[],
+    status: 'pending' | 'in_progress' | 'completed' | 'rejected',
+    adminResponse?: string
+  ) => {
+    if (!user || !isSupabaseConfigured || !isAdmin) {
+      return { error: new Error('Not authorized') };
+    }
+
+    try {
+      // Update all requests
+      const { error: updateError } = await supabase
+        .from('requests')
+        .update({
+          status,
+          ...(adminResponse !== undefined ? { admin_response: adminResponse } : {}),
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', requestIds);
+
+      if (updateError) throw updateError;
+
+      // Fetch updated requests for notifications
+      const { data: updatedRequests, error: fetchError } = await supabase
+        .from('requests')
+        .select('*')
+        .in('id', requestIds);
+
+      if (fetchError) throw fetchError;
+
+      // Create notifications for each user
+      if (updatedRequests) {
+        const notificationTitle =
+          status === 'completed'
+            ? 'Request Approved!'
+            : status === 'rejected'
+              ? 'Request Update'
+              : 'Request Status Updated';
+
+        const notifications = updatedRequests.map((req) => ({
+          user_id: req.user_id,
+          title: notificationTitle,
+          message: adminResponse
+            ? `Your request for "${req.title}" has been ${status}. Admin response: ${adminResponse}`
+            : `Your request for "${req.title}" has been updated to: ${status}`,
+          type:
+            status === 'completed'
+              ? 'request_approved'
+              : status === 'rejected'
+                ? 'request_rejected'
+                : 'request_updated',
+          request_id: req.id,
+        }));
+
+        const { error: notifError } = await supabase.from('notifications').insert(notifications);
+        if (notifError) console.error('Error creating notifications:', notifError);
+      }
+
+      await fetchAllRequests();
+      return { error: null, count: requestIds.length };
+    } catch (error) {
+      console.error('Error updating multiple requests:', error);
+      return { error };
+    }
+  };
+
   // Delete a single request
   const deleteRequest = async (requestId: string) => {
     if (!user || !isSupabaseConfigured || !isAdmin) {
@@ -385,6 +452,7 @@ export const useAdmin = () => {
     requestsError,
     admins,
     updateRequestStatus,
+    updateMultipleRequestsStatus,
     deleteRequest,
     deleteRequests,
     clearAllRequests,
