@@ -13,6 +13,7 @@ interface TutorialContextType {
 const TutorialContext = createContext<TutorialContextType | undefined>(undefined);
 
 const TUTORIAL_FLAG_KEY = "daniewatch_show_tutorial";
+const TUTORIAL_COMPLETED_KEY = "daniewatch_tutorial_completed";
 
 export const TutorialProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -24,9 +25,12 @@ export const TutorialProvider = ({ children }: { children: ReactNode }) => {
     // Only show tutorial if:
     // 1. User is authenticated
     // 2. The tutorial flag exists in localStorage (set during signup)
+    // 3. User has NOT already completed the tutorial
     if (user) {
+      const hasCompletedTutorial = localStorage.getItem(TUTORIAL_COMPLETED_KEY) === "true";
       const shouldShowTutorial = localStorage.getItem(TUTORIAL_FLAG_KEY) === "true";
-      if (shouldShowTutorial) {
+      
+      if (shouldShowTutorial && !hasCompletedTutorial) {
         // Small delay to let the page load first
         const timer = setTimeout(() => {
           setIsTutorialActive(true);
@@ -53,6 +57,8 @@ export const TutorialProvider = ({ children }: { children: ReactNode }) => {
     setIsTutorialActive(false);
     setCurrentStep(0);
     localStorage.removeItem(TUTORIAL_FLAG_KEY);
+    // Permanently mark tutorial as completed so it never shows again
+    localStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
   };
 
   const startTutorial = () => {
