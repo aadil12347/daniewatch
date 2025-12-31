@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -344,6 +344,12 @@ export const Navbar = () => {
                     <Link to="/requests" className="cursor-pointer">
                       <FileText className="w-4 h-4 mr-2" />
                       My Requests
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="cursor-pointer">
+                      <Shield className="w-4 h-4 mr-2" />
+                      Admin Panel
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
