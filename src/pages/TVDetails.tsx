@@ -207,10 +207,10 @@ const TVDetails = () => {
                 <img 
                   src={logoUrl} 
                   alt={title} 
-                  className="h-12 md:h-20 lg:h-24 object-contain object-left mb-2 md:mb-4"
+                  className="h-16 md:h-20 lg:h-24 object-contain object-left mb-3 md:mb-4"
                 />
               ) : (
-                <h1 className="text-xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 leading-tight">
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 leading-tight">
                   {title}
                 </h1>
               )}
@@ -246,23 +246,23 @@ const TVDetails = () => {
               </p>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-3 md:gap-3">
                 <Button
                   size="sm"
-                  className="gradient-red text-foreground font-semibold px-5 md:px-8 text-sm md:text-sm hover:opacity-90 transition-opacity shadow-glow h-9 md:h-10"
+                  className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     setPlayingEpisode({ season: selectedSeason, episode: 1 });
                     setShowPlayer(true);
                   }}
                 >
-                  <Play className="w-4 h-4 md:w-4 md:h-4 mr-2 md:mr-2 fill-current" />
+                  <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
                   Play
                 </Button>
                 <Button
                   size="icon"
                   variant="outline"
-                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
+                  className={`w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
                     isInWatchlist(show.id, 'tv') ? 'text-primary border-primary' : ''
                   }`}
                   onClick={async () => {
@@ -286,9 +286,9 @@ const TVDetails = () => {
                   disabled={isBookmarking}
                 >
                   {isBookmarking ? (
-                    <Loader2 className="w-4 h-4 md:w-4 md:h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 md:w-4 md:h-4 animate-spin" />
                   ) : (
-                    <Bookmark className={`w-4 h-4 md:w-4 md:h-4 ${isInWatchlist(show.id, 'tv') ? 'fill-current' : ''}`} />
+                    <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(show.id, 'tv') ? 'fill-current' : ''}`} />
                   )}
                 </Button>
               </div>
@@ -333,9 +333,9 @@ const TVDetails = () => {
                   <div className="flex md:hidden items-center gap-2 w-full">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="bg-secondary/50 border-border flex-1 justify-between text-xs h-7">
+                        <Button variant="outline" size="sm" className="bg-secondary/50 border-border flex-1 justify-between text-sm h-9">
                           Season {selectedSeason}
-                          <ChevronDown className="w-3 h-3 ml-1" />
+                          <ChevronDown className="w-4 h-4 ml-1" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
@@ -344,12 +344,12 @@ const TVDetails = () => {
                             key={season.season_number}
                             onClick={() => handleSeasonChange(season.season_number)}
                             className={cn(
-                              "text-xs",
+                              "text-sm",
                               selectedSeason === season.season_number && "bg-primary/20"
                             )}
                           >
                             Season {season.season_number}
-                            <span className="ml-1 text-muted-foreground text-[10px]">
+                            <span className="ml-1 text-muted-foreground text-xs">
                               ({season.episode_count} eps)
                             </span>
                           </DropdownMenuItem>
@@ -357,13 +357,13 @@ const TVDetails = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <div className="relative min-w-[120px]">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                    <div className="relative min-w-[140px] flex-1">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         placeholder="Search..."
                         value={episodeSearch}
                         onChange={(e) => setEpisodeSearch(e.target.value)}
-                        className="pl-7 bg-secondary/50 border-border text-xs h-7"
+                        className="pl-9 bg-secondary/50 border-border text-sm h-9"
                       />
                     </div>
                   </div>
