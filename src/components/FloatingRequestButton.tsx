@@ -19,13 +19,13 @@ import { cn } from "@/lib/utils";
 
 export const FloatingRequestButton = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { currentMedia } = useMedia();
+  const { currentMedia, isVideoPlaying } = useMedia();
   const { user } = useAuth();
   const { isAdmin, isOwner } = useAdmin();
   const navigate = useNavigate();
 
-  // Hide for admin/owner only
-  if (isAdmin || isOwner) return null;
+  // Hide for admin/owner or when video is playing
+  if (isAdmin || isOwner || isVideoPlaying) return null;
 
   const handleButtonClick = () => {
     if (!user) {
