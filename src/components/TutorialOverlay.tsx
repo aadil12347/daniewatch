@@ -4,7 +4,6 @@ import { TutorialTooltip } from "./TutorialTooltip";
 import { cn } from "@/lib/utils";
 import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper, Check, Info, MousePointer2, Send } from "lucide-react";
 import confetti from "canvas-confetti";
-import { useNavigate } from "react-router-dom";
 
 // Base64 encoded sound effects (short, subtle sounds)
 const WHOOSH_SOUND = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdnd3eXd3dnl6enp4eHd1dHNycnFxcXFxcXFyc3R1d3h5enp6e3t6enp5eHd2dXRzcnFxcHBwcHBwcXFycnR1dnh5e3x9fn5+fn59fHt6eXh3dnV0c3JxcHBvb29vb29wcHFyc3R2d3l6fH1+f4CAgICAf39+fXx7enl4d3Z1dHNycXBwb29vb29vb3BwcXJzdHV3eHp7fH1+f4CAgICAgIB/f359fHt6eXh3dnV0c3JxcHBvb29vb29vb3BwcXJzdHV2eHl6e3x9fn9/gICAf39/fn59fHt6eXh3dnV0c3JxcXBwb29vbm5ub29vcHBxcnN0dXZ3eXp7fH1+fn9/f39/fn5+fXx7enl4d3Z1dHNycnFwcG9vb29vbm5ub29vcHBxcnN0dXZ3eHl6e3x9fX5+fn5+fn19fHt6eXh3dnZ1dHNycXFwb29vbm5ubm5ub29vcHBxcnN0dXZ3eHl6e3t8fX19fX19fX18e3p5eHd2dXR0c3JxcXBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fX19fHx7enl4d3Z1dHNzc3JxcHBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fHx8e3t6eXh3dnV0dHNycnFwcG9vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3h5enp7e3t7e3t7e3p5eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3d4eXl6enp6enp6eXl4d3Z1dHRzc3JxcHBvb29ubm5ubm5ubm5vb29wcHFyc3R0dXZ2d3d4eXl5eXl5eXl4eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dHV1dnd3eHh4eHh4eHh3d3Z1dHRzc3JycXBwb29vbm5ubm5ubm5ub29vcHBxcnJzc3R1dXZ2d3d3d3d3d3d2dnV0dHNzc3JxcXBvb29ubm5ubm5ubm5ub29vcHBxcXJyc3R0dXV2dnZ2dnZ2dnV1dHRzc3JycXFwcG9vb29ubm5ubm5ubm5ub29vcHBwcXFycnJzc3R0dHR0dHR0c3NzcnJxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcXFxcnJyc3Nzc3Nzc3Nzc3NycnFxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcHFxcXJycnJycnJycnJycnJycXFwcHBvb29vbm5ubm5ubm5ubm5ub29vcHBwcHFxcXFxcXJycnJycnJxcXFwcHBvb29vb25ubm5ubm5ubm5ub29vcHBwcHBwcXFxcXFxcXFxcXFxcHBwb29vb29vbm5ubm5ubm5ubm5ub29vcHBwcHBwcHFxcXFxcXFxcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcXFwcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcHBwcHBvb29vb29ubm5ubm5ubm5ubm5ubm9vb29wcHBwcHBwcHBwcHBvb29vb29vbm5ubm5ubm5ubm5ubm5vb29vb3BwcHBwcHBwcHBvb29vb29vb25ubm5ubm5ubm5ubm5ub29vb29wcHBwcHBwcHBwb29vb29vb29ubm5ubm5ubm5ubm5ubm5vb29vb29wcHBwcHBwcG9vb29vb29vbm5ubm5ubm5ubm5ubm5ub29vb29vb29wcHBwcG9vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb3Bwb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb25ubm5ubm5u";
@@ -76,7 +75,7 @@ const tutorialSteps: TutorialStep[] = [
 ];
 
 // Animated Request Demo Component
-const AnimatedRequestDemo = ({ onComplete }: { onComplete: () => void }) => {
+const AnimatedRequestDemo = ({ onComplete, onSkip }: { onComplete: () => void; onSkip: () => void }) => {
   const [phase, setPhase] = useState(0);
   const [typedText, setTypedText] = useState("");
   const targetText = "Hindi main upload kar dain with download link";
@@ -88,7 +87,8 @@ const AnimatedRequestDemo = ({ onComplete }: { onComplete: () => void }) => {
     // Phase 3: Click submit (6-7s)
     // Phase 4: Complete - trigger next step (7s+)
     
-    const timers: NodeJS.Timeout[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let typeInterval: ReturnType<typeof setInterval> | null = null;
     
     // Phase 1: Click button
     timers.push(setTimeout(() => setPhase(1), 1500));
@@ -99,15 +99,14 @@ const AnimatedRequestDemo = ({ onComplete }: { onComplete: () => void }) => {
     // Phase 3: Start typing
     let charIndex = 0;
     timers.push(setTimeout(() => {
-      const typeInterval = setInterval(() => {
+      typeInterval = setInterval(() => {
         if (charIndex < targetText.length) {
           setTypedText(targetText.slice(0, charIndex + 1));
           charIndex++;
         } else {
-          clearInterval(typeInterval);
+          if (typeInterval) clearInterval(typeInterval);
         }
       }, 60);
-      timers.push(typeInterval as unknown as NodeJS.Timeout);
     }, 2500));
     
     // Phase 4: Click submit
@@ -119,8 +118,11 @@ const AnimatedRequestDemo = ({ onComplete }: { onComplete: () => void }) => {
       onComplete();
     }, 6500));
     
-    return () => timers.forEach(t => clearTimeout(t));
-  }, [onComplete]);
+    return () => {
+      timers.forEach(t => clearTimeout(t));
+      if (typeInterval) clearInterval(typeInterval);
+    };
+  }, []); // Empty deps - only run once on mount
   
   return (
     <div className="relative w-full max-w-md mx-auto mt-6">
@@ -130,6 +132,14 @@ const AnimatedRequestDemo = ({ onComplete }: { onComplete: () => void }) => {
           LIVE DEMO
         </span>
       </div>
+      
+      {/* Skip button */}
+      <button
+        onClick={onSkip}
+        className="absolute -top-3 right-0 text-xs text-muted-foreground hover:text-foreground transition-colors z-10"
+      >
+        Skip Tutorial →
+      </button>
       
       <div className="bg-card/90 backdrop-blur-xl rounded-2xl p-6 border border-border/50 shadow-2xl">
         {phase < 2 ? (
@@ -212,8 +222,6 @@ const AnimatedRequestDemo = ({ onComplete }: { onComplete: () => void }) => {
 
 // Demo Request Card Component
 const DemoRequestCard = () => {
-  const navigate = useNavigate();
-  
   return (
     <div className="w-full max-w-md mx-auto mt-6">
       {/* Page indicator */}
@@ -408,8 +416,14 @@ export const TutorialOverlay = () => {
   }, [isTutorialActive, currentStep, currentStepData?.targetSelector]);
 
   if (!isTutorialActive) return null;
+  
+  // Safety check - ensure we have valid step data
+  if (!currentStepData) {
+    console.error('Tutorial: Invalid step data for step', currentStep);
+    return null;
+  }
 
-  const isFullscreenStep = !currentStepData?.targetSelector;
+  const isFullscreenStep = !currentStepData.targetSelector;
 
   // Handle demo completion - auto advance to next step
   const handleDemoComplete = useCallback(() => {
@@ -486,7 +500,7 @@ export const TutorialOverlay = () => {
                   <h3 className="text-xl font-bold text-foreground">{currentStepData.title}</h3>
                   <p className="text-muted-foreground mt-1">{currentStepData.description}</p>
                 </div>
-                <AnimatedRequestDemo onComplete={handleDemoComplete} />
+                <AnimatedRequestDemo onComplete={handleDemoComplete} onSkip={skipTutorial} />
               </div>
             ) : (
               <>
