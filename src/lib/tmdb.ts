@@ -252,6 +252,78 @@ export const getMovieGenres = () =>
 export const getTVGenres = () =>
   fetchTMDB<{ genres: Genre[] }>("/genre/tv/list");
 
+// Regional Trending Content
+export const getIndianTrending = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
+  // Discover Indian movies and TV shows
+  const [movies, tv] = await Promise.all([
+    fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+      page: page.toString(),
+      with_origin_country: "IN",
+      sort_by: "popularity.desc",
+    }),
+    fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+      page: page.toString(),
+      with_origin_country: "IN",
+      sort_by: "popularity.desc",
+    }),
+  ]);
+  
+  const combined = [
+    ...movies.results.map(m => ({ ...m, media_type: "movie" as const })),
+    ...tv.results.map(t => ({ ...t, media_type: "tv" as const })),
+  ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
+  
+  return { ...movies, results: combined };
+};
+
+export const getAnimeTrending = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
+  // Discover Japanese anime (animation genre + Japanese origin)
+  const [movies, tv] = await Promise.all([
+    fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+      page: page.toString(),
+      with_genres: "16", // Animation
+      with_original_language: "ja",
+      sort_by: "popularity.desc",
+    }),
+    fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+      page: page.toString(),
+      with_genres: "16", // Animation
+      with_original_language: "ja",
+      sort_by: "popularity.desc",
+    }),
+  ]);
+  
+  const combined = [
+    ...movies.results.map(m => ({ ...m, media_type: "movie" as const })),
+    ...tv.results.map(t => ({ ...t, media_type: "tv" as const })),
+  ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
+  
+  return { ...movies, results: combined };
+};
+
+export const getKoreanTrending = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
+  // Discover Korean content
+  const [movies, tv] = await Promise.all([
+    fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+      page: page.toString(),
+      with_origin_country: "KR",
+      sort_by: "popularity.desc",
+    }),
+    fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+      page: page.toString(),
+      with_origin_country: "KR",
+      sort_by: "popularity.desc",
+    }),
+  ]);
+  
+  const combined = [
+    ...movies.results.map(m => ({ ...m, media_type: "movie" as const })),
+    ...tv.results.map(t => ({ ...t, media_type: "tv" as const })),
+  ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
+  
+  return { ...movies, results: combined };
+};
+
 // Helper to format runtime
 export const formatRuntime = (minutes: number) => {
   const hours = Math.floor(minutes / 60);
