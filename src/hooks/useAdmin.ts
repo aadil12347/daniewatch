@@ -190,6 +190,69 @@ export const useAdmin = () => {
     }
   };
 
+  // Delete a single request
+  const deleteRequest = async (requestId: string) => {
+    if (!user || !isSupabaseConfigured || !isAdmin) {
+      return { error: new Error('Not authorized') };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) throw error;
+      setAllRequests((prev) => prev.filter((r) => r.id !== requestId));
+      return { error: null };
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      return { error };
+    }
+  };
+
+  // Delete multiple requests
+  const deleteRequests = async (requestIds: string[]) => {
+    if (!user || !isSupabaseConfigured || !isAdmin) {
+      return { error: new Error('Not authorized') };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .delete()
+        .in('id', requestIds);
+
+      if (error) throw error;
+      setAllRequests((prev) => prev.filter((r) => !requestIds.includes(r.id)));
+      return { error: null };
+    } catch (error) {
+      console.error('Error deleting requests:', error);
+      return { error };
+    }
+  };
+
+  // Clear all requests
+  const clearAllRequests = async () => {
+    if (!user || !isSupabaseConfigured || !isAdmin) {
+      return { error: new Error('Not authorized') };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+      if (error) throw error;
+      setAllRequests([]);
+      return { error: null };
+    } catch (error) {
+      console.error('Error clearing requests:', error);
+      return { error };
+    }
+  };
+
   // Add new admin
   const addAdmin = async (email: string) => {
     if (!user || !isSupabaseConfigured || !isOwner) {
@@ -322,6 +385,9 @@ export const useAdmin = () => {
     requestsError,
     admins,
     updateRequestStatus,
+    deleteRequest,
+    deleteRequests,
+    clearAllRequests,
     addAdmin,
     removeAdmin,
     refetchRequests: fetchAllRequests,

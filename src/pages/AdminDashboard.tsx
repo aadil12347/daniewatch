@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { 
   Shield, 
   Clock, 
@@ -39,7 +51,9 @@ import {
   Loader2,
   Trash2,
   Plus,
-  Crown
+  Crown,
+  Sparkles,
+  CheckCheck
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -61,12 +75,21 @@ const getStatusBadge = (status: AdminRequest['status']) => {
 
 const RequestCard = ({ 
   request, 
-  onUpdateStatus 
+  onUpdateStatus,
+  onDelete,
+  isSelected,
+  onSelectChange,
+  showCheckbox
 }: { 
   request: AdminRequest;
   onUpdateStatus: (id: string, status: AdminRequest['status'], response?: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  isSelected: boolean;
+  onSelectChange: (checked: boolean) => void;
+  showCheckbox: boolean;
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(request.status);
   const [adminResponse, setAdminResponse] = useState(request.admin_response || '');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -78,19 +101,34 @@ const RequestCard = ({
     setIsDialogOpen(false);
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    await onDelete(request.id);
+    setIsDeleting(false);
+  };
+
   return (
-    <Card>
+    <Card className={isSelected ? "ring-2 ring-primary" : ""}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-lg">{request.title}</CardTitle>
-            <CardDescription className="mt-1">
-              {request.request_type === 'movie' && 'Movie Request'}
-              {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
-              {request.request_type === 'general' && 'General Request'}
-              {' • '}
-              <span className="text-xs">User ID: {request.user_id.slice(0, 8)}...</span>
-            </CardDescription>
+          <div className="flex items-start gap-3">
+            {showCheckbox && (
+              <Checkbox 
+                checked={isSelected}
+                onCheckedChange={onSelectChange}
+                className="mt-1"
+              />
+            )}
+            <div>
+              <CardTitle className="text-lg">{request.title}</CardTitle>
+              <CardDescription className="mt-1">
+                {request.request_type === 'movie' && 'Movie Request'}
+                {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
+                {request.request_type === 'general' && 'General Request'}
+                {' • '}
+                <span className="text-xs">User ID: {request.user_id.slice(0, 8)}...</span>
+              </CardDescription>
+            </div>
           </div>
           {getStatusBadge(request.status)}
         </div>
@@ -110,64 +148,88 @@ const RequestCard = ({
             {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
           </p>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                Update Status
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Update Request</DialogTitle>
-                <DialogDescription>
-                  Update the status and send a response to the user.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
+          <div className="flex items-center gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Request</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this request? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  Update Status
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Update Request</DialogTitle>
+                  <DialogDescription>
+                    Update the status and send a response to the user.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Status</label>
+                    <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Response to User (optional)</label>
+                    <Textarea
+                      placeholder="Add a message for the user..."
+                      value={adminResponse}
+                      onChange={(e) => setAdminResponse(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Response to User (optional)</label>
-                  <Textarea
-                    placeholder="Add a message for the user..."
-                    value={adminResponse}
-                    onChange={(e) => setAdminResponse(e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleUpdate} disabled={isUpdating}>
-                  {isUpdating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Update & Notify User'
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdate} disabled={isUpdating}>
+                    {isUpdating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update & Notify User'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -315,8 +377,24 @@ const AdminManagement = () => {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const { isAdmin, isOwner, isLoading, allRequests, requestsError, updateRequestStatus, refetchRequests } = useAdmin();
+  const { 
+    isAdmin, 
+    isOwner, 
+    isLoading, 
+    allRequests, 
+    requestsError, 
+    updateRequestStatus, 
+    deleteRequest,
+    deleteRequests,
+    clearAllRequests,
+    refetchRequests 
+  } = useAdmin();
   const { toast } = useToast();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
+  const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done'>('new');
 
   const handleUpdateStatus = async (id: string, status: AdminRequest['status'], response?: string) => {
     const { error } = await updateRequestStatus(id, status, response);
@@ -333,6 +411,81 @@ const AdminDashboard = () => {
         description: "The user has been notified.",
       });
     }
+  };
+
+  const handleDeleteRequest = async (id: string) => {
+    const { error } = await deleteRequest(id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete request.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Request Deleted",
+        description: "The request has been removed.",
+      });
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    
+    setIsDeletingSelected(true);
+    const { error } = await deleteRequests(selectedIds);
+    setIsDeletingSelected(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete requests.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Requests Deleted",
+        description: `${selectedIds.length} requests have been removed.`,
+      });
+      setSelectedIds([]);
+      setIsSelectionMode(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    setIsClearingAll(true);
+    const { error } = await clearAllRequests();
+    setIsClearingAll(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to clear requests.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "All Requests Cleared",
+        description: "All requests have been removed.",
+      });
+    }
+  };
+
+  const toggleSelection = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
+    }
+  };
+
+  const selectAll = (requests: AdminRequest[]) => {
+    setSelectedIds(requests.map((r) => r.id));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds([]);
   };
 
   if (!user) {
@@ -386,8 +539,23 @@ const AdminDashboard = () => {
     );
   }
 
-  const pendingCount = allRequests.filter(r => r.status === 'pending').length;
-  const inProgressCount = allRequests.filter(r => r.status === 'in_progress').length;
+  // Filter requests by status
+  const newRequests = allRequests.filter(r => r.status === 'pending' && !r.admin_response);
+  const pendingRequests = allRequests.filter(r => r.status === 'pending');
+  const inProgressRequests = allRequests.filter(r => r.status === 'in_progress');
+  const doneRequests = allRequests.filter(r => r.status === 'completed' || r.status === 'rejected');
+
+  const getCurrentRequests = () => {
+    switch (requestsTab) {
+      case 'new': return newRequests;
+      case 'pending': return pendingRequests;
+      case 'in_progress': return inProgressRequests;
+      case 'done': return doneRequests;
+      default: return allRequests;
+    }
+  };
+
+  const currentRequests = getCurrentRequests();
 
   return (
     <>
@@ -415,30 +583,36 @@ const AdminDashboard = () => {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card>
+            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('new')}>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{allRequests.length}</div>
-                <p className="text-xs text-muted-foreground">Total Requests</p>
+                <div className="text-2xl font-bold text-primary">{newRequests.length}</div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> New
+                </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('pending')}>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-yellow-500">{pendingCount}</div>
-                <p className="text-xs text-muted-foreground">Pending</p>
+                <div className="text-2xl font-bold text-yellow-500">{pendingRequests.length}</div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Pending
+                </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('in_progress')}>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-blue-500">{inProgressCount}</div>
-                <p className="text-xs text-muted-foreground">In Progress</p>
+                <div className="text-2xl font-bold text-blue-500">{inProgressRequests.length}</div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> In Progress
+                </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('done')}>
               <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-green-500">
-                  {allRequests.filter(r => r.status === 'completed').length}
-                </div>
-                <p className="text-xs text-muted-foreground">Completed</p>
+                <div className="text-2xl font-bold text-green-500">{doneRequests.length}</div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" /> Done
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -448,9 +622,9 @@ const AdminDashboard = () => {
               <TabsTrigger value="requests" className="gap-2">
                 <FileText className="w-4 h-4" />
                 Requests
-                {pendingCount > 0 && (
+                {newRequests.length > 0 && (
                   <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 justify-center">
-                    {pendingCount}
+                    {newRequests.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -461,6 +635,132 @@ const AdminDashboard = () => {
             </TabsList>
 
             <TabsContent value="requests">
+              {/* Request category tabs */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <Button 
+                  variant={requestsTab === 'new' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setRequestsTab('new')}
+                  className="gap-1"
+                >
+                  <Sparkles className="w-4 h-4" /> New ({newRequests.length})
+                </Button>
+                <Button 
+                  variant={requestsTab === 'pending' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setRequestsTab('pending')}
+                  className="gap-1"
+                >
+                  <Clock className="w-4 h-4" /> Pending ({pendingRequests.length})
+                </Button>
+                <Button 
+                  variant={requestsTab === 'in_progress' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setRequestsTab('in_progress')}
+                  className="gap-1"
+                >
+                  <AlertCircle className="w-4 h-4" /> In Progress ({inProgressRequests.length})
+                </Button>
+                <Button 
+                  variant={requestsTab === 'done' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setRequestsTab('done')}
+                  className="gap-1"
+                >
+                  <CheckCircle className="w-4 h-4" /> Done ({doneRequests.length})
+                </Button>
+              </div>
+
+              {/* Bulk actions */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setIsSelectionMode(!isSelectionMode);
+                    if (isSelectionMode) setSelectedIds([]);
+                  }}
+                >
+                  {isSelectionMode ? 'Cancel Selection' : 'Select'}
+                </Button>
+
+                {isSelectionMode && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => selectAll(currentRequests)}
+                    >
+                      <CheckCheck className="w-4 h-4 mr-1" /> Select All
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={deselectAll}
+                    >
+                      Deselect All
+                    </Button>
+                    {selectedIds.length > 0 && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" disabled={isDeletingSelected}>
+                            {isDeletingSelected ? (
+                              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 mr-1" />
+                            )}
+                            Delete Selected ({selectedIds.length})
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Selected Requests</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete {selectedIds.length} selected requests? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </>
+                )}
+
+                <div className="ml-auto">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={isClearingAll || allRequests.length === 0}>
+                        {isClearingAll ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-1" />
+                        )}
+                        Clear All
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Clear All Requests</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete ALL requests? This will remove {allRequests.length} requests and cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete All
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+
               {requestsError ? (
                 <Card className="text-center py-12">
                   <CardContent>
@@ -470,23 +770,30 @@ const AdminDashboard = () => {
                     <Button variant="outline" onClick={refetchRequests}>Retry</Button>
                   </CardContent>
                 </Card>
-              ) : allRequests.length === 0 ? (
+              ) : currentRequests.length === 0 ? (
                 <Card className="text-center py-12">
                   <CardContent>
                     <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">No requests yet</h2>
+                    <h2 className="text-xl font-semibold mb-2">No requests in this category</h2>
                     <p className="text-muted-foreground">
-                      When users submit requests, they'll appear here.
+                      {requestsTab === 'new' && "No new requests waiting for review."}
+                      {requestsTab === 'pending' && "No pending requests."}
+                      {requestsTab === 'in_progress' && "No requests in progress."}
+                      {requestsTab === 'done' && "No completed or rejected requests."}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="space-y-4">
-                  {allRequests.map((request) => (
+                  {currentRequests.map((request) => (
                     <RequestCard
                       key={request.id}
                       request={request}
                       onUpdateStatus={handleUpdateStatus}
+                      onDelete={handleDeleteRequest}
+                      isSelected={selectedIds.includes(request.id)}
+                      onSelectChange={(checked) => toggleSelection(request.id, checked)}
+                      showCheckbox={isSelectionMode}
                     />
                   ))}
                 </div>
