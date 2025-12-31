@@ -239,7 +239,7 @@ const MovieDetails = () => {
                   <Button
                     size="icon"
                     variant="outline"
-                    className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm"
+                    className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border backdrop-blur-sm text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 transition-all"
                     onClick={() => {
                       window.open(bloggerResult.downloadLink, '_blank');
                     }}

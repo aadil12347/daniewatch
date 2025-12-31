@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Play, Info, Star } from "lucide-react";
-import { Movie, getBackdropUrl, getDisplayTitle, getReleaseDate, getYear, getMovieGenres, getTVGenres, Genre } from "@/lib/tmdb";
+import { Movie, getBackdropUrl, getDisplayTitle, getReleaseDate, getYear, getMovieGenres, getTVGenres, getMovieImages, getTVImages, getImageUrl, Genre } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,6 +13,7 @@ interface HeroSectionProps {
 export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [genres, setGenres] = useState<Record<number, string>>({});
+  const [logos, setLogos] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -32,6 +33,34 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     };
     loadGenres();
   }, []);
+
+  // Fetch logos for featured items
+  useEffect(() => {
+    const fetchLogos = async () => {
+      const featured = items.slice(0, 5);
+      const logoPromises = featured.map(async (item) => {
+        const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
+        try {
+          const images = mediaType === "tv" 
+            ? await getTVImages(item.id)
+            : await getMovieImages(item.id);
+          const logo = images.logos?.find(l => l.iso_639_1 === 'en') || images.logos?.[0];
+          return { id: item.id, logoUrl: logo ? getImageUrl(logo.file_path, "w500") : null };
+        } catch {
+          return { id: item.id, logoUrl: null };
+        }
+      });
+      
+      const results = await Promise.all(logoPromises);
+      const logoMap: Record<number, string | null> = {};
+      results.forEach(r => { logoMap[r.id] = r.logoUrl; });
+      setLogos(logoMap);
+    };
+
+    if (items.length > 0) {
+      fetchLogos();
+    }
+  }, [items]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -60,6 +89,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   const rating = current.vote_average?.toFixed(1);
   const mediaType = current.media_type || (current.first_air_date ? "tv" : "movie");
   const genreNames = current.genre_ids?.slice(0, 3).map((id) => genres[id]).filter(Boolean) || [];
+  const currentLogo = logos[current.id];
 
   return (
     <div className="relative h-[85vh] min-h-[600px] overflow-hidden">
@@ -94,17 +124,25 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
             <span className="text-sm text-muted-foreground">{year}</span>
           </div>
 
-          {/* Title */}
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 leading-tight">
-            {title}
-          </h1>
+          {/* Logo or Title */}
+          {currentLogo ? (
+            <img 
+              src={currentLogo} 
+              alt={title} 
+              className="h-14 md:h-16 lg:h-20 object-contain object-left mb-2 md:mb-3"
+            />
+          ) : (
+            <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 leading-tight">
+              {title}
+            </h1>
+          )}
 
           {/* Genres */}
-          <div className="flex flex-wrap gap-1.5 mb-4">
+          <div className="flex flex-wrap gap-1.5 mb-3 md:mb-4">
             {genreNames.map((genre) => (
               <span
                 key={genre}
-                className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs"
+                className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs md:text-xs"
               >
                 {genre}
               </span>
@@ -112,7 +150,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
           </div>
 
           {/* Overview */}
-          <p className="text-sm text-muted-foreground mb-5 line-clamp-2 max-w-lg">
+          <p className="text-sm md:text-sm text-muted-foreground mb-4 md:mb-5 line-clamp-2 max-w-lg">
             {current.overview}
           </p>
 
@@ -120,22 +158,22 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
           <div className="flex items-center gap-3">
             <Button
               asChild
-              size="sm"
-              className="gradient-red text-foreground font-medium px-5 hover:opacity-90 transition-opacity shadow-glow"
+              size="default"
+              className="gradient-red text-foreground font-medium px-6 md:px-5 h-11 md:h-10 text-base md:text-sm hover:opacity-90 transition-opacity shadow-glow"
             >
               <Link to={`/${mediaType}/${current.id}`}>
-                <Play className="w-4 h-4 mr-1.5 fill-current" />
+                <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1.5 fill-current" />
                 Play Now
               </Link>
             </Button>
             <Button
               asChild
-              size="sm"
+              size="default"
               variant="outline"
-              className="bg-secondary/50 border-border hover:bg-secondary/80"
+              className="bg-secondary/50 border-border hover:bg-secondary/80 h-11 md:h-10 px-5 md:px-4 text-base md:text-sm"
             >
               <Link to={`/${mediaType}/${current.id}`}>
-                <Info className="w-4 h-4 mr-1.5" />
+                <Info className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1.5" />
                 More Info
               </Link>
             </Button>
