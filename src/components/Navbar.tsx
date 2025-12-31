@@ -227,7 +227,7 @@ export const Navbar = () => {
                   />
                 </svg>
               </div>
-              <span className="text-lg md:text-xl font-bold tracking-tight hidden sm:inline">
+              <span className="text-base md:text-xl font-bold tracking-tight">
                 Danie<span className="text-primary">Watch</span>
               </span>
             </Link>
