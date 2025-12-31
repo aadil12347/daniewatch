@@ -20,6 +20,7 @@ import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
 import Auth from "./pages/Auth";
 import Requests from "./pages/Requests";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 // Disable right-click context menu
@@ -54,6 +55,7 @@ const AnimatedRoutes = () => {
         <Route path="/search" element={<Search />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/requests" element={<Requests />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </PageTransition>
