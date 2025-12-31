@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -314,7 +315,9 @@ export const Navbar = () => {
               )}
             </form>
 
-            {/* User Menu */}
+            {/* Notification Bell & User Menu */}
+            {user && <NotificationBell />}
+            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -335,6 +338,12 @@ export const Navbar = () => {
                     <Link to="/watchlist" className="cursor-pointer">
                       <Bookmark className="w-4 h-4 mr-2" />
                       My Watchlist
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/requests" className="cursor-pointer">
+                      <FileText className="w-4 h-4 mr-2" />
+                      My Requests
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

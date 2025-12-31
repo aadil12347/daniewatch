@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMedia } from "@/contexts/MediaContext";
 import {
   getMovieDetails,
   getMovieCredits,
@@ -39,6 +40,18 @@ const MovieDetails = () => {
   const [isBookmarking, setIsBookmarking] = useState(false);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
+  const { setCurrentMedia, clearCurrentMedia } = useMedia();
+
+  // Set media context when movie loads
+  useEffect(() => {
+    if (movie) {
+      setCurrentMedia({
+        title: movie.title,
+        type: 'movie',
+      });
+    }
+    return () => clearCurrentMedia();
+  }, [movie?.id, movie?.title, setCurrentMedia, clearCurrentMedia]);
 
   useEffect(() => {
     const fetchData = async () => {

@@ -6,7 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./contexts/AuthContext";
+import { MediaProvider } from "./contexts/MediaContext";
 import { PageTransition } from "./components/PageTransition";
+import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -17,6 +19,7 @@ import Korean from "./pages/Korean";
 import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
 import Auth from "./pages/Auth";
+import Requests from "./pages/Requests";
 import NotFound from "./pages/NotFound";
 
 // Disable right-click context menu
@@ -50,6 +53,7 @@ const AnimatedRoutes = () => {
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/search" element={<Search />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/requests" element={<Requests />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </PageTransition>
@@ -65,13 +69,16 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </TooltipProvider>
+        <MediaProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppContent />
+              <FloatingRequestButton />
+            </BrowserRouter>
+          </TooltipProvider>
+        </MediaProvider>
       </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>
