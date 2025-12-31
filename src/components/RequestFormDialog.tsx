@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ToastAction } from "@/components/ui/toast";
+
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -100,11 +100,7 @@ export const RequestFormDialog = ({
       toast({
         title: "Request Submitted!",
         description: "We'll review your request and get back to you soon.",
-        action: (
-          <ToastAction altText="View requests" onClick={() => navigate('/requests')}>
-            View
-          </ToastAction>
-        ),
+        onClick: () => navigate('/requests'),
       });
       form.reset();
       onSuccess?.();
