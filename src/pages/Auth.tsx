@@ -10,11 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, ArrowLeft, User, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type AuthMode = "login" | "signup" | "forgot";
+type AuthMode = "select" | "login" | "signup" | "forgot";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>("select");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -82,6 +82,15 @@ const Auth = () => {
       return;
     }
 
+    if (mode === "signup" && !username.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a username",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (mode === "login") {
@@ -94,7 +103,7 @@ const Auth = () => {
           });
         }
       } else if (mode === "signup") {
-        const { error } = await signUpWithEmail(email, password);
+        const { error } = await signUpWithEmail(email, password, username);
         if (error) {
           if (error.message.includes("already registered")) {
             toast({
@@ -213,58 +222,19 @@ const Auth = () => {
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
             
             <div className="relative z-10">
-              {/* Mode Tabs */}
-              {mode !== "forgot" && (
-                <div className="flex mb-8 bg-secondary/30 rounded-2xl p-1.5">
-                  <button
-                    onClick={() => switchMode("login")}
-                    className={cn(
-                      "flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-500",
-                      mode === "login" 
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => switchMode("signup")}
-                    className={cn(
-                      "flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-500",
-                      mode === "signup" 
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    Sign Up
-                  </button>
-                </div>
-              )}
+              {/* Method Selection Screen */}
+              {mode === "select" && (
+                <div className="space-y-6">
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold mb-2">Welcome!</h2>
+                    <p className="text-muted-foreground text-sm">Choose how you'd like to continue</p>
+                  </div>
 
-              {/* Header Text */}
-              <div className={cn(
-                "text-center mb-6 transition-all duration-500",
-                mode === "forgot" && "mt-2"
-              )}>
-                <h2 className="text-2xl font-bold mb-2">
-                  {mode === "login" && "Welcome back!"}
-                  {mode === "signup" && "Create account"}
-                  {mode === "forgot" && "Reset password"}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {mode === "login" && "Sign in to continue watching"}
-                  {mode === "signup" && "Join DanieWatch today"}
-                  {mode === "forgot" && "We'll send you a reset link"}
-                </p>
-              </div>
-
-              {/* Google Sign In */}
-              {mode !== "forgot" && (
-                <>
+                  {/* Google Sign In */}
                   <Button 
                     onClick={handleGoogleSignIn}
                     disabled={isLoading}
-                    className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg mb-6"
+                    className="w-full h-14 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
                   >
                     {isLoading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -281,7 +251,7 @@ const Auth = () => {
                     )}
                   </Button>
 
-                  <div className="relative mb-6">
+                  <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-border/50" />
                     </div>
@@ -289,145 +259,207 @@ const Auth = () => {
                       <span className="bg-card/80 backdrop-blur-sm px-3 text-muted-foreground">or</span>
                     </div>
                   </div>
-                </>
+
+                  {/* Email Option */}
+                  <Button 
+                    onClick={() => switchMode("login")}
+                    variant="outline"
+                    className="w-full h-14 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:bg-secondary/50 flex items-center justify-center gap-3"
+                  >
+                    <Mail className="w-5 h-5" />
+                    Continue with Email
+                  </Button>
+                </div>
               )}
 
-              {/* Form */}
-              <form onSubmit={handleEmailAuth} className="space-y-4">
-                {/* Username - Only for signup */}
-                <div className={cn(
-                  "space-y-2 transition-all duration-500 overflow-hidden",
-                  mode === "signup" ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
-                )}>
-                  <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-                  <div className="relative group">
-                    {/* Glow effect wrapper */}
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
-                      <Input
-                        id="username"
-                        type="text"
-                        placeholder="Choose a username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Email</Label>
-                  <div className="relative group">
-                    {/* Glow effect wrapper */}
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className={cn(
-                  "space-y-2 transition-all duration-500 overflow-hidden",
-                  mode !== "forgot" ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
-                )}>
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                  <div className="relative group">
-                    {/* Glow effect wrapper */}
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-11 pr-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
-                        disabled={isLoading}
-                      />
+              {/* Login/Signup/Forgot Forms */}
+              {mode !== "select" && (
+                <>
+                  {/* Mode Tabs */}
+                  {mode !== "forgot" && (
+                    <div className="flex mb-8 bg-secondary/30 rounded-2xl p-1.5">
                       <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                        onClick={() => switchMode("login")}
+                        className={cn(
+                          "flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-500",
+                          mode === "login" 
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => switchMode("signup")}
+                        className={cn(
+                          "flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-500",
+                          mode === "signup" 
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Sign Up
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                {/* Forgot Password Link */}
-                {mode === "login" && (
-                  <div className="text-right">
-                    <button
-                      type="button"
-                      onClick={() => switchMode("forgot")}
-                      className="text-sm text-primary hover:text-primary/80 transition-colors"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                )}
-
-                {/* Submit Button */}
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30" 
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      {mode === "login" && "Sign In"}
-                      {mode === "signup" && "Create Account"}
-                      {mode === "forgot" && "Send Reset Link"}
-                    </>
                   )}
-                </Button>
-              </form>
 
-              {/* Back to login for forgot mode */}
-              {mode === "forgot" && (
-                <button
-                  onClick={() => switchMode("login")}
-                  className="w-full mt-4 text-primary hover:text-primary/80 font-medium flex items-center justify-center gap-2 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to sign in
-                </button>
+                  {/* Header Text */}
+                  <div className={cn(
+                    "text-center mb-6 transition-all duration-500",
+                    mode === "forgot" && "mt-2"
+                  )}>
+                    <h2 className="text-2xl font-bold mb-2">
+                      {mode === "login" && "Welcome back!"}
+                      {mode === "signup" && "Create account"}
+                      {mode === "forgot" && "Reset password"}
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      {mode === "login" && "Sign in to continue watching"}
+                      {mode === "signup" && "Join DanieWatch today"}
+                      {mode === "forgot" && "We'll send you a reset link"}
+                    </p>
+                  </div>
+
+                  {/* Form */}
+                  <form onSubmit={handleEmailAuth} className="space-y-4">
+                    {/* Username - Only for signup */}
+                    <div className={cn(
+                      "space-y-2 transition-all duration-500 overflow-hidden",
+                      mode === "signup" ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+                    )}>
+                      <Label htmlFor="username" className="text-sm font-medium">Username</Label>
+                      <div className="relative group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
+                        <div className="relative">
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                          <Input
+                            id="username"
+                            type="text"
+                            placeholder="Choose a username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                      <div className="relative group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                          <Input
+                            id="email"
+                            type="email"
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Password */}
+                    <div className={cn(
+                      "space-y-2 transition-all duration-500 overflow-hidden",
+                      mode !== "forgot" ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+                    )}>
+                      <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                      <div className="relative group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
+                        <div className="relative">
+                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="pl-11 pr-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
+                            disabled={isLoading}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Forgot Password Link */}
+                    {mode === "login" && (
+                      <div className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => switchMode("forgot")}
+                          className="text-sm text-primary hover:text-primary/80 transition-colors"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30" 
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          {mode === "login" && "Sign In"}
+                          {mode === "signup" && "Create Account"}
+                          {mode === "forgot" && "Send Reset Link"}
+                        </>
+                      )}
+                    </Button>
+                  </form>
+
+                  {/* Back to login for forgot mode */}
+                  {mode === "forgot" && (
+                    <button
+                      onClick={() => switchMode("login")}
+                      className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Back to sign in
+                    </button>
+                  )}
+
+                  {/* Back to method selection */}
+                  {mode !== "forgot" && (
+                    <button
+                      onClick={() => switchMode("select")}
+                      className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Other sign in options
+                    </button>
+                  )}
+                </>
               )}
-
-              <p className="text-xs text-muted-foreground text-center mt-6">
-                By continuing, you agree to our Terms of Service and Privacy Policy
-              </p>
             </div>
           </div>
 
           {/* Back to home */}
-          <div className="mt-6 text-center animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate("/")}
-              className="hover:bg-secondary/50 transition-all duration-300"
-            >
-              ← Back to home
-            </Button>
-          </div>
+          <button
+            onClick={() => navigate("/")}
+            className="mt-6 mx-auto flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to home
+          </button>
         </div>
       </div>
     </>

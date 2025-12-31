@@ -11,6 +11,9 @@ import {
   getTopRatedMovies,
   getPopularTV,
   getTopRatedTV,
+  getIndianTrending,
+  getAnimeTrending,
+  getKoreanTrending,
   Movie,
 } from "@/lib/tmdb";
 
@@ -20,25 +23,42 @@ const Index = () => {
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
   const [popularTV, setPopularTV] = useState<Movie[]>([]);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
+  const [indianTrending, setIndianTrending] = useState<Movie[]>([]);
+  const [animeTrending, setAnimeTrending] = useState<Movie[]>([]);
+  const [koreanTrending, setKoreanTrending] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trendingRes, popularMoviesRes, topRatedMoviesRes, popularTVRes, topRatedTVRes] =
-          await Promise.all([
-            getTrending("day"),
-            getPopularMovies(),
-            getTopRatedMovies(),
-            getPopularTV(),
-            getTopRatedTV(),
-          ]);
+        const [
+          trendingRes,
+          popularMoviesRes,
+          topRatedMoviesRes,
+          popularTVRes,
+          topRatedTVRes,
+          indianRes,
+          animeRes,
+          koreanRes,
+        ] = await Promise.all([
+          getTrending("day"),
+          getPopularMovies(),
+          getTopRatedMovies(),
+          getPopularTV(),
+          getTopRatedTV(),
+          getIndianTrending(),
+          getAnimeTrending(),
+          getKoreanTrending(),
+        ]);
 
         setTrending(trendingRes.results);
         setPopularMovies(popularMoviesRes.results);
         setTopRatedMovies(topRatedMoviesRes.results);
         setPopularTV(popularTVRes.results);
         setTopRatedTV(topRatedTVRes.results);
+        setIndianTrending(indianRes.results);
+        setAnimeTrending(animeRes.results);
+        setKoreanTrending(koreanRes.results);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -83,6 +103,28 @@ const Index = () => {
             title="Popular"
             moviesItems={popularMovies}
             tvItems={popularTV}
+            isLoading={isLoading}
+          />
+
+          {/* Regional Trending Sections */}
+          <TabbedContentRow
+            title="🇮🇳 Indian Trending"
+            moviesItems={indianTrending.filter(item => item.media_type === 'movie')}
+            tvItems={indianTrending.filter(item => item.media_type === 'tv')}
+            isLoading={isLoading}
+          />
+
+          <TabbedContentRow
+            title="🎌 Anime Trending"
+            moviesItems={animeTrending.filter(item => item.media_type === 'movie')}
+            tvItems={animeTrending.filter(item => item.media_type === 'tv')}
+            isLoading={isLoading}
+          />
+
+          <TabbedContentRow
+            title="🇰🇷 Korean Trending"
+            moviesItems={koreanTrending.filter(item => item.media_type === 'movie')}
+            tvItems={koreanTrending.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
           />
 

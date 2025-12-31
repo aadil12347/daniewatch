@@ -181,6 +181,13 @@ export const Navbar = () => {
     { to: "/watchlist", label: "Watch List", icon: Bookmark },
   ];
 
+  // Mobile menu links - includes My Requests for logged-in non-admin users
+  const mobileNavLinks = [
+    ...navLinks,
+    ...(user && !isAdmin ? [{ to: "/requests", label: "My Requests", icon: FileText }] : []),
+    ...(user && isAdmin ? [{ to: "/admin", label: "Admin Panel", icon: Shield }] : []),
+  ];
+
   return (
     <>
       <nav
@@ -420,10 +427,9 @@ export const Navbar = () => {
             </button>
           </div>
 
-          {/* Menu Links */}
           <nav className="p-4">
             <ul className="space-y-1">
-              {navLinks.map((link, index) => (
+              {mobileNavLinks.map((link, index) => (
                 <li 
                   key={link.to}
                   style={{ 
