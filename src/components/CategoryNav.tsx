@@ -88,23 +88,7 @@ export const CategoryNav = ({
     <div className="flex flex-col gap-3 content-reveal relative z-50">
       {/* Tabs and Genre dropdown row */}
       <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-        {/* Latest and Popular tabs */}
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => onTabChange(tab.key)}
-            className={cn(
-              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all",
-              activeTab === tab.key
-                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                : "bg-secondary/30 hover:bg-secondary/50 text-foreground/70"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-
-        {/* Genre dropdown */}
+        {/* Genre dropdown - now first */}
         <div
           ref={dropdownRef}
           className="relative"
@@ -139,72 +123,63 @@ export const CategoryNav = ({
           {/* Dropdown content - responsive positioning */}
           <div
             className={cn(
-              "absolute top-full mt-2 p-3 sm:p-4 rounded-xl bg-popover border border-border shadow-2xl transition-all duration-200",
-              // Responsive width - constrained on mobile
-              "w-[280px] sm:w-80",
-              // Position - left aligned but clamped to viewport
-              "left-0",
+              "absolute top-full mt-2 bg-card/95 backdrop-blur-xl rounded-lg border border-border shadow-xl transition-all duration-200 overflow-hidden",
+              "left-0 w-[calc(100vw-2rem)] max-w-[280px] sm:w-64 md:w-72",
               isGenreOpen
-                ? "opacity-100 scale-100 pointer-events-auto z-[100]"
-                : "opacity-0 scale-95 pointer-events-none z-[100]"
+                ? "opacity-100 visible translate-y-0"
+                : "opacity-0 invisible -translate-y-2"
             )}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-            style={{ 
-              zIndex: 100,
-              transformOrigin: 'top left',
-              // Prevent overflow on mobile - shift left if needed
-              maxWidth: isMobile ? 'calc(100vw - 2rem)' : undefined,
-            }}
           >
-            {/* Header with clear button */}
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs sm:text-sm text-muted-foreground font-medium">
-                Select Genres
-              </span>
-              {selectedGenres.length > 0 && (
+            <div className="p-3 max-h-64 overflow-y-auto">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {genres.map((genre) => (
+                  <button
+                    key={genre.id}
+                    onClick={() => onGenreToggle(genre.id)}
+                    className={cn(
+                      "px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all duration-200",
+                      selectedGenres.includes(genre.id)
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "bg-secondary/50 hover:bg-secondary text-foreground/70 hover:text-foreground"
+                    )}
+                  >
+                    {genre.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {selectedGenres.length > 0 && (
+              <div className="border-t border-border p-2">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
                     onClearGenres();
+                    setIsGenreOpen(false);
                   }}
-                  className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary rounded-full hover:bg-primary/30 transition-colors"
+                  className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <X className="w-3 h-3" />
-                  Clear
+                  Clear all
                 </button>
-              )}
-            </div>
-
-            {/* Genre grid */}
-            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 max-h-64 overflow-y-auto">
-              {genres.map((genre) => (
-                <button
-                  key={genre.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onGenreToggle(genre.id);
-                  }}
-                  className={cn(
-                    "px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg text-xs font-medium transition-all text-left truncate",
-                    selectedGenres.includes(genre.id)
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "bg-secondary/50 hover:bg-secondary text-foreground/80 hover:text-foreground"
-                  )}
-                >
-                  {genre.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Mobile close hint */}
-            {isMobile && (
-              <p className="text-[10px] text-muted-foreground text-center mt-3 pt-2 border-t border-border/50">
-                Tap outside to close
-              </p>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Popular and Latest tabs */}
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => onTabChange(tab.key)}
+            className={cn(
+              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all",
+              activeTab === tab.key
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                : "bg-secondary/30 hover:bg-secondary/50 text-foreground/70"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Selected genres display - separate row for better mobile layout */}
