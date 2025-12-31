@@ -315,12 +315,12 @@ const AdminManagement = () => {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const { isAdmin, isOwner, isLoading, allRequests, updateRequestStatus } = useAdmin();
+  const { isAdmin, isOwner, isLoading, allRequests, requestsError, updateRequestStatus, refetchRequests } = useAdmin();
   const { toast } = useToast();
 
   const handleUpdateStatus = async (id: string, status: AdminRequest['status'], response?: string) => {
     const { error } = await updateRequestStatus(id, status, response);
-    
+
     if (error) {
       toast({
         title: "Error",
@@ -461,7 +461,16 @@ const AdminDashboard = () => {
             </TabsList>
 
             <TabsContent value="requests">
-              {allRequests.length === 0 ? (
+              {requestsError ? (
+                <Card className="text-center py-12">
+                  <CardContent>
+                    <AlertCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
+                    <h2 className="text-xl font-semibold mb-2">Couldn't load requests</h2>
+                    <p className="text-muted-foreground mb-4">{requestsError}</p>
+                    <Button variant="outline" onClick={refetchRequests}>Retry</Button>
+                  </CardContent>
+                </Card>
+              ) : allRequests.length === 0 ? (
                 <Card className="text-center py-12">
                   <CardContent>
                     <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />

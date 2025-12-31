@@ -34,6 +34,7 @@ export const useAdmin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [allRequests, setAllRequests] = useState<AdminRequest[]>([]);
   const [admins, setAdmins] = useState<UserRole[]>([]);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
 
   // Check if user is admin
   const checkAdminStatus = async () => {
@@ -67,11 +68,14 @@ export const useAdmin = () => {
 
       // If owner and not in user_roles, auto-add
       if (userIsOwner && !data) {
-        await supabase.from('user_roles').upsert({
-          user_id: user.id,
-          role: 'admin',
-          is_owner: true,
-        }, { onConflict: 'user_id,role' });
+        await supabase.from('user_roles').upsert(
+          {
+            user_id: user.id,
+            role: 'admin',
+            is_owner: true,
+          },
+          { onConflict: 'user_id,role' }
+        );
       }
     } catch (error) {
       console.error('Error in checkAdminStatus:', error);
@@ -85,6 +89,8 @@ export const useAdmin = () => {
   const fetchAllRequests = async () => {
     if (!user || !isSupabaseConfigured) return;
 
+    setRequestsError(null);
+
     try {
       const { data, error } = await supabase
         .from('requests')
@@ -92,8 +98,10 @@ export const useAdmin = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAllRequests(data as AdminRequest[] || []);
-    } catch (error) {
+      setAllRequests((data as AdminRequest[]) || []);
+    } catch (error: any) {
+      const message = error?.message || 'Failed to load requests.';
+      setRequestsError(message);
       console.error('Error fetching all requests:', error);
     }
   };
@@ -264,6 +272,7 @@ export const useAdmin = () => {
     isOwner,
     isLoading,
     allRequests,
+    requestsError,
     admins,
     updateRequestStatus,
     addAdmin,
