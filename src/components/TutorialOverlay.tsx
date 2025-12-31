@@ -170,6 +170,11 @@ const RequestDemoAnimation = ({ onComplete }: RequestDemoAnimationProps) => {
     // Phase 7: Show request card
     timers.push(setTimeout(() => setPhase('showing-request'), 7500));
 
+    // Navigate back to homepage before completing
+    timers.push(setTimeout(() => {
+      navigate('/');
+    }, 8500));
+
     // Complete - auto advance to next step
     timers.push(setTimeout(() => onComplete(), 9000));
 
