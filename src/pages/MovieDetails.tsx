@@ -151,10 +151,10 @@ const MovieDetails = () => {
                 <img 
                   src={logoUrl} 
                   alt={movie.title} 
-                  className="h-12 md:h-20 lg:h-24 object-contain object-left mb-2 md:mb-4"
+                  className="h-16 md:h-20 lg:h-24 object-contain object-left mb-3 md:mb-4"
                 />
               ) : (
-                <h1 className="text-xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 leading-tight">
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 leading-tight">
                   {movie.title}
                 </h1>
               )}
@@ -192,22 +192,22 @@ const MovieDetails = () => {
               </p>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-3 md:gap-3">
                 <Button
                   size="sm"
-                  className="gradient-red text-foreground font-semibold px-5 md:px-8 text-sm md:text-sm hover:opacity-90 transition-opacity shadow-glow h-9 md:h-10"
+                  className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     setShowPlayer(true);
                   }}
                 >
-                  <Play className="w-4 h-4 md:w-4 md:h-4 mr-2 md:mr-2 fill-current" />
+                  <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
                   Play
                 </Button>
                 <Button
                   size="icon"
                   variant="outline"
-                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
+                  className={`w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
                     isInWatchlist(movie.id, 'movie') ? 'text-primary border-primary' : ''
                   }`}
                   onClick={async () => {
@@ -230,21 +230,21 @@ const MovieDetails = () => {
                   disabled={isBookmarking}
                 >
                   {isBookmarking ? (
-                    <Loader2 className="w-4 h-4 md:w-4 md:h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 md:w-4 md:h-4 animate-spin" />
                   ) : (
-                    <Bookmark className={`w-4 h-4 md:w-4 md:h-4 ${isInWatchlist(movie.id, 'movie') ? 'fill-current' : ''}`} />
+                    <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(movie.id, 'movie') ? 'fill-current' : ''}`} />
                   )}
                 </Button>
                 {bloggerResult?.downloadLink && (
                   <Button
                     size="icon"
                     variant="outline"
-                    className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border backdrop-blur-sm text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 transition-all"
+                    className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border backdrop-blur-sm text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 transition-all"
                     onClick={() => {
                       window.open(bloggerResult.downloadLink, '_blank');
                     }}
                   >
-                    <Download className="w-4 h-4 md:w-4 md:h-4" />
+                    <Download className="w-5 h-5 md:w-4 md:h-4" />
                   </Button>
                 )}
               </div>
