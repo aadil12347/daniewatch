@@ -11,9 +11,9 @@ import {
   getTopRatedMovies,
   getPopularTV,
   getTopRatedTV,
-  getIndianTrending,
-  getAnimeTrending,
-  getKoreanTrending,
+  getIndianPopular,
+  getAnimePopular,
+  getKoreanPopular,
   Movie,
 } from "@/lib/tmdb";
 
@@ -23,9 +23,9 @@ const Index = () => {
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
   const [popularTV, setPopularTV] = useState<Movie[]>([]);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
-  const [indianTrending, setIndianTrending] = useState<Movie[]>([]);
-  const [animeTrending, setAnimeTrending] = useState<Movie[]>([]);
-  const [koreanTrending, setKoreanTrending] = useState<Movie[]>([]);
+  const [indianPopular, setIndianPopular] = useState<Movie[]>([]);
+  const [animePopular, setAnimePopular] = useState<Movie[]>([]);
+  const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -46,9 +46,9 @@ const Index = () => {
           getTopRatedMovies(),
           getPopularTV(),
           getTopRatedTV(),
-          getIndianTrending(),
-          getAnimeTrending(),
-          getKoreanTrending(),
+          getIndianPopular(),
+          getAnimePopular(),
+          getKoreanPopular(),
         ]);
 
         setTrending(trendingRes.results);
@@ -56,9 +56,9 @@ const Index = () => {
         setTopRatedMovies(topRatedMoviesRes.results);
         setPopularTV(popularTVRes.results);
         setTopRatedTV(topRatedTVRes.results);
-        setIndianTrending(indianRes.results);
-        setAnimeTrending(animeRes.results);
-        setKoreanTrending(koreanRes.results);
+        setIndianPopular(indianRes.results);
+        setAnimePopular(animeRes.results);
+        setKoreanPopular(koreanRes.results);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -106,25 +106,25 @@ const Index = () => {
             isLoading={isLoading}
           />
 
-          {/* Regional Trending Sections */}
+          {/* Regional Popular Sections */}
           <TabbedContentRow
-            title="🇮🇳 Indian Trending"
-            moviesItems={indianTrending.filter(item => item.media_type === 'movie')}
-            tvItems={indianTrending.filter(item => item.media_type === 'tv')}
+            title="Indian Popular This Week"
+            moviesItems={indianPopular.filter(item => item.media_type === 'movie')}
+            tvItems={indianPopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
           />
 
           <TabbedContentRow
-            title="🎌 Anime Trending"
-            moviesItems={animeTrending.filter(item => item.media_type === 'movie')}
-            tvItems={animeTrending.filter(item => item.media_type === 'tv')}
+            title="Anime Popular This Week"
+            moviesItems={animePopular.filter(item => item.media_type === 'movie')}
+            tvItems={animePopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
           />
 
           <TabbedContentRow
-            title="🇰🇷 Korean Trending"
-            moviesItems={koreanTrending.filter(item => item.media_type === 'movie')}
-            tvItems={koreanTrending.filter(item => item.media_type === 'tv')}
+            title="Korean Popular This Week"
+            moviesItems={koreanPopular.filter(item => item.media_type === 'movie')}
+            tvItems={koreanPopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
           />
 
