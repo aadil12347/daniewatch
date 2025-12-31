@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMedia } from "@/contexts/MediaContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +56,19 @@ const TVDetails = () => {
   const [isBookmarking, setIsBookmarking] = useState(false);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
+  const { setCurrentMedia, clearCurrentMedia } = useMedia();
+
+  // Set media context when show loads or season changes
+  useEffect(() => {
+    if (show) {
+      setCurrentMedia({
+        title: show.name || '',
+        type: 'tv',
+        seasonNumber: selectedSeason,
+      });
+    }
+    return () => clearCurrentMedia();
+  }, [show?.id, show?.name, selectedSeason, setCurrentMedia, clearCurrentMedia]);
 
   useEffect(() => {
     const fetchData = async () => {
