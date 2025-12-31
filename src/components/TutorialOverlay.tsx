@@ -2,13 +2,12 @@ import { useEffect, useState, useCallback } from "react";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { TutorialTooltip } from "./TutorialTooltip";
 import { cn } from "@/lib/utils";
-import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper, Check, Info } from "lucide-react";
+import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper, Check, Info, MousePointer2, Send } from "lucide-react";
 import confetti from "canvas-confetti";
+import { useNavigate } from "react-router-dom";
 
 // Base64 encoded sound effects (short, subtle sounds)
-const WHOOSH_SOUND = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdnd3eXd3dnl6enp4eHd1dHNycnFxcXFxcXFyc3R1d3h5enp6e3t6enp5eHd2dXRzcnFxcHBwcHBwcXFycnR1dnh5e3x9fn5+fn59fHt6eXh3dnV0c3JxcHBvb29vb29wcHFyc3R2d3l6fH1+f4CAgICAf39+fXx7enl4d3Z1dHNycXBwb29vb29vb3BwcXJzdHV3eHp7fH1+f4CAgICAgIB/f359fHt6eXh3dnV0c3JxcHBvb29vb29vb3BwcXJzdHV2eHl6e3x9fn9/gICAf39/fn59fHt6eXh3dnV0c3JxcXBwb29vbm5ub29vcHBxcnN0dXZ3eXp7fH1+fn9/f39/fn5+fXx7enl4d3Z1dHNycnFwcG9vb29vbm5ub29vcHBxcnN0dXZ3eHl6e3x9fX5+fn5+fn19fHt6eXh3dnZ1dHNycXFwb29vbm5ubm5ub29vcHBxcnN0dXZ3eHl6e3t8fX19fX19fX18e3p5eHd2dXR0c3JxcXBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fX19fHx7enl4d3Z1dHNzc3JxcHBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fHx8e3t6eXh3dnV0dHNycnFwcG9vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3h5enp7e3t7e3t7e3p5eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3d4eXl6enp6enp6eXl4d3Z1dHRzc3JxcHBvb29ubm5ubm5ubm5vb29wcHFyc3R0dXZ2d3d4eXl5eXl5eXl4eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dHV1dnd3eHh4eHh4eHh3d3Z1dHRzc3JycXBwb29vbm5ubm5ubm5ub29vcHBxcnJzc3R1dXZ2d3d3d3d3d3d2dnV0dHNzc3JxcXBvb29ubm5ubm5ubm5ub29vcHBxcXJyc3R0dXV2dnZ2dnZ2dnV1dHRzc3JycXFwcG9vb25ubm5ubm5ubm5vb29wcHFxcnJzc3R0dXV1dXV1dXV0dHRzc3JycXFwcG9vb29ubm5ubm5ubm5ub29vcHBwcXFycnJzc3R0dHR0dHR0c3NzcnJxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcXFxcnJyc3Nzc3Nzc3Nzc3NycnFxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcHFxcXJycnJycnJycnJycnJycXFwcHBvb29vbm5ubm5ubm5ubm5ub29vcHBwcHFxcXFxcXJycnJycnJxcXFwcHBvb29vb25ubm5ubm5ubm5ub29vcHBwcHBwcXFxcXFxcXFxcXFxcHBwb29vb29vbm5ubm5ubm5ubm5ub29vcHBwcHBwcHFxcXFxcXFxcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcXFwcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcHBwcHBvb29vb29ubm5ubm5ubm5ubm5ubm9vb29wcHBwcHBwcHBwcHBvb29vb29vbm5ubm5ubm5ubm5ubm5vb29vb3BwcHBwcHBwcHBvb29vb29vb25ubm5ubm5ubm5ubm5ub29vb29wcHBwcHBwcHBwb29vb29vb29ubm5ubm5ubm5ubm5ubm5vb29vb29wcHBwcHBwcG9vb29vb29vbm5ubm5ubm5ubm5ubm5ub29vb29vb29wcHBwcG9vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb3Bwb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb25ubm5ubm5u";
-
-const CELEBRATION_SOUND = "data:audio/wav;base64,UklGRlQHAABXQVZFZm10IBAAAAABAAEAIlYAAIhPAAACABAAZGF0YTAHAABAgIB/f4CAf4CAgH+AgIB/f4CAgH+AgICCh42SlaGmqK2vsbKzs7KxsK6sqaWhnpiUkI2Kg4B9end1cnBubWxramlpaWhpaWlpamtra21ub3FzdXh6fX+BhIaIio2PkZOVl5mam5ycnJuamZiWlJKQjo2LiYiGhIOCgYB/fn18e3p5eHd3d3d3d3h4eXp7fH1+f4CBgoOEhYaHiImKi4yNjo+QkJGSk5OUlJSUlJSUk5OTkpKRkJCPjo2MioqIh4aFhIOCgYB/fn18e3t6eXl4eHd3d3d3d3d4eHl5ent8fX5/gIGCg4SGh4iJiouMjY6PkJGRkpKTk5OTk5OTkpKRkZCPjo2Mi4qJiIeGhYOCgYB/fn18e3p5eXh4d3d3d3d3d3h4eXp6e3x9fn+AgYKDhIWGh4iJi4yNjo+QkJGRkpKSk5OTkpKSkZGQj46NjIuKiYiHhoWEg4KBgH9+fXx7enp5eHh3d3d3d3d3eHh5enp7fH1+f4CAgYOEhYaHiImKi4yNjo6PkJCQkZGRkZGRkZCQkI+Ojo2Mi4qJiIeGhYSDgoGAf359fHt6eXl4eHd3d3d3d3d4eHl5ent7fH1+f4CAgYKDhIWGh4iJiouMjY2Ojo+Pj5CQkJCQkJCPj4+OjY2MiomIh4aGhYSDgoGAf359fHt6eXl4eHd3d3d3d3d4eHl5enp7fH1+f4CAgYKDhIWGh4iJiouLjI2Njo6Oj4+Pj4+Pj4+OjY2MjIuKiYiHhoWEg4KBgH9+fXx7enp5eXh4d3d3d3d4eHl5enp7e3x9fn+AgIGCg4SFhoaHiImKiouMjIyNjY2Njo6Ojo2NjY2MjIuKiYmIh4aFhIOCgYCAf359fHt6enl5eHh3d3d4eHl5enp7e3x9fn9/gIGCg4SEhYaHiImKiouLjIyMjY2NjY2NjY2NjIyMi4uKiYiIh4aFhIOCgYB/fn18e3p6eXl4eHh4eHh5eXp6e3t8fH1+f3+AgYGCg4SEhYaHiImJiouLi4yMjIyMjIyMjIyLi4uKiomIiIeGhYSEg4KBgH9+fXx7e3p5eXl4eHh4eXl5ent7fHx9fn5/gIGBgoODhIWGhoeIiYmKiouLi4uLi4yMjIyLi4uKiomJiIeGhoWEg4KBgIB/fn18e3t6eXl5eXl5eXl6enp7e3x8fX5+f4CAgYGCg4OEhYWGh4eIiYmKioqKi4uLi4uLi4qKiomJiIeHhoWEg4OCgYCAf359fHx7enp5eXl5eXl5enp7e3x8fH1+fn9/gICBgoKDhISFhYaHh4iIiYmKioqKioqKioqKiYmIiIeHhoWFhIOCgoCAfn59fHt7e3p6enl5eXp6ent7fHx8fX1+fn9/gICBgYKCg4SEhYWGhoeHiIiJiYmJiYmJiYmJiYiIh4eGhoWEg4OCgYGAf359fHx7e3p6enp6enp6e3t7fHx8fX1+fn9/gICAgYGCgoODhIWFhYaGh4eHiIiIiIiIiIiIiIeHhoaFhYSEg4KBgYB/fn18fHt7e3p6enp6enp6e3t8fHx9fX5+fn9/gICAgYGCgoODhISEhYWFhoaGh4eHh4eHh4eGhoaFhYSEg4KCgYCAf359fHx7e3t6e3p6e3t7e3t8fHx8fX1+fn5/f4CAgIGBgYKCg4ODhISEhYWFhYaGhoaGhoaGhYWFhISEg4OCgoGBgH9/fn18fHt7e3t7e3t7e3t7e3x8fHx9fX1+fn5/f3+AgICBgYGCgoKDg4OEhISEhYWFhYWFhYWFhYWEhISEg4ODgoKBgYB/f359fHx8e3t7e3t7e3t7e3t8fHx8fX19fn5+f39/gICAgIGBgYKCgoODg4OEhISEhISEhISEhISEhIODg4KCgoGBgIB/f359fHx8fHt7e3t7e3t7e3x8fHx8fX1+fn5+f3+AgICAgYGBgYKCgoKDg4ODhISEhISEhISEg4ODg4ODgoKCgYGAf39+fn18fHx8e3t7e3t7fHx8fHx8fH19fX5+fn9/f3+AgICAgYGBgYKCgoKCg4ODg4ODg4ODg4ODg4OCgoKCgYGAgH9/fn59fXx8fHx8fHx8fHx8fHx8fHx9fX1+fn5+f39/f4CAgICAgYGBgYGCgoKCgoKCg4ODg4OCgoKCgoGBgYCAf39+fn19fXx8fHx8fHx8fHx8fHx8fX19fX5+fn5/f39/gICAgIGBgYGBgYGCgoKCgoKCgoKCgoKCgoKBgYGBgIB/f35+fX19fXx8fHx8fHx8fHx8fH19fX19fn5+fn9/f3+AgICAgICAgYGBgYGBgYKCgoKCgoKCgoKCgYGBgYCAf39/fn5+fX19fXx8fHx8fHx8fHx8fX19fX1+fn5+fn9/f3+AgICAgICBgYGBgYGBgYGBgYGBgYGBgYGBgYCAf39/fn5+fX19fX19fHx8fHx9fX19fX19fX5+fn5/f39/f4CAgICAgIGBgYGBgYGBgYGBgYGBgYGBgYGAgIB/f39+fn5+fX19fX19fX19fX19fX19fX5+fn5+f39/f3+AgICAgICAgYGBgYGBgYGBgYGBgYGBgICAgIB/f39/fn5+fn19fX19fX19fX19fX19fn5+fn5+f39/f39/gICAgICAf35+fX18fHx8fXx9fX19fX1+fn5+fn9/f4CAgICAgYGBgYGBgYGBgYGBgYGA";
+const WHOOSH_SOUND = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdnd3eXd3dnl6enp4eHd1dHNycnFxcXFxcXFyc3R1d3h5enp6e3t6enp5eHd2dXRzcnFxcHBwcHBwcXFycnR1dnh5e3x9fn5+fn59fHt6eXh3dnV0c3JxcHBvb29vb29wcHFyc3R2d3l6fH1+f4CAgICAf39+fXx7enl4d3Z1dHNycXBwb29vb29vb3BwcXJzdHV3eHp7fH1+f4CAgICAgIB/f359fHt6eXh3dnV0c3JxcHBvb29vb29vb3BwcXJzdHV2eHl6e3x9fn9/gICAf39/fn59fHt6eXh3dnV0c3JxcXBwb29vbm5ub29vcHBxcnN0dXZ3eXp7fH1+fn9/f39/fn5+fXx7enl4d3Z1dHNycnFwcG9vb29vbm5ub29vcHBxcnN0dXZ3eHl6e3x9fX5+fn5+fn19fHt6eXh3dnZ1dHNycXFwb29vbm5ubm5ub29vcHBxcnN0dXZ3eHl6e3t8fX19fX19fX18e3p5eHd2dXR0c3JxcXBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fX19fHx7enl4d3Z1dHNzc3JxcHBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fHx8e3t6eXh3dnV0dHNycnFwcG9vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3h5enp7e3t7e3t7e3p5eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3d4eXl6enp6enp6eXl4d3Z1dHRzc3JxcHBvb29ubm5ubm5ubm5vb29wcHFyc3R0dXZ2d3d4eXl5eXl5eXl4eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dHV1dnd3eHh4eHh4eHh3d3Z1dHRzc3JycXBwb29vbm5ubm5ubm5ub29vcHBxcnJzc3R1dXZ2d3d3d3d3d3d2dnV0dHNzc3JxcXBvb29ubm5ubm5ubm5ub29vcHBxcXJyc3R0dXV2dnZ2dnZ2dnV1dHRzc3JycXFwcG9vb29ubm5ubm5ubm5ub29vcHBwcXFycnJzc3R0dHR0dHR0c3NzcnJxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcXFxcnJyc3Nzc3Nzc3Nzc3NycnFxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcHFxcXJycnJycnJycnJycnJycXFwcHBvb29vbm5ubm5ubm5ubm5ub29vcHBwcHFxcXFxcXJycnJycnJxcXFwcHBvb29vb25ubm5ubm5ubm5ub29vcHBwcHBwcXFxcXFxcXFxcXFxcHBwb29vb29vbm5ubm5ubm5ubm5ub29vcHBwcHBwcHFxcXFxcXFxcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcXFwcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcHBwcHBvb29vb29ubm5ubm5ubm5ubm5ubm9vb29wcHBwcHBwcHBwcHBvb29vb29vbm5ubm5ubm5ubm5ubm5vb29vb3BwcHBwcHBwcHBvb29vb29vb25ubm5ubm5ubm5ubm5ub29vb29wcHBwcHBwcHBwb29vb29vb29ubm5ubm5ubm5ubm5ubm5vb29vb29wcHBwcHBwcG9vb29vb29vbm5ubm5ubm5ubm5ubm5ub29vb29vb29wcHBwcG9vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb3Bwb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb25ubm5ubm5u";
 
 interface TutorialStep {
   id: string;
@@ -19,6 +18,7 @@ interface TutorialStep {
   icon: React.ReactNode;
   showDemoRequest?: boolean;
   showInfoBox?: boolean;
+  showAnimatedDemo?: boolean;
 }
 
 const tutorialSteps: TutorialStep[] = [
@@ -49,10 +49,11 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: "request",
     title: "Request Content",
-    description: "Jo dhund rahe ho nahi mil raha? Yaha click karain! Koi bhi movie ya season request karain. Admin ko 'Hindi Dubbed mein bhi upload kar dein' bhi keh sakte ho!",
-    targetSelector: "[data-tutorial='request']",
-    position: "top",
+    description: "Dekhiye kaise request karte hain...",
+    targetSelector: null,
+    position: "center",
     icon: <MessageSquarePlus className="w-5 h-5" />,
+    showAnimatedDemo: true,
   },
   {
     id: "my-requests",
@@ -66,7 +67,7 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: "celebration",
     title: "You're All Set!",
-    description: "Mubarak ho! Ab aap DanieWatch ke expert ho. Streaming ka maza lein!",
+    description: "",
     targetSelector: null,
     position: "center",
     icon: <PartyPopper className="w-5 h-5" />,
@@ -74,51 +75,206 @@ const tutorialSteps: TutorialStep[] = [
   },
 ];
 
-// Demo Request Card Component
-const DemoRequestCard = () => (
-  <div className="bg-card/90 backdrop-blur-xl rounded-2xl p-4 border border-border/50 max-w-sm mt-4 shadow-xl">
-    {/* Header */}
-    <div className="flex justify-between items-start mb-3">
-      <div>
-        <h4 className="font-semibold text-foreground">Inception (2010)</h4>
-        <p className="text-xs text-muted-foreground">Movie Request</p>
+// Animated Request Demo Component
+const AnimatedRequestDemo = ({ onComplete }: { onComplete: () => void }) => {
+  const [phase, setPhase] = useState(0);
+  const [typedText, setTypedText] = useState("");
+  const targetText = "Hindi main upload kar dain with download link";
+  
+  useEffect(() => {
+    // Phase 0: Show request button with cursor moving to it (0-2s)
+    // Phase 1: Click animation on button (2-2.5s)
+    // Phase 2: Form opens, start typing (2.5-6s)
+    // Phase 3: Click submit (6-7s)
+    // Phase 4: Complete - trigger next step (7s+)
+    
+    const timers: NodeJS.Timeout[] = [];
+    
+    // Phase 1: Click button
+    timers.push(setTimeout(() => setPhase(1), 1500));
+    
+    // Phase 2: Show form
+    timers.push(setTimeout(() => setPhase(2), 2200));
+    
+    // Phase 3: Start typing
+    let charIndex = 0;
+    timers.push(setTimeout(() => {
+      const typeInterval = setInterval(() => {
+        if (charIndex < targetText.length) {
+          setTypedText(targetText.slice(0, charIndex + 1));
+          charIndex++;
+        } else {
+          clearInterval(typeInterval);
+        }
+      }, 60);
+      timers.push(typeInterval as unknown as NodeJS.Timeout);
+    }, 2500));
+    
+    // Phase 4: Click submit
+    timers.push(setTimeout(() => setPhase(3), 5500));
+    
+    // Phase 5: Complete
+    timers.push(setTimeout(() => {
+      setPhase(4);
+      onComplete();
+    }, 6500));
+    
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [onComplete]);
+  
+  return (
+    <div className="relative w-full max-w-md mx-auto mt-6">
+      {/* Demo Label */}
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+        <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full border border-primary/30">
+          LIVE DEMO
+        </span>
       </div>
-      <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full flex items-center gap-1">
-        <Check className="w-3 h-3" /> Completed
-      </span>
+      
+      <div className="bg-card/90 backdrop-blur-xl rounded-2xl p-6 border border-border/50 shadow-2xl">
+        {phase < 2 ? (
+          // Show request button with cursor
+          <div className="flex flex-col items-center justify-center py-8 relative">
+            <div className={cn(
+              "flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium transition-all duration-300",
+              phase === 1 && "scale-95 brightness-90"
+            )}>
+              <MessageSquarePlus className="w-5 h-5" />
+              <span>Request Movie/Show</span>
+            </div>
+            
+            {/* Animated Cursor */}
+            <div className={cn(
+              "absolute transition-all duration-1000 ease-out",
+              phase === 0 && "bottom-0 right-0",
+              phase >= 1 && "bottom-1/2 right-1/2 translate-x-8 translate-y-4"
+            )}>
+              <div className="relative">
+                <MousePointer2 className="w-6 h-6 text-foreground fill-foreground" />
+                {phase === 1 && (
+                  <div className="absolute -top-1 -left-1 w-8 h-8 bg-primary/30 rounded-full animate-ping" />
+                )}
+              </div>
+              <span className="absolute -bottom-6 left-0 text-xs text-primary whitespace-nowrap animate-pulse">
+                Yaha click karain!
+              </span>
+            </div>
+          </div>
+        ) : phase < 4 ? (
+          // Show form being filled
+          <div className="space-y-4 animate-fade-in">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <MessageSquarePlus className="w-5 h-5 text-primary" />
+              Request Content
+            </h3>
+            
+            {/* Movie Title Field */}
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Movie/Show Title</label>
+              <div className="px-4 py-3 rounded-lg bg-secondary/50 border border-border text-foreground">
+                Inception (2010)
+              </div>
+            </div>
+            
+            {/* Message Field with typing animation */}
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Your Message</label>
+              <div className="px-4 py-3 rounded-lg bg-secondary/50 border border-border text-foreground min-h-[80px] relative">
+                {typedText}
+                <span className="inline-block w-0.5 h-5 bg-primary animate-pulse ml-0.5" />
+              </div>
+            </div>
+            
+            {/* Submit Button */}
+            <div className="relative">
+              <button className={cn(
+                "w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium transition-all duration-300",
+                phase === 3 && "scale-95 brightness-90"
+              )}>
+                <Send className="w-4 h-4" />
+                Submit Request
+              </button>
+              
+              {/* Cursor on submit button */}
+              {phase === 3 && (
+                <div className="absolute bottom-1/2 right-1/4 translate-y-2">
+                  <MousePointer2 className="w-6 h-6 text-foreground fill-foreground" />
+                  <div className="absolute -top-1 -left-1 w-8 h-8 bg-primary/30 rounded-full animate-ping" />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
-    
-    {/* User Message */}
-    <p className="text-sm text-muted-foreground mb-3 italic">
-      "Hindi dubbed mein upload kar dein please"
-    </p>
-    
-    {/* Admin Response */}
-    <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
-      <p className="text-xs text-primary font-medium mb-1">Admin Response:</p>
-      <p className="text-sm text-foreground">
-        Movie upload ho gaya hai! Ab aap dekh sakte ho. Enjoy karo! 🎬
-      </p>
-    </div>
-    
-    {/* Demo Label */}
-    <div className="mt-3 text-center">
-      <span className="text-xs bg-secondary/50 text-muted-foreground px-2 py-1 rounded">DEMO</span>
-    </div>
-  </div>
-);
+  );
+};
 
-// Important Info Box Component
-const ImportantInfoBox = () => (
-  <div className="mt-6 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-xl p-4 border border-primary/30 max-w-sm">
-    <div className="flex items-start gap-3">
-      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-        <Info className="w-4 h-4 text-primary" />
+// Demo Request Card Component
+const DemoRequestCard = () => {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="w-full max-w-md mx-auto mt-6">
+      {/* Page indicator */}
+      <div className="flex items-center justify-center gap-2 mb-4 text-sm text-muted-foreground">
+        <FileText className="w-4 h-4" />
+        <span>My Requests Page</span>
       </div>
-      <div>
-        <h4 className="font-semibold text-primary mb-1">Yaad Rakhein!</h4>
-        <p className="text-sm text-foreground/90">
-          Agar kisi movie ya season ka download link nahi available hai, to admin ko request kar saktay hain aur wo add kar day ga! 🎬
+      
+      <div className="bg-card/90 backdrop-blur-xl rounded-2xl p-4 border border-border/50 shadow-xl animate-scale-in">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-3">
+          <div>
+            <h4 className="font-semibold text-foreground">Inception (2010)</h4>
+            <p className="text-xs text-muted-foreground">Movie Request</p>
+          </div>
+          <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full flex items-center gap-1">
+            <Check className="w-3 h-3" /> Completed
+          </span>
+        </div>
+        
+        {/* User Message */}
+        <p className="text-sm text-muted-foreground mb-3 italic">
+          "Hindi main upload kar dain with download link"
+        </p>
+        
+        {/* Admin Response */}
+        <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
+          <p className="text-xs text-primary font-medium mb-1">Admin Response:</p>
+          <p className="text-sm text-foreground">
+            Movie upload ho gaya hai! Ab aap dekh sakte ho. Enjoy karo! 🎬
+          </p>
+        </div>
+        
+        {/* Arrow indicator */}
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-primary">
+          <Info className="w-3 h-3" />
+          <span>Aap ki request yaha dikhegi!</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Important Info Box Component (Now the main content for last step)
+const ImportantInfoBox = () => (
+  <div className="w-full max-w-md mx-auto mt-2">
+    <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 rounded-2xl p-6 border border-primary/30 shadow-xl">
+      <div className="flex flex-col items-center text-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+          <Info className="w-8 h-8 text-primary" />
+        </div>
+        <div>
+          <h4 className="font-bold text-primary text-lg mb-2">Yaad Rakhein!</h4>
+          <p className="text-foreground/90 leading-relaxed">
+            Agar kisi movie ya season ka download link nahi available hai, 
+            to admin ko request kar saktay hain aur wo add kar day ga! 🎬
+          </p>
+        </div>
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+        <p className="text-sm text-muted-foreground">
+          Happy Streaming! 🍿
         </p>
       </div>
     </div>
@@ -130,6 +286,7 @@ export const TutorialOverlay = () => {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasConfettiFired, setHasConfettiFired] = useState(false);
+  const [demoComplete, setDemoComplete] = useState(false);
 
   const currentStepData = tutorialSteps[currentStep];
   const isLastStep = currentStep === totalSteps - 1;
@@ -149,16 +306,17 @@ export const TutorialOverlay = () => {
     playSound(WHOOSH_SOUND, 0.25);
   }, [playSound]);
 
-  const playCelebration = useCallback(() => {
-    playSound(CELEBRATION_SOUND, 0.4);
-  }, [playSound]);
-
   // Play whoosh sound on step transitions
   useEffect(() => {
     if (isTutorialActive && currentStep > 0) {
       playWhoosh();
     }
   }, [currentStep, isTutorialActive, playWhoosh]);
+
+  // Reset demo complete state when step changes
+  useEffect(() => {
+    setDemoComplete(false);
+  }, [currentStep]);
 
   // Confetti celebration function
   const fireConfetti = useCallback(() => {
@@ -204,11 +362,10 @@ export const TutorialOverlay = () => {
     });
   }, []);
 
-  // Trigger confetti and celebration sound on last step
+  // Trigger confetti on last step (no sound)
   useEffect(() => {
     if (isTutorialActive && isLastStep && !hasConfettiFired) {
       setHasConfettiFired(true);
-      playCelebration();
       fireConfetti();
     }
     
@@ -216,7 +373,7 @@ export const TutorialOverlay = () => {
     if (!isTutorialActive) {
       setHasConfettiFired(false);
     }
-  }, [isTutorialActive, isLastStep, hasConfettiFired, fireConfetti, playCelebration]);
+  }, [isTutorialActive, isLastStep, hasConfettiFired, fireConfetti]);
 
   useEffect(() => {
     if (!isTutorialActive || !currentStepData?.targetSelector) {
@@ -253,6 +410,15 @@ export const TutorialOverlay = () => {
   if (!isTutorialActive) return null;
 
   const isFullscreenStep = !currentStepData?.targetSelector;
+
+  // Handle demo completion - auto advance to next step
+  const handleDemoComplete = useCallback(() => {
+    setDemoComplete(true);
+    // Auto advance after a short delay
+    setTimeout(() => {
+      nextStep();
+    }, 500);
+  }, [nextStep]);
 
   return (
     <div className="fixed inset-0 z-[150] pointer-events-auto">
@@ -308,23 +474,40 @@ export const TutorialOverlay = () => {
       {/* Tooltip positioning */}
       {isFullscreenStep ? (
         // Centered modal for welcome/final steps
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="animate-scale-in flex flex-col items-center">
-            <TutorialTooltip
-              title={currentStepData.title}
-              description={currentStepData.description}
-              icon={currentStepData.icon}
-              position="center"
-              currentStep={currentStep}
-              totalSteps={totalSteps}
-              onNext={nextStep}
-              onSkip={skipTutorial}
-              isLastStep={isLastStep}
-            />
-            {/* Show Demo Request Card */}
-            {currentStepData.showDemoRequest && <DemoRequestCard />}
-            {/* Show Important Info Box */}
-            {currentStepData.showInfoBox && <ImportantInfoBox />}
+        <div className="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="animate-scale-in flex flex-col items-center w-full max-w-lg py-8">
+            {/* Don't show tooltip for animated demo step, just show the demo */}
+            {currentStepData.showAnimatedDemo ? (
+              <div className="w-full">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary mb-3">
+                    {currentStepData.icon}
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">{currentStepData.title}</h3>
+                  <p className="text-muted-foreground mt-1">{currentStepData.description}</p>
+                </div>
+                <AnimatedRequestDemo onComplete={handleDemoComplete} />
+              </div>
+            ) : (
+              <>
+                <TutorialTooltip
+                  title={currentStepData.title}
+                  description={currentStepData.description}
+                  icon={currentStepData.icon}
+                  position="center"
+                  currentStep={currentStep}
+                  totalSteps={totalSteps}
+                  onNext={nextStep}
+                  onSkip={skipTutorial}
+                  isLastStep={isLastStep}
+                  hideDescription={currentStepData.showInfoBox}
+                />
+                {/* Show Demo Request Card */}
+                {currentStepData.showDemoRequest && <DemoRequestCard />}
+                {/* Show Important Info Box (now the main content for last step) */}
+                {currentStepData.showInfoBox && <ImportantInfoBox />}
+              </>
+            )}
           </div>
         </div>
       ) : targetRect ? (
