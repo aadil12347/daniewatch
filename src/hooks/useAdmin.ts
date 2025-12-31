@@ -140,47 +140,45 @@ export const useAdmin = () => {
     if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
 
     try {
-      // Get request details first
-      const { data: request, error: fetchError } = await supabase
-        .from('requests')
-        .select('*')
-        .eq('id', requestId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Update request
-      const { error: updateError } = await supabase
+      // Update first (single round-trip) and return the updated row for notification
+      const { data: updated, error: updateError } = await supabase
         .from('requests')
         .update({
           status,
-          admin_response: adminResponse || request.admin_response,
+          ...(adminResponse !== undefined ? { admin_response: adminResponse } : {}),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', requestId);
+        .eq('id', requestId)
+        .select('*')
+        .maybeSingle();
 
       if (updateError) throw updateError;
+      if (!updated) throw new Error('Request not found or access denied.');
 
-      // Create notification for user
-      const notificationTitle = status === 'completed' 
-        ? 'Request Approved!' 
-        : status === 'rejected'
-        ? 'Request Update'
-        : 'Request Status Updated';
+      // Create notification for user (best-effort)
+      const notificationTitle =
+        status === 'completed'
+          ? 'Request Approved!'
+          : status === 'rejected'
+            ? 'Request Update'
+            : 'Request Status Updated';
 
-      const notificationMessage = adminResponse 
-        ? `Your request for "${request.title}" has been ${status}. Admin response: ${adminResponse}`
-        : `Your request for "${request.title}" has been updated to: ${status}`;
+      const notificationMessage = adminResponse
+        ? `Your request for "${updated.title}" has been ${status}. Admin response: ${adminResponse}`
+        : `Your request for "${updated.title}" has been updated to: ${status}`;
 
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: request.user_id,
-          title: notificationTitle,
-          message: notificationMessage,
-          type: status === 'completed' ? 'request_approved' : status === 'rejected' ? 'request_rejected' : 'request_updated',
-          request_id: requestId,
-        });
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: updated.user_id,
+        title: notificationTitle,
+        message: notificationMessage,
+        type:
+          status === 'completed'
+            ? 'request_approved'
+            : status === 'rejected'
+              ? 'request_rejected'
+              : 'request_updated',
+        request_id: requestId,
+      });
 
       if (notifError) console.error('Error creating notification:', notifError);
 
