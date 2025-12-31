@@ -11,6 +11,7 @@ interface TabbedContentRowProps {
   tvItems: Movie[];
   isLoading?: boolean;
   size?: "sm" | "md" | "lg";
+  defaultTab?: "movies" | "tv";
 }
 
 export const TabbedContentRow = ({
@@ -19,9 +20,10 @@ export const TabbedContentRow = ({
   tvItems,
   isLoading = false,
   size = "md",
+  defaultTab = "movies",
 }: TabbedContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<"movies" | "tv">("movies");
+  const [activeTab, setActiveTab] = useState<"movies" | "tv">(defaultTab);
   const [animationKey, setAnimationKey] = useState(0);
 
   const scroll = (direction: "left" | "right") => {
