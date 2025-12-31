@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
+import { useMedia } from "@/contexts/MediaContext";
 
 interface VideoPlayerProps {
   tmdbId: number;
@@ -15,6 +16,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
+  const { setIsVideoPlaying } = useMedia();
 
   // Check Blogger for video first
   useEffect(() => {
@@ -80,6 +82,29 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
+
+  // Set video playing state in context
+  useEffect(() => {
+    setIsVideoPlaying(true);
+    return () => setIsVideoPlaying(false);
+  }, [setIsVideoPlaying]);
+
+  // Handle browser back button - close video instead of navigating
+  useEffect(() => {
+    // Push a state to history when video opens
+    window.history.pushState({ videoPlayer: true }, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      // Close the video player instead of navigating back
+      onClose();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [onClose]);
 
   // Close on escape key
   useEffect(() => {
