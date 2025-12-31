@@ -2,8 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { TutorialTooltip } from "./TutorialTooltip";
 import { cn } from "@/lib/utils";
-import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper, Check, Info } from "lucide-react";
-import confetti from "canvas-confetti";
+import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper, Check, Info, Menu } from "lucide-react";
 
 // Base64 encoded sound effects (short, subtle sounds)
 const WHOOSH_SOUND = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdnd3eXd3dnl6enp4eHd1dHNycnFxcXFxcXFyc3R1d3h5enp6e3t6enp5eHd2dXRzcnFxcHBwcHBwcXFycnR1dnh5e3x9fn5+fn59fHt6eXh3dnV0c3JxcHBvb29vb29wcHFyc3R2d3l6fH1+f4CAgICAf39+fXx7enl4d3Z1dHNycXBwb29vb29vb3BwcXJzdHV3eHp7fH1+f4CAgICAgIB/f359fHt6eXh3dnV0c3JxcHBvb29vb29vb3BwcXJzdHV2eHl6e3x9fn9/gICAf39/fn59fHt6eXh3dnV0c3JxcXBwb29vbm5ub29vcHBxcnN0dXZ3eXp7fH1+fn9/f39/fn5+fXx7enl4d3Z1dHNycnFwcG9vb29vbm5ub29vcHBxcnN0dXZ3eHl6e3x9fX5+fn5+fn19fHt6eXh3dnZ1dHNycXFwb29vbm5ubm5ub29vcHBxcnN0dXZ3eHl6e3t8fX19fX19fX18e3p5eHd2dXR0c3JxcXBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fX19fHx7enl4d3Z1dHNzc3JxcHBvb29ubm5ubm5ub29vcHBxcnN0dXZ2d3h5ent7fHx8fHx8e3t6eXh3dnV0dHNycnFwcG9vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3h5enp7e3t7e3t7e3p5eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dXV2d3d4eXl6enp6enp6eXl4d3Z1dHRzc3JxcHBvb29ubm5ubm5ubm5vb29wcHFyc3R0dXZ2d3d4eXl5eXl5eXl4eHd2dXR0c3NycXFwb29vbm5ubm5ubm5ub29vcHBxcnN0dHV1dnd3eHh4eHh4eHh3d3Z1dHRzc3JycXBwb29vbm5ubm5ubm5ub29vcHBxcnJzc3R1dXZ2d3d3d3d3d3d2dnV0dHNzc3JxcXBvb29ubm5ubm5ubm5ub29vcHBxcXJyc3R0dXV2dnZ2dnZ2dnV1dHRzc3JycXFwcG9vb25ubm5ubm5ubm5vb29wcHFxcnJzc3R0dXV1dXV1dXV0dHRzc3JycXFwcG9vb29ubm5ubm5ubm5ub29vcHBwcXFycnJzc3R0dHR0dHR0c3NzcnJxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcXFxcnJyc3Nzc3Nzc3Nzc3NycnFxcXBwb29vb25ubm5ubm5ubm5ub29vcHBwcHFxcXJycnJycnJycnJycnJycXFwcHBvb29vbm5ubm5ubm5ubm5ub29vcHBwcHFxcXFxcXJycnJycnJxcXFwcHBvb29vb25ubm5ubm5ubm5ub29vcHBwcHBwcXFxcXFxcXFxcXFxcHBwb29vb29vbm5ubm5ubm5ubm5ub29vcHBwcHBwcHFxcXFxcXFxcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcXFwcHBwb29vb29vb25ubm5ubm5ubm5ubm5vb29wcHBwcHBwcHBwcHBwcHBvb29vb29ubm5ubm5ubm5ubm5ubm9vb29wcHBwcHBwcHBwcHBvb29vb29vbm5ubm5ubm5ubm5ubm5vb29vb3BwcHBwcHBwcHBvb29vb29vb25ubm5ubm5ubm5ubm5ub29vb29wcHBwcHBwcHBwb29vb29vb29ubm5ubm5ubm5ubm5ubm5vb29vb29wcHBwcHBwcG9vb29vb29vbm5ubm5ubm5ubm5ubm5ub29vb29vb29wcHBwcG9vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb3Bwb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb29ubm5ubm5ubm5ubm5ubm5ubm5vb29vb29vb29vb29vb29vbm5ubm5ubm5ubm5ubm5ubm5ub29vb29vb29vb29vb29vb25ubm5ubm5ubm5ubm5ubm5ubm9vb29vb29vb29vb29vb25ubm5ubm5u";
@@ -130,8 +129,77 @@ export const TutorialOverlay = () => {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasConfettiFired, setHasConfettiFired] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const currentStepData = tutorialSteps[currentStep];
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Get steps based on device
+  const getSteps = (): TutorialStep[] => [
+    {
+      id: "welcome",
+      title: "Welcome to DanieWatch!",
+      description: "Chaliye hum aap ko sab kuch dikhate hain! Yeh quick tour aap ko saari features samjhne mein madad karega.",
+      targetSelector: null,
+      position: "center",
+      icon: <Sparkles className="w-5 h-5" />,
+    },
+    {
+      id: "navigation",
+      title: isMobile ? "Open Menu" : "Browse Categories",
+      description: isMobile
+        ? "Is menu icon par tap karain. Yaha se aap Movies, TV Shows, Anime, Korean dramas aur apni Watchlist dekh sakte ho!"
+        : "Yaha click karain Movies, TV Shows, Anime, aur Korean dramas dekhne ke liye. Har category mein behtareen content hai!",
+      targetSelector: isMobile ? "[data-tutorial='mobile-menu']" : "[data-tutorial='navigation']",
+      position: "bottom",
+      icon: isMobile ? <Menu className="w-5 h-5" /> : <Home className="w-5 h-5" />,
+    },
+    {
+      id: "search",
+      title: "Search Anything",
+      description: isMobile
+        ? "Kuch bhi dhund rahe ho? Search icon par tap karain aur foran apni movie ya show dhundein!"
+        : "Kuch bhi dhund rahe ho? Search icon par click karain aur foran apni movie ya show dhundein!",
+      targetSelector: "[data-tutorial='search']",
+      position: "bottom",
+      icon: <Search className="w-5 h-5" />,
+    },
+    {
+      id: "request",
+      title: "Request Content",
+      description: isMobile
+        ? "Koi movie ya show chahiye? Is floating button par tap karain aur admin se request karain!"
+        : "Koi movie ya show chahiye? Is floating button par click karain aur admin se request karain!",
+      targetSelector: "[data-tutorial='request']",
+      position: "top",
+      icon: <MessageSquarePlus className="w-5 h-5" />,
+    },
+    {
+      id: "my-requests",
+      title: "Your Requests",
+      description: "Aap ki saari requests yaha dikhengi. Jab admin complete karega, green badge aur response dikhega!",
+      targetSelector: null,
+      position: "center",
+      icon: <FileText className="w-5 h-5" />,
+      showDemoRequest: true,
+    },
+    {
+      id: "celebration",
+      title: "You're All Set!",
+      description: "",
+      targetSelector: null,
+      position: "center",
+      icon: <PartyPopper className="w-5 h-5" />,
+      showInfoBox: true,
+    },
+  ];
+
+  const currentStepData = getSteps()[currentStep];
   const isLastStep = currentStep === totalSteps - 1;
 
   // Sound utility functions

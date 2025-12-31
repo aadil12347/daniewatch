@@ -208,6 +208,7 @@ export const Navbar = () => {
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden p-2 rounded-full hover:bg-secondary/50 transition-colors"
               aria-label="Toggle menu"
+              data-tutorial="mobile-menu"
             >
               <Menu className="w-5 h-5" />
             </button>
