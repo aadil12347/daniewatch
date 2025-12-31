@@ -108,21 +108,21 @@ const Index = () => {
 
           {/* Regional Popular Sections */}
           <TabbedContentRow
-            title="Indian Popular This Week"
+            title="Indian Popular"
             moviesItems={indianPopular.filter(item => item.media_type === 'movie')}
             tvItems={indianPopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
           />
 
           <TabbedContentRow
-            title="Anime Popular This Week"
+            title="Anime Popular"
             moviesItems={animePopular.filter(item => item.media_type === 'movie')}
             tvItems={animePopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
           />
 
           <TabbedContentRow
-            title="Korean Popular This Week"
+            title="Korean Popular"
             moviesItems={koreanPopular.filter(item => item.media_type === 'movie')}
             tvItems={koreanPopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
