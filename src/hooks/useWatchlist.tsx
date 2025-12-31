@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { Movie } from '@/lib/tmdb';
 
 interface WatchlistItem {
@@ -99,6 +100,11 @@ export const useWatchlist = () => {
       toast({
         title: "Added to watchlist",
         description: `${title} has been added to your watchlist.`,
+        action: (
+          <ToastAction altText="View watchlist" onClick={() => navigate('/watchlist')}>
+            View
+          </ToastAction>
+        ),
       });
 
       await fetchWatchlist();
