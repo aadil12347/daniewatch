@@ -13,6 +13,7 @@ interface TutorialTooltipProps {
   onNext: () => void;
   onSkip: () => void;
   isLastStep?: boolean;
+  hideDescription?: boolean;
 }
 
 export const TutorialTooltip = ({
@@ -25,6 +26,7 @@ export const TutorialTooltip = ({
   onNext,
   onSkip,
   isLastStep = false,
+  hideDescription = false,
 }: TutorialTooltipProps) => {
   const positionClasses = {
     top: "bottom-full mb-4",
@@ -88,11 +90,13 @@ export const TutorialTooltip = ({
         </div>
 
         {/* Content */}
-        <div className="px-5 py-4">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {description}
-          </p>
-        </div>
+        {!hideDescription && description && (
+          <div className="px-5 py-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {description}
+            </p>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="px-5 py-4 bg-secondary/20 border-t border-border/50 flex items-center justify-between">
