@@ -119,6 +119,7 @@ const Index = () => {
             moviesItems={animePopular.filter(item => item.media_type === 'movie')}
             tvItems={animePopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
+            defaultTab="tv"
           />
 
           <TabbedContentRow
@@ -126,6 +127,7 @@ const Index = () => {
             moviesItems={koreanPopular.filter(item => item.media_type === 'movie')}
             tvItems={koreanPopular.filter(item => item.media_type === 'tv')}
             isLoading={isLoading}
+            defaultTab="tv"
           />
 
           <TabbedContentRow
