@@ -34,16 +34,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
 
         // Detect new OAuth users (Google sign-up) and trigger tutorial
+        // Only if they haven't already completed the tutorial
         if (event === 'SIGNED_IN' && session?.user) {
-          const createdAt = new Date(session.user.created_at).getTime();
-          const now = Date.now();
-          const isNewUser = (now - createdAt) < 60000; // Created within 60 seconds
+          const hasCompletedTutorial = localStorage.getItem('daniewatch_tutorial_completed') === 'true';
           
-          // Check if OAuth provider (not email/password)
-          const isOAuthUser = session.user.app_metadata?.provider !== 'email';
-          
-          if (isNewUser && isOAuthUser) {
-            setTimeout(() => setTutorialFlag(), 0);
+          if (!hasCompletedTutorial) {
+            const createdAt = new Date(session.user.created_at).getTime();
+            const now = Date.now();
+            const isNewUser = (now - createdAt) < 60000; // Created within 60 seconds
+            
+            // Check if OAuth provider (not email/password)
+            const isOAuthUser = session.user.app_metadata?.provider !== 'email';
+            
+            if (isNewUser && isOAuthUser) {
+              setTimeout(() => setTutorialFlag(), 0);
+            }
           }
         }
       }
