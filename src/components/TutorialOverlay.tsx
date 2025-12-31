@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { TutorialTooltip } from "./TutorialTooltip";
 import { cn } from "@/lib/utils";
-import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper, Check, Info, MousePointer2, Send } from "lucide-react";
+import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper, Check, Info } from "lucide-react";
 import confetti from "canvas-confetti";
 
 // Base64 encoded sound effects (short, subtle sounds)
@@ -20,7 +19,6 @@ interface TutorialStep {
   icon: React.ReactNode;
   showDemoRequest?: boolean;
   showInfoBox?: boolean;
-  showRequestDemo?: boolean;
 }
 
 const tutorialSteps: TutorialStep[] = [
@@ -51,11 +49,10 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: "request",
     title: "Request Content",
-    description: "Dekhiye kaise request karte hain...",
+    description: "Koi movie ya show chahiye? Is floating button par click karain aur admin se request karain. Admin jaldi upload kar dega!",
     targetSelector: "[data-tutorial='request']",
     position: "top",
     icon: <MessageSquarePlus className="w-5 h-5" />,
-    showRequestDemo: true,
   },
   {
     id: "my-requests",
@@ -128,209 +125,14 @@ const ImportantInfoBox = () => (
   </div>
 );
 
-// Request Demo Animation Component
-interface RequestDemoAnimationProps {
-  onComplete: () => void;
-}
-
-const RequestDemoAnimation = ({ onComplete }: RequestDemoAnimationProps) => {
-  const [phase, setPhase] = useState<'idle' | 'clicking' | 'form-opening' | 'typing-title' | 'typing-message' | 'submitting' | 'navigating' | 'showing-request'>('idle');
-  const [typedTitle, setTypedTitle] = useState('');
-  const [typedMessage, setTypedMessage] = useState('');
-  const navigate = useNavigate();
-
-  const demoTitle = "Inception (2010)";
-  const demoMessage = "Hindi main upload kar dain with download link";
-
-  useEffect(() => {
-    // Start animation sequence
-    const timers: NodeJS.Timeout[] = [];
-
-    // Phase 1: Show cursor moving to button
-    timers.push(setTimeout(() => setPhase('clicking'), 500));
-
-    // Phase 2: Form opening
-    timers.push(setTimeout(() => setPhase('form-opening'), 1500));
-
-    // Phase 3: Type title
-    timers.push(setTimeout(() => setPhase('typing-title'), 2200));
-
-    // Phase 4: Type message
-    timers.push(setTimeout(() => setPhase('typing-message'), 3500));
-
-    // Phase 5: Click submit
-    timers.push(setTimeout(() => setPhase('submitting'), 5500));
-
-    // Phase 6: Navigate to requests
-    timers.push(setTimeout(() => {
-      setPhase('navigating');
-      navigate('/requests');
-    }, 6500));
-
-    // Phase 7: Show request card
-    timers.push(setTimeout(() => setPhase('showing-request'), 7500));
-
-    // Navigate back to homepage before completing
-    timers.push(setTimeout(() => {
-      navigate('/');
-    }, 8500));
-
-    // Complete - auto advance to next step
-    timers.push(setTimeout(() => onComplete(), 9000));
-
-    return () => timers.forEach(clearTimeout);
-  }, [navigate, onComplete]);
-
-  // Typing animation for title
-  useEffect(() => {
-    if (phase === 'typing-title') {
-      let i = 0;
-      const interval = setInterval(() => {
-        if (i < demoTitle.length) {
-          setTypedTitle(demoTitle.slice(0, i + 1));
-          i++;
-        } else {
-          clearInterval(interval);
-        }
-      }, 60);
-      return () => clearInterval(interval);
-    }
-  }, [phase]);
-
-  // Typing animation for message
-  useEffect(() => {
-    if (phase === 'typing-message') {
-      let i = 0;
-      const interval = setInterval(() => {
-        if (i < demoMessage.length) {
-          setTypedMessage(demoMessage.slice(0, i + 1));
-          i++;
-        } else {
-          clearInterval(interval);
-        }
-      }, 40);
-      return () => clearInterval(interval);
-    }
-  }, [phase]);
-
-  return (
-    <div className="fixed inset-0 z-[160] pointer-events-none">
-      {/* Animated Cursor */}
-      {(phase === 'clicking' || phase === 'submitting') && (
-        <div 
-          className={cn(
-            "absolute transition-all duration-500 ease-out flex items-center gap-2",
-            phase === 'clicking' && "bottom-8 right-8",
-            phase === 'submitting' && "bottom-[45%] right-[calc(50%-60px)]"
-          )}
-        >
-          <MousePointer2 className="w-8 h-8 text-primary animate-bounce fill-primary/30" />
-          <span className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full animate-pulse">
-            Click!
-          </span>
-        </div>
-      )}
-
-      {/* Demo Form Overlay */}
-      {(phase === 'form-opening' || phase === 'typing-title' || phase === 'typing-message' || phase === 'submitting') && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <MessageSquarePlus className="w-5 h-5 text-primary" />
-              Request Form (Demo)
-            </h3>
-            
-            {/* Title Field */}
-            <div className="mb-4">
-              <label className="text-sm text-muted-foreground mb-1 block">Movie/Show Title</label>
-              <div className={cn(
-                "bg-background border border-border rounded-lg px-3 py-2 text-foreground min-h-[40px]",
-                (phase === 'typing-title') && "ring-2 ring-primary/50"
-              )}>
-                {typedTitle}
-                {phase === 'typing-title' && <span className="animate-pulse">|</span>}
-              </div>
-            </div>
-
-            {/* Message Field */}
-            <div className="mb-4">
-              <label className="text-sm text-muted-foreground mb-1 block">Your Message</label>
-              <div className={cn(
-                "bg-background border border-border rounded-lg px-3 py-2 text-foreground min-h-[80px]",
-                (phase === 'typing-message') && "ring-2 ring-primary/50"
-              )}>
-                {typedMessage}
-                {phase === 'typing-message' && <span className="animate-pulse">|</span>}
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button className={cn(
-              "w-full bg-primary text-primary-foreground rounded-lg py-2.5 flex items-center justify-center gap-2 font-medium transition-all",
-              phase === 'submitting' && "scale-95 bg-primary/80 animate-pulse"
-            )}>
-              <Send className="w-4 h-4" />
-              Submit Request
-            </button>
-
-            <div className="mt-3 text-center">
-              <span className="text-xs bg-secondary/50 text-muted-foreground px-2 py-1 rounded">DEMO - No actual request</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Navigation indicator */}
-      {phase === 'navigating' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm animate-fade-in">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-foreground font-medium">My Requests page par ja rahe hain...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Showing request on page */}
-      {phase === 'showing-request' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-          <div className="bg-background/95 backdrop-blur-sm absolute inset-0" />
-          <div className="relative z-10 flex flex-col items-center animate-scale-in">
-            <div className="mb-4 flex items-center gap-2 text-primary">
-              <MousePointer2 className="w-6 h-6 animate-bounce" />
-              <span className="text-lg font-semibold">Yaha aap ki request dikhegi!</span>
-            </div>
-            <DemoRequestCard />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 export const TutorialOverlay = () => {
   const { isTutorialActive, currentStep, totalSteps, nextStep, skipTutorial } = useTutorial();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [hasConfettiFired, setHasConfettiFired] = useState(false);
-  const [showRequestDemo, setShowRequestDemo] = useState(false);
 
   const currentStepData = tutorialSteps[currentStep];
   const isLastStep = currentStep === totalSteps - 1;
-
-  // Handle request demo completion
-  const handleRequestDemoComplete = useCallback(() => {
-    setShowRequestDemo(false);
-    nextStep();
-  }, [nextStep]);
-
-  // Auto-start request demo when on that step
-  useEffect(() => {
-    if (isTutorialActive && currentStepData?.showRequestDemo && !showRequestDemo) {
-      // Start demo after a brief delay
-      const timer = setTimeout(() => setShowRequestDemo(true), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isTutorialActive, currentStepData?.showRequestDemo, showRequestDemo]);
 
   // Sound utility functions
   const playSound = useCallback((soundData: string, volume: number = 0.3) => {
@@ -453,10 +255,6 @@ export const TutorialOverlay = () => {
 
   return (
     <>
-      {/* Request Demo Animation */}
-      {showRequestDemo && (
-        <RequestDemoAnimation onComplete={handleRequestDemoComplete} />
-      )}
 
       <div className="fixed inset-0 z-[150] pointer-events-auto">
         {/* Overlay with cutout */}
@@ -508,11 +306,8 @@ export const TutorialOverlay = () => {
           </div>
         )}
 
-        {/* Hide tooltip during request demo */}
-        {!showRequestDemo && (
-          <>
-            {/* Tooltip positioning */}
-            {isFullscreenStep ? (
+        {/* Tooltip positioning */}
+        {isFullscreenStep ? (
               // Centered modal for welcome/final steps
               <div className="absolute inset-0 flex items-center justify-center p-4">
                 <div className="animate-scale-in flex flex-col items-center">
@@ -561,8 +356,6 @@ export const TutorialOverlay = () => {
                 />
               </div>
             ) : null}
-          </>
-        )}
       </div>
     </>
   );
