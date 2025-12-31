@@ -272,6 +272,48 @@ export const useAdmin = () => {
     }
   }, [isAdmin]);
 
+  // Real-time subscription for requests
+  useEffect(() => {
+    if (!isAdmin || !isSupabaseConfigured) return;
+
+    const channel = supabase
+      .channel('admin-requests-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'requests' },
+        (payload) => {
+          console.log('New request received:', payload.new);
+          setAllRequests((prev) => [payload.new as AdminRequest, ...prev]);
+          setRequestsError(null);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'requests' },
+        (payload) => {
+          console.log('Request updated:', payload.new);
+          setAllRequests((prev) =>
+            prev.map((r) => (r.id === (payload.new as AdminRequest).id ? (payload.new as AdminRequest) : r))
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'requests' },
+        (payload) => {
+          console.log('Request deleted:', payload.old);
+          setAllRequests((prev) => prev.filter((r) => r.id !== (payload.old as { id: string }).id));
+        }
+      )
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin]);
+
   return {
     isAdmin,
     isOwner,
