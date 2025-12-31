@@ -77,6 +77,39 @@ export const useNotifications = () => {
     }
   };
 
+  const deleteNotification = async (notificationId: string) => {
+    if (!user || !isSupabaseConfigured) return;
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!user || !isSupabaseConfigured) return;
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setNotifications([]);
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   useEffect(() => {
@@ -112,6 +145,8 @@ export const useNotifications = () => {
     unreadCount,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
     refetch: fetchNotifications,
   };
 };

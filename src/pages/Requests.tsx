@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -8,8 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 const getStatusBadge = (status: Request['status']) => {
   switch (status) {
@@ -26,7 +39,21 @@ const getStatusBadge = (status: Request['status']) => {
   }
 };
 
-const RequestCard = ({ request }: { request: Request }) => {
+const RequestCard = ({ 
+  request, 
+  onDelete 
+}: { 
+  request: Request;
+  onDelete: (id: string) => Promise<void>;
+}) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    await onDelete(request.id);
+    setIsDeleting(false);
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -52,9 +79,33 @@ const RequestCard = ({ request }: { request: Request }) => {
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground">
-          Submitted {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Submitted {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+          </p>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Request</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this request? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </CardContent>
     </Card>
   );
@@ -62,7 +113,44 @@ const RequestCard = ({ request }: { request: Request }) => {
 
 const Requests = () => {
   const { user } = useAuth();
-  const { requests, isLoading } = useRequests();
+  const { requests, isLoading, deleteRequest, clearAllRequests } = useRequests();
+  const { toast } = useToast();
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleDelete = async (id: string) => {
+    const { error } = await deleteRequest(id);
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete request.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Request Deleted",
+        description: "Your request has been removed.",
+      });
+    }
+  };
+
+  const handleClearAll = async () => {
+    setIsClearing(true);
+    const { error } = await clearAllRequests();
+    setIsClearing(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear requests.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "History Cleared",
+        description: "All your requests have been removed.",
+      });
+    }
+  };
 
   if (!user) {
     return (
@@ -92,10 +180,43 @@ const Requests = () => {
         <Navbar />
 
         <div className="container mx-auto px-4 pt-24 pb-12">
-          <h1 className="text-3xl font-bold mb-2">My Requests</h1>
-          <p className="text-muted-foreground mb-8">
-            Track the status of your movie and TV show requests
-          </p>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Requests</h1>
+              <p className="text-muted-foreground">
+                Track the status of your movie and TV show requests
+              </p>
+            </div>
+            
+            {requests.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="text-destructive hover:text-destructive" disabled={isClearing}>
+                    {isClearing ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    Clear History
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear Request History</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete all your requests? This will remove {requests.length} requests and cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Clear All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
 
           {isLoading ? (
             <div className="space-y-4">
@@ -125,7 +246,7 @@ const Requests = () => {
           ) : (
             <div className="space-y-4">
               {requests.map((request) => (
-                <RequestCard key={request.id} request={request} />
+                <RequestCard key={request.id} request={request} onDelete={handleDelete} />
               ))}
             </div>
           )}
