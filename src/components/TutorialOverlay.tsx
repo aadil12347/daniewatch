@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { TutorialTooltip } from "./TutorialTooltip";
 import { cn } from "@/lib/utils";
-import { Home, Search, MessageSquarePlus, FileText, Sparkles } from "lucide-react";
+import { Home, Search, MessageSquarePlus, FileText, Sparkles, PartyPopper } from "lucide-react";
+import confetti from "canvas-confetti";
 
 interface TutorialStep {
   id: string;
@@ -47,12 +48,12 @@ const tutorialSteps: TutorialStep[] = [
     icon: <MessageSquarePlus className="w-5 h-5" />,
   },
   {
-    id: "my-requests",
-    title: "Track Your Requests",
-    description: "All your requests appear in 'My Requests' from your profile menu. You'll get notified when your request is approved or completed!",
+    id: "celebration",
+    title: "You're All Set!",
+    description: "Congratulations! You now know everything you need to enjoy DanieWatch. Happy streaming!",
     targetSelector: null,
     position: "center",
-    icon: <FileText className="w-5 h-5" />,
+    icon: <PartyPopper className="w-5 h-5" />,
   },
 ];
 
@@ -60,8 +61,67 @@ export const TutorialOverlay = () => {
   const { isTutorialActive, currentStep, totalSteps, nextStep, skipTutorial } = useTutorial();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [hasConfettiFired, setHasConfettiFired] = useState(false);
 
   const currentStepData = tutorialSteps[currentStep];
+  const isLastStep = currentStep === totalSteps - 1;
+
+  // Confetti celebration function
+  const fireConfetti = useCallback(() => {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 200 };
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+
+      // Confetti from left side
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+        colors: ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'],
+      });
+
+      // Confetti from right side
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+        colors: ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'],
+      });
+    }, 250);
+
+    // Initial burst from center
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { x: 0.5, y: 0.5 },
+      colors: ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd'],
+      zIndex: 200,
+    });
+  }, []);
+
+  // Trigger confetti on last step
+  useEffect(() => {
+    if (isTutorialActive && isLastStep && !hasConfettiFired) {
+      setHasConfettiFired(true);
+      fireConfetti();
+    }
+    
+    // Reset confetti flag when tutorial restarts
+    if (!isTutorialActive) {
+      setHasConfettiFired(false);
+    }
+  }, [isTutorialActive, isLastStep, hasConfettiFired, fireConfetti]);
 
   useEffect(() => {
     if (!isTutorialActive || !currentStepData?.targetSelector) {
@@ -164,7 +224,7 @@ export const TutorialOverlay = () => {
               totalSteps={totalSteps}
               onNext={nextStep}
               onSkip={skipTutorial}
-              isLastStep={currentStep === totalSteps - 1}
+              isLastStep={isLastStep}
             />
           </div>
         </div>
@@ -192,7 +252,7 @@ export const TutorialOverlay = () => {
             totalSteps={totalSteps}
             onNext={nextStep}
             onSkip={skipTutorial}
-            isLastStep={currentStep === totalSteps - 1}
+            isLastStep={isLastStep}
           />
         </div>
       ) : null}
