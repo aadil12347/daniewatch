@@ -204,18 +204,12 @@ export const TutorialOverlay = () => {
     });
   }, []);
 
-  // Trigger confetti on last step (no sound)
+  // Reset confetti flag when tutorial restarts (confetti removed)
   useEffect(() => {
-    if (isTutorialActive && isLastStep && !hasConfettiFired) {
-      setHasConfettiFired(true);
-      fireConfetti();
-    }
-    
-    // Reset confetti flag when tutorial restarts
     if (!isTutorialActive) {
       setHasConfettiFired(false);
     }
-  }, [isTutorialActive, isLastStep, hasConfettiFired, fireConfetti]);
+  }, [isTutorialActive]);
 
   useEffect(() => {
     if (!isTutorialActive || !currentStepData?.targetSelector) {
