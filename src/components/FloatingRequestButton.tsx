@@ -21,8 +21,10 @@ export const FloatingRequestButton = () => {
   const { currentMedia } = useMedia();
   const { user } = useAuth();
 
-  // Only show for logged-in users
+  // Hide for logged-out users and for the owner (owner shouldn't submit requests)
+  const OWNER_EMAIL = "mdaniyalaadil@gmail.com";
   if (!user) return null;
+  if (user.email === OWNER_EMAIL) return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>

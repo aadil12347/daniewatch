@@ -99,6 +99,13 @@ export const useAdmin = () => {
 
       if (error) throw error;
       setAllRequests((data as AdminRequest[]) || []);
+
+      // If admin sees 0 rows, it's very often RLS policies blocking access.
+      if ((data?.length ?? 0) === 0) {
+        setRequestsError(
+          'No requests returned. If users have submitted requests, this usually means Row Level Security (RLS) is blocking admin access on the requests table.'
+        );
+      }
     } catch (error: any) {
       const message = error?.message || 'Failed to load requests.';
       setRequestsError(message);
