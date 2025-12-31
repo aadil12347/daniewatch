@@ -101,6 +101,11 @@ const Auth = () => {
             description: error.message || "Invalid email or password",
             variant: "destructive",
           });
+        } else {
+          toast({
+            title: "Welcome back! 🎉",
+            description: "You have successfully signed in to DanieWatch.",
+          });
         }
       } else if (mode === "signup") {
         const { error } = await signUpWithEmail(email, password, username);
@@ -122,8 +127,8 @@ const Auth = () => {
           // Set tutorial flag for new signups
           setTutorialFlag();
           toast({
-            title: "Check your email",
-            description: "We've sent you a confirmation link to verify your account.",
+            title: "Account Created! 🎉",
+            description: "Check your email for a confirmation link to verify your account.",
           });
         }
       } else if (mode === "forgot") {
