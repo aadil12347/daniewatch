@@ -252,21 +252,26 @@ export const getMovieGenres = () =>
 export const getTVGenres = () =>
   fetchTMDB<{ genres: Genre[] }>("/genre/tv/list");
 
-// Regional Popular Content (Already Released)
+// Regional Popular Content (Latest Released)
 export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
   const today = new Date().toISOString().split('T')[0];
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
   
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
       with_origin_country: "IN",
       sort_by: "popularity.desc",
+      "primary_release_date.gte": dateFrom,
       "primary_release_date.lte": today,
     }),
     fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
       page: page.toString(),
       with_origin_country: "IN",
       sort_by: "popularity.desc",
+      "first_air_date.gte": dateFrom,
       "first_air_date.lte": today,
     }),
   ]);
@@ -281,6 +286,9 @@ export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<M
 
 export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
   const today = new Date().toISOString().split('T')[0];
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
   
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
@@ -288,6 +296,7 @@ export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Mo
       with_genres: "16",
       with_original_language: "ja",
       sort_by: "popularity.desc",
+      "primary_release_date.gte": dateFrom,
       "primary_release_date.lte": today,
     }),
     fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
@@ -295,6 +304,7 @@ export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Mo
       with_genres: "16",
       with_original_language: "ja",
       sort_by: "popularity.desc",
+      "first_air_date.gte": dateFrom,
       "first_air_date.lte": today,
     }),
   ]);
@@ -309,18 +319,23 @@ export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Mo
 
 export const getKoreanPopular = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
   const today = new Date().toISOString().split('T')[0];
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
   
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
       with_origin_country: "KR",
       sort_by: "popularity.desc",
+      "primary_release_date.gte": dateFrom,
       "primary_release_date.lte": today,
     }),
     fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
       page: page.toString(),
       with_origin_country: "KR",
       sort_by: "popularity.desc",
+      "first_air_date.gte": dateFrom,
       "first_air_date.lte": today,
     }),
   ]);
