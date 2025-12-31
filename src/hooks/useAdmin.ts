@@ -16,6 +16,7 @@ export interface UserRole {
 export interface AdminRequest {
   id: string;
   user_id: string;
+  user_email: string | null;
   request_type: 'movie' | 'tv_season' | 'general';
   title: string;
   season_number: number | null;
@@ -24,7 +25,6 @@ export interface AdminRequest {
   admin_response: string | null;
   created_at: string;
   updated_at: string;
-  user_email?: string;
 }
 
 export const useAdmin = () => {

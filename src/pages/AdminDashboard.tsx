@@ -121,12 +121,17 @@ const RequestCard = ({
             )}
             <div>
               <CardTitle className="text-lg">{request.title}</CardTitle>
-              <CardDescription className="mt-1">
-                {request.request_type === 'movie' && 'Movie Request'}
-                {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
-                {request.request_type === 'general' && 'General Request'}
-                {' • '}
-                <span className="text-xs">User ID: {request.user_id.slice(0, 8)}...</span>
+              <CardDescription className="mt-1 space-y-1">
+                <div>
+                  {request.request_type === 'movie' && 'Movie Request'}
+                  {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
+                  {request.request_type === 'general' && 'General Request'}
+                </div>
+                {request.user_email && (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">From:</span> {request.user_email}
+                  </div>
+                )}
               </CardDescription>
             </div>
           </div>

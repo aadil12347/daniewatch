@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface Request {
   id: string;
   user_id: string;
+  user_email: string | null;
   request_type: 'movie' | 'tv_season' | 'general';
   title: string;
   season_number: number | null;
@@ -49,18 +50,32 @@ export const useRequests = () => {
     if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
 
     try {
-      const { error } = await supabase
+      // Insert the request with user email
+      const { data: newRequest, error } = await supabase
         .from('requests')
         .insert({
           user_id: user.id,
+          user_email: user.email,
           request_type: data.request_type,
           title: data.title,
           season_number: data.season_number || null,
           message: data.message,
           status: 'pending',
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Create a notification for the user confirming submission
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        title: 'Request Submitted',
+        message: `Your request for "${data.title}" has been submitted and is pending review.`,
+        type: 'request_updated',
+        request_id: newRequest?.id || null,
+      });
+
       await fetchRequests();
       return { error: null };
     } catch (error) {
