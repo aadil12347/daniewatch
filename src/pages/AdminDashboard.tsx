@@ -324,7 +324,7 @@ const AdminDashboard = () => {
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to update request.",
+        description: error instanceof Error ? error.message : "Failed to update request.",
         variant: "destructive",
       });
     } else {
