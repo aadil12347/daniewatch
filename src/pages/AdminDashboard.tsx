@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useAdmin, AdminRequest } from "@/hooks/useAdmin";
+import { useAdminTrash, TrashedRequest } from "@/hooks/useAdminTrash";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,9 @@ import {
   Plus,
   Crown,
   Sparkles,
-  CheckCheck
+  CheckCheck,
+  RotateCcw,
+  Archive
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -391,15 +394,23 @@ const AdminDashboard = () => {
     updateRequestStatus, 
     deleteRequest,
     deleteRequests,
-    clearAllRequests,
     refetchRequests 
   } = useAdmin();
+  const {
+    trashedRequests,
+    moveToTrash,
+    moveMultipleToTrash,
+    restoreFromTrash,
+    permanentlyDelete,
+    permanentlyDeleteMultiple,
+    emptyTrash,
+  } = useAdminTrash();
   const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
-  const [isClearingAll, setIsClearingAll] = useState(false);
-  const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done'>('new');
+  const [isClearingCategory, setIsClearingCategory] = useState(false);
+  const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done' | 'trash'>('new');
 
   const handleUpdateStatus = async (id: string, status: AdminRequest['status'], response?: string) => {
     const { error } = await updateRequestStatus(id, status, response);
@@ -419,6 +430,20 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteRequest = async (id: string) => {
+    // Find the request to get its category
+    const request = allRequests.find(r => r.id === id);
+    if (request) {
+      // Determine the category
+      let category: 'new' | 'pending' | 'in_progress' | 'done' = 'pending';
+      if (request.status === 'pending' && !request.admin_response) category = 'new';
+      else if (request.status === 'pending') category = 'pending';
+      else if (request.status === 'in_progress') category = 'in_progress';
+      else if (request.status === 'completed' || request.status === 'rejected') category = 'done';
+      
+      // Move to trash first
+      moveToTrash(request, category);
+    }
+
     const { error } = await deleteRequest(id);
 
     if (error) {
@@ -429,8 +454,8 @@ const AdminDashboard = () => {
       });
     } else {
       toast({
-        title: "Request Deleted",
-        description: "The request has been removed.",
+        title: "Request Moved to Trash",
+        description: "The request has been moved to trash.",
       });
     }
   };
@@ -438,7 +463,20 @@ const AdminDashboard = () => {
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
     
+    // If in trash tab, permanently delete
+    if (requestsTab === 'trash') {
+      handlePermanentDeleteMultiple();
+      return;
+    }
+    
     setIsDeletingSelected(true);
+    
+    // Move selected requests to trash first
+    const selectedRequests = allRequests.filter(r => selectedIds.includes(r.id));
+    if (selectedRequests.length > 0) {
+      moveMultipleToTrash(selectedRequests, requestsTab as 'new' | 'pending' | 'in_progress' | 'done');
+    }
+    
     const { error } = await deleteRequests(selectedIds);
     setIsDeletingSelected(false);
 
@@ -450,18 +488,49 @@ const AdminDashboard = () => {
       });
     } else {
       toast({
-        title: "Requests Deleted",
-        description: `${selectedIds.length} requests have been removed.`,
+        title: "Requests Moved to Trash",
+        description: `${selectedIds.length} requests have been moved to trash.`,
       });
       setSelectedIds([]);
       setIsSelectionMode(false);
     }
   };
 
-  const handleClearAll = async () => {
-    setIsClearingAll(true);
-    const { error } = await clearAllRequests();
-    setIsClearingAll(false);
+  // Get category name for display
+  const getCategoryLabel = () => {
+    switch (requestsTab) {
+      case 'new': return 'New';
+      case 'pending': return 'Pending';
+      case 'in_progress': return 'In Progress';
+      case 'done': return 'Done';
+      case 'trash': return 'Trash';
+      default: return '';
+    }
+  };
+
+  // Clear current category (move to trash)
+  const handleClearCategory = async () => {
+    if (requestsTab === 'trash') {
+      // Empty trash permanently
+      emptyTrash();
+      toast({
+        title: "Trash Emptied",
+        description: "All trashed requests have been permanently deleted.",
+      });
+      return;
+    }
+
+    const requestsToClear = getCurrentRequestsForClear();
+    if (requestsToClear.length === 0) return;
+
+    setIsClearingCategory(true);
+    
+    // Move to trash first
+    moveMultipleToTrash(requestsToClear, requestsTab as TrashedRequest['originalCategory']);
+    
+    // Then delete from database
+    const { error } = await deleteRequests(requestsToClear.map(r => r.id));
+    setIsClearingCategory(false);
 
     if (error) {
       toast({
@@ -471,10 +540,42 @@ const AdminDashboard = () => {
       });
     } else {
       toast({
-        title: "All Requests Cleared",
-        description: "All requests have been removed.",
+        title: `${getCategoryLabel()} Cleared`,
+        description: `${requestsToClear.length} requests moved to trash.`,
       });
     }
+  };
+
+  // Handle restoring a request from trash
+  const handleRestoreFromTrash = (requestId: string) => {
+    const restored = restoreFromTrash(requestId);
+    if (restored) {
+      toast({
+        title: "Request Restored",
+        description: `"${restored.title}" has been restored.`,
+      });
+      refetchRequests();
+    }
+  };
+
+  // Handle permanent delete from trash
+  const handlePermanentDelete = (requestId: string) => {
+    permanentlyDelete(requestId);
+    toast({
+      title: "Permanently Deleted",
+      description: "The request has been permanently deleted.",
+    });
+  };
+
+  // Handle permanent delete multiple from trash
+  const handlePermanentDeleteMultiple = () => {
+    permanentlyDeleteMultiple(selectedIds);
+    toast({
+      title: "Permanently Deleted",
+      description: `${selectedIds.length} requests have been permanently deleted.`,
+    });
+    setSelectedIds([]);
+    setIsSelectionMode(false);
   };
 
   const toggleSelection = (id: string, checked: boolean) => {
@@ -544,19 +645,31 @@ const AdminDashboard = () => {
     );
   }
 
-  // Filter requests by status
+  // Filter requests by status (exclude trashed ones from allRequests - they're tracked in localStorage)
   const newRequests = allRequests.filter(r => r.status === 'pending' && !r.admin_response);
   const pendingRequests = allRequests.filter(r => r.status === 'pending');
   const inProgressRequests = allRequests.filter(r => r.status === 'in_progress');
   const doneRequests = allRequests.filter(r => r.status === 'completed' || r.status === 'rejected');
 
-  const getCurrentRequests = () => {
+  const getCurrentRequests = (): AdminRequest[] => {
     switch (requestsTab) {
       case 'new': return newRequests;
       case 'pending': return pendingRequests;
       case 'in_progress': return inProgressRequests;
       case 'done': return doneRequests;
+      case 'trash': return trashedRequests as AdminRequest[];
       default: return allRequests;
+    }
+  };
+
+  // Get requests for current category (for clearing)
+  const getCurrentRequestsForClear = (): AdminRequest[] => {
+    switch (requestsTab) {
+      case 'new': return newRequests;
+      case 'pending': return pendingRequests;
+      case 'in_progress': return inProgressRequests;
+      case 'done': return doneRequests;
+      default: return [];
     }
   };
 
@@ -674,6 +787,14 @@ const AdminDashboard = () => {
                 >
                   <CheckCircle className="w-4 h-4" /> Done ({doneRequests.length})
                 </Button>
+                <Button 
+                  variant={requestsTab === 'trash' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setRequestsTab('trash')}
+                  className="gap-1"
+                >
+                  <Archive className="w-4 h-4" /> Trash ({trashedRequests.length})
+                </Button>
               </div>
 
               {/* Bulk actions */}
@@ -714,20 +835,25 @@ const AdminDashboard = () => {
                             ) : (
                               <Trash2 className="w-4 h-4 mr-1" />
                             )}
-                            Delete Selected ({selectedIds.length})
+                            {requestsTab === 'trash' ? 'Delete Forever' : 'Delete Selected'} ({selectedIds.length})
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Selected Requests</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {requestsTab === 'trash' ? 'Permanently Delete Selected' : 'Delete Selected Requests'}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete {selectedIds.length} selected requests? This action cannot be undone.
+                              {requestsTab === 'trash' 
+                                ? `Are you sure you want to permanently delete ${selectedIds.length} selected requests? This cannot be undone.`
+                                : `Are you sure you want to move ${selectedIds.length} selected requests to trash?`
+                              }
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                              Delete
+                              {requestsTab === 'trash' ? 'Delete Forever' : 'Move to Trash'}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -739,26 +865,31 @@ const AdminDashboard = () => {
                 <div className="ml-auto">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={isClearingAll || allRequests.length === 0}>
-                        {isClearingAll ? (
+                      <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={isClearingCategory || currentRequests.length === 0}>
+                        {isClearingCategory ? (
                           <Loader2 className="w-4 h-4 animate-spin mr-1" />
                         ) : (
                           <Trash2 className="w-4 h-4 mr-1" />
                         )}
-                        Clear All
+                        {requestsTab === 'trash' ? 'Empty Trash' : `Clear ${getCategoryLabel()}`}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Clear All Requests</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          {requestsTab === 'trash' ? 'Empty Trash' : `Clear ${getCategoryLabel()} Requests`}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete ALL requests? This will remove {allRequests.length} requests and cannot be undone.
+                          {requestsTab === 'trash' 
+                            ? `Are you sure you want to permanently delete ${trashedRequests.length} trashed requests? This cannot be undone.`
+                            : `Are you sure you want to move ${currentRequests.length} ${getCategoryLabel().toLowerCase()} requests to trash?`
+                          }
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          Delete All
+                        <AlertDialogAction onClick={handleClearCategory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          {requestsTab === 'trash' ? 'Empty Trash' : 'Move to Trash'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -778,16 +909,95 @@ const AdminDashboard = () => {
               ) : currentRequests.length === 0 ? (
                 <Card className="text-center py-12">
                   <CardContent>
-                    <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">No requests in this category</h2>
+                    {requestsTab === 'trash' ? (
+                      <Archive className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    ) : (
+                      <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    )}
+                    <h2 className="text-xl font-semibold mb-2">
+                      {requestsTab === 'trash' ? 'Trash is empty' : 'No requests in this category'}
+                    </h2>
                     <p className="text-muted-foreground">
                       {requestsTab === 'new' && "No new requests waiting for review."}
                       {requestsTab === 'pending' && "No pending requests."}
                       {requestsTab === 'in_progress' && "No requests in progress."}
                       {requestsTab === 'done' && "No completed or rejected requests."}
+                      {requestsTab === 'trash' && "Deleted requests will appear here for recovery."}
                     </p>
                   </CardContent>
                 </Card>
+              ) : requestsTab === 'trash' ? (
+                <div className="space-y-4">
+                  {trashedRequests.map((request) => (
+                    <Card key={request.id} className={selectedIds.includes(request.id) ? "ring-2 ring-primary" : ""}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3">
+                            {isSelectionMode && (
+                              <Checkbox 
+                                checked={selectedIds.includes(request.id)}
+                                onCheckedChange={(checked) => toggleSelection(request.id, !!checked)}
+                                className="mt-1"
+                              />
+                            )}
+                            <div>
+                              <CardTitle className="text-lg">{request.title}</CardTitle>
+                              <CardDescription className="mt-1 space-y-1">
+                                <div>
+                                  {request.request_type === 'movie' && 'Movie Request'}
+                                  {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
+                                  {request.request_type === 'general' && 'General Request'}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Deleted:</span> {formatDistanceToNow(new Date(request.deletedAt), { addSuffix: true })}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="font-medium">From:</span> {request.originalCategory}
+                                </div>
+                              </CardDescription>
+                            </div>
+                          </div>
+                          {getStatusBadge(request.status)}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-3">{request.message}</p>
+                        
+                        <div className="flex items-center justify-end gap-2 mt-4">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleRestoreFromTrash(request.id)}
+                            className="gap-1"
+                          >
+                            <RotateCcw className="w-4 h-4" /> Restore
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive gap-1">
+                                <Trash2 className="w-4 h-4" /> Delete Forever
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Permanently Delete</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to permanently delete this request? This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handlePermanentDelete(request.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete Forever
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               ) : (
                 <div className="space-y-4">
                   {currentRequests.map((request) => (
