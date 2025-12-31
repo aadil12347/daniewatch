@@ -301,16 +301,20 @@ const Auth = () => {
                 )}>
                   <Label htmlFor="username" className="text-sm font-medium">Username</Label>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                    <Input
-                      id="username"
-                      type="text"
-                      placeholder="Choose a username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-300"
-                      disabled={isLoading}
-                    />
+                    {/* Glow effect wrapper */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                      <Input
+                        id="username"
+                        type="text"
+                        placeholder="Choose a username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
+                        disabled={isLoading}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -318,16 +322,20 @@ const Auth = () => {
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-300"
-                      disabled={isLoading}
-                    />
+                    {/* Glow effect wrapper */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
+                        disabled={isLoading}
+                      />
+                    </div>
                   </div>
                 </div>
 
