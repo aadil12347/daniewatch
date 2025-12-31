@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
+import { setTutorialFlag } from './TutorialContext';
 
 interface AuthContextType {
   user: User | null;
@@ -31,6 +32,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Detect new OAuth users (Google sign-up) and trigger tutorial
+        if (event === 'SIGNED_IN' && session?.user) {
+          const createdAt = new Date(session.user.created_at).getTime();
+          const now = Date.now();
+          const isNewUser = (now - createdAt) < 60000; // Created within 60 seconds
+          
+          // Check if OAuth provider (not email/password)
+          const isOAuthUser = session.user.app_metadata?.provider !== 'email';
+          
+          if (isNewUser && isOAuthUser) {
+            setTimeout(() => setTutorialFlag(), 0);
+          }
+        }
       }
     );
 

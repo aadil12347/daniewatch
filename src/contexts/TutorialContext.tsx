@@ -18,7 +18,7 @@ export const TutorialProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const totalSteps = 5; // Welcome, Navigation, Search, Request, My Requests
+  const totalSteps = 6; // Welcome, Navigation, Search, Request, My Requests, Celebration
 
   useEffect(() => {
     // Only show tutorial if:
