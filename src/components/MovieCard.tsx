@@ -88,7 +88,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             }}
             className={cn(
               "absolute top-2 left-2 p-1.5 rounded-md glass transition-all duration-300",
-              "opacity-0 group-hover:opacity-100 hover:scale-110",
+              "opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110",
               inWatchlist ? "bg-primary/30" : "hover:bg-primary/20"
             )}
             title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
