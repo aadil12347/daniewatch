@@ -26,6 +26,7 @@ const MIN_LOADING_TIME = 12000; // 12 seconds
 
 export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: VideoPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const closedByBackButton = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
   const { setIsVideoPlaying } = useMedia();
@@ -153,11 +154,21 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
     return () => setIsVideoPlaying(false);
   }, [setIsVideoPlaying]);
 
+  // Handle close - cleans up orphan history entry when closed manually
+  const handleClose = () => {
+    if (!closedByBackButton.current) {
+      // Remove the orphan history entry we pushed
+      window.history.go(-1);
+    }
+    onClose();
+  };
+
   // Handle browser back button - close video instead of navigating
   useEffect(() => {
     window.history.pushState({ videoPlayer: true }, '');
 
     const handlePopState = () => {
+      closedByBackButton.current = true;
       onClose();
     };
 
@@ -172,7 +183,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        handleClose();
       }
     };
 
@@ -322,7 +333,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
         variant="ghost"
         size="icon"
         className="absolute top-4 right-4 z-[10000] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
-        onClick={onClose}
+        onClick={handleClose}
       >
         <X className="w-5 h-5" />
       </Button>
