@@ -3,6 +3,7 @@ import { Star, Play, Bookmark } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
+import { useState, useEffect } from "react";
 
 interface MovieCardProps {
   movie: Movie;
@@ -20,6 +21,18 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
   const rating = movie.vote_average?.toFixed(1);
+  
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [prevInWatchlist, setPrevInWatchlist] = useState(inWatchlist);
+  
+  useEffect(() => {
+    if (inWatchlist !== prevInWatchlist) {
+      setIsAnimating(true);
+      setPrevInWatchlist(inWatchlist);
+      const timer = setTimeout(() => setIsAnimating(false), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [inWatchlist, prevInWatchlist]);
 
   const sizeClasses = {
     sm: "w-32 sm:w-36",
@@ -98,16 +111,18 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               toggleWatchlist(movie);
             }}
             className={cn(
-              "absolute bottom-[4.5rem] right-2 p-2 rounded-lg glass transition-all duration-300 z-20",
-              "opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110",
-              inWatchlist ? "bg-primary/40" : "hover:bg-primary/20"
+              "absolute bottom-[4.5rem] right-2 p-2 rounded-lg glass transition-all duration-150 z-20",
+              "opacity-100 md:opacity-0 md:group-hover:opacity-100",
+              inWatchlist ? "bg-primary/40" : "hover:bg-primary/20",
+              isAnimating && inWatchlist && "bookmark-burst"
             )}
             title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
           >
             <Bookmark 
               className={cn(
-                "w-5 h-5 transition-all duration-100",
-                inWatchlist 
+                "w-5 h-5 transition-all duration-150",
+                isAnimating && inWatchlist && "bookmark-pop",
+                inWatchlist
                   ? "text-primary fill-primary scale-110" 
                   : "text-foreground fill-transparent scale-100"
               )}
