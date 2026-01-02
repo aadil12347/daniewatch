@@ -11,23 +11,34 @@ export const useScrollRestoration = (isDataLoaded: boolean) => {
   const restorationAttemptedRef = useRef(false);
   const lastKnownScrollYRef = useRef(window.scrollY);
 
-  // Track scroll position continuously with passive listener
+  // Track scroll position continuously with passive listener and persist to sessionStorage
   useEffect(() => {
     let ticking = false;
-    
+
     const handleScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          lastKnownScrollYRef.current = window.scrollY;
-          ticking = false;
-        });
-        ticking = true;
-      }
+      if (ticking) return;
+      ticking = true;
+
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        lastKnownScrollYRef.current = y;
+
+        // Persist frequently so back works even if user taps immediately after restore
+        const existingValue = sessionStorage.getItem(storageKey);
+        const existingScroll = existingValue ? parseInt(existingValue, 10) : 0;
+
+        // Don't overwrite a good value with near-zero (transition/jank)
+        if (!(y < 20 && existingScroll > 50) && y > 0) {
+          sessionStorage.setItem(storageKey, y.toString());
+        }
+
+        ticking = false;
+      });
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [storageKey]);
 
   // Save scroll position using last known good value (not instantaneous)
   const saveScrollPosition = useCallback(() => {
@@ -76,6 +87,10 @@ export const useScrollRestoration = (isDataLoaded: boolean) => {
     // Restoration with multiple attempts and longer delays
     const attemptRestore = (attempt: number) => {
       window.scrollTo({ top: targetPosition, behavior: "instant" });
+
+      // Ensure our "last known" and storage are updated even if the browser doesn't fire scroll events
+      lastKnownScrollYRef.current = targetPosition;
+      sessionStorage.setItem(storageKey, targetPosition.toString());
 
       // Check if we're close enough to target
       const diff = Math.abs(window.scrollY - targetPosition);
