@@ -208,14 +208,7 @@ const TVDetails = () => {
               type="tv"
               season={playerState.season}
               episode={playerState.episode}
-              onClose={() => {
-                // Remove watch params from URL
-                const params = new URLSearchParams(location.search);
-                params.delete("watch");
-                params.delete("s");
-                params.delete("e");
-                navigate({ search: params.toString() }, { replace: true });
-              }}
+            onClose={() => navigate(-1)}
               inline
             />
           ) : (

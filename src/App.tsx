@@ -42,7 +42,7 @@ const useDisableContextMenu = () => {
 const useManualScrollRestoration = () => {
   useEffect(() => {
     if ("scrollRestoration" in window.history) {
-      window.history.scrollRestoration = "manual";
+      window.history.scrollRestoration = "auto";
     }
   }, []);
 };

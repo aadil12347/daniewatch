@@ -7,7 +7,6 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPopularMovies, getNowPlayingMovies, getTopRatedMovies, getUpcomingMovies, getMovieGenres, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
-import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
 const Movies = () => {
@@ -25,7 +24,6 @@ const Movies = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
-  const { saveScrollPosition } = useScrollRestoration(!isLoading && (movies.length > 0 || isRestoredFromCache));
 
   // Fetch genres on mount
   useEffect(() => {
@@ -64,10 +62,9 @@ const Movies = () => {
           activeTab,
           selectedFilters: selectedGenres,
         });
-        saveScrollPosition();
       }
     };
-  }, [movies, page, hasMore, activeTab, selectedGenres, saveCache, saveScrollPosition]);
+  }, [movies, page, hasMore, activeTab, selectedGenres, saveCache]);
 
   const fetchMovies = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
