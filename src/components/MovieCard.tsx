@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, Play, Bookmark, Check } from "lucide-react";
+import { Star, Play, Bookmark } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -61,7 +61,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             )}
 
             {/* Overlay - vignette effect */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" />
 
             {/* Play Button */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -99,29 +99,19 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             }}
             className={cn(
               "absolute bottom-[4.5rem] right-2 p-2 rounded-lg glass transition-all duration-300 z-20",
-              "opacity-100 md:opacity-0 md:group-hover:opacity-100",
-              inWatchlist ? "bg-primary/50 scale-110" : "hover:bg-primary/20 hover:scale-110"
+              "opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110",
+              inWatchlist ? "bg-primary/40" : "hover:bg-primary/20"
             )}
             title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
           >
-            <div className="relative w-5 h-5">
-              <Check 
-                className={cn(
-                  "absolute inset-0 w-5 h-5 transition-all duration-300 ease-out",
-                  inWatchlist 
-                    ? "text-primary opacity-100 scale-100" 
-                    : "opacity-0 scale-50"
-                )} 
-              />
-              <Bookmark 
-                className={cn(
-                  "absolute inset-0 w-5 h-5 transition-all duration-300 ease-out",
-                  inWatchlist 
-                    ? "opacity-0 scale-50" 
-                    : "text-foreground opacity-100 scale-100"
-                )} 
-              />
-            </div>
+            <Bookmark 
+              className={cn(
+                "w-5 h-5 transition-all duration-300",
+                inWatchlist 
+                  ? "text-primary fill-primary scale-110" 
+                  : "text-foreground fill-transparent scale-100"
+              )} 
+            />
           </button>
         )}
       </div>
