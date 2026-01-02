@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { flushSync } from "react-dom";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -30,7 +29,6 @@ import {
 } from "@/lib/tmdb";
 
 const MovieDetails = () => {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [movie, setMovie] = useState<MovieDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
@@ -138,18 +136,8 @@ const MovieDetails = () => {
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
-          {/* Back Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-20 md:top-24 left-4 z-20 w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/70"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-
           {/* Background Trailer */}
-          <BackgroundTrailer
+          <BackgroundTrailer 
             videoKey={trailerKey} 
             backdropUrl={backdropUrl} 
             title={movie.title} 
@@ -209,9 +197,8 @@ const MovieDetails = () => {
                   size="sm"
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
-                    // Mount player immediately (avoid perceived delay), then adjust scroll.
-                    flushSync(() => setShowPlayer(true));
-                    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setShowPlayer(true);
                   }}
                 >
                   <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
