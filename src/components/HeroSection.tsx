@@ -1,9 +1,22 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { flushSync } from "react-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Play, Info, Star } from "lucide-react";
-import { Movie, getBackdropUrl, getDisplayTitle, getReleaseDate, getYear, getMovieGenres, getTVGenres, getMovieImages, getTVImages, getImageUrl, Genre } from "@/lib/tmdb";
+import {
+  Movie,
+  getBackdropUrl,
+  getDisplayTitle,
+  getReleaseDate,
+  getYear,
+  getMovieGenres,
+  getTVGenres,
+  getMovieImages,
+  getTVImages,
+  getImageUrl,
+} from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavTransition } from "@/contexts/NavTransitionContext";
 
 interface HeroSectionProps {
   items: Movie[];
@@ -11,6 +24,9 @@ interface HeroSectionProps {
 }
 
 export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
+  const navigate = useNavigate();
+  const { startNavigation } = useNavTransition();
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [genres, setGenres] = useState<Record<number, string>>({});
   const [logos, setLogos] = useState<Record<number, string | null>>({});
@@ -41,19 +57,19 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
       const logoPromises = featured.map(async (item) => {
         const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
         try {
-          const images = mediaType === "tv" 
-            ? await getTVImages(item.id)
-            : await getMovieImages(item.id);
-          const logo = images.logos?.find(l => l.iso_639_1 === 'en') || images.logos?.[0];
+          const images = mediaType === "tv" ? await getTVImages(item.id) : await getMovieImages(item.id);
+          const logo = images.logos?.find((l) => l.iso_639_1 === "en") || images.logos?.[0];
           return { id: item.id, logoUrl: logo ? getImageUrl(logo.file_path, "w500") : null };
         } catch {
           return { id: item.id, logoUrl: null };
         }
       });
-      
+
       const results = await Promise.all(logoPromises);
       const logoMap: Record<number, string | null> = {};
-      results.forEach(r => { logoMap[r.id] = r.logoUrl; });
+      results.forEach((r) => {
+        logoMap[r.id] = r.logoUrl;
+      });
       setLogos(logoMap);
     };
 
@@ -91,6 +107,12 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   const genreNames = current.genre_ids?.slice(0, 3).map((id) => genres[id]).filter(Boolean) || [];
   const currentLogo = logos[current.id];
 
+  const handlePlayNow = () => {
+    // Show an instant overlay so the user gets immediate feedback even during route transition.
+    flushSync(() => startNavigation("Starting playback..."));
+    requestAnimationFrame(() => navigate(`/${mediaType}/${current.id}`));
+  };
+
   return (
     <div className="relative h-[85vh] min-h-[600px] overflow-hidden">
       {/* Background Image */}
@@ -114,9 +136,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
         <div className="max-w-xl animate-slide-up">
           {/* Meta info */}
           <div className="flex items-center gap-3 mb-3">
-            <span className="px-2 py-0.5 rounded text-xs font-medium uppercase glass">
-              {mediaType === "tv" ? "TV Series" : "Movie"}
-            </span>
+            <span className="px-2 py-0.5 rounded text-xs font-medium uppercase glass">{mediaType === "tv" ? "TV Series" : "Movie"}</span>
             <div className="flex items-center gap-1">
               <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
               <span className="text-sm font-medium">{rating}</span>
@@ -126,45 +146,32 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
           {/* Logo or Title */}
           {currentLogo ? (
-            <img 
-              src={currentLogo} 
-              alt={title} 
-              className="h-14 md:h-16 lg:h-20 object-contain object-left mb-2 md:mb-3"
-            />
+            <img src={currentLogo} alt={title} className="h-14 md:h-16 lg:h-20 object-contain object-left mb-2 md:mb-3" />
           ) : (
-            <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 leading-tight">
-              {title}
-            </h1>
+            <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 leading-tight">{title}</h1>
           )}
 
           {/* Genres */}
           <div className="flex flex-wrap gap-1.5 mb-3 md:mb-4">
             {genreNames.map((genre) => (
-              <span
-                key={genre}
-                className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs md:text-xs"
-              >
+              <span key={genre} className="px-2 py-0.5 rounded-full bg-secondary/50 text-xs md:text-xs">
                 {genre}
               </span>
             ))}
           </div>
 
           {/* Overview */}
-          <p className="text-sm md:text-sm text-muted-foreground mb-4 md:mb-5 line-clamp-2 max-w-lg">
-            {current.overview}
-          </p>
+          <p className="text-sm md:text-sm text-muted-foreground mb-4 md:mb-5 line-clamp-2 max-w-lg">{current.overview}</p>
 
           {/* Actions */}
           <div className="flex items-center gap-3">
             <Button
-              asChild
               size="default"
               className="gradient-red text-foreground font-medium px-6 md:px-5 h-11 md:h-10 text-base md:text-sm hover:opacity-90 transition-opacity shadow-glow"
+              onClick={handlePlayNow}
             >
-              <Link to={`/${mediaType}/${current.id}`}>
-                <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1.5 fill-current" />
-                Play Now
-              </Link>
+              <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1.5 fill-current" />
+              Play Now
             </Button>
             <Button
               asChild
@@ -189,9 +196,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
             onClick={() => setCurrentIndex(idx)}
             aria-label={`Go to slide ${idx + 1}`}
             className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-              idx === currentIndex
-                ? "w-8 bg-primary"
-                : "w-2 bg-foreground/30 hover:bg-foreground/50"
+              idx === currentIndex ? "w-8 bg-primary" : "w-2 bg-foreground/30 hover:bg-foreground/50"
             }`}
           />
         ))}

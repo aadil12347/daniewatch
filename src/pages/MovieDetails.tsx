@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2 } from "lucide-react";
@@ -197,8 +198,9 @@ const MovieDetails = () => {
                   size="sm"
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                    setShowPlayer(true);
+                    // Mount player immediately (avoid perceived delay), then adjust scroll.
+                    flushSync(() => setShowPlayer(true));
+                    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
                   }}
                 >
                   <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
