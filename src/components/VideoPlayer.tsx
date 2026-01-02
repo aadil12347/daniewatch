@@ -177,8 +177,8 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   // Inline mode: fills parent container (hero section size) with high z-index above navbar
   // Fullscreen mode: fixed overlay covering entire viewport
   const containerClasses = inline
-    ? "absolute inset-0 w-full h-full z-[70] bg-background"
-    : "fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-background";
+    ? "absolute inset-0 w-full h-full z-[70] bg-black"
+    : "fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-black";
 
   const containerStyle = inline
     ? undefined
@@ -189,119 +189,123 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       className={containerClasses}
       style={containerStyle}
     >
-      {/* Enhanced Loading state - seamless blend with page using inset shadows */}
-      <div 
-        className={`absolute inset-0 z-10 transition-opacity duration-500 ${showLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-      >
-        {/* Single base layer with inset box-shadows for seamless edge feathering */}
-        <div 
-          className="absolute inset-0 bg-background"
-          style={{
-            boxShadow: `
-              inset 0 200px 200px -100px hsl(var(--background)),
-              inset 0 -200px 200px -100px hsl(var(--background)),
-              inset 200px 0 200px -100px hsl(var(--background)),
-              inset -200px 0 200px -100px hsl(var(--background))
-            `,
-          }}
-        />
-        
-        {/* Subtle noise/splash texture - static, low opacity */}
-        <div 
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{
-            backgroundImage: `
-              radial-gradient(circle at 20% 80%, hsl(var(--primary)) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, hsl(var(--primary)) 0%, transparent 50%),
-              radial-gradient(circle at 40% 40%, hsl(var(--foreground)) 0%, transparent 25%),
-              radial-gradient(circle at 60% 60%, hsl(var(--foreground)) 0%, transparent 25%)
-            `,
-          }}
-        />
-        
-        {/* Cinematic center glow */}
-        <div 
-          className="absolute inset-0 opacity-20 pointer-events-none"
-          style={{ 
-            background: 'radial-gradient(ellipse 80% 60% at center, hsl(var(--primary) / 0.4) 0%, transparent 70%)' 
-          }} 
-        />
+      {/* Enhanced Loading state - seamless blend with page */}
+      {showLoading && (
+        <div className="absolute -inset-8 z-10">
+          {/* Base with blur to blend edges */}
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse at center, hsl(var(--background)) 20%, hsl(var(--background) / 0.95) 40%, hsl(var(--background) / 0.7) 60%, transparent 85%)',
+              filter: 'blur(20px)',
+            }}
+          />
+          
+          {/* Sharp inner content area */}
+          <div 
+            className="absolute inset-8"
+            style={{
+              background: 'radial-gradient(ellipse at center, hsl(var(--background)) 0%, hsl(var(--background)) 50%, transparent 100%)',
+            }}
+          />
+          
+          {/* Soft edge blend - all directions */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `
+                radial-gradient(ellipse at center, transparent 30%, hsl(var(--background) / 0.5) 60%, hsl(var(--background)) 90%),
+                linear-gradient(to bottom, hsl(var(--background)) 0%, transparent 15%, transparent 85%, hsl(var(--background)) 100%),
+                linear-gradient(to right, hsl(var(--background)) 0%, transparent 15%, transparent 85%, hsl(var(--background)) 100%)
+              `,
+              filter: 'blur(8px)',
+            }}
+          />
+          
+          {/* Subtle center glow */}
+          <div 
+            className="absolute inset-8 opacity-25"
+            style={{ 
+              background: 'radial-gradient(ellipse at center, hsl(var(--primary) / 0.3) 0%, transparent 60%)' 
+            }} 
+          />
 
-        {/* Main loading content */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="relative z-10 flex flex-col items-center">
-            {/* Animated icon with glow */}
-            <div className="relative mb-8">
-              {/* Outer glow ring - lightweight pulse */}
-              <div className="absolute -inset-2 rounded-full bg-primary/10 animate-pulse" style={{ animationDuration: '2s' }} />
-              
-              {/* Inner spinning ring */}
-              <div className="relative w-24 h-24 flex items-center justify-center">
-                <svg className="absolute w-full h-full animate-spin" style={{ animationDuration: '3s' }} viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-primary/20"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    className="text-primary"
-                    strokeDasharray={`${loadingProgress * 2.83} 283`}
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
+          {/* Main loading content */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Animated icon with glow */}
+              <div className="relative mb-8">
+                {/* Outer glow ring - lightweight pulse */}
+                <div className="absolute -inset-2 rounded-full bg-primary/10 animate-pulse" style={{ animationDuration: '2s' }} />
                 
-                {/* Center icon */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Play className="w-6 h-6 text-primary fill-primary" />
+                {/* Inner spinning ring */}
+                <div className="relative w-24 h-24 flex items-center justify-center">
+                  <svg className="absolute w-full h-full animate-spin" style={{ animationDuration: '3s' }} viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-primary/20"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      className="text-primary"
+                      strokeDasharray={`${loadingProgress * 2.83} 283`}
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                  
+                  {/* Center icon */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Play className="w-6 h-6 text-primary fill-primary" />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Progress percentage */}
-            <div className="mb-4">
-              <span className="text-3xl font-bold text-foreground">{Math.round(loadingProgress)}%</span>
-            </div>
+              {/* Progress percentage */}
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-white">{Math.round(loadingProgress)}%</span>
+              </div>
 
-            {/* Linear progress bar */}
-            <div className="w-64 h-1.5 bg-foreground/10 rounded-full overflow-hidden mb-6">
-              <div 
-                className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${loadingProgress}%` }}
-              />
-            </div>
+              {/* Linear progress bar */}
+              <div className="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden mb-6">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
 
-            {/* Rotating tips with fade animation */}
-            <div className="h-6 relative">
-              <p 
-                key={tipIndex}
-                className="text-muted-foreground text-sm animate-fade-in"
-              >
-                {LOADING_TIPS[tipIndex]}
-              </p>
-            </div>
+              {/* Rotating tips with fade animation */}
+              <div className="h-6 relative">
+                <p 
+                  key={tipIndex}
+                  className="text-white/70 text-sm animate-fade-in"
+                >
+                  {LOADING_TIPS[tipIndex]}
+                </p>
+              </div>
 
-            {/* Film reel decoration */}
-            <div className="mt-8 flex items-center gap-2 text-muted-foreground/50">
-              <Film className="w-4 h-4" />
-              <span className="text-xs">Preparing your viewing experience</span>
-              <Film className="w-4 h-4" />
+              {/* Film reel decoration */}
+              <div className="mt-8 flex items-center gap-2 text-white/30">
+                <Film className="w-4 h-4" />
+                <span className="text-xs">Preparing your viewing experience</span>
+                <Film className="w-4 h-4" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Close button - positioned below header for inline mode */}
       <Button
