@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
-import { useNavTransition } from "@/contexts/NavTransitionContext";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
@@ -59,7 +58,6 @@ const TVDetails = () => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
-  const { startNavigation } = useNavTransition();
 
   // Set media context when show loads or season changes
   useEffect(() => {
@@ -254,16 +252,11 @@ const TVDetails = () => {
                   size="sm"
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
-                    // Show instant transition overlay
-                    startNavigation("Opening player...");
-                    // Mount player on next frame for smooth transition
-                    requestAnimationFrame(() => {
-                      flushSync(() => {
-                        setPlayingEpisode({ season: selectedSeason, episode: 1 });
-                        setShowPlayer(true);
-                      });
-                      window.scrollTo({ top: 0, behavior: "auto" });
+                    flushSync(() => {
+                      setPlayingEpisode({ season: selectedSeason, episode: 1 });
+                      setShowPlayer(true);
                     });
+                    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
                   }}
                 >
                   <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />

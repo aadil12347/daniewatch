@@ -3,7 +3,6 @@ import { X, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
 import { useMedia } from "@/contexts/MediaContext";
-import { useNavTransition } from "@/contexts/NavTransitionContext";
 
 interface VideoPlayerProps {
   tmdbId: number;
@@ -30,31 +29,15 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
   const [isLoading, setIsLoading] = useState(true);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
   const { setIsVideoPlaying } = useMedia();
-  const { stopNavigation } = useNavTransition();
   
   // Enhanced loading states
   const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
-  
-  // Smooth mount animation
-  const [isVisible, setIsVisible] = useState(false);
-  
-  // Track if close is triggered by popstate
-  const isClosingFromPopstateRef = useRef(false);
 
   // Show loading instantly - don't wait for API call
   const showLoading = !minTimeElapsed || isIframeLoading;
-  
-  // Stop nav transition overlay and trigger visibility animation on mount
-  useEffect(() => {
-    stopNavigation();
-    // Trigger smooth fade-in on next frame
-    requestAnimationFrame(() => {
-      setIsVisible(true);
-    });
-  }, [stopNavigation]);
 
   // Check Blogger for video first
   useEffect(() => {
@@ -175,7 +158,6 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
     window.history.pushState({ videoPlayer: true }, '');
 
     const handlePopState = () => {
-      isClosingFromPopstateRef.current = true;
       onClose();
     };
 
@@ -185,27 +167,12 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
       window.removeEventListener('popstate', handlePopState);
     };
   }, [onClose]);
-  
-  // Close handler that properly manages history
-  const handleClose = () => {
-    if (isClosingFromPopstateRef.current) {
-      // Already triggered by popstate, just call onClose
-      onClose();
-      return;
-    }
-    // User closed via X or Escape - consume the history entry
-    if (window.history.state?.videoPlayer) {
-      window.history.back(); // This triggers popstate which calls onClose
-    } else {
-      onClose();
-    }
-  };
 
   // Close on escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        handleClose();
+        onClose();
       }
     };
 
@@ -216,18 +183,13 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, []);
+  }, [onClose]);
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 w-screen h-screen z-[9999] bg-black"
-      style={{
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'scale(1)' : 'scale(1.01)',
-        transition: 'opacity 180ms ease-out, transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
-        willChange: 'opacity, transform',
-      }}
+      className="fixed inset-0 w-screen h-screen z-[9999] bg-black animate-fade-in"
+      style={{ animationDuration: '150ms' }}
     >
       {/* Lightweight Loading State */}
       {showLoading && (
@@ -360,7 +322,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
         variant="ghost"
         size="icon"
         className="absolute top-4 right-4 z-[10000] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
-        onClick={handleClose}
+        onClick={onClose}
       >
         <X className="w-5 h-5" />
       </Button>
