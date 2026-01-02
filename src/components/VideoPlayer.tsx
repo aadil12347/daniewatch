@@ -191,83 +191,96 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
     >
       {/* Enhanced Loading state */}
       {showLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-black via-black/95 to-black z-10">
-          {/* Animated background elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          </div>
+        <div className="absolute inset-0 z-10">
+          {/* Base dark background */}
+          <div className="absolute inset-0 bg-black" />
+          
+          {/* Top vignette - smooth cinematic fade */}
+          <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black via-black/80 to-transparent" />
+          
+          {/* Bottom vignette - smooth cinematic fade */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black via-black/80 to-transparent" />
+          
+          {/* Subtle center glow - no blur, pure gradient */}
+          <div 
+            className="absolute inset-0 opacity-30"
+            style={{ 
+              background: 'radial-gradient(ellipse at center, hsl(var(--primary) / 0.2) 0%, transparent 50%)' 
+            }} 
+          />
 
           {/* Main loading content */}
-          <div className="relative z-10 flex flex-col items-center">
-            {/* Animated icon with glow */}
-            <div className="relative mb-8">
-              {/* Outer glow ring */}
-              <div className="absolute inset-0 w-24 h-24 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
-              
-              {/* Inner spinning ring */}
-              <div className="relative w-24 h-24 flex items-center justify-center">
-                <svg className="absolute w-full h-full animate-spin" style={{ animationDuration: '3s' }} viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-primary/20"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    className="text-primary"
-                    strokeDasharray={`${loadingProgress * 2.83} 283`}
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Animated icon with glow */}
+              <div className="relative mb-8">
+                {/* Outer glow ring - lightweight pulse */}
+                <div className="absolute -inset-2 rounded-full bg-primary/10 animate-pulse" style={{ animationDuration: '2s' }} />
                 
-                {/* Center icon */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center backdrop-blur-sm">
-                    <Play className="w-6 h-6 text-primary fill-primary" />
+                {/* Inner spinning ring */}
+                <div className="relative w-24 h-24 flex items-center justify-center">
+                  <svg className="absolute w-full h-full animate-spin" style={{ animationDuration: '3s' }} viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-primary/20"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      className="text-primary"
+                      strokeDasharray={`${loadingProgress * 2.83} 283`}
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                  
+                  {/* Center icon */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Play className="w-6 h-6 text-primary fill-primary" />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Progress percentage */}
-            <div className="mb-4">
-              <span className="text-3xl font-bold text-white">{Math.round(loadingProgress)}%</span>
-            </div>
+              {/* Progress percentage */}
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-white">{Math.round(loadingProgress)}%</span>
+              </div>
 
-            {/* Linear progress bar */}
-            <div className="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden mb-6">
-              <div 
-                className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${loadingProgress}%` }}
-              />
-            </div>
+              {/* Linear progress bar */}
+              <div className="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden mb-6">
+                <div 
+                  className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
 
-            {/* Rotating tips with fade animation */}
-            <div className="h-6 relative">
-              <p 
-                key={tipIndex}
-                className="text-white/70 text-sm animate-fade-in"
-              >
-                {LOADING_TIPS[tipIndex]}
-              </p>
-            </div>
+              {/* Rotating tips with fade animation */}
+              <div className="h-6 relative">
+                <p 
+                  key={tipIndex}
+                  className="text-white/70 text-sm animate-fade-in"
+                >
+                  {LOADING_TIPS[tipIndex]}
+                </p>
+              </div>
 
-            {/* Film reel decoration */}
-            <div className="mt-8 flex items-center gap-2 text-white/30">
-              <Film className="w-4 h-4" />
-              <span className="text-xs">Preparing your viewing experience</span>
-              <Film className="w-4 h-4" />
+              {/* Film reel decoration */}
+              <div className="mt-8 flex items-center gap-2 text-white/30">
+                <Film className="w-4 h-4" />
+                <span className="text-xs">Preparing your viewing experience</span>
+                <Film className="w-4 h-4" />
+              </div>
             </div>
           </div>
         </div>
