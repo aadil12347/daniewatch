@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, Play, Plus, Check } from "lucide-react";
+import { Star, Play, Bookmark, BookmarkCheck } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -62,8 +62,8 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           </div>
         )}
 
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {/* Overlay - vignette effect */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" />
 
         {/* Play Button */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -78,7 +78,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           {rating}
         </div>
 
-        {/* Save to Watchlist Button - hidden on Top 10 */}
+        {/* Save to Watchlist Button - bottom right, hidden on Top 10 */}
         {!showRank && (
           <button
             onClick={(e) => {
@@ -87,16 +87,16 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               toggleWatchlist(movie);
             }}
             className={cn(
-              "absolute top-2 left-2 p-1.5 rounded-md glass transition-all duration-300",
+              "absolute bottom-2 right-2 p-2 rounded-lg glass transition-all duration-300",
               "opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110",
-              inWatchlist ? "bg-primary/30" : "hover:bg-primary/20"
+              inWatchlist ? "bg-primary/40" : "hover:bg-primary/20"
             )}
             title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
           >
             {inWatchlist ? (
-              <Check className="w-4 h-4 text-primary" />
+              <BookmarkCheck className="w-5 h-5 text-primary fill-primary" />
             ) : (
-              <Plus className="w-4 h-4 text-foreground" />
+              <Bookmark className="w-5 h-5 text-foreground" />
             )}
           </button>
         )}
