@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -30,17 +30,23 @@ import {
 
 const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [movie, setMovie] = useState<MovieDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showPlayer, setShowPlayer] = useState(false);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
+
+  // URL-driven player state
+  const isPlayerOpen = useMemo(() => {
+    return new URLSearchParams(location.search).get("watch") === "1";
+  }, [location.search]);
 
   // Set media context when movie loads
   useEffect(() => {
@@ -137,11 +143,16 @@ const MovieDetails = () => {
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
           {/* Background Trailer or Video Player */}
-          {showPlayer && id ? (
+          {isPlayerOpen && id ? (
             <VideoPlayer
               tmdbId={Number(id)}
               type="movie"
-              onClose={() => setShowPlayer(false)}
+              onClose={() => {
+                // Remove watch param from URL
+                const params = new URLSearchParams(location.search);
+                params.delete("watch");
+                navigate({ search: params.toString() }, { replace: true });
+              }}
               inline
             />
           ) : (
@@ -207,7 +218,10 @@ const MovieDetails = () => {
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                    setShowPlayer(true);
+                    // Add watch param to URL - this creates a history entry
+                    const params = new URLSearchParams(location.search);
+                    params.set("watch", "1");
+                    navigate({ search: params.toString() });
                   }}
                 >
                   <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
