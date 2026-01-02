@@ -136,12 +136,21 @@ const MovieDetails = () => {
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
-          {/* Background Trailer */}
-          <BackgroundTrailer 
-            videoKey={trailerKey} 
-            backdropUrl={backdropUrl} 
-            title={movie.title} 
-          />
+          {/* Background Trailer or Video Player */}
+          {showPlayer && id ? (
+            <VideoPlayer
+              tmdbId={Number(id)}
+              type="movie"
+              onClose={() => setShowPlayer(false)}
+              inline
+            />
+          ) : (
+            <BackgroundTrailer 
+              videoKey={trailerKey} 
+              backdropUrl={backdropUrl} 
+              title={movie.title} 
+            />
+          )}
 
           {/* Content - Bottom left positioned, adjusted for mobile */}
           <div className="absolute bottom-6 md:bottom-0 left-0 right-0 px-4 md:px-0 md:left-0 md:right-auto md:p-8 lg:p-12">
@@ -281,15 +290,6 @@ const MovieDetails = () => {
         )}
 
         <Footer />
-
-        {/* Video Player Modal */}
-        {showPlayer && id && (
-          <VideoPlayer
-            tmdbId={Number(id)}
-            type="movie"
-            onClose={() => setShowPlayer(false)}
-          />
-        )}
       </div>
     </>
   );
