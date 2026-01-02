@@ -5,10 +5,8 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Movie } from "@/lib/tmdb";
+import { discoverTV, Movie } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
-import { useScrollRestoration } from "@/hooks/useScrollRestoration";
-import { useListStateCache } from "@/hooks/useListStateCache";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -32,42 +30,8 @@ const Anime = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "airing">("popular");
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  const { saveCache, getCache } = useListStateCache<Movie>();
-  const { saveScrollPosition } = useScrollRestoration(!isLoading && items.length > 0);
-
-  // Try to restore from cache on mount
-  useEffect(() => {
-    const cached = getCache(activeTab, selectedTags);
-    if (cached && cached.items.length > 0) {
-      setItems(cached.items);
-      setPage(cached.page);
-      setHasMore(cached.hasMore);
-      setIsLoading(false);
-      setIsRestoredFromCache(true);
-    }
-    setIsInitialized(true);
-  }, []);
-
-  // Save cache before unmount
-  useEffect(() => {
-    return () => {
-      if (items.length > 0) {
-        saveCache({
-          items,
-          page,
-          hasMore,
-          activeTab,
-          selectedFilters: selectedTags,
-        });
-        saveScrollPosition();
-      }
-    };
-  }, [items, page, hasMore, activeTab, selectedTags, saveCache, saveScrollPosition]);
 
   const getSortBy = (tab: string) => {
     switch (tab) {
@@ -121,18 +85,13 @@ const Anime = () => {
     }
   }, [activeTab, selectedTags]);
 
-  // Reset and fetch when tab or tags change (skip if just initialized from cache)
+  // Reset and fetch when tab or tags change
   useEffect(() => {
-    if (!isInitialized) return;
-    if (isRestoredFromCache) {
-      setIsRestoredFromCache(false);
-      return;
-    }
     setPage(1);
     setItems([]);
     setHasMore(true);
     fetchAnime(1, true);
-  }, [activeTab, selectedTags, isInitialized]);
+  }, [activeTab, selectedTags]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -158,10 +117,10 @@ const Anime = () => {
 
   // Fetch more when page changes
   useEffect(() => {
-    if (page > 1 && !isRestoredFromCache) {
+    if (page > 1) {
       fetchAnime(page);
     }
-  }, [page, fetchAnime, isRestoredFromCache]);
+  }, [page, fetchAnime]);
 
   const toggleTag = (genreId: number) => {
     setSelectedTags(prev =>

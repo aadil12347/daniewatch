@@ -38,15 +38,6 @@ const useDisableContextMenu = () => {
   }, []);
 };
 
-// Disable browser's default scroll restoration
-const useManualScrollRestoration = () => {
-  useEffect(() => {
-    if ("scrollRestoration" in window.history) {
-      window.history.scrollRestoration = "manual";
-    }
-  }, []);
-};
-
 const queryClient = new QueryClient();
 
 const AnimatedRoutes = () => {
@@ -75,7 +66,6 @@ const AnimatedRoutes = () => {
 
 const AppContent = () => {
   useDisableContextMenu();
-  useManualScrollRestoration();
   return <AnimatedRoutes />;
 };
 

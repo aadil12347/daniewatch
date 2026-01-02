@@ -5,7 +5,6 @@ import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
 import { Footer } from "@/components/Footer";
-import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import {
   getTrending,
   getPopularMovies,
@@ -28,9 +27,6 @@ const Index = () => {
   const [animePopular, setAnimePopular] = useState<Movie[]>([]);
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Enable scroll restoration for Index page
-  useScrollRestoration(!isLoading);
 
   useEffect(() => {
     const fetchData = async () => {
