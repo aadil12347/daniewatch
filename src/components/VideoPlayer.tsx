@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Loader2, Play, Film } from "lucide-react";
+import { X, Play, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
 import { useMedia } from "@/contexts/MediaContext";
@@ -10,6 +10,7 @@ interface VideoPlayerProps {
   season?: number;
   episode?: number;
   onClose: () => void;
+  inline?: boolean; // When true, renders inline in hero section instead of fullscreen
 }
 
 const LOADING_TIPS = [
@@ -24,8 +25,9 @@ const LOADING_TIPS = [
 
 const MIN_LOADING_TIME = 10000; // 10 seconds minimum
 
-export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: VideoPlayerProps) => {
+export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, inline = false }: VideoPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const closedViaPopstate = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
   const { setIsVideoPlaying } = useMedia();
@@ -159,7 +161,8 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
     window.history.pushState({ videoPlayer: true }, '');
 
     const handlePopState = (e: PopStateEvent) => {
-      // Close the video player instead of navigating back
+      // Mark that we're closing via popstate (back button)
+      closedViaPopstate.current = true;
       onClose();
     };
 
@@ -170,28 +173,51 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
     };
   }, [onClose]);
 
+  // Handle close button click - need to go back in history to remove pushed state
+  const handleCloseClick = () => {
+    if (!closedViaPopstate.current) {
+      // Closed via X button, go back to remove the pushed history state
+      window.history.back();
+    }
+    onClose();
+  };
+
   // Close on escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        handleCloseClick();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "hidden";
+    if (!inline) {
+      document.body.style.overflow = "hidden";
+    }
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
+      if (!inline) {
+        document.body.style.overflow = "";
+      }
     };
-  }, [onClose]);
+  }, [inline]);
+
+  // Inline mode: fills parent container (hero section size)
+  // Fullscreen mode: fixed overlay covering entire viewport
+  const containerClasses = inline
+    ? "absolute inset-0 w-full h-full z-20 bg-black"
+    : "fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-black";
+
+  const containerStyle = inline
+    ? undefined
+    : { position: 'fixed' as const, width: '100vw', height: '100vh', top: 0, left: 0 };
 
   return (
     <div
       ref={containerRef}
-      className="fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-black"
-      style={{ position: 'fixed', width: '100vw', height: '100vh', top: 0, left: 0 }}
+      className={containerClasses}
+      style={containerStyle}
     >
       {/* Enhanced Loading state */}
       {showLoading && (
@@ -281,8 +307,8 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose }: 
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-[10000] w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white"
-        onClick={onClose}
+        className={`absolute top-4 right-4 ${inline ? 'z-30' : 'z-[10000]'} w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white`}
+        onClick={handleCloseClick}
       >
         <X className="w-5 h-5" />
       </Button>
