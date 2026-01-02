@@ -20,9 +20,19 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const rating = movie.vote_average?.toFixed(1);
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
 
-  // Save scroll position before navigating
+  // Save scroll position before navigating (safe save - don't overwrite good position with 0)
   const handleClick = () => {
-    sessionStorage.setItem(`scroll_${location.pathname}`, window.scrollY.toString());
+    const storageKey = `scroll_${location.pathname}`;
+    const currentScroll = window.scrollY || document.documentElement.scrollTop || 0;
+    const existingValue = sessionStorage.getItem(storageKey);
+    const existingScroll = existingValue ? parseInt(existingValue, 10) : 0;
+
+    // Only save if we have a real scroll value, or no existing value
+    if (currentScroll >= 20 || existingScroll <= 0) {
+      sessionStorage.setItem(storageKey, currentScroll.toString());
+    }
+    // If currentScroll is near 0 but we have a good existing value, keep it
+    
     onNavigate?.();
   };
 

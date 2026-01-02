@@ -7,23 +7,53 @@ export const useScrollRestoration = (isDataLoaded: boolean) => {
   const location = useLocation();
   const storageKey = `${SCROLL_KEY_PREFIX}${location.pathname}`;
   const lastPathRef = useRef(location.pathname);
+  const lastKeyRef = useRef(location.key);
   const restorationAttemptedRef = useRef(false);
+  const lastKnownScrollYRef = useRef(window.scrollY);
 
-  // Save scroll position immediately
+  // Track scroll position continuously with passive listener
+  useEffect(() => {
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          lastKnownScrollYRef.current = window.scrollY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Save scroll position using last known good value (not instantaneous)
   const saveScrollPosition = useCallback(() => {
-    const currentScroll = window.scrollY;
+    const currentScroll = lastKnownScrollYRef.current;
+    const existingValue = sessionStorage.getItem(storageKey);
+    const existingScroll = existingValue ? parseInt(existingValue, 10) : 0;
+
+    // Safe save: don't overwrite a good position with near-zero
+    if (currentScroll < 20 && existingScroll > 50) {
+      // Keep existing - likely a transient 0 during transition
+      return;
+    }
+
     if (currentScroll > 0) {
       sessionStorage.setItem(storageKey, currentScroll.toString());
     }
   }, [storageKey]);
 
-  // Reset restoration flag when path actually changes
+  // Reset restoration flag when path or key changes
   useEffect(() => {
-    if (lastPathRef.current !== location.pathname) {
+    if (lastPathRef.current !== location.pathname || lastKeyRef.current !== location.key) {
       lastPathRef.current = location.pathname;
+      lastKeyRef.current = location.key;
       restorationAttemptedRef.current = false;
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.key]);
 
   // Restore scroll position with retry logic when data is loaded
   useEffect(() => {
@@ -49,14 +79,14 @@ export const useScrollRestoration = (isDataLoaded: boolean) => {
 
       // Check if we're close enough to target
       const diff = Math.abs(window.scrollY - targetPosition);
-      if (diff < 100) {
+      if (diff < 50) {
         return; // Success
       }
 
-      // More attempts with increasing delays
-      if (attempt < 5) {
-        const delay = attempt * 100; // 100, 200, 300, 400ms
-        setTimeout(() => attemptRestore(attempt + 1), delay);
+      // More attempts with increasing delays (including late attempts for animations)
+      const delays = [100, 200, 300, 400, 700];
+      if (attempt < delays.length) {
+        setTimeout(() => attemptRestore(attempt + 1), delays[attempt]);
       }
     };
 
@@ -64,7 +94,7 @@ export const useScrollRestoration = (isDataLoaded: boolean) => {
     const timeoutId = setTimeout(() => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          attemptRestore(1);
+          attemptRestore(0);
         });
       });
     }, 50);
