@@ -176,7 +176,7 @@ const TVShows = () => {
   return (
     <>
       <Helmet>
-        <title>TV Shows - Cineby</title>
+        <title>TV Shows - DanieWatch</title>
         <meta name="description" content="Browse popular, latest, and top rated TV shows." />
       </Helmet>
 

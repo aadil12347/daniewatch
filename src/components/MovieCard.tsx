@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { Star, Play } from "lucide-react";
+import { Star, Play, Plus, Check } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
+import { useWatchlist } from "@/hooks/useWatchlist";
 
 interface MovieCardProps {
   movie: Movie;
@@ -12,11 +13,13 @@ interface MovieCardProps {
 }
 
 export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0 }: MovieCardProps) => {
+  const { isInWatchlist, toggleWatchlist } = useWatchlist();
+  const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
+  const inWatchlist = isInWatchlist(movie.id, mediaType as 'movie' | 'tv');
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
   const rating = movie.vote_average?.toFixed(1);
-  const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
 
   const sizeClasses = {
     sm: "w-32 sm:w-36",
@@ -74,6 +77,29 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
           {rating}
         </div>
+
+        {/* Save to Watchlist Button - hidden on Top 10 */}
+        {!showRank && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleWatchlist(movie);
+            }}
+            className={cn(
+              "absolute top-2 left-2 p-1.5 rounded-md glass transition-all duration-300",
+              "opacity-0 group-hover:opacity-100 hover:scale-110",
+              inWatchlist ? "bg-primary/30" : "hover:bg-primary/20"
+            )}
+            title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+          >
+            {inWatchlist ? (
+              <Check className="w-4 h-4 text-primary" />
+            ) : (
+              <Plus className="w-4 h-4 text-foreground" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Info */}
