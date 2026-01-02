@@ -7,55 +7,49 @@ const TRANSITION_DELAY = 350; // Wait for page transition to complete
 export const useScrollRestoration = (isDataLoaded: boolean) => {
   const location = useLocation();
   const navigationType = useNavigationType();
-  const storageKey = `${SCROLL_KEY_PREFIX}${location.pathname}`;
+
+  // IMPORTANT: freeze the path/key for this hook instance.
+  // During PageTransition, the previous page component can stay mounted briefly while the URL already changed.
+  // If we recompute the key from location.pathname, we can overwrite the saved scroll with "0".
+  const pathRef = useRef(location.pathname);
+  const storageKey = `${SCROLL_KEY_PREFIX}${pathRef.current}`;
+
   const hasRestoredRef = useRef(false);
 
-  // Save scroll position
+  // Save scroll position (only if we're still on the same path this hook was created for)
   const saveScrollPosition = useCallback(() => {
+    if (window.location.pathname !== pathRef.current) return;
     sessionStorage.setItem(storageKey, window.scrollY.toString());
   }, [storageKey]);
 
-  // Reset restoration flag on location change
-  useEffect(() => {
-    hasRestoredRef.current = false;
-  }, [location.pathname]);
-
   // Restore scroll position when data is loaded (only on back/forward navigation)
   useEffect(() => {
-    // Only restore on POP (back/forward) navigation
-    if (!isDataLoaded || navigationType !== "POP") {
-      return;
-    }
-    
-    // Prevent double restoration
+    if (!isDataLoaded || navigationType !== "POP") return;
     if (hasRestoredRef.current) return;
-    
+
     const savedPosition = sessionStorage.getItem(storageKey);
     if (!savedPosition) return;
-    
+
     const targetPosition = parseInt(savedPosition, 10);
     hasRestoredRef.current = true;
-    
-    // Wait for page transition animation to complete
-    const restoreScroll = () => {
-      // Double rAF for reliable timing after paint
+
+    const timer = window.setTimeout(() => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          window.scrollTo({ top: targetPosition, behavior: "instant" as ScrollBehavior });
-          
-          // Retry if scroll didn't work (content might still be rendering)
-          setTimeout(() => {
+          // Use classic scrollTo for maximum browser compatibility
+          window.scrollTo(0, targetPosition);
+
+          // Retry once if content height was still settling
+          window.setTimeout(() => {
             if (Math.abs(window.scrollY - targetPosition) > 100) {
-              window.scrollTo({ top: targetPosition, behavior: "instant" as ScrollBehavior });
+              window.scrollTo(0, targetPosition);
             }
           }, 100);
         });
       });
-    };
-    
-    // Wait for page transition animation to finish
-    setTimeout(restoreScroll, TRANSITION_DELAY);
-    
+    }, TRANSITION_DELAY);
+
+    return () => window.clearTimeout(timer);
   }, [isDataLoaded, storageKey, navigationType]);
 
   // Save position before unmount
@@ -67,16 +61,16 @@ export const useScrollRestoration = (isDataLoaded: boolean) => {
 
   // Save on scroll (throttled) for more reliable position saving
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
+    let timeoutId: number | undefined;
+
     const handleScroll = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(saveScrollPosition, 100);
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(saveScrollPosition, 100);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
-      clearTimeout(timeoutId);
+      if (timeoutId) window.clearTimeout(timeoutId);
       window.removeEventListener("scroll", handleScroll);
     };
   }, [saveScrollPosition]);
