@@ -195,11 +195,21 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
           {/* Base dark background */}
           <div className="absolute inset-0 bg-black" />
           
-          {/* Top vignette - smooth cinematic fade */}
-          <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black via-black/80 to-transparent" />
-          
-          {/* Bottom vignette - smooth cinematic fade */}
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black via-black/80 to-transparent" />
+        {/* Top vignette - extended smooth fade */}
+        <div 
+          className="absolute inset-x-0 top-0 h-1/2"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.3) 60%, transparent 100%)'
+          }}
+        />
+        
+        {/* Bottom vignette - extended smooth fade */}
+        <div 
+          className="absolute inset-x-0 bottom-0 h-1/2"
+          style={{
+            background: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.3) 60%, transparent 100%)'
+          }}
+        />
           
           {/* Subtle center glow - no blur, pure gradient */}
           <div 
