@@ -16,7 +16,7 @@ const Watchlist = () => {
   return (
     <>
       <Helmet>
-        <title>Watch List - Cineby</title>
+        <title>Watch List - DanieWatch</title>
         <meta name="description" content="Your personal watchlist of movies and TV shows" />
       </Helmet>
 

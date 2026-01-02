@@ -183,7 +183,7 @@ const Movies = () => {
   return (
     <>
       <Helmet>
-        <title>Movies - Cineby</title>
+        <title>Movies - DanieWatch</title>
         <meta name="description" content="Browse popular, latest, now playing, top rated, and upcoming movies." />
       </Helmet>
 

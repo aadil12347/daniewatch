@@ -178,7 +178,7 @@ const Anime = () => {
   return (
     <>
       <Helmet>
-        <title>Anime - Cineby</title>
+        <title>Anime - DanieWatch</title>
         <meta name="description" content="Watch the best anime series - popular, latest, and top rated" />
       </Helmet>
 
