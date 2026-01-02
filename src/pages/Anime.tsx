@@ -38,7 +38,7 @@ const Anime = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
-  const { saveScrollPosition } = useScrollRestoration(!isLoading && items.length > 0);
+  const { saveScrollPosition } = useScrollRestoration(!isLoading && (items.length > 0 || isRestoredFromCache));
 
   // Try to restore from cache on mount
   useEffect(() => {

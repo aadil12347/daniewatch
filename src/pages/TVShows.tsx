@@ -25,7 +25,7 @@ const TVShows = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
-  const { saveScrollPosition } = useScrollRestoration(!isLoading && shows.length > 0);
+  const { saveScrollPosition } = useScrollRestoration(!isLoading && (shows.length > 0 || isRestoredFromCache));
 
   // Fetch genres on mount
   useEffect(() => {

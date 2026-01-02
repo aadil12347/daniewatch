@@ -399,22 +399,24 @@
   /* Page transition animations */
   .page-transition {
     will-change: opacity, transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 
   /* Mobile/Tablet: Slide animation */
   @media (max-width: 1023px) {
     .page-enter {
-      animation: pageSlideEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation: pageSlideEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
     .page-exit {
-      animation: pageSlideExit 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation: pageSlideExit 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
     @keyframes pageSlideEnter {
       0% {
         opacity: 0;
-        transform: translateX(30px);
+        transform: translateX(20px);
       }
       100% {
         opacity: 1;
@@ -429,7 +431,7 @@
       }
       100% {
         opacity: 0;
-        transform: translateX(-30px);
+        transform: translateX(-20px);
       }
     }
   }
