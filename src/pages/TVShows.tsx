@@ -7,6 +7,8 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPopularTV, getTopRatedTV, getTVGenres, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
+import { useListStateCache } from "@/hooks/useListStateCache";
 
 const TVShows = () => {
   const [shows, setShows] = useState<Movie[]>([]);
@@ -17,8 +19,13 @@ const TVShows = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "on_air">("popular");
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const { saveCache, getCache } = useListStateCache<Movie>();
+  const { saveScrollPosition } = useScrollRestoration(!isLoading && shows.length > 0);
 
   // Fetch genres on mount
   useEffect(() => {
@@ -32,6 +39,35 @@ const TVShows = () => {
     };
     fetchGenres();
   }, []);
+
+  // Try to restore from cache on mount
+  useEffect(() => {
+    const cached = getCache(activeTab, selectedGenres);
+    if (cached && cached.items.length > 0) {
+      setShows(cached.items);
+      setPage(cached.page);
+      setHasMore(cached.hasMore);
+      setIsLoading(false);
+      setIsRestoredFromCache(true);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save cache before unmount
+  useEffect(() => {
+    return () => {
+      if (shows.length > 0) {
+        saveCache({
+          items: shows,
+          page,
+          hasMore,
+          activeTab,
+          selectedFilters: selectedGenres,
+        });
+        saveScrollPosition();
+      }
+    };
+  }, [shows, page, hasMore, activeTab, selectedGenres, saveCache, saveScrollPosition]);
 
   const fetchShows = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
@@ -83,13 +119,18 @@ const TVShows = () => {
     }
   }, [activeTab, selectedGenres]);
 
-  // Reset and fetch when tab or genres change
+  // Reset and fetch when tab or genres change (skip if just initialized from cache)
   useEffect(() => {
+    if (!isInitialized) return;
+    if (isRestoredFromCache) {
+      setIsRestoredFromCache(false);
+      return;
+    }
     setPage(1);
     setShows([]);
     setHasMore(true);
     fetchShows(1, true);
-  }, [activeTab, selectedGenres]);
+  }, [activeTab, selectedGenres, isInitialized]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -115,10 +156,10 @@ const TVShows = () => {
 
   // Fetch more when page changes
   useEffect(() => {
-    if (page > 1) {
+    if (page > 1 && !isRestoredFromCache) {
       fetchShows(page);
     }
-  }, [page, fetchShows]);
+  }, [page, fetchShows, isRestoredFromCache]);
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres(prev =>
