@@ -6,7 +6,8 @@ const SCROLL_KEY_PREFIX = "scroll_";
 export const useScrollRestoration = (isDataLoaded: boolean) => {
   const location = useLocation();
   const storageKey = `${SCROLL_KEY_PREFIX}${location.pathname}`;
-  const hasRestoredRef = useRef(false);
+  const lastPathRef = useRef(location.pathname);
+  const restorationAttemptedRef = useRef(false);
 
   // Save scroll position immediately
   const saveScrollPosition = useCallback(() => {
@@ -16,45 +17,60 @@ export const useScrollRestoration = (isDataLoaded: boolean) => {
     }
   }, [storageKey]);
 
+  // Reset restoration flag when path actually changes
+  useEffect(() => {
+    if (lastPathRef.current !== location.pathname) {
+      lastPathRef.current = location.pathname;
+      restorationAttemptedRef.current = false;
+    }
+  }, [location.pathname]);
+
   // Restore scroll position with retry logic when data is loaded
   useEffect(() => {
-    if (isDataLoaded && !hasRestoredRef.current) {
-      const savedPosition = sessionStorage.getItem(storageKey);
-      if (savedPosition) {
-        const targetPosition = parseInt(savedPosition, 10);
-        if (targetPosition > 0) {
-          hasRestoredRef.current = true;
-          
-          // Multiple restoration attempts to handle async rendering
-          const attemptRestore = (attempt: number) => {
-            window.scrollTo(0, targetPosition);
-            
-            // Verify if we reached the target
-            if (Math.abs(window.scrollY - targetPosition) < 50) {
-              return; // Success
-            }
-            
-            // Schedule next attempt if not reached
-            if (attempt < 3) {
-              setTimeout(() => attemptRestore(attempt + 1), 150);
-            }
-          };
-          
-          // First attempt after DOM paint
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              attemptRestore(1);
-            });
-          });
-        }
-      }
+    if (!isDataLoaded || restorationAttemptedRef.current) {
+      return;
     }
-  }, [isDataLoaded, storageKey]);
 
-  // Reset restoration flag when navigating to a new page
-  useEffect(() => {
-    hasRestoredRef.current = false;
-  }, [location.pathname]);
+    const savedPosition = sessionStorage.getItem(storageKey);
+    if (!savedPosition) {
+      return;
+    }
+
+    const targetPosition = parseInt(savedPosition, 10);
+    if (targetPosition <= 0 || isNaN(targetPosition)) {
+      return;
+    }
+
+    restorationAttemptedRef.current = true;
+
+    // Restoration with multiple attempts and longer delays
+    const attemptRestore = (attempt: number) => {
+      window.scrollTo({ top: targetPosition, behavior: "instant" });
+
+      // Check if we're close enough to target
+      const diff = Math.abs(window.scrollY - targetPosition);
+      if (diff < 100) {
+        return; // Success
+      }
+
+      // More attempts with increasing delays
+      if (attempt < 5) {
+        const delay = attempt * 100; // 100, 200, 300, 400ms
+        setTimeout(() => attemptRestore(attempt + 1), delay);
+      }
+    };
+
+    // Start restoration after a brief delay to allow DOM to settle
+    const timeoutId = setTimeout(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          attemptRestore(1);
+        });
+      });
+    }, 50);
+
+    return () => clearTimeout(timeoutId);
+  }, [isDataLoaded, storageKey]);
 
   // Save position before unmount
   useEffect(() => {
