@@ -58,9 +58,9 @@ export const ContentRow = ({
         {/* Left Navigation Button - Hidden on mobile/tablet */}
         <button
           onClick={() => scroll("left")}
-          className="hidden lg:flex absolute left-0 top-0 bottom-8 z-10 w-12 items-center justify-center bg-gradient-to-r from-background/90 to-transparent opacity-0 group-hover/section:opacity-100 translate-x-[-20px] group-hover/section:translate-x-0 transition-all duration-500 ease-out"
+          className="hidden lg:flex absolute left-0 top-0 bottom-8 z-10 w-12 items-center justify-center bg-gradient-to-r from-background/90 to-transparent opacity-0 group-hover/section:opacity-100 translate-x-[-20px] group-hover/section:translate-x-0 transition-[opacity,transform] duration-300 ease-out"
         >
-          <div className="p-3 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-primary hover:border-primary hover:shadow-glow transition-all duration-300">
+          <div className="p-3 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-primary hover:border-primary hover:shadow-glow transition-[background-color,border-color,box-shadow] duration-200">
             <ChevronLeft className="w-6 h-6" />
           </div>
         </button>
@@ -68,16 +68,16 @@ export const ContentRow = ({
         {/* Right Navigation Button - Hidden on mobile/tablet */}
         <button
           onClick={() => scroll("right")}
-          className="hidden lg:flex absolute right-0 top-0 bottom-8 z-10 w-12 items-center justify-center bg-gradient-to-l from-background/90 to-transparent opacity-0 group-hover/section:opacity-100 translate-x-[20px] group-hover/section:translate-x-0 transition-all duration-500 ease-out"
+          className="hidden lg:flex absolute right-0 top-0 bottom-8 z-10 w-12 items-center justify-center bg-gradient-to-l from-background/90 to-transparent opacity-0 group-hover/section:opacity-100 translate-x-[20px] group-hover/section:translate-x-0 transition-[opacity,transform] duration-300 ease-out"
         >
-          <div className="p-3 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-primary hover:border-primary hover:shadow-glow transition-all duration-300">
+          <div className="p-3 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-primary hover:border-primary hover:shadow-glow transition-[background-color,border-color,box-shadow] duration-200">
             <ChevronRight className="w-6 h-6" />
           </div>
         </button>
 
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto hide-scrollbar px-4"
+          className="flex gap-4 overflow-x-auto hide-scrollbar px-4 scroll-smooth"
         >
           {isLoading
             ? Array.from({ length: 8 }).map((_, i) => (

@@ -100,7 +100,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
             key={current.id}
             src={backdropUrl}
             alt={title}
-            className="w-full h-full object-cover object-center animate-fade-in"
+            className="w-full h-full object-cover object-center animate-fade-in transform-gpu"
           />
         )}
         {/* Gradients */}
@@ -111,7 +111,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
       {/* Content */}
       <div className="relative container mx-auto h-full flex items-end pb-24 px-4">
-        <div className="max-w-xl animate-slide-up">
+        <div className="max-w-xl animate-slide-up transform-gpu">
           {/* Meta info */}
           <div className="flex items-center gap-3 mb-3">
             <span className="px-2 py-0.5 rounded text-xs font-medium uppercase glass">
