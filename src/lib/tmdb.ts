@@ -119,6 +119,41 @@ export interface Genre {
   name: string;
 }
 
+// Episode Group interfaces (for shows with custom groupings like Parts)
+export interface EpisodeGroupEpisode {
+  id: number;
+  name: string;
+  episode_number: number;
+  season_number: number;
+  overview: string;
+  still_path: string | null;
+  air_date: string | null;
+  runtime: number | null;
+  vote_average: number;
+  order: number;
+}
+
+export interface EpisodeGroup {
+  id: string;
+  name: string;
+  order: number;
+  episodes: EpisodeGroupEpisode[];
+}
+
+export interface EpisodeGroupDetails {
+  id: string;
+  name: string;
+  description: string;
+  episode_count: number;
+  group_count: number;
+  groups: EpisodeGroup[];
+}
+
+// Map of TV show IDs to their preferred episode group IDs
+export const EPISODE_GROUP_CONFIG: Record<number, string> = {
+  71446: "5eb730dfca7ec6001f7beb51", // La Casa de Papel - Parts
+};
+
 interface TMDBResponse<T> {
   page: number;
   results: T[];
@@ -178,6 +213,10 @@ export const getSimilarTV = (id: number) =>
 
 export const getTVSeasonDetails = (tvId: number, seasonNumber: number) =>
   fetchTMDB<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
+
+// Get episode group details (for shows with custom groupings like Parts)
+export const getTVEpisodeGroupDetails = (groupId: string) =>
+  fetchTMDB<EpisodeGroupDetails>(`/tv/episode_group/${groupId}`);
 
 // Discover TV with filters
 export const discoverTV = (page: number = 1, genreIds: number[] = [], sortBy: string = "popularity.desc") =>

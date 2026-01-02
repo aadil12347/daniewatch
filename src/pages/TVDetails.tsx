@@ -29,10 +29,13 @@ import {
   getSimilarTV,
   getTVSeasonDetails,
   getTVImages,
+  getTVEpisodeGroupDetails,
+  EPISODE_GROUP_CONFIG,
   TVDetails as TVDetailsType,
   Cast,
   Movie,
   Episode,
+  EpisodeGroup,
   getBackdropUrl,
   getImageUrl,
   getYear,
@@ -54,6 +57,8 @@ const TVDetails = () => {
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [episodeGroups, setEpisodeGroups] = useState<EpisodeGroup[] | null>(null);
+  const [useEpisodeGroups, setUseEpisodeGroups] = useState(false);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
@@ -102,17 +107,46 @@ const TVDetails = () => {
           setLogoUrl(getImageUrl(logo.file_path, "w500"));
         }
 
-        // Find first valid season (skip season 0 which is usually specials)
-        const firstSeason = showRes.seasons?.find(s => s.season_number > 0)?.season_number || 1;
-        setSelectedSeason(firstSeason);
+        // Check if this show has a custom episode group
+        const episodeGroupId = EPISODE_GROUP_CONFIG[Number(id)];
 
-        // Fetch first season episodes
-        const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
-        setEpisodes(seasonRes.episodes || []);
+        if (episodeGroupId) {
+          // Use episode groups (Parts) instead of standard seasons
+          const groupDetails = await getTVEpisodeGroupDetails(episodeGroupId);
+          setEpisodeGroups(groupDetails.groups);
+          setUseEpisodeGroups(true);
+          
+          // Set first group's episodes
+          const firstGroup = groupDetails.groups[0];
+          if (firstGroup) {
+            setSelectedSeason(1); // Use 1-based index for Parts
+            // Map episode group episodes to standard Episode format
+            setEpisodes(firstGroup.episodes.map((ep, index) => ({
+              ...ep,
+              episode_number: index + 1, // Use order as episode number
+            })));
+            
+            // Check Blogger for download link
+            const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", 1);
+            setBloggerResult(bloggerRes);
+          }
+        } else {
+          // Use standard seasons (existing logic)
+          setUseEpisodeGroups(false);
+          setEpisodeGroups(null);
+          
+          // Find first valid season (skip season 0 which is usually specials)
+          const firstSeason = showRes.seasons?.find(s => s.season_number > 0)?.season_number || 1;
+          setSelectedSeason(firstSeason);
 
-        // Check Blogger for download link
-        const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", firstSeason);
-        setBloggerResult(bloggerRes);
+          // Fetch first season episodes
+          const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
+          setEpisodes(seasonRes.episodes || []);
+
+          // Check Blogger for download link
+          const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", firstSeason);
+          setBloggerResult(bloggerRes);
+        }
       } catch (error) {
         console.error("Failed to fetch TV details:", error);
       } finally {
@@ -124,20 +158,36 @@ const TVDetails = () => {
     window.scrollTo(0, 0);
   }, [id]);
 
-  const handleSeasonChange = async (seasonNumber: number) => {
-    if (!id || seasonNumber === selectedSeason) return;
+  const handleSeasonChange = async (partOrSeasonNumber: number) => {
+    if (!id || partOrSeasonNumber === selectedSeason) return;
     
-    setSelectedSeason(seasonNumber);
+    setSelectedSeason(partOrSeasonNumber);
     setIsLoadingEpisodes(true);
     setEpisodeSearch("");
     
     try {
-      const seasonRes = await getTVSeasonDetails(Number(id), seasonNumber);
-      setEpisodes(seasonRes.episodes || []);
+      if (useEpisodeGroups && episodeGroups) {
+        // Use episode groups (Parts)
+        const group = episodeGroups[partOrSeasonNumber - 1]; // 1-based to 0-based
+        if (group) {
+          setEpisodes(group.episodes.map((ep, index) => ({
+            ...ep,
+            episode_number: index + 1,
+          })));
+        }
+        
+        // Check Blogger for download link for selected part
+        const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", partOrSeasonNumber);
+        setBloggerResult(bloggerRes);
+      } else {
+        // Use standard seasons
+        const seasonRes = await getTVSeasonDetails(Number(id), partOrSeasonNumber);
+        setEpisodes(seasonRes.episodes || []);
 
-      // Check Blogger for download link for selected season
-      const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", seasonNumber);
-      setBloggerResult(bloggerRes);
+        // Check Blogger for download link for selected season
+        const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", partOrSeasonNumber);
+        setBloggerResult(bloggerRes);
+      }
     } catch (error) {
       console.error("Failed to fetch season:", error);
       setEpisodes([]);
@@ -358,26 +408,44 @@ const TVDetails = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="bg-secondary/50 border-border flex-1 justify-between text-sm h-9">
-                          Season {selectedSeason}
+                          {useEpisodeGroups ? `Part ${selectedSeason}` : `Season ${selectedSeason}`}
                           <ChevronDown className="w-4 h-4 ml-1" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-                        {validSeasons.map((season) => (
-                          <DropdownMenuItem
-                            key={season.season_number}
-                            onClick={() => handleSeasonChange(season.season_number)}
-                            className={cn(
-                              "text-sm",
-                              selectedSeason === season.season_number && "bg-primary/20"
-                            )}
-                          >
-                            Season {season.season_number}
-                            <span className="ml-1 text-muted-foreground text-xs">
-                              ({season.episode_count} eps)
-                            </span>
-                          </DropdownMenuItem>
-                        ))}
+                        {useEpisodeGroups && episodeGroups ? (
+                          episodeGroups.map((group, index) => (
+                            <DropdownMenuItem
+                              key={group.id}
+                              onClick={() => handleSeasonChange(index + 1)}
+                              className={cn(
+                                "text-sm",
+                                selectedSeason === index + 1 && "bg-primary/20"
+                              )}
+                            >
+                              Part {index + 1}
+                              <span className="ml-1 text-muted-foreground text-xs">
+                                ({group.episodes.length} eps)
+                              </span>
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          validSeasons.map((season) => (
+                            <DropdownMenuItem
+                              key={season.season_number}
+                              onClick={() => handleSeasonChange(season.season_number)}
+                              className={cn(
+                                "text-sm",
+                                selectedSeason === season.season_number && "bg-primary/20"
+                              )}
+                            >
+                              Season {season.season_number}
+                              <span className="ml-1 text-muted-foreground text-xs">
+                                ({season.episode_count} eps)
+                              </span>
+                            </DropdownMenuItem>
+                          ))
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -397,25 +465,42 @@ const TVDetails = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="bg-secondary/50 border-border min-w-[140px] justify-between">
-                          Season {selectedSeason}
+                          {useEpisodeGroups ? `Part ${selectedSeason}` : `Season ${selectedSeason}`}
                           <ChevronDown className="w-4 h-4 ml-2" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
-                        {validSeasons.map((season) => (
-                          <DropdownMenuItem
-                            key={season.season_number}
-                            onClick={() => handleSeasonChange(season.season_number)}
-                            className={cn(
-                              selectedSeason === season.season_number && "bg-primary/20"
-                            )}
-                          >
-                            Season {season.season_number}
-                            <span className="ml-2 text-muted-foreground text-xs">
-                              ({season.episode_count} eps)
-                            </span>
-                          </DropdownMenuItem>
-                        ))}
+                        {useEpisodeGroups && episodeGroups ? (
+                          episodeGroups.map((group, index) => (
+                            <DropdownMenuItem
+                              key={group.id}
+                              onClick={() => handleSeasonChange(index + 1)}
+                              className={cn(
+                                selectedSeason === index + 1 && "bg-primary/20"
+                              )}
+                            >
+                              Part {index + 1}
+                              <span className="ml-2 text-muted-foreground text-xs">
+                                ({group.episodes.length} eps)
+                              </span>
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          validSeasons.map((season) => (
+                            <DropdownMenuItem
+                              key={season.season_number}
+                              onClick={() => handleSeasonChange(season.season_number)}
+                              className={cn(
+                                selectedSeason === season.season_number && "bg-primary/20"
+                              )}
+                            >
+                              Season {season.season_number}
+                              <span className="ml-2 text-muted-foreground text-xs">
+                                ({season.episode_count} eps)
+                              </span>
+                            </DropdownMenuItem>
+                          ))
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
 
