@@ -14,11 +14,13 @@ export const PageTransition = ({ children }: PageTransitionProps) => {
     if (children !== displayChildren) {
       setTransitionStage("exit");
       
-      // Safety fallback: if onAnimationEnd doesn't fire within 300ms, force update
+      // Safety fallback: if onAnimationEnd doesn't fire within 200ms, force update
       timeoutRef.current = setTimeout(() => {
-        setDisplayChildren(children);
-        setTransitionStage("enter");
-      }, 300);
+        requestAnimationFrame(() => {
+          setDisplayChildren(children);
+          setTransitionStage("enter");
+        });
+      }, 200);
     }
     
     return () => {
@@ -33,8 +35,10 @@ export const PageTransition = ({ children }: PageTransitionProps) => {
       clearTimeout(timeoutRef.current);
     }
     if (transitionStage === "exit") {
-      setDisplayChildren(children);
-      setTransitionStage("enter");
+      requestAnimationFrame(() => {
+        setDisplayChildren(children);
+        setTransitionStage("enter");
+      });
     }
   };
 
