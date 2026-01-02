@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -40,6 +40,8 @@ import {
 
 const TVDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [show, setShow] = useState<TVDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -50,13 +52,20 @@ const TVDetails = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
-  const [showPlayer, setShowPlayer] = useState(false);
-  const [playingEpisode, setPlayingEpisode] = useState<{ season: number; episode: number } | null>(null);
   const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
+
+  // URL-driven player state
+  const playerState = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const isOpen = params.get("watch") === "1";
+    const season = parseInt(params.get("s") || "1", 10);
+    const episode = parseInt(params.get("e") || "1", 10);
+    return { isOpen, season, episode };
+  }, [location.search]);
 
   // Set media context when show loads or season changes
   useEffect(() => {
@@ -193,15 +202,19 @@ const TVDetails = () => {
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
           {/* Background Trailer or Video Player */}
-          {showPlayer && id && playingEpisode ? (
+          {playerState.isOpen && id ? (
             <VideoPlayer
               tmdbId={Number(id)}
               type="tv"
-              season={playingEpisode.season}
-              episode={playingEpisode.episode}
+              season={playerState.season}
+              episode={playerState.episode}
               onClose={() => {
-                setShowPlayer(false);
-                setPlayingEpisode(null);
+                // Remove watch params from URL
+                const params = new URLSearchParams(location.search);
+                params.delete("watch");
+                params.delete("s");
+                params.delete("e");
+                navigate({ search: params.toString() }, { replace: true });
               }}
               inline
             />
@@ -266,8 +279,12 @@ const TVDetails = () => {
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                    setPlayingEpisode({ season: selectedSeason, episode: 1 });
-                    setShowPlayer(true);
+                    // Add watch params to URL - this creates a history entry
+                    const params = new URLSearchParams(location.search);
+                    params.set("watch", "1");
+                    params.set("s", String(selectedSeason));
+                    params.set("e", "1");
+                    navigate({ search: params.toString() });
                   }}
                 >
                   <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
@@ -442,8 +459,12 @@ const TVDetails = () => {
                         downloadLink={bloggerResult?.seasonDownloadLinks?.[episode.episode_number - 1]}
                         onClick={() => {
                           window.scrollTo({ top: 0, behavior: 'smooth' });
-                          setPlayingEpisode({ season: selectedSeason, episode: episode.episode_number });
-                          setShowPlayer(true);
+                          // Add watch params to URL for this episode
+                          const params = new URLSearchParams(location.search);
+                          params.set("watch", "1");
+                          params.set("s", String(selectedSeason));
+                          params.set("e", String(episode.episode_number));
+                          navigate({ search: params.toString() });
                         }}
                       />
                     ))
