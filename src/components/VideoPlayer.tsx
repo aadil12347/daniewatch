@@ -189,35 +189,44 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       className={containerClasses}
       style={containerStyle}
     >
-      {/* Enhanced Loading state */}
+      {/* Enhanced Loading state - seamless blend with page */}
       {showLoading && (
-        <div className="absolute inset-0 z-10">
-          {/* Base dark background */}
-          <div className="absolute inset-0 bg-black" />
-          
-          {/* Top vignette - ultra smooth (full-height, no cutoff line) */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 18%, hsl(var(--background) / 0.55) 38%, hsl(var(--background) / 0.18) 60%, transparent 82%)",
-            }}
-          />
-
-          {/* Bottom vignette - ultra smooth (full-height, no cutoff line) */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 18%, hsl(var(--background) / 0.55) 38%, hsl(var(--background) / 0.18) 60%, transparent 82%)",
-            }}
-          />
-          
-          {/* Subtle center glow - no blur, pure gradient */}
+        <div className="absolute -inset-8 z-10">
+          {/* Base with blur to blend edges */}
           <div 
-            className="absolute inset-0 opacity-30"
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse at center, hsl(var(--background)) 20%, hsl(var(--background) / 0.95) 40%, hsl(var(--background) / 0.7) 60%, transparent 85%)',
+              filter: 'blur(20px)',
+            }}
+          />
+          
+          {/* Sharp inner content area */}
+          <div 
+            className="absolute inset-8"
+            style={{
+              background: 'radial-gradient(ellipse at center, hsl(var(--background)) 0%, hsl(var(--background)) 50%, transparent 100%)',
+            }}
+          />
+          
+          {/* Soft edge blend - all directions */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `
+                radial-gradient(ellipse at center, transparent 30%, hsl(var(--background) / 0.5) 60%, hsl(var(--background)) 90%),
+                linear-gradient(to bottom, hsl(var(--background)) 0%, transparent 15%, transparent 85%, hsl(var(--background)) 100%),
+                linear-gradient(to right, hsl(var(--background)) 0%, transparent 15%, transparent 85%, hsl(var(--background)) 100%)
+              `,
+              filter: 'blur(8px)',
+            }}
+          />
+          
+          {/* Subtle center glow */}
+          <div 
+            className="absolute inset-8 opacity-25"
             style={{ 
-              background: 'radial-gradient(ellipse at center, hsl(var(--primary) / 0.2) 0%, transparent 50%)' 
+              background: 'radial-gradient(ellipse at center, hsl(var(--primary) / 0.3) 0%, transparent 60%)' 
             }} 
           />
 
