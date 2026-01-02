@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -40,6 +40,7 @@ import {
 } from "@/lib/tmdb";
 
 const TVDetails = () => {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [show, setShow] = useState<TVDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
@@ -198,7 +199,7 @@ const TVDetails = () => {
             variant="ghost"
             size="icon"
             className="absolute top-20 md:top-24 left-4 z-20 w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/70"
-            onClick={() => window.history.back()}
+            onClick={() => navigate(-1)}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
