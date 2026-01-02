@@ -64,7 +64,6 @@ export const useWatchlist = () => {
     if (!user) {
       toast({
         title: "Login required",
-        description: "Please login to use this feature.",
         variant: "destructive",
       });
       navigate('/auth');
@@ -73,6 +72,21 @@ export const useWatchlist = () => {
 
     const mediaType = movie.media_type || (movie.first_air_date ? 'tv' : 'movie');
     const title = movie.title || movie.name || 'Unknown';
+
+    // Optimistic update - add to local state immediately
+    const newItem: WatchlistItem = {
+      id: 'temp-' + movie.id,
+      user_id: user.id,
+      tmdb_id: movie.id,
+      media_type: mediaType as 'movie' | 'tv',
+      title: title,
+      poster_path: movie.poster_path,
+      vote_average: movie.vote_average || 0,
+      created_at: new Date().toISOString(),
+    };
+    setWatchlist(prev => [newItem, ...prev]);
+
+    toast({ title: "Added to watchlist" });
 
     try {
       const { error } = await supabase
@@ -86,30 +100,19 @@ export const useWatchlist = () => {
           vote_average: movie.vote_average || 0,
         });
 
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: "Already in watchlist",
-            description: `${title} is already in your watchlist.`,
-          });
-          return false;
-        }
+      if (error && error.code !== '23505') {
         throw error;
       }
 
-      toast({
-        title: "Added to watchlist",
-        description: `${title} has been added to your watchlist.`,
-        onClick: () => navigate('/watchlist'),
-      });
-
-      await fetchWatchlist();
+      // Background sync
+      fetchWatchlist();
       return true;
     } catch (error) {
       console.error('Error adding to watchlist:', error);
+      // Revert optimistic update on error
+      setWatchlist(prev => prev.filter(item => item.id !== 'temp-' + movie.id));
       toast({
-        title: "Error",
-        description: "Failed to add to watchlist. Please try again.",
+        title: "Failed to save",
         variant: "destructive",
       });
       return false;
@@ -119,6 +122,16 @@ export const useWatchlist = () => {
   // Remove from watchlist
   const removeFromWatchlist = async (tmdbId: number, mediaType: 'movie' | 'tv') => {
     if (!user) return false;
+
+    // Optimistic update - remove from local state immediately
+    const removedItems = watchlist.filter(
+      item => item.tmdb_id === tmdbId && item.media_type === mediaType
+    );
+    setWatchlist(prev => prev.filter(
+      item => !(item.tmdb_id === tmdbId && item.media_type === mediaType)
+    ));
+
+    toast({ title: "Removed from watchlist" });
 
     try {
       const { error } = await supabase
@@ -130,18 +143,15 @@ export const useWatchlist = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Removed from watchlist",
-        description: "Item has been removed from your watchlist.",
-      });
-
-      await fetchWatchlist();
+      // Background sync
+      fetchWatchlist();
       return true;
     } catch (error) {
       console.error('Error removing from watchlist:', error);
+      // Revert optimistic update on error
+      setWatchlist(prev => [...removedItems, ...prev]);
       toast({
-        title: "Error",
-        description: "Failed to remove from watchlist. Please try again.",
+        title: "Failed to remove",
         variant: "destructive",
       });
       return false;
