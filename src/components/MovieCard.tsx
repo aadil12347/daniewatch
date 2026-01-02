@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, Play, Bookmark, BookmarkCheck } from "lucide-react";
+import { Star, Play, Bookmark } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -77,29 +77,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
           {rating}
         </div>
-
-        {/* Save to Watchlist Button - bottom right, hidden on Top 10 */}
-        {!showRank && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleWatchlist(movie);
-            }}
-            className={cn(
-              "absolute bottom-2 right-2 p-2 rounded-lg glass transition-all duration-300",
-              "opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110",
-              inWatchlist ? "bg-primary/40" : "hover:bg-primary/20"
-            )}
-            title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
-          >
-            {inWatchlist ? (
-              <BookmarkCheck className="w-5 h-5 text-primary fill-primary" />
-            ) : (
-              <Bookmark className="w-5 h-5 text-foreground" />
-            )}
-          </button>
-        )}
       </div>
 
       {/* Info */}
@@ -113,6 +90,32 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
         </div>
       </div>
       </Link>
+
+      {/* Save to Watchlist Button - outside Link to prevent navigation */}
+      {!showRank && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWatchlist(movie);
+          }}
+          className={cn(
+            "absolute bottom-[4.5rem] right-2 p-2 rounded-lg glass transition-all duration-300 z-10",
+            "opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:scale-110",
+            inWatchlist ? "bg-primary/40" : "hover:bg-primary/20"
+          )}
+          title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+        >
+          <Bookmark 
+            className={cn(
+              "w-5 h-5 transition-all duration-300",
+              inWatchlist 
+                ? "text-primary fill-primary scale-110" 
+                : "text-foreground fill-transparent scale-100"
+            )} 
+          />
+        </button>
+      )}
     </div>
   );
 };
