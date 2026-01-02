@@ -147,12 +147,7 @@ const MovieDetails = () => {
             <VideoPlayer
               tmdbId={Number(id)}
               type="movie"
-              onClose={() => {
-                // Remove watch param from URL
-                const params = new URLSearchParams(location.search);
-                params.delete("watch");
-                navigate({ search: params.toString() }, { replace: true });
-              }}
+              onClose={() => navigate(-1)}
               inline
             />
           ) : (
