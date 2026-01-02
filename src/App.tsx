@@ -11,6 +11,8 @@ import { TutorialProvider } from "./contexts/TutorialContext";
 import { PageTransition } from "./components/PageTransition";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
+import { NavTransitionProvider, useNavTransition } from "@/contexts/NavTransitionContext";
+import { NavTransitionOverlay } from "@/components/NavTransitionOverlay";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -51,6 +53,12 @@ const queryClient = new QueryClient();
 
 const AnimatedRoutes = () => {
   const location = useLocation();
+  const { stopNavigation } = useNavTransition();
+
+  // When the route changes, we can safely stop the overlay.
+  useEffect(() => {
+    stopNavigation();
+  }, [location.pathname, location.search, stopNavigation]);
 
   return (
     <PageTransition key={location.pathname + location.search}>
@@ -85,15 +93,18 @@ const App = () => (
       <AuthProvider>
         <TutorialProvider>
           <MediaProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AppContent />
-                <FloatingRequestButton />
-                <TutorialOverlay />
-              </BrowserRouter>
-            </TooltipProvider>
+            <NavTransitionProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <NavTransitionOverlay />
+                  <AppContent />
+                  <FloatingRequestButton />
+                  <TutorialOverlay />
+                </BrowserRouter>
+              </TooltipProvider>
+            </NavTransitionProvider>
           </MediaProvider>
         </TutorialProvider>
       </AuthProvider>
