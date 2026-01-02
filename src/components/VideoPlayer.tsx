@@ -195,21 +195,23 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
           {/* Base dark background */}
           <div className="absolute inset-0 bg-black" />
           
-        {/* Top vignette - extended smooth fade */}
-        <div 
-          className="absolute inset-x-0 top-0 h-1/2"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.3) 60%, transparent 100%)'
-          }}
-        />
-        
-        {/* Bottom vignette - extended smooth fade */}
-        <div 
-          className="absolute inset-x-0 bottom-0 h-1/2"
-          style={{
-            background: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.3) 60%, transparent 100%)'
-          }}
-        />
+          {/* Top vignette - ultra smooth (full-height, no cutoff line) */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 18%, hsl(var(--background) / 0.55) 38%, hsl(var(--background) / 0.18) 60%, transparent 82%)",
+            }}
+          />
+
+          {/* Bottom vignette - ultra smooth (full-height, no cutoff line) */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 18%, hsl(var(--background) / 0.55) 38%, hsl(var(--background) / 0.18) 60%, transparent 82%)",
+            }}
+          />
           
           {/* Subtle center glow - no blur, pure gradient */}
           <div 
