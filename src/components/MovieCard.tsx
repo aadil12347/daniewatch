@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Star, Play } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
@@ -9,14 +9,22 @@ interface MovieCardProps {
   showRank?: boolean;
   size?: "sm" | "md" | "lg";
   animationDelay?: number;
+  onNavigate?: () => void;
 }
 
-export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0 }: MovieCardProps) => {
+export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0, onNavigate }: MovieCardProps) => {
+  const location = useLocation();
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
   const rating = movie.vote_average?.toFixed(1);
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
+
+  // Save scroll position before navigating
+  const handleClick = () => {
+    sessionStorage.setItem(`scroll_${location.pathname}`, window.scrollY.toString());
+    onNavigate?.();
+  };
 
   const sizeClasses = {
     sm: "w-32 sm:w-36",
@@ -43,6 +51,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
       <Link
         to={`/${mediaType}/${movie.id}`}
         className={cn("block", sizeClasses[size])}
+        onClick={handleClick}
       >
         {/* Card */}
         <div className="cinema-card relative aspect-[2/3] rounded-xl overflow-hidden bg-card">
