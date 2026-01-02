@@ -106,11 +106,11 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           >
             <Bookmark 
               className={cn(
-                "w-5 h-5 transition-all duration-300",
+                "w-5 h-5 transition-all duration-100",
                 inWatchlist 
                   ? "text-primary fill-primary scale-110" 
                   : "text-foreground fill-transparent scale-100"
-              )} 
+              )}
             />
           </button>
         )}
