@@ -20,7 +20,7 @@ export const Navbar = () => {
   const isMobile = useIsMobile();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollYRef = useRef(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
@@ -90,26 +90,34 @@ export const Navbar = () => {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+      const lastScrollY = lastScrollYRef.current;
 
       setIsScrolled(currentScrollY > 50);
 
-      // Hide when scrolling down, show when scrolling up (desktop only)
-      if (!isMobile) {
+      // Only hide/show on desktop (md breakpoint = 768px)
+      const isDesktop = window.innerWidth >= 768;
+      
+      if (isDesktop) {
         if (currentScrollY > lastScrollY && currentScrollY > 100) {
           setIsHidden(true);
-        } else {
+        } else if (currentScrollY < lastScrollY) {
           setIsHidden(false);
         }
       } else {
-        setIsHidden(false); // Always visible on mobile
+        // Always visible on mobile
+        setIsHidden(false);
       }
 
-      setLastScrollY(currentScrollY);
+      lastScrollYRef.current = currentScrollY;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY, isMobile]);
+    window.addEventListener("resize", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
 
   // Close menu when route changes
   useEffect(() => {
