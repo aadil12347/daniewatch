@@ -193,8 +193,18 @@ const TVDetails = () => {
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
+          {/* Back Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-20 md:top-24 left-4 z-20 w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/70"
+            onClick={() => window.history.back()}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+
           {/* Background Trailer */}
-          <BackgroundTrailer 
+          <BackgroundTrailer
             videoKey={trailerKey} 
             backdropUrl={backdropUrl} 
             title={title} 
