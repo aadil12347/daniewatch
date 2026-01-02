@@ -22,17 +22,18 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const year = getYear(getReleaseDate(movie));
   const rating = movie.vote_average?.toFixed(1);
   
+  const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [prevInWatchlist, setPrevInWatchlist] = useState(inWatchlist);
   
+  // Use optimistic state if set, otherwise use actual state
+  const displayedInWatchlist = optimisticInWatchlist !== null ? optimisticInWatchlist : inWatchlist;
+  
+  // Sync optimistic state when actual state catches up
   useEffect(() => {
-    if (inWatchlist !== prevInWatchlist) {
-      setIsAnimating(true);
-      setPrevInWatchlist(inWatchlist);
-      const timer = setTimeout(() => setIsAnimating(false), 400);
-      return () => clearTimeout(timer);
+    if (optimisticInWatchlist !== null && optimisticInWatchlist === inWatchlist) {
+      setOptimisticInWatchlist(null);
     }
-  }, [inWatchlist, prevInWatchlist]);
+  }, [inWatchlist, optimisticInWatchlist]);
 
   const sizeClasses = {
     sm: "w-32 sm:w-36",
@@ -108,21 +109,34 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              
+              const newState = !displayedInWatchlist;
+              
+              // Instantly update UI (optimistic)
+              setOptimisticInWatchlist(newState);
+              
+              // Trigger animation immediately on save
+              if (newState) {
+                setIsAnimating(true);
+                setTimeout(() => setIsAnimating(false), 400);
+              }
+              
+              // Database update in background
               toggleWatchlist(movie);
             }}
             className={cn(
               "absolute bottom-[4.5rem] right-2 p-2 rounded-lg glass transition-all duration-150 z-20",
               "opacity-100 md:opacity-0 md:group-hover:opacity-100",
-              inWatchlist ? "bg-primary/40" : "hover:bg-primary/20",
-              isAnimating && inWatchlist && "bookmark-burst"
+              displayedInWatchlist ? "bg-primary/40" : "hover:bg-primary/20",
+              isAnimating && "bookmark-burst"
             )}
-            title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+            title={displayedInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
           >
             <Bookmark 
               className={cn(
                 "w-5 h-5 transition-all duration-150",
-                isAnimating && inWatchlist && "bookmark-pop",
-                inWatchlist
+                isAnimating && "bookmark-pop",
+                displayedInWatchlist
                   ? "text-primary fill-primary scale-110" 
                   : "text-foreground fill-transparent scale-100"
               )}
