@@ -364,16 +364,16 @@ export const Navbar = () => {
 
       </nav>
 
-      {/* Sticky Back button on details pages - hidden on mobile */}
+      {/* Sticky Back button on details pages - visible on all devices */}
       {isDetailsPage && (
-        <div className="hidden md:block fixed left-4 top-20 z-[60]">
+        <div className="fixed left-4 top-20 z-[60]">
           <button
             onClick={handleBack}
-            className="p-2.5 rounded-full bg-background/90 backdrop-blur-md border border-border hover:bg-secondary/50 transition-colors flex items-center gap-2 shadow-lg"
+            className="p-2 md:p-2.5 rounded-full bg-background/90 backdrop-blur-md border border-border hover:bg-secondary/50 transition-colors flex items-center gap-1.5 md:gap-2 shadow-lg"
             aria-label="Go back"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Back</span>
+            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="text-xs md:text-sm font-medium">Back</span>
           </button>
         </div>
       )}
