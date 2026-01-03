@@ -73,6 +73,9 @@ const Indian = () => {
         return "vote_average.desc";
       case "latest":
         return "primary_release_date.desc";
+      case "popular":
+        // Sort by release date but filter for popular content
+        return "primary_release_date.desc";
       default:
         return "popularity.desc";
     }
@@ -83,6 +86,9 @@ const Indian = () => {
       case "top_rated":
         return "vote_average.desc";
       case "latest":
+        return "first_air_date.desc";
+      case "popular":
+        // Sort by release date but filter for popular content
         return "first_air_date.desc";
       default:
         return "popularity.desc";
@@ -112,6 +118,8 @@ const Indian = () => {
         "primary_release_date.lte": today,
         ...(selectedTags.length > 0 && { with_genres: movieGenres }),
         ...(activeTab === "top_rated" && { "vote_count.gte": "100" }),
+        // For popular tab, filter for content with decent popularity
+        ...(activeTab === "popular" && { "vote_count.gte": "50" }),
       });
 
       // Build TV params
@@ -123,6 +131,8 @@ const Indian = () => {
         "first_air_date.lte": today,
         ...(selectedTags.length > 0 && { with_genres: tvGenres }),
         ...(activeTab === "top_rated" && { "vote_count.gte": "50" }),
+        // For popular tab, filter for content with decent popularity
+        ...(activeTab === "popular" && { "vote_count.gte": "20" }),
       });
 
       // Fetch both movies and TV in parallel
@@ -142,9 +152,9 @@ const Indian = () => {
         ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
       ];
 
-      // Sort based on active tab
+      // Sort based on active tab - both popular and latest sort by release date
       const sortedResults = combinedResults.sort((a, b) => {
-        if (activeTab === "latest") {
+        if (activeTab === "latest" || activeTab === "popular") {
           const dateA = a.release_date || a.first_air_date || "";
           const dateB = b.release_date || b.first_air_date || "";
           return dateB.localeCompare(dateA);
