@@ -9,23 +9,22 @@ import { Loader2 } from "lucide-react";
 import { Movie } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
-// Korean content genres (for both movies and TV)
-const KOREAN_TAGS = [
-  { id: "romance", label: "Romance", genreId: 10749 },
+// Indian content genres
+const INDIAN_TAGS = [
   { id: "drama", label: "Drama", genreId: 18 },
-  { id: "comedy", label: "Comedy", genreId: 35 },
+  { id: "romance", label: "Romance", genreId: 10749 },
   { id: "action", label: "Action", genreId: 28 },
-  { id: "mystery", label: "Mystery", genreId: 9648 },
-  { id: "fantasy", label: "Fantasy", genreId: 14 },
+  { id: "comedy", label: "Comedy", genreId: 35 },
+  { id: "thriller", label: "Thriller", genreId: 53 },
   { id: "crime", label: "Crime", genreId: 80 },
   { id: "family", label: "Family", genreId: 10751 },
+  { id: "musical", label: "Musical", genreId: 10402 },
 ];
 
 // Action genre ID for TV is different
 const TV_ACTION_GENRE = 10759;
-const TV_FANTASY_GENRE = 10765;
 
-const Korean = () => {
+const Indian = () => {
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +89,7 @@ const Korean = () => {
     }
   };
 
-  const fetchKorean = useCallback(async (pageNum: number, reset: boolean = false) => {
+  const fetchIndian = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
       setIsLoading(true);
     } else {
@@ -100,20 +99,16 @@ const Korean = () => {
     try {
       const today = new Date().toISOString().split("T")[0];
       
-      // Build genre params - handle action/fantasy genre difference for TV
+      // Build genre params - handle action genre difference for TV
       const movieGenres = selectedTags.join(",");
-      const tvGenres = selectedTags.map(g => {
-        if (g === 28) return TV_ACTION_GENRE;
-        if (g === 14) return TV_FANTASY_GENRE;
-        return g;
-      }).join(",");
+      const tvGenres = selectedTags.map(g => g === 28 ? TV_ACTION_GENRE : g).join(",");
 
       // Build movie params
       const movieParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         page: pageNum.toString(),
         sort_by: getSortBy(activeTab),
-        with_original_language: "ko",
+        with_origin_country: "IN",
         "primary_release_date.lte": today,
         ...(selectedTags.length > 0 && { with_genres: movieGenres }),
         ...(activeTab === "top_rated" && { "vote_count.gte": "100" }),
@@ -124,7 +119,7 @@ const Korean = () => {
         api_key: "fc6d85b3839330e3458701b975195487",
         page: pageNum.toString(),
         sort_by: getTvSortBy(activeTab),
-        with_original_language: "ko",
+        with_origin_country: "IN",
         "first_air_date.lte": today,
         ...(selectedTags.length > 0 && { with_genres: tvGenres }),
         ...(activeTab === "top_rated" && { "vote_count.gte": "50" }),
@@ -167,14 +162,14 @@ const Korean = () => {
       const maxPages = Math.max(moviesData.total_pages || 0, tvData.total_pages || 0);
       setHasMore(pageNum < maxPages);
     } catch (error) {
-      console.error("Failed to fetch Korean content:", error);
+      console.error("Failed to fetch Indian content:", error);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
   }, [activeTab, selectedTags]);
 
-  // Reset and fetch when tab or tags change (skip if just initialized from cache)
+  // Reset and fetch when tab or tags change
   useEffect(() => {
     if (!isInitialized) return;
     if (isRestoredFromCache) {
@@ -184,7 +179,7 @@ const Korean = () => {
     setPage(1);
     setItems([]);
     setHasMore(true);
-    fetchKorean(1, true);
+    fetchIndian(1, true);
   }, [activeTab, selectedTags, isInitialized]);
 
   // Infinite scroll observer
@@ -212,9 +207,9 @@ const Korean = () => {
   // Fetch more when page changes
   useEffect(() => {
     if (page > 1 && !isRestoredFromCache) {
-      fetchKorean(page);
+      fetchIndian(page);
     }
-  }, [page, fetchKorean, isRestoredFromCache]);
+  }, [page, fetchIndian, isRestoredFromCache]);
 
   const toggleTag = (genreId: number) => {
     setSelectedTags(prev =>
@@ -229,20 +224,20 @@ const Korean = () => {
   };
 
   // Convert tags to genre format for CategoryNav
-  const genresForNav = KOREAN_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
+  const genresForNav = INDIAN_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
 
   return (
     <>
       <Helmet>
-        <title>Korean Movies & TV - DanieWatch</title>
-        <meta name="description" content="Watch the best Korean movies and TV series - K-dramas, Korean films, latest releases, and top rated content" />
+        <title>Indian Movies & TV - DanieWatch</title>
+        <meta name="description" content="Watch the best Indian movies and TV series - Bollywood, regional cinema, popular shows, and latest releases" />
       </Helmet>
 
       <div className="min-h-screen bg-background">
         <Navbar />
 
         <div className="container mx-auto px-4 pt-24 pb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">Korean</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">Indian</h1>
 
           {/* Category Navigation */}
           <div className="mb-8">
@@ -278,7 +273,7 @@ const Korean = () => {
           {/* No results message */}
           {!isLoading && items.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No Korean content found with the selected filters.</p>
+              <p className="text-muted-foreground">No Indian content found with the selected filters.</p>
               <button
                 onClick={clearTags}
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
@@ -308,4 +303,4 @@ const Korean = () => {
   );
 };
 
-export default Korean;
+export default Indian;
