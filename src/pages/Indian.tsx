@@ -38,6 +38,16 @@ const Indian = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
+  const scrollPositionRef = useRef<number>(0);
+
+  // Save scroll position periodically
+  useEffect(() => {
+    const handleScroll = () => {
+      scrollPositionRef.current = window.scrollY;
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Try to restore from cache on mount
   useEffect(() => {
@@ -48,11 +58,18 @@ const Indian = () => {
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
+      // Restore scroll position after items render
+      requestAnimationFrame(() => {
+        const savedScroll = sessionStorage.getItem("indian_scroll");
+        if (savedScroll) {
+          window.scrollTo(0, parseInt(savedScroll, 10));
+        }
+      });
     }
     setIsInitialized(true);
   }, []);
 
-  // Save cache before unmount
+  // Save cache and scroll position before unmount
   useEffect(() => {
     return () => {
       if (items.length > 0) {
@@ -63,6 +80,7 @@ const Indian = () => {
           activeTab,
           selectedFilters: selectedTags,
         });
+        sessionStorage.setItem("indian_scroll", scrollPositionRef.current.toString());
       }
     };
   }, [items, page, hasMore, activeTab, selectedTags, saveCache]);
@@ -215,7 +233,7 @@ const Indian = () => {
     setItems([]);
     setHasMore(true);
     fetchIndian(1, true);
-  }, [activeTab, selectedTags, isInitialized]);
+  }, [activeTab, selectedTags, isInitialized, fetchIndian]);
 
   // Infinite scroll observer
   useEffect(() => {
