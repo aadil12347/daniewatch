@@ -168,16 +168,28 @@ const Indian = () => {
         return dateB.localeCompare(dateA);
       };
 
+      // Deduplicate by unique key (id + media_type)
+      const deduplicateItems = (items: Movie[]) => {
+        const seen = new Set<string>();
+        return items.filter(item => {
+          const key = `${item.id}-${item.media_type}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
+
       if (reset) {
-        setItems(sortedResults);
+        setItems(deduplicateItems(sortedResults));
       } else {
         setItems(prev => {
           const merged = [...prev, ...sortedResults];
+          const unique = deduplicateItems(merged);
           // Keep global order consistent across pagination for popular/latest
           if (activeTab === "latest" || activeTab === "popular") {
-            return merged.sort(sortByDateDesc);
+            return unique.sort(sortByDateDesc);
           }
-          return merged;
+          return unique;
         });
       }
 
