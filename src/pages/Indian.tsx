@@ -36,11 +36,23 @@ const Indian = () => {
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef<number>(0);
+  
+  // Use refs to track current values for fetch without causing re-renders
+  const activeTabRef = useRef(activeTab);
+  const selectedTagsRef = useRef(selectedTags);
+  
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+  
+  useEffect(() => {
+    selectedTagsRef.current = selectedTags;
+  }, [selectedTags]);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
-  const scrollPositionRef = useRef<number>(0);
 
-  // Save scroll position periodically
+  // Save scroll position on scroll
   useEffect(() => {
     const handleScroll = () => {
       scrollPositionRef.current = window.scrollY;
@@ -92,7 +104,6 @@ const Indian = () => {
       case "latest":
         return "primary_release_date.desc";
       case "popular":
-        // Sort by release date but filter for popular content
         return "primary_release_date.desc";
       default:
         return "popularity.desc";
@@ -106,14 +117,17 @@ const Indian = () => {
       case "latest":
         return "first_air_date.desc";
       case "popular":
-        // Sort by release date but filter for popular content
         return "first_air_date.desc";
       default:
         return "popularity.desc";
     }
   };
 
+  // Stable fetch function that reads from refs
   const fetchIndian = useCallback(async (pageNum: number, reset: boolean = false) => {
+    const currentTab = activeTabRef.current;
+    const currentTags = selectedTagsRef.current;
+    
     if (reset) {
       setIsLoading(true);
     } else {
@@ -124,34 +138,46 @@ const Indian = () => {
       const today = new Date().toISOString().split("T")[0];
       
       // Build genre params - handle action genre difference for TV
-      const movieGenres = selectedTags.join(",");
-      const tvGenres = selectedTags.map(g => g === 28 ? TV_ACTION_GENRE : g).join(",");
+      const movieGenres = currentTags.join(",");
+      const tvGenres = currentTags.map(g => g === 28 ? TV_ACTION_GENRE : g).join(",");
 
       // Build movie params
       const movieParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         page: pageNum.toString(),
-        sort_by: getSortBy(activeTab),
+        sort_by: getSortBy(currentTab),
         with_origin_country: "IN",
         "primary_release_date.lte": today,
-        ...(selectedTags.length > 0 && { with_genres: movieGenres }),
-        ...(activeTab === "top_rated" && { "vote_count.gte": "100" }),
-        // For popular tab, filter for content with decent popularity
-        ...(activeTab === "popular" && { "vote_count.gte": "50" }),
       });
+      
+      if (currentTags.length > 0) {
+        movieParams.set("with_genres", movieGenres);
+      }
+      if (currentTab === "top_rated") {
+        movieParams.set("vote_count.gte", "100");
+      }
+      if (currentTab === "popular") {
+        movieParams.set("vote_count.gte", "50");
+      }
 
       // Build TV params
       const tvParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         page: pageNum.toString(),
-        sort_by: getTvSortBy(activeTab),
+        sort_by: getTvSortBy(currentTab),
         with_origin_country: "IN",
         "first_air_date.lte": today,
-        ...(selectedTags.length > 0 && { with_genres: tvGenres }),
-        ...(activeTab === "top_rated" && { "vote_count.gte": "50" }),
-        // For popular tab, filter for content with decent popularity
-        ...(activeTab === "popular" && { "vote_count.gte": "20" }),
       });
+      
+      if (currentTags.length > 0) {
+        tvParams.set("with_genres", tvGenres);
+      }
+      if (currentTab === "top_rated") {
+        tvParams.set("vote_count.gte", "50");
+      }
+      if (currentTab === "popular") {
+        tvParams.set("vote_count.gte", "20");
+      }
 
       // Fetch both movies and TV in parallel
       const [moviesRes, tvRes] = await Promise.all([
@@ -165,49 +191,30 @@ const Indian = () => {
       ]);
 
       // Combine with media_type tags
-      const combinedResults = [
+      const combinedResults: Movie[] = [
         ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
         ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
       ];
 
-      // Sort based on active tab - both popular and latest sort by release date
+      // Sort by date for popular/latest, by popularity otherwise
       const sortedResults = combinedResults.sort((a, b) => {
-        if (activeTab === "latest" || activeTab === "popular") {
+        if (currentTab === "latest" || currentTab === "popular") {
           const dateA = a.release_date || a.first_air_date || "";
           const dateB = b.release_date || b.first_air_date || "";
           return dateB.localeCompare(dateA);
         }
-        return (b.popularity || 0) - (a.popularity || 0);
+        return ((b as Movie & { popularity?: number }).popularity || 0) - ((a as Movie & { popularity?: number }).popularity || 0);
       });
 
-      const sortByDateDesc = (a: Movie, b: Movie) => {
-        const dateA = a.release_date || a.first_air_date || "";
-        const dateB = b.release_date || b.first_air_date || "";
-        return dateB.localeCompare(dateA);
-      };
-
-      // Deduplicate by unique key (id + media_type)
-      const deduplicateItems = (items: Movie[]) => {
-        const seen = new Set<string>();
-        return items.filter(item => {
-          const key = `${item.id}-${item.media_type}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-      };
-
       if (reset) {
-        setItems(deduplicateItems(sortedResults));
+        setItems(sortedResults);
       } else {
         setItems(prev => {
-          const merged = [...prev, ...sortedResults];
-          const unique = deduplicateItems(merged);
-          // Keep global order consistent across pagination for popular/latest
-          if (activeTab === "latest" || activeTab === "popular") {
-            return unique.sort(sortByDateDesc);
-          }
-          return unique;
+          // Deduplicate by id + media_type
+          const existingKeys = new Set(prev.map(item => `${item.id}-${item.media_type}`));
+          const newItems = sortedResults.filter(item => !existingKeys.has(`${item.id}-${item.media_type}`));
+          // Simply append new items - don't re-sort to avoid jumping
+          return [...prev, ...newItems];
         });
       }
 
@@ -220,7 +227,7 @@ const Indian = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [activeTab, selectedTags]);
+  }, []);
 
   // Reset and fetch when tab or tags change
   useEffect(() => {
@@ -257,10 +264,10 @@ const Indian = () => {
     return () => observerRef.current?.disconnect();
   }, [hasMore, isLoading, isLoadingMore]);
 
-  // Fetch more when page changes
+  // Fetch more when page changes (not on initial load or cache restore)
   useEffect(() => {
     if (page > 1 && !isRestoredFromCache) {
-      fetchIndian(page);
+      fetchIndian(page, false);
     }
   }, [page, fetchIndian, isRestoredFromCache]);
 
@@ -316,7 +323,7 @@ const Indian = () => {
                 ))
               : items.map((item, index) => (
                   <MovieCard 
-                    key={`${item.id}-${item.media_type}-${index}`} 
+                    key={`${item.id}-${item.media_type}`} 
                     movie={item} 
                     animationDelay={Math.min(index * 30, 300)}
                   />
