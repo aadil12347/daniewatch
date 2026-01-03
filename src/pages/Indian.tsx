@@ -162,34 +162,26 @@ const Indian = () => {
         return (b.popularity || 0) - (a.popularity || 0);
       });
 
-      const sortByDateDesc = (a: Movie, b: Movie) => {
-        const dateA = a.release_date || a.first_air_date || "";
-        const dateB = b.release_date || b.first_air_date || "";
-        return dateB.localeCompare(dateA);
-      };
-
-      // Deduplicate by unique key (id + media_type)
-      const deduplicateItems = (items: Movie[]) => {
+      if (reset) {
+        // Deduplicate new results
         const seen = new Set<string>();
-        return items.filter(item => {
+        const unique = sortedResults.filter(item => {
           const key = `${item.id}-${item.media_type}`;
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
         });
-      };
-
-      if (reset) {
-        setItems(deduplicateItems(sortedResults));
+        setItems(unique);
       } else {
+        // Append only new unique items without re-sorting existing ones
         setItems(prev => {
-          const merged = [...prev, ...sortedResults];
-          const unique = deduplicateItems(merged);
-          // Keep global order consistent across pagination for popular/latest
-          if (activeTab === "latest" || activeTab === "popular") {
-            return unique.sort(sortByDateDesc);
-          }
-          return unique;
+          const existingKeys = new Set(prev.map(item => `${item.id}-${item.media_type}`));
+          const newUniqueItems = sortedResults.filter(item => {
+            const key = `${item.id}-${item.media_type}`;
+            return !existingKeys.has(key);
+          });
+          // Simply append - don't re-sort to preserve scroll position
+          return [...prev, ...newUniqueItems];
         });
       }
 
