@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, MapPin } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -187,7 +187,7 @@ export const Navbar = () => {
   const navLinks = [
     { to: "/movies", label: "Movies", icon: Film },
     { to: "/tv", label: "TV Shows", icon: Tv },
-    { to: "/indian", label: "Indian", icon: MapPin },
+    { to: "/indian", label: "Indian", icon: Globe },
     { to: "/anime", label: "Anime", icon: Sparkles },
     { to: "/korean", label: "Korean", icon: Heart },
     { to: "/watchlist", label: "Watch List", icon: Bookmark },
