@@ -53,16 +53,8 @@ const queryClient = new QueryClient();
 const AnimatedRoutes = () => {
   const location = useLocation();
 
-  const routeKey = (() => {
-    // Ignore Lovable preview token in the transition key so pages don't remount (and lose scroll)
-    const params = new URLSearchParams(location.search);
-    params.delete("__lovable_token");
-    const cleaned = params.toString();
-    return location.pathname + (cleaned ? `?${cleaned}` : "");
-  })();
-
   return (
-    <PageTransition key={routeKey}>
+    <PageTransition key={location.pathname + location.search}>
       <Routes location={location}>
         <Route path="/" element={<Index />} />
         <Route path="/movie/:id" element={<MovieDetails />} />
