@@ -162,10 +162,23 @@ const Indian = () => {
         return (b.popularity || 0) - (a.popularity || 0);
       });
 
+      const sortByDateDesc = (a: Movie, b: Movie) => {
+        const dateA = a.release_date || a.first_air_date || "";
+        const dateB = b.release_date || b.first_air_date || "";
+        return dateB.localeCompare(dateA);
+      };
+
       if (reset) {
         setItems(sortedResults);
       } else {
-        setItems(prev => [...prev, ...sortedResults]);
+        setItems(prev => {
+          const merged = [...prev, ...sortedResults];
+          // Keep global order consistent across pagination for popular/latest
+          if (activeTab === "latest" || activeTab === "popular") {
+            return merged.sort(sortByDateDesc);
+          }
+          return merged;
+        });
       }
 
       // Has more if either endpoint has more pages
