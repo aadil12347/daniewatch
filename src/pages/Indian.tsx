@@ -52,13 +52,23 @@ const Indian = () => {
 
   const { saveCache, getCache } = useListStateCache<Movie>();
 
-  // Save scroll position on scroll
+  // Save scroll position on scroll (and persist it so remounts don't jump to top)
   useEffect(() => {
+    let rafId = 0;
+
     const handleScroll = () => {
       scrollPositionRef.current = window.scrollY;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        sessionStorage.setItem("indian_scroll", String(scrollPositionRef.current));
+      });
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   // Try to restore from cache on mount
