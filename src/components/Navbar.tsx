@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -136,6 +136,9 @@ export const Navbar = () => {
     if (location.pathname === "/korean" || getUrlParam("category") === "korean") {
       return "/korean";
     }
+    if (location.pathname === "/indian" || getUrlParam("category") === "indian") {
+      return "/indian";
+    }
     return null;
   };
 
@@ -143,6 +146,7 @@ export const Navbar = () => {
     const originalPath = getOriginalPath();
     if (originalPath === "/anime") return "&category=anime";
     if (originalPath === "/korean") return "&category=korean";
+    if (originalPath === "/indian") return "&category=indian";
     return "";
   };
 
@@ -179,17 +183,19 @@ export const Navbar = () => {
     }
   };
 
+  // Desktop navigation links - no Home
   const navLinks = [
-    { to: "/", label: "Home", icon: Home },
     { to: "/movies", label: "Movies", icon: Film },
     { to: "/tv", label: "TV Shows", icon: Tv },
+    { to: "/indian", label: "Indian", icon: MapPin },
     { to: "/anime", label: "Anime", icon: Sparkles },
     { to: "/korean", label: "Korean", icon: Heart },
     { to: "/watchlist", label: "Watch List", icon: Bookmark },
   ];
 
-  // Mobile menu links - includes My Requests for logged-in non-admin users
+  // Mobile menu links - includes Home at the start
   const mobileNavLinks = [
+    { to: "/", label: "Home", icon: Home },
     ...navLinks,
     ...(user && !isAdmin ? [{ to: "/requests", label: "My Requests", icon: FileText }] : []),
     ...(user && isAdmin ? [{ to: "/admin", label: "Admin Panel", icon: Shield }] : []),
