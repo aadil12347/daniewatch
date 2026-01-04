@@ -23,7 +23,6 @@ export interface AdminRequest {
   message: string;
   status: 'pending' | 'in_progress' | 'completed' | 'rejected';
   admin_response: string | null;
-  tmdb_id: number | null;
   created_at: string;
   updated_at: string;
 }

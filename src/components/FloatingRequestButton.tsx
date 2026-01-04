@@ -81,7 +81,6 @@ export const FloatingRequestButton = () => {
                 defaultTitle={currentMedia?.title}
                 defaultType={currentMedia?.type}
                 defaultSeason={currentMedia?.seasonNumber}
-                defaultTmdbId={currentMedia?.tmdbId}
                 onSuccess={() => setIsOpen(false)}
               />
             </TabsContent>

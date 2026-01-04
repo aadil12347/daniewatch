@@ -54,7 +54,6 @@ const MovieDetails = () => {
       setCurrentMedia({
         title: movie.title,
         type: 'movie',
-        tmdbId: movie.id,
       });
     }
     return () => clearCurrentMedia();
