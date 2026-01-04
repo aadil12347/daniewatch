@@ -56,7 +56,8 @@ import {
   Sparkles,
   CheckCheck,
   RotateCcw,
-  Archive
+  Archive,
+  ExternalLink
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -123,7 +124,20 @@ const RequestCard = ({
               />
             )}
             <div>
-              <CardTitle className="text-lg">{request.title}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">{request.title}</CardTitle>
+                {request.tmdb_id && request.request_type !== 'general' && (
+                  <Link
+                    to={request.request_type === 'movie' 
+                      ? `/movie/${request.tmdb_id}` 
+                      : `/tv/${request.tmdb_id}`}
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    View
+                  </Link>
+                )}
+              </div>
               <CardDescription className="mt-1 space-y-1">
                 <div>
                   {request.request_type === 'movie' && 'Movie Request'}

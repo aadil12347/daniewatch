@@ -4,6 +4,7 @@ interface CurrentMedia {
   title: string;
   type: 'movie' | 'tv';
   seasonNumber?: number;
+  tmdbId?: number;
 }
 
 interface MediaContextType {
