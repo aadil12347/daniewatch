@@ -12,6 +12,7 @@ export interface Request {
   message: string;
   status: 'pending' | 'in_progress' | 'completed' | 'rejected';
   admin_response: string | null;
+  tmdb_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +47,7 @@ export const useRequests = () => {
     title: string;
     season_number?: number;
     message: string;
+    tmdb_id?: number;
   }) => {
     if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
 
@@ -61,6 +63,7 @@ export const useRequests = () => {
           season_number: data.season_number || null,
           message: data.message,
           status: 'pending',
+          tmdb_id: data.tmdb_id || null,
         })
         .select()
         .single();

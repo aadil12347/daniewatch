@@ -79,6 +79,7 @@ const TVDetails = () => {
         title: show.name || '',
         type: 'tv',
         seasonNumber: selectedSeason,
+        tmdbId: show.id,
       });
     }
     return () => clearCurrentMedia();

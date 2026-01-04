@@ -39,6 +39,7 @@ interface RequestFormDialogProps {
   defaultTitle?: string;
   defaultType?: 'movie' | 'tv';
   defaultSeason?: number;
+  defaultTmdbId?: number;
   onSuccess?: () => void;
 }
 
@@ -46,6 +47,7 @@ export const RequestFormDialog = ({
   defaultTitle = '',
   defaultType,
   defaultSeason,
+  defaultTmdbId,
   onSuccess,
 }: RequestFormDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,6 +88,7 @@ export const RequestFormDialog = ({
       title: data.title,
       season_number: data.request_type === 'tv_season' ? data.season_number : undefined,
       message: data.message,
+      tmdb_id: defaultTmdbId,
     });
 
     setIsSubmitting(false);
