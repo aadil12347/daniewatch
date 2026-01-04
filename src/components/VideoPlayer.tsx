@@ -94,20 +94,12 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
     return () => clearInterval(interval);
   }, []);
 
-  // Build the VidKing embed URL (fallback)
-  const getVidKingUrl = () => {
-    const baseUrl = "https://www.vidking.net/embed";
-    const params = new URLSearchParams({
-      color: "dc2626",
-      autoPlay: "true",
-    });
-
+  // Build the Cinemaos embed URL (fallback)
+  const getCinemaosUrl = () => {
     if (type === "movie") {
-      return `${baseUrl}/movie/${tmdbId}?${params.toString()}`;
+      return `https://cinemaos.tech/player/${tmdbId}`;
     } else {
-      params.append("nextEpisode", "true");
-      params.append("episodeSelector", "true");
-      return `${baseUrl}/tv/${tmdbId}/${season}/${episode}?${params.toString()}`;
+      return `https://cinemaos.tech/player/${tmdbId}/${season}/${episode}`;
     }
   };
 
@@ -125,7 +117,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
     if (bloggerResult?.found && bloggerResult.iframeSrc) {
       return bloggerResult.iframeSrc;
     }
-    return getVidKingUrl();
+    return getCinemaosUrl();
   };
 
   // Listen for player events
