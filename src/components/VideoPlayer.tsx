@@ -97,9 +97,9 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   // Build the Cinemaos embed URL (fallback)
   const getCinemaosUrl = () => {
     if (type === "movie") {
-      return `https://cinemaos.tech/player/${tmdbId}`;
+      return `https://player.videasy.net/movie/${tmdbId}`;
     } else {
-      return `https://cinemaos.tech/player/${tmdbId}/${season}/${episode}`;
+      return `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
     }
   };
 
