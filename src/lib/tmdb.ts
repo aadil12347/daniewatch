@@ -52,9 +52,85 @@ export interface Movie {
   adult?: boolean;
 }
 
-// Helper to filter adult content client-side (as fallback)
-export const filterAdultContent = <T extends { adult?: boolean }>(items: T[]): T[] => {
-  return items.filter(item => !item.adult);
+// Comprehensive blocked words list for adult content filtering
+const BLOCKED_WORDS = [
+  // Sexual terms
+  "sex", "sexy", "sexual", "sexuality",
+  "erotic", "erotica", "eroticism",
+  "porn", "porno", "pornographic", "pornography",
+  "xxx", "x-rated", "x rated",
+  "nude", "naked", "nudity", "nudist",
+  "orgasm", "orgasmic",
+  "breast", "breasts", "boob", "boobs",
+  "dick", "penis", "cock", "vagina", "pussy",
+  "masturbat", "masturbation",
+  "hentai", "ecchi",
+  "sensual", "seduction", "seduce",
+  "lustful", "lust",
+  "softcore", "hardcore",
+  "adult film", "adult movie", "adult content",
+  "18+", "19+", "r-rated",
+  "nsfw", "explicit",
+  "steamy", "intimate scene",
+  "cohabitation", "affair", "one night stand",
+  "stripper", "strip club", "escort",
+  "fetish", "bdsm", "bondage",
+  "milf", "cougar",
+  "threesome", "foursome",
+  "hot mom", "hot mother", "sexy mom", "sexy mother",
+  "stepmother", "step mother", "stepsister", "step sister",
+  "takes off his pants", "takes off her pants",
+  "double life", "secret affair",
+  "naughty", "provocative", "temptation",
+  "forbidden love", "forbidden relationship",
+  "seductive", "aroused", "arousing",
+  "intimate", "passionate night",
+  "one-night", "hookup", "hook up",
+  "carnal", "sensuous", "titillating",
+  "risque", "risqué", "raunchy",
+  "indecent", "lewd", "obscene",
+  "voluptuous", "busty", "cleavage",
+  "undress", "undressing", "disrobe",
+  "bedroom scene", "love scene",
+  "scandalous", "taboo",
+];
+
+// Blocklist for specific movie/TV IDs that slip through other filters
+const BLOCKED_IDS = new Set<number>([
+  // Add specific movie/TV IDs here as they are found
+]);
+
+// Helper to filter adult content client-side with comprehensive checks
+export const filterAdultContent = <T extends { 
+  id: number;
+  adult?: boolean; 
+  title?: string; 
+  name?: string; 
+  overview?: string;
+}>(items: T[]): T[] => {
+  return items.filter(item => {
+    // Check blocklist first
+    if (BLOCKED_IDS.has(item.id)) return false;
+    
+    // Check adult flag
+    if (item.adult) return false;
+    
+    // Check title, name, and overview for blocked words
+    const textToCheck = [
+      item.title || '',
+      item.name || '',
+      item.overview || ''
+    ].join(' ').toLowerCase();
+    
+    // Check if any blocked word is present
+    const hasBlockedWord = BLOCKED_WORDS.some(word => 
+      textToCheck.includes(word.toLowerCase())
+    );
+    
+    if (hasBlockedWord) return false;
+    
+    return true;
+  });
 };
 
 export interface MovieDetails extends Movie {
