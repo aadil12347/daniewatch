@@ -6,7 +6,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
-import { Movie } from "@/lib/tmdb";
+import { Movie, filterAdultContent } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
 // Korean content genres (for both movies and TV)
@@ -141,11 +141,11 @@ const Korean = () => {
         tvRes.json()
       ]);
 
-      // Combine with media_type tags
-      const combinedResults = [
+      // Combine with media_type tags and filter adult content
+      const combinedResults = filterAdultContent([
         ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
         ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
-      ];
+      ]);
 
       // Sort based on active tab
       const sortedResults = combinedResults.sort((a, b) => {

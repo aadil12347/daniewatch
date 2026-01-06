@@ -22,6 +22,7 @@ export const getProfileUrl = (path: string | null) => {
 async function fetchTMDB<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
   const searchParams = new URLSearchParams({
     api_key: TMDB_API_KEY,
+    include_adult: "false",
     ...params,
   });
 
@@ -48,7 +49,13 @@ export interface Movie {
   media_type?: string;
   runtime?: number;
   number_of_seasons?: number;
+  adult?: boolean;
 }
+
+// Helper to filter adult content client-side (as fallback)
+export const filterAdultContent = <T extends { adult?: boolean }>(items: T[]): T[] => {
+  return items.filter(item => !item.adult);
+};
 
 export interface MovieDetails extends Movie {
   genres: { id: number; name: string }[];
@@ -252,7 +259,7 @@ export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> =
     }
   }
   
-  return { ...results, results: detailedResults };
+  return { ...results, results: filterAdultContent(detailedResults) };
 };
 
 // Search for Korean, Chinese, and Turkish dramas
@@ -281,7 +288,7 @@ export const searchKorean = async (query: string): Promise<TMDBResponse<Movie>> 
     }
   }
   
-  return { ...results, results: detailedResults };
+  return { ...results, results: filterAdultContent(detailedResults) };
 };
 
 // Genres
@@ -316,8 +323,8 @@ export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<M
   ]);
   
   const combined = [
-    ...movies.results.map(m => ({ ...m, media_type: "movie" as const })),
-    ...tv.results.map(t => ({ ...t, media_type: "tv" as const })),
+    ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
+    ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
   ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
   
   return { ...movies, results: combined };
@@ -349,8 +356,8 @@ export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Mo
   ]);
   
   const combined = [
-    ...movies.results.map(m => ({ ...m, media_type: "movie" as const })),
-    ...tv.results.map(t => ({ ...t, media_type: "tv" as const })),
+    ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
+    ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
   ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
   
   return { ...movies, results: combined };
@@ -380,8 +387,8 @@ export const getKoreanPopular = async (page: number = 1): Promise<TMDBResponse<M
   ]);
   
   const combined = [
-    ...movies.results.map(m => ({ ...m, media_type: "movie" as const })),
-    ...tv.results.map(t => ({ ...t, media_type: "tv" as const })),
+    ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
+    ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
   ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
   
   return { ...movies, results: combined };

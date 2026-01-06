@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Movie } from "@/lib/tmdb";
+import { Movie, filterAdultContent } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
@@ -104,10 +104,11 @@ const Anime = () => {
       const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
       const response = await res.json();
 
+      const filteredResults = filterAdultContent(response.results) as Movie[];
       if (reset) {
-        setItems(response.results);
+        setItems(filteredResults);
       } else {
-        setItems(prev => [...prev, ...response.results]);
+        setItems(prev => [...prev, ...filteredResults]);
       }
       setHasMore(response.page < response.total_pages);
     } catch (error) {
