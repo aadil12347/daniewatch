@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMulti, searchAnime, searchKorean, Movie } from "@/lib/tmdb";
+import { searchMulti, searchAnime, searchKorean, filterAdultContent, Movie } from "@/lib/tmdb";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -49,11 +49,13 @@ const Search = () => {
         if (requestId !== requestIdRef.current) return;
 
         setResults(
-          category
-            ? response.results
-            : response.results.filter(
-                (item) => item.media_type === "movie" || item.media_type === "tv",
-              ),
+          filterAdultContent(
+            category
+              ? response.results
+              : response.results.filter(
+                  (item) => item.media_type === "movie" || item.media_type === "tv",
+                )
+          ),
         );
       } catch (error) {
         if (requestId !== requestIdRef.current) return;

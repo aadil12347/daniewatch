@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPopularTV, getTopRatedTV, getTVGenres, Movie, Genre } from "@/lib/tmdb";
+import { getPopularTV, getTopRatedTV, getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
@@ -95,9 +95,9 @@ const TVShows = () => {
       }
 
       // Filter by genre if genres are selected (for non-discover endpoints)
-      let filteredResults = response.results;
+      let filteredResults = filterAdultContent(response.results) as Movie[];
       if (selectedGenres.length > 0 && activeTab !== "latest" && activeTab !== "on_air") {
-        filteredResults = response.results.filter((show: Movie) =>
+        filteredResults = filteredResults.filter((show: Movie) =>
           selectedGenres.some(genreId => show.genre_ids?.includes(genreId))
         );
       }

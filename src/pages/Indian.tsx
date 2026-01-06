@@ -6,7 +6,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
-import { Movie } from "@/lib/tmdb";
+import { Movie, filterAdultContent } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
 // Indian content genres
@@ -190,11 +190,11 @@ const Indian = () => {
         tvRes.json()
       ]);
 
-      // Combine with media_type tags
-      const combinedResults: Movie[] = [
+      // Combine with media_type tags and filter adult content
+      const combinedResults: Movie[] = filterAdultContent([
         ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
         ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
-      ];
+      ]);
 
       // Sort by date for popular/latest, by popularity otherwise
       const sortedResults = combinedResults.sort((a, b) => {

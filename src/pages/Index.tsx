@@ -14,6 +14,7 @@ import {
   getIndianPopular,
   getAnimePopular,
   getKoreanPopular,
+  filterAdultContent,
   Movie,
 } from "@/lib/tmdb";
 
@@ -51,14 +52,14 @@ const Index = () => {
           getKoreanPopular(),
         ]);
 
-        setTrending(trendingRes.results);
-        setPopularMovies(popularMoviesRes.results);
-        setTopRatedMovies(topRatedMoviesRes.results);
-        setPopularTV(popularTVRes.results);
-        setTopRatedTV(topRatedTVRes.results);
-        setIndianPopular(indianRes.results);
-        setAnimePopular(animeRes.results);
-        setKoreanPopular(koreanRes.results);
+        setTrending(filterAdultContent(trendingRes.results));
+        setPopularMovies(filterAdultContent(popularMoviesRes.results));
+        setTopRatedMovies(filterAdultContent(topRatedMoviesRes.results));
+        setPopularTV(filterAdultContent(popularTVRes.results));
+        setTopRatedTV(filterAdultContent(topRatedTVRes.results));
+        setIndianPopular(filterAdultContent(indianRes.results));
+        setAnimePopular(filterAdultContent(animeRes.results));
+        setKoreanPopular(filterAdultContent(koreanRes.results));
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {

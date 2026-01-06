@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPopularMovies, getNowPlayingMovies, getTopRatedMovies, getUpcomingMovies, getMovieGenres, Movie, Genre } from "@/lib/tmdb";
+import { getPopularMovies, getNowPlayingMovies, getTopRatedMovies, getUpcomingMovies, getMovieGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
@@ -102,9 +102,9 @@ const Movies = () => {
       }
 
       // Filter by genre if genres are selected (for non-discover endpoints)
-      let filteredResults = response.results;
+      let filteredResults = filterAdultContent(response.results) as Movie[];
       if (selectedGenres.length > 0 && activeTab !== "latest") {
-        filteredResults = response.results.filter((movie: Movie) =>
+        filteredResults = filteredResults.filter((movie: Movie) =>
           selectedGenres.some(genreId => movie.genre_ids?.includes(genreId))
         );
       }
