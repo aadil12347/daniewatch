@@ -24,6 +24,7 @@ import Search from "./pages/Search";
 import Auth from "./pages/Auth";
 import Requests from "./pages/Requests";
 import AdminDashboard from "./pages/AdminDashboard";
+import UpdateLinks from "./pages/UpdateLinks";
 import NotFound from "./pages/NotFound";
 
 // Disable right-click context menu
@@ -69,6 +70,7 @@ const AnimatedRoutes = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/requests" element={<Requests />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/update-links" element={<UpdateLinks />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </PageTransition>
