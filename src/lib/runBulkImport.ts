@@ -71,33 +71,53 @@ export const runBulkImport = async (): Promise<{
   success: number;
   failed: number;
   total: number;
+  failedIds: string[];
 }> => {
   const posts = (blogData as { posts: BlogPost[] }).posts;
   const entries = transformPosts(posts);
   
   console.log(`Starting bulk import of ${entries.length} entries...`);
   
-  const BATCH_SIZE = 50;
+  const BATCH_SIZE = 25;
   let success = 0;
   let failed = 0;
+  const failedIds: string[] = [];
   
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
     
     const { error } = await supabase
       .from("entries")
       .upsert(batch, { onConflict: "id" });
     
     if (error) {
-      console.error(`Batch ${i / BATCH_SIZE + 1} failed:`, error);
-      failed += batch.length;
+      console.error(`Batch ${batchNum} failed, trying individual inserts...`, error);
+      
+      // Fall back to individual inserts for this batch
+      for (const entry of batch) {
+        const { error: individualError } = await supabase
+          .from("entries")
+          .upsert(entry, { onConflict: "id" });
+        
+        if (individualError) {
+          console.error(`Entry ${entry.id} failed:`, individualError.message);
+          failed++;
+          failedIds.push(entry.id);
+        } else {
+          success++;
+        }
+      }
     } else {
       success += batch.length;
-      console.log(`Batch ${i / BATCH_SIZE + 1} completed: ${batch.length} entries`);
+      console.log(`Batch ${batchNum} completed: ${batch.length} entries`);
     }
   }
   
   console.log(`Bulk import completed: ${success} success, ${failed} failed out of ${entries.length} total`);
+  if (failedIds.length > 0) {
+    console.log(`Failed IDs: ${failedIds.join(', ')}`);
+  }
   
-  return { success, failed, total: entries.length };
+  return { success, failed, total: entries.length, failedIds };
 };
