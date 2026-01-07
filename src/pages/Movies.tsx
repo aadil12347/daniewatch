@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPopularMovies, getNowPlayingMovies, getTopRatedMovies, getUpcomingMovies, getMovieGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
+import { getMovieGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
@@ -13,11 +13,11 @@ const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "now_playing" | "top_rated" | "upcoming" | "latest">("popular");
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -40,7 +40,7 @@ const Movies = () => {
 
   // Try to restore from cache on mount
   useEffect(() => {
-    const cached = getCache(activeTab, selectedGenres);
+    const cached = getCache("default", selectedGenres);
     if (cached && cached.items.length > 0) {
       setMovies(cached.items);
       setPage(cached.page);
@@ -59,12 +59,12 @@ const Movies = () => {
           items: movies,
           page,
           hasMore,
-          activeTab,
+          activeTab: "default",
           selectedFilters: selectedGenres,
         });
       }
     };
-  }, [movies, page, hasMore, activeTab, selectedGenres, saveCache]);
+  }, [movies, page, hasMore, selectedGenres, saveCache]);
 
   const fetchMovies = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
@@ -74,41 +74,36 @@ const Movies = () => {
     }
 
     try {
-      let response;
-      switch (activeTab) {
-        case "now_playing":
-          response = await getNowPlayingMovies(pageNum);
-          break;
-        case "top_rated":
-          response = await getTopRatedMovies(pageNum);
-          break;
-        case "upcoming":
-          response = await getUpcomingMovies(pageNum);
-          break;
-        case "latest":
-          // Use discover endpoint for latest movies
-          const params = new URLSearchParams({
-            api_key: "fc6d85b3839330e3458701b975195487",
-            include_adult: "false",
-            page: pageNum.toString(),
-            sort_by: "release_date.desc",
-            "release_date.lte": new Date().toISOString().split("T")[0],
-            ...(selectedGenres.length > 0 && { with_genres: selectedGenres.join(",") }),
-          });
-          const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
-          response = await res.json();
-          break;
-        default:
-          response = await getPopularMovies(pageNum);
+      const today = new Date().toISOString().split("T")[0];
+      
+      // Build params for discover endpoint - sorted by release date desc
+      const params = new URLSearchParams({
+        api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
+        page: pageNum.toString(),
+        sort_by: "primary_release_date.desc",
+        "vote_count.gte": "50",
+        "primary_release_date.lte": today,
+      });
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          params.set("primary_release_date.lte", "2019-12-31");
+        } else {
+          params.set("primary_release_year", selectedYear);
+        }
       }
 
-      // Filter by genre if genres are selected (for non-discover endpoints)
-      let filteredResults = filterAdultContent(response.results) as Movie[];
-      if (selectedGenres.length > 0 && activeTab !== "latest") {
-        filteredResults = filteredResults.filter((movie: Movie) =>
-          selectedGenres.some(genreId => movie.genre_ids?.includes(genreId))
-        );
+      // Genre filter
+      if (selectedGenres.length > 0) {
+        params.set("with_genres", selectedGenres.join(","));
       }
+
+      const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
+      const response = await res.json();
+
+      const filteredResults = filterAdultContent(response.results) as Movie[];
 
       if (reset) {
         setMovies(filteredResults);
@@ -122,9 +117,9 @@ const Movies = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [activeTab, selectedGenres]);
+  }, [selectedGenres, selectedYear]);
 
-  // Reset and fetch when tab or genres change (skip if just initialized from cache)
+  // Reset and fetch when filters change
   useEffect(() => {
     if (!isInitialized) return;
     if (isRestoredFromCache) {
@@ -135,7 +130,7 @@ const Movies = () => {
     setMovies([]);
     setHasMore(true);
     fetchMovies(1, true);
-  }, [activeTab, selectedGenres, isInitialized]);
+  }, [selectedGenres, selectedYear, isInitialized]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -178,6 +173,11 @@ const Movies = () => {
     setSelectedGenres([]);
   };
 
+  const clearFilters = () => {
+    setSelectedGenres([]);
+    setSelectedYear(null);
+  };
+
   // Convert genres to CategoryNav format
   const genresForNav = genres.map(g => ({ id: g.id, name: g.name }));
 
@@ -185,7 +185,7 @@ const Movies = () => {
     <>
       <Helmet>
         <title>Movies - DanieWatch</title>
-        <meta name="description" content="Browse popular, latest, now playing, top rated, and upcoming movies." />
+        <meta name="description" content="Browse movies sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -197,12 +197,12 @@ const Movies = () => {
           {/* Category Navigation */}
           <div className="mb-8">
             <CategoryNav
-              activeTab={activeTab}
-              onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
               genres={genresForNav}
               selectedGenres={selectedGenres}
               onGenreToggle={toggleGenre}
               onClearGenres={clearGenres}
+              selectedYear={selectedYear}
+              onYearChange={setSelectedYear}
             />
           </div>
 
@@ -230,7 +230,7 @@ const Movies = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No movies found with the selected filters.</p>
               <button
-                onClick={clearGenres}
+                onClick={clearFilters}
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
               >
                 Clear filters

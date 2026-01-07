@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Genre {
@@ -8,26 +8,41 @@ interface Genre {
 }
 
 interface CategoryNavProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
   genres: Genre[];
   selectedGenres: number[];
   onGenreToggle: (genreId: number) => void;
   onClearGenres: () => void;
+  selectedYear: string | null;
+  onYearChange: (year: string | null) => void;
 }
 
+const YEAR_OPTIONS = [
+  { value: null, label: "All Years" },
+  { value: "2026", label: "2026" },
+  { value: "2025", label: "2025" },
+  { value: "2024", label: "2024" },
+  { value: "2023", label: "2023" },
+  { value: "2022", label: "2022" },
+  { value: "2021", label: "2021" },
+  { value: "2020", label: "2020" },
+  { value: "older", label: "2019 & Older" },
+];
+
 export const CategoryNav = ({
-  activeTab,
-  onTabChange,
   genres,
   selectedGenres,
   onGenreToggle,
   onClearGenres,
+  selectedYear,
+  onYearChange,
 }: CategoryNavProps) => {
   const [isGenreOpen, setIsGenreOpen] = useState(false);
+  const [isYearOpen, setIsYearOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const genreDropdownRef = useRef<HTMLDivElement>(null);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+  const genreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const yearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Detect mobile
   useEffect(() => {
@@ -39,11 +54,14 @@ export const CategoryNav = ({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (genreDropdownRef.current && !genreDropdownRef.current.contains(event.target as Node)) {
         setIsGenreOpen(false);
+      }
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target as Node)) {
+        setIsYearOpen(false);
       }
     };
 
@@ -55,48 +73,49 @@ export const CategoryNav = ({
     };
   }, []);
 
-  // Desktop hover handlers
-  const handleMouseEnter = () => {
+  // Genre hover handlers
+  const handleGenreMouseEnter = () => {
     if (isMobile) return;
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    if (genreTimeoutRef.current) clearTimeout(genreTimeoutRef.current);
     setIsGenreOpen(true);
   };
 
-  const handleMouseLeave = () => {
+  const handleGenreMouseLeave = () => {
     if (isMobile) return;
-    timeoutRef.current = setTimeout(() => {
-      setIsGenreOpen(false);
-    }, 300);
+    genreTimeoutRef.current = setTimeout(() => setIsGenreOpen(false), 300);
   };
 
-  const handleButtonClick = () => {
-    if (isMobile) {
-      setIsGenreOpen(!isGenreOpen);
-    } else {
-      setIsGenreOpen(!isGenreOpen);
-    }
+  // Year hover handlers
+  const handleYearMouseEnter = () => {
+    if (isMobile) return;
+    if (yearTimeoutRef.current) clearTimeout(yearTimeoutRef.current);
+    setIsYearOpen(true);
   };
 
-  const tabs = [
-    { key: "popular", label: "Popular" },
-    { key: "latest", label: "Latest" },
-  ];
+  const handleYearMouseLeave = () => {
+    if (isMobile) return;
+    yearTimeoutRef.current = setTimeout(() => setIsYearOpen(false), 300);
+  };
+
+  const getYearLabel = () => {
+    if (!selectedYear) return "Year";
+    const option = YEAR_OPTIONS.find(o => o.value === selectedYear);
+    return option?.label || "Year";
+  };
 
   return (
     <div className="flex flex-col gap-3 content-reveal relative z-50">
-      {/* Tabs and Genre dropdown row */}
+      {/* Filters row */}
       <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-        {/* Genre dropdown - now first */}
+        {/* Genre dropdown */}
         <div
-          ref={dropdownRef}
+          ref={genreDropdownRef}
           className="relative"
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          onMouseEnter={handleGenreMouseEnter}
+          onMouseLeave={handleGenreMouseLeave}
         >
           <button
-            onClick={handleButtonClick}
+            onClick={() => setIsGenreOpen(!isGenreOpen)}
             className={cn(
               "flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200",
               selectedGenres.length > 0
@@ -120,7 +139,7 @@ export const CategoryNav = ({
             />
           </button>
 
-          {/* Dropdown content - responsive positioning */}
+          {/* Genre dropdown content */}
           <div
             className={cn(
               "absolute top-full mt-2 bg-card/95 backdrop-blur-xl rounded-lg border border-border shadow-xl transition-all duration-200 overflow-hidden",
@@ -165,25 +184,68 @@ export const CategoryNav = ({
           </div>
         </div>
 
-        {/* Popular and Latest tabs */}
-        {tabs.map((tab) => (
+        {/* Year dropdown */}
+        <div
+          ref={yearDropdownRef}
+          className="relative"
+          onMouseEnter={handleYearMouseEnter}
+          onMouseLeave={handleYearMouseLeave}
+        >
           <button
-            key={tab.key}
-            onClick={() => onTabChange(tab.key)}
+            onClick={() => setIsYearOpen(!isYearOpen)}
             className={cn(
-              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all",
-              activeTab === tab.key
+              "flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200",
+              selectedYear
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                : isYearOpen
+                ? "bg-secondary/70 text-foreground"
                 : "bg-secondary/30 hover:bg-secondary/50 text-foreground/70"
             )}
           >
-            {tab.label}
+            {getYearLabel()}
+            <ChevronDown
+              className={cn(
+                "w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-200",
+                isYearOpen && "rotate-180"
+              )}
+            />
           </button>
-        ))}
+
+          {/* Year dropdown content */}
+          <div
+            className={cn(
+              "absolute top-full mt-2 bg-card/95 backdrop-blur-xl rounded-lg border border-border shadow-xl transition-all duration-200 overflow-hidden",
+              "left-0 w-36 sm:w-40",
+              isYearOpen
+                ? "opacity-100 visible translate-y-0"
+                : "opacity-0 invisible -translate-y-2"
+            )}
+          >
+            <div className="p-2 max-h-64 overflow-y-auto">
+              {YEAR_OPTIONS.map((option) => (
+                <button
+                  key={option.value ?? "all"}
+                  onClick={() => {
+                    onYearChange(option.value);
+                    setIsYearOpen(false);
+                  }}
+                  className={cn(
+                    "w-full px-3 py-2 text-left text-xs sm:text-sm rounded-md transition-colors",
+                    selectedYear === option.value
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-secondary/50 text-foreground/70 hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Selected genres display - separate row for better mobile layout */}
-      {selectedGenres.length > 0 && (
+      {/* Selected filters display */}
+      {(selectedGenres.length > 0 || selectedYear) && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {genres
             .filter((g) => selectedGenres.includes(g.id))
@@ -199,6 +261,11 @@ export const CategoryNav = ({
           {selectedGenres.length > (isMobile ? 2 : 3) && (
             <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
               +{selectedGenres.length - (isMobile ? 2 : 3)} more
+            </span>
+          )}
+          {selectedYear && (
+            <span className="px-2 py-1 text-[10px] sm:text-xs bg-primary/20 text-primary rounded-full whitespace-nowrap">
+              {YEAR_OPTIONS.find(o => o.value === selectedYear)?.label}
             </span>
           )}
         </div>
