@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
+import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useMedia } from "@/contexts/MediaContext";
 
 interface VideoPlayerProps {
@@ -15,45 +15,53 @@ interface VideoPlayerProps {
 
 export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, inline = false }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
+  const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const { setIsVideoPlaying } = useMedia();
 
-  // Check Blogger for video first
+  // Check for video sources with priority: Supabase -> Blogger -> Videasy
   useEffect(() => {
-    const checkBlogger = async () => {
+    const fetchMediaLinks = async () => {
       setIsLoading(true);
-      const result = await searchBloggerForTmdbId(tmdbId, type, season, episode);
-      setBloggerResult(result);
+      const result = await getMediaLinks(tmdbId, type, season, episode);
+      setMediaResult(result);
       setIsLoading(false);
     };
     
-    checkBlogger();
+    fetchMediaLinks();
   }, [tmdbId, type, season, episode]);
 
-  // Build the fallback embed URL
-  const getCinemaosUrl = () => {
+  // Get the embed URL from media result
+  const getEmbedUrl = () => {
+    if (!mediaResult) {
+      // Fallback while loading
+      if (type === "movie") {
+        return `https://player.videasy.net/movie/${tmdbId}`;
+      } else {
+        return `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
+      }
+    }
+
+    // For TV shows, check seasonEpisodeLinks first
+    if (type === "tv" && mediaResult.seasonEpisodeLinks && episode) {
+      const episodeLink = mediaResult.seasonEpisodeLinks[episode - 1];
+      if (episodeLink) {
+        console.log(`[VideoPlayer] Using ${mediaResult.source} episode link for S${season}E${episode}:`, episodeLink);
+        return episodeLink;
+      }
+    }
+
+    // Use watchUrl if available
+    if (mediaResult.watchUrl) {
+      console.log(`[VideoPlayer] Using ${mediaResult.source} watch URL:`, mediaResult.watchUrl);
+      return mediaResult.watchUrl;
+    }
+
+    // Final fallback
     if (type === "movie") {
       return `https://player.videasy.net/movie/${tmdbId}`;
     } else {
       return `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
     }
-  };
-
-  // Get the embed URL (Blogger watch link or fallback)
-  const getEmbedUrl = () => {
-    // For TV shows, check seasonEpisodeLinks first (links containing "byse")
-    if (type === "tv" && bloggerResult?.seasonEpisodeLinks && episode) {
-      const episodeLink = bloggerResult.seasonEpisodeLinks[episode - 1];
-      if (episodeLink) {
-        console.log(`Using Blogger episode link for S${season}E${episode}:`, episodeLink);
-        return episodeLink;
-      }
-    }
-    // Also check iframeSrc for backwards compatibility
-    if (bloggerResult?.found && bloggerResult.iframeSrc) {
-      return bloggerResult.iframeSrc;
-    }
-    return getCinemaosUrl();
   };
 
   // Listen for player events

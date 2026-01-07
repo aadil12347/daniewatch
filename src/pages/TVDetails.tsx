@@ -12,7 +12,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
+import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedia } from "@/contexts/MediaContext";
@@ -56,7 +56,7 @@ const TVDetails = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
-  const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
+  const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [episodeGroups, setEpisodeGroups] = useState<EpisodeGroup[] | null>(null);
   const [useEpisodeGroups, setUseEpisodeGroups] = useState(false);
@@ -133,9 +133,9 @@ const TVDetails = () => {
               episode_number: index + 1, // Use order as episode number
             })));
             
-            // Check Blogger for download link
-            const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", 1);
-            setBloggerResult(bloggerRes);
+            // Check for media links (Supabase -> Blogger -> fallback)
+            const mediaRes = await getMediaLinks(Number(id), "tv", 1);
+            setMediaResult(mediaRes);
           }
         } else {
           // Use standard seasons (existing logic)
@@ -150,9 +150,9 @@ const TVDetails = () => {
           const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
           setEpisodes(seasonRes.episodes || []);
 
-          // Check Blogger for download link
-          const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", firstSeason);
-          setBloggerResult(bloggerRes);
+          // Check for media links (Supabase -> Blogger -> fallback)
+          const mediaRes = await getMediaLinks(Number(id), "tv", firstSeason);
+          setMediaResult(mediaRes);
         }
       } catch (error) {
         console.error("Failed to fetch TV details:", error);
@@ -183,17 +183,17 @@ const TVDetails = () => {
           })));
         }
         
-        // Check Blogger for download link for selected part
-        const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", partOrSeasonNumber);
-        setBloggerResult(bloggerRes);
+        // Check for media links (Supabase -> Blogger -> fallback) for selected part
+        const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
+        setMediaResult(mediaRes);
       } else {
         // Use standard seasons
         const seasonRes = await getTVSeasonDetails(Number(id), partOrSeasonNumber);
         setEpisodes(seasonRes.episodes || []);
 
-        // Check Blogger for download link for selected season
-        const bloggerRes = await searchBloggerForTmdbId(Number(id), "tv", partOrSeasonNumber);
-        setBloggerResult(bloggerRes);
+        // Check for media links (Supabase -> Blogger -> fallback) for selected season
+        const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
+        setMediaResult(mediaRes);
       }
     } catch (error) {
       console.error("Failed to fetch season:", error);
@@ -541,7 +541,7 @@ const TVDetails = () => {
                       <EpisodeCard
                         key={episode.id}
                         episode={episode}
-                        downloadLink={bloggerResult?.seasonDownloadLinks?.[episode.episode_number - 1]}
+                        downloadLink={mediaResult?.seasonDownloadLinks?.[episode.episode_number - 1]}
                         onClick={() => {
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                           // Add watch params to URL for this episode
