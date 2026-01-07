@@ -160,17 +160,20 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           </button>
         )}
         
-        {/* Admin Controls - Instantly visible 3-dot menu for admins */}
-        {isAdmin && (
-          <div className="absolute top-2 left-2 z-30">
-            <AdminPostControls
-              tmdbId={movie.id}
-              mediaType={mediaType as 'movie' | 'tv'}
-              title={title}
-              posterPath={movie.poster_path}
-            />
-          </div>
-        )}
+        {/* Admin Controls - Always rendered, visibility controlled by opacity/pointer-events */}
+        <div 
+          className={cn(
+            "absolute top-2 left-2 z-30 transition-opacity duration-0",
+            isAdmin ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          )}
+        >
+          <AdminPostControls
+            tmdbId={movie.id}
+            mediaType={mediaType as 'movie' | 'tv'}
+            title={title}
+            posterPath={movie.poster_path}
+          />
+        </div>
       </div>
     </div>
   );
