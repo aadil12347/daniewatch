@@ -92,6 +92,7 @@ const Anime = () => {
       // Build custom params for more control
       const params = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
         page: pageNum.toString(),
         sort_by: getSortBy(activeTab),
         with_genres: allGenres.join(","),

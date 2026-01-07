@@ -53,7 +53,7 @@ export interface Movie {
 }
 
 // Comprehensive blocked words list for adult content filtering
-const BLOCKED_WORDS = [
+export const BLOCKED_WORDS = [
   // Sexual terms
   "sex", "sexy", "sexual", "sexuality",
   "erotic", "erotica", "eroticism",
@@ -93,12 +93,89 @@ const BLOCKED_WORDS = [
   "undress", "undressing", "disrobe",
   "bedroom scene", "love scene",
   "scandalous", "taboo",
+  "kiss room", "kissroom",
 ];
 
 // Blocklist for specific movie/TV IDs that slip through other filters
-const BLOCKED_IDS = new Set<number>([
+export const BLOCKED_IDS = new Set<number>([
   // Add specific movie/TV IDs here as they are found
 ]);
+
+// Blocked certifications/ratings that indicate adult content
+const BLOCKED_RATINGS = new Set([
+  "19", "19+", "NC-17", "NC17", "X", "XXX", 
+  "R18", "R18+", "R-18", "R21", "R-21",
+  "ADULTS ONLY", "AO", "TV-MA",
+  "청소년관람불가", // Korean "Not for Youth"
+]);
+
+// Check if a rating indicates adult content
+const isBlockedRating = (rating: string): boolean => {
+  const normalized = rating.trim().toUpperCase();
+  if (BLOCKED_RATINGS.has(normalized)) return true;
+  // Also check for patterns like "19" in the rating
+  if (/^19\+?$/.test(normalized)) return true;
+  return false;
+};
+
+// Cache for certification checks to avoid repeated API calls
+const certificationCache = new Map<string, boolean>();
+
+// Get movie release dates/certifications
+export const getMovieReleaseDates = async (id: number): Promise<{ iso_3166_1: string; certification: string }[]> => {
+  try {
+    const response = await fetchTMDB<{
+      results: { iso_3166_1: string; release_dates: { certification: string }[] }[];
+    }>(`/movie/${id}/release_dates`);
+    
+    return response.results.flatMap(country => 
+      country.release_dates
+        .filter(rd => rd.certification)
+        .map(rd => ({ iso_3166_1: country.iso_3166_1, certification: rd.certification }))
+    );
+  } catch {
+    return [];
+  }
+};
+
+// Get TV content ratings
+export const getTVContentRatings = async (id: number): Promise<{ iso_3166_1: string; rating: string }[]> => {
+  try {
+    const response = await fetchTMDB<{
+      results: { iso_3166_1: string; rating: string }[];
+    }>(`/tv/${id}/content_ratings`);
+    
+    return response.results.filter(r => r.rating);
+  } catch {
+    return [];
+  }
+};
+
+// Check if a single item has a blocked certification
+const hasBlockedCertification = async (id: number, mediaType: string): Promise<boolean> => {
+  const cacheKey = `${mediaType}:${id}`;
+  
+  if (certificationCache.has(cacheKey)) {
+    return certificationCache.get(cacheKey)!;
+  }
+  
+  try {
+    let isBlocked = false;
+    
+    if (mediaType === "movie") {
+      const certs = await getMovieReleaseDates(id);
+      isBlocked = certs.some(c => isBlockedRating(c.certification));
+    } else {
+      const ratings = await getTVContentRatings(id);
+      isBlocked = ratings.some(r => isBlockedRating(r.rating));
+    }
+    
+    certificationCache.set(cacheKey, isBlocked);
+    return isBlocked;
+  } catch {
+    return false;
+  }
+};
 
 // Helper to filter adult content client-side with comprehensive checks
 export const filterAdultContent = <T extends { 
@@ -131,6 +208,38 @@ export const filterAdultContent = <T extends {
     
     return true;
   });
+};
+
+// Strict async filter that also checks certifications (use for Korean/regional content)
+export const filterAdultContentStrict = async <T extends { 
+  id: number;
+  adult?: boolean; 
+  title?: string; 
+  name?: string; 
+  overview?: string;
+  media_type?: string;
+}>(items: T[], defaultMediaType: "movie" | "tv" = "movie"): Promise<T[]> => {
+  // First pass: quick text-based filtering
+  const quickFiltered = filterAdultContent(items);
+  
+  // Second pass: check certifications in batches
+  const BATCH_SIZE = 5;
+  const results: T[] = [];
+  
+  for (let i = 0; i < quickFiltered.length; i += BATCH_SIZE) {
+    const batch = quickFiltered.slice(i, i + BATCH_SIZE);
+    const checks = await Promise.all(
+      batch.map(async item => {
+        const mediaType = item.media_type || defaultMediaType;
+        const isBlocked = await hasBlockedCertification(item.id, mediaType);
+        return { item, isBlocked };
+      })
+    );
+    
+    results.push(...checks.filter(c => !c.isBlocked).map(c => c.item));
+  }
+  
+  return results;
 };
 
 export interface MovieDetails extends Movie {

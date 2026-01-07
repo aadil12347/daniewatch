@@ -6,7 +6,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
-import { Movie, filterAdultContent } from "@/lib/tmdb";
+import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
 // Korean content genres (for both movies and TV)
@@ -111,6 +111,7 @@ const Korean = () => {
       // Build movie params
       const movieParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
         page: pageNum.toString(),
         sort_by: getSortBy(activeTab),
         with_original_language: "ko",
@@ -122,6 +123,7 @@ const Korean = () => {
       // Build TV params
       const tvParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
         page: pageNum.toString(),
         sort_by: getTvSortBy(activeTab),
         with_original_language: "ko",
@@ -141,11 +143,12 @@ const Korean = () => {
         tvRes.json()
       ]);
 
-      // Combine with media_type tags and filter adult content
-      const combinedResults = filterAdultContent([
+      // Combine with media_type tags and filter adult content with strict certification checks
+      const combined = [
         ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
         ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
-      ]);
+      ];
+      const combinedResults = await filterAdultContentStrict(combined);
 
       // Sort based on active tab
       const sortedResults = combinedResults.sort((a, b) => {
