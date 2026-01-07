@@ -27,61 +27,32 @@ const TV_ACTION_GENRE = 10759;
 const Indian = () => {
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "airing">("popular");
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef<number>(0);
-  
-  // Use refs to track current values for fetch without causing re-renders
-  const activeTabRef = useRef(activeTab);
-  const selectedTagsRef = useRef(selectedTags);
-  
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
-  
-  useEffect(() => {
-    selectedTagsRef.current = selectedTags;
-  }, [selectedTags]);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
 
-  // Save scroll position on scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      scrollPositionRef.current = window.scrollY;
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   // Try to restore from cache on mount
   useEffect(() => {
-    const cached = getCache(activeTab, selectedTags);
+    const cached = getCache("default", selectedTags);
     if (cached && cached.items.length > 0) {
       setItems(cached.items);
       setPage(cached.page);
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
-      // Restore scroll position after items render
-      requestAnimationFrame(() => {
-        const savedScroll = sessionStorage.getItem("indian_scroll");
-        if (savedScroll) {
-          window.scrollTo(0, parseInt(savedScroll, 10));
-        }
-      });
     }
     setIsInitialized(true);
   }, []);
 
-  // Save cache and scroll position before unmount
+  // Save cache before unmount
   useEffect(() => {
     return () => {
       if (items.length > 0) {
@@ -89,45 +60,14 @@ const Indian = () => {
           items,
           page,
           hasMore,
-          activeTab,
+          activeTab: "default",
           selectedFilters: selectedTags,
         });
-        sessionStorage.setItem("indian_scroll", scrollPositionRef.current.toString());
       }
     };
-  }, [items, page, hasMore, activeTab, selectedTags, saveCache]);
+  }, [items, page, hasMore, selectedTags, saveCache]);
 
-  const getSortBy = (tab: string) => {
-    switch (tab) {
-      case "top_rated":
-        return "vote_average.desc";
-      case "latest":
-        return "primary_release_date.desc";
-      case "popular":
-        return "primary_release_date.desc";
-      default:
-        return "popularity.desc";
-    }
-  };
-
-  const getTvSortBy = (tab: string) => {
-    switch (tab) {
-      case "top_rated":
-        return "vote_average.desc";
-      case "latest":
-        return "first_air_date.desc";
-      case "popular":
-        return "first_air_date.desc";
-      default:
-        return "popularity.desc";
-    }
-  };
-
-  // Stable fetch function that reads from refs
   const fetchIndian = useCallback(async (pageNum: number, reset: boolean = false) => {
-    const currentTab = activeTabRef.current;
-    const currentTags = selectedTagsRef.current;
-    
     if (reset) {
       setIsLoading(true);
     } else {
@@ -138,47 +78,46 @@ const Indian = () => {
       const today = new Date().toISOString().split("T")[0];
       
       // Build genre params - handle action genre difference for TV
-      const movieGenres = currentTags.join(",");
-      const tvGenres = currentTags.map(g => g === 28 ? TV_ACTION_GENRE : g).join(",");
+      const movieGenres = selectedTags.join(",");
+      const tvGenres = selectedTags.map(g => g === 28 ? TV_ACTION_GENRE : g).join(",");
 
-      // Build movie params
+      // Build movie params - sorted by release date desc
       const movieParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: getSortBy(currentTab),
+        sort_by: "primary_release_date.desc",
         with_origin_country: "IN",
+        "vote_count.gte": "50",
         "primary_release_date.lte": today,
       });
-      
-      if (currentTags.length > 0) {
-        movieParams.set("with_genres", movieGenres);
-      }
-      if (currentTab === "top_rated") {
-        movieParams.set("vote_count.gte", "100");
-      }
-      if (currentTab === "popular") {
-        movieParams.set("vote_count.gte", "50");
-      }
 
-      // Build TV params
+      // Build TV params - sorted by first air date desc
       const tvParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: getTvSortBy(currentTab),
+        sort_by: "first_air_date.desc",
         with_origin_country: "IN",
+        "vote_count.gte": "20",
         "first_air_date.lte": today,
       });
-      
-      if (currentTags.length > 0) {
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          movieParams.set("primary_release_date.lte", "2019-12-31");
+          tvParams.set("first_air_date.lte", "2019-12-31");
+        } else {
+          movieParams.set("primary_release_year", selectedYear);
+          tvParams.set("first_air_date_year", selectedYear);
+        }
+      }
+
+      // Genre filter
+      if (selectedTags.length > 0) {
+        movieParams.set("with_genres", movieGenres);
         tvParams.set("with_genres", tvGenres);
-      }
-      if (currentTab === "top_rated") {
-        tvParams.set("vote_count.gte", "50");
-      }
-      if (currentTab === "popular") {
-        tvParams.set("vote_count.gte", "20");
       }
 
       // Fetch both movies and TV in parallel
@@ -199,14 +138,11 @@ const Indian = () => {
       ];
       const combinedResults: Movie[] = await filterAdultContentStrict(combined);
 
-      // Sort by date for popular/latest, by popularity otherwise
+      // Sort by release date descending
       const sortedResults = combinedResults.sort((a, b) => {
-        if (currentTab === "latest" || currentTab === "popular") {
-          const dateA = a.release_date || a.first_air_date || "";
-          const dateB = b.release_date || b.first_air_date || "";
-          return dateB.localeCompare(dateA);
-        }
-        return ((b as Movie & { popularity?: number }).popularity || 0) - ((a as Movie & { popularity?: number }).popularity || 0);
+        const dateA = a.release_date || a.first_air_date || "";
+        const dateB = b.release_date || b.first_air_date || "";
+        return dateB.localeCompare(dateA);
       });
 
       if (reset) {
@@ -216,7 +152,6 @@ const Indian = () => {
           // Deduplicate by id + media_type
           const existingKeys = new Set(prev.map(item => `${item.id}-${item.media_type}`));
           const newItems = sortedResults.filter(item => !existingKeys.has(`${item.id}-${item.media_type}`));
-          // Simply append new items - don't re-sort to avoid jumping
           return [...prev, ...newItems];
         });
       }
@@ -230,9 +165,9 @@ const Indian = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, []);
+  }, [selectedTags, selectedYear]);
 
-  // Reset and fetch when tab or tags change
+  // Reset and fetch when filters change
   useEffect(() => {
     if (!isInitialized) return;
     if (isRestoredFromCache) {
@@ -243,7 +178,7 @@ const Indian = () => {
     setItems([]);
     setHasMore(true);
     fetchIndian(1, true);
-  }, [activeTab, selectedTags, isInitialized, fetchIndian]);
+  }, [selectedTags, selectedYear, isInitialized, fetchIndian]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -267,7 +202,7 @@ const Indian = () => {
     return () => observerRef.current?.disconnect();
   }, [hasMore, isLoading, isLoadingMore]);
 
-  // Fetch more when page changes (not on initial load or cache restore)
+  // Fetch more when page changes
   useEffect(() => {
     if (page > 1 && !isRestoredFromCache) {
       fetchIndian(page, false);
@@ -286,6 +221,11 @@ const Indian = () => {
     setSelectedTags([]);
   };
 
+  const clearFilters = () => {
+    setSelectedTags([]);
+    setSelectedYear(null);
+  };
+
   // Convert tags to genre format for CategoryNav
   const genresForNav = INDIAN_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
 
@@ -293,7 +233,7 @@ const Indian = () => {
     <>
       <Helmet>
         <title>Indian Movies & TV - DanieWatch</title>
-        <meta name="description" content="Watch the best Indian movies and TV series - Bollywood, regional cinema, popular shows, and latest releases" />
+        <meta name="description" content="Watch the best Indian movies and TV series sorted by latest release. Filter by genre and year." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -305,12 +245,12 @@ const Indian = () => {
           {/* Category Navigation */}
           <div className="mb-8">
             <CategoryNav
-              activeTab={activeTab}
-              onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
               genres={genresForNav}
               selectedGenres={selectedTags}
               onGenreToggle={toggleTag}
               onClearGenres={clearTags}
+              selectedYear={selectedYear}
+              onYearChange={setSelectedYear}
             />
           </div>
 
@@ -338,7 +278,7 @@ const Indian = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No Indian content found with the selected filters.</p>
               <button
-                onClick={clearTags}
+                onClick={clearFilters}
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
               >
                 Clear filters

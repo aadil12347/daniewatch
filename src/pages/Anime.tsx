@@ -26,11 +26,11 @@ const ANIME_TAGS = [
 const Anime = () => {
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "airing">("popular");
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -40,7 +40,7 @@ const Anime = () => {
 
   // Try to restore from cache on mount
   useEffect(() => {
-    const cached = getCache(activeTab, selectedTags);
+    const cached = getCache("default", selectedTags);
     if (cached && cached.items.length > 0) {
       setItems(cached.items);
       setPage(cached.page);
@@ -59,25 +59,12 @@ const Anime = () => {
           items,
           page,
           hasMore,
-          activeTab,
+          activeTab: "default",
           selectedFilters: selectedTags,
         });
       }
     };
-  }, [items, page, hasMore, activeTab, selectedTags, saveCache]);
-
-  const getSortBy = (tab: string) => {
-    switch (tab) {
-      case "top_rated":
-        return "vote_average.desc";
-      case "latest":
-        return "first_air_date.desc";
-      case "airing":
-        return "popularity.desc";
-      default:
-        return "popularity.desc";
-    }
-  };
+  }, [items, page, hasMore, selectedTags, saveCache]);
 
   const fetchAnime = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
@@ -87,20 +74,29 @@ const Anime = () => {
     }
 
     try {
+      const today = new Date().toISOString().split("T")[0];
       const allGenres = [ANIME_GENRE_ID, ...selectedTags];
       
-      // Build custom params for more control
+      // Build params - sorted by first air date desc
       const params = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: getSortBy(activeTab),
+        sort_by: "first_air_date.desc",
         with_genres: allGenres.join(","),
         with_original_language: "ja",
-        ...(activeTab === "latest" && { "first_air_date.lte": new Date().toISOString().split("T")[0] }),
-        ...(activeTab === "airing" && { "air_date.gte": new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] }),
-        ...(activeTab === "top_rated" && { "vote_count.gte": "100" }),
+        "vote_count.gte": "20",
+        "first_air_date.lte": today,
       });
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          params.set("first_air_date.lte", "2019-12-31");
+        } else {
+          params.set("first_air_date_year", selectedYear);
+        }
+      }
 
       const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
       const response = await res.json();
@@ -118,9 +114,9 @@ const Anime = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [activeTab, selectedTags]);
+  }, [selectedTags, selectedYear]);
 
-  // Reset and fetch when tab or tags change (skip if just initialized from cache)
+  // Reset and fetch when filters change
   useEffect(() => {
     if (!isInitialized) return;
     if (isRestoredFromCache) {
@@ -131,7 +127,7 @@ const Anime = () => {
     setItems([]);
     setHasMore(true);
     fetchAnime(1, true);
-  }, [activeTab, selectedTags, isInitialized]);
+  }, [selectedTags, selectedYear, isInitialized]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -174,6 +170,11 @@ const Anime = () => {
     setSelectedTags([]);
   };
 
+  const clearFilters = () => {
+    setSelectedTags([]);
+    setSelectedYear(null);
+  };
+
   // Convert tags to genre format for CategoryNav
   const genresForNav = ANIME_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
 
@@ -181,7 +182,7 @@ const Anime = () => {
     <>
       <Helmet>
         <title>Anime - DanieWatch</title>
-        <meta name="description" content="Watch the best anime series - popular, latest, and top rated" />
+        <meta name="description" content="Watch the best anime series sorted by latest release. Filter by genre and year." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -193,12 +194,12 @@ const Anime = () => {
           {/* Category Navigation */}
           <div className="mb-8">
             <CategoryNav
-              activeTab={activeTab}
-              onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
               genres={genresForNav}
               selectedGenres={selectedTags}
               onGenreToggle={toggleTag}
               onClearGenres={clearTags}
+              selectedYear={selectedYear}
+              onYearChange={setSelectedYear}
             />
           </div>
 
@@ -226,7 +227,7 @@ const Anime = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No anime found with the selected filters.</p>
               <button
-                onClick={clearTags}
+                onClick={clearFilters}
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
               >
                 Clear filters

@@ -28,11 +28,11 @@ const TV_FANTASY_GENRE = 10765;
 const Korean = () => {
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "airing">("popular");
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -42,7 +42,7 @@ const Korean = () => {
 
   // Try to restore from cache on mount
   useEffect(() => {
-    const cached = getCache(activeTab, selectedTags);
+    const cached = getCache("default", selectedTags);
     if (cached && cached.items.length > 0) {
       setItems(cached.items);
       setPage(cached.page);
@@ -61,34 +61,12 @@ const Korean = () => {
           items,
           page,
           hasMore,
-          activeTab,
+          activeTab: "default",
           selectedFilters: selectedTags,
         });
       }
     };
-  }, [items, page, hasMore, activeTab, selectedTags, saveCache]);
-
-  const getSortBy = (tab: string) => {
-    switch (tab) {
-      case "top_rated":
-        return "vote_average.desc";
-      case "latest":
-        return "primary_release_date.desc";
-      default:
-        return "popularity.desc";
-    }
-  };
-
-  const getTvSortBy = (tab: string) => {
-    switch (tab) {
-      case "top_rated":
-        return "vote_average.desc";
-      case "latest":
-        return "first_air_date.desc";
-      default:
-        return "popularity.desc";
-    }
-  };
+  }, [items, page, hasMore, selectedTags, saveCache]);
 
   const fetchKorean = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
@@ -108,29 +86,44 @@ const Korean = () => {
         return g;
       }).join(",");
 
-      // Build movie params
+      // Build movie params - sorted by release date desc
       const movieParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: getSortBy(activeTab),
+        sort_by: "primary_release_date.desc",
         with_original_language: "ko",
+        "vote_count.gte": "50",
         "primary_release_date.lte": today,
-        ...(selectedTags.length > 0 && { with_genres: movieGenres }),
-        ...(activeTab === "top_rated" && { "vote_count.gte": "100" }),
       });
 
-      // Build TV params
+      // Build TV params - sorted by first air date desc
       const tvParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: getTvSortBy(activeTab),
+        sort_by: "first_air_date.desc",
         with_original_language: "ko",
+        "vote_count.gte": "20",
         "first_air_date.lte": today,
-        ...(selectedTags.length > 0 && { with_genres: tvGenres }),
-        ...(activeTab === "top_rated" && { "vote_count.gte": "50" }),
       });
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          movieParams.set("primary_release_date.lte", "2019-12-31");
+          tvParams.set("first_air_date.lte", "2019-12-31");
+        } else {
+          movieParams.set("primary_release_year", selectedYear);
+          tvParams.set("first_air_date_year", selectedYear);
+        }
+      }
+
+      // Genre filter
+      if (selectedTags.length > 0) {
+        movieParams.set("with_genres", movieGenres);
+        tvParams.set("with_genres", tvGenres);
+      }
 
       // Fetch both movies and TV in parallel
       const [moviesRes, tvRes] = await Promise.all([
@@ -150,14 +143,11 @@ const Korean = () => {
       ];
       const combinedResults = await filterAdultContentStrict(combined);
 
-      // Sort based on active tab
+      // Sort by release date descending
       const sortedResults = combinedResults.sort((a, b) => {
-        if (activeTab === "latest") {
-          const dateA = a.release_date || a.first_air_date || "";
-          const dateB = b.release_date || b.first_air_date || "";
-          return dateB.localeCompare(dateA);
-        }
-        return (b.popularity || 0) - (a.popularity || 0);
+        const dateA = a.release_date || a.first_air_date || "";
+        const dateB = b.release_date || b.first_air_date || "";
+        return dateB.localeCompare(dateA);
       });
 
       if (reset) {
@@ -175,9 +165,9 @@ const Korean = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [activeTab, selectedTags]);
+  }, [selectedTags, selectedYear]);
 
-  // Reset and fetch when tab or tags change (skip if just initialized from cache)
+  // Reset and fetch when filters change
   useEffect(() => {
     if (!isInitialized) return;
     if (isRestoredFromCache) {
@@ -188,7 +178,7 @@ const Korean = () => {
     setItems([]);
     setHasMore(true);
     fetchKorean(1, true);
-  }, [activeTab, selectedTags, isInitialized]);
+  }, [selectedTags, selectedYear, isInitialized]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -231,6 +221,11 @@ const Korean = () => {
     setSelectedTags([]);
   };
 
+  const clearFilters = () => {
+    setSelectedTags([]);
+    setSelectedYear(null);
+  };
+
   // Convert tags to genre format for CategoryNav
   const genresForNav = KOREAN_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
 
@@ -238,7 +233,7 @@ const Korean = () => {
     <>
       <Helmet>
         <title>Korean Movies & TV - DanieWatch</title>
-        <meta name="description" content="Watch the best Korean movies and TV series - K-dramas, Korean films, latest releases, and top rated content" />
+        <meta name="description" content="Watch the best Korean movies and TV series sorted by latest release. Filter by genre and year." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -250,12 +245,12 @@ const Korean = () => {
           {/* Category Navigation */}
           <div className="mb-8">
             <CategoryNav
-              activeTab={activeTab}
-              onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
               genres={genresForNav}
               selectedGenres={selectedTags}
               onGenreToggle={toggleTag}
               onClearGenres={clearTags}
+              selectedYear={selectedYear}
+              onYearChange={setSelectedYear}
             />
           </div>
 
@@ -283,7 +278,7 @@ const Korean = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No Korean content found with the selected filters.</p>
               <button
-                onClick={clearTags}
+                onClick={clearFilters}
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
               >
                 Clear filters

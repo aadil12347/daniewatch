@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPopularTV, getTopRatedTV, getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
+import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
@@ -13,11 +13,11 @@ const TVShows = () => {
   const [shows, setShows] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [activeTab, setActiveTab] = useState<"popular" | "top_rated" | "latest" | "on_air">("popular");
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -40,7 +40,7 @@ const TVShows = () => {
 
   // Try to restore from cache on mount
   useEffect(() => {
-    const cached = getCache(activeTab, selectedGenres);
+    const cached = getCache("default", selectedGenres);
     if (cached && cached.items.length > 0) {
       setShows(cached.items);
       setPage(cached.page);
@@ -59,12 +59,12 @@ const TVShows = () => {
           items: shows,
           page,
           hasMore,
-          activeTab,
+          activeTab: "default",
           selectedFilters: selectedGenres,
         });
       }
     };
-  }, [shows, page, hasMore, activeTab, selectedGenres, saveCache]);
+  }, [shows, page, hasMore, selectedGenres, saveCache]);
 
   const fetchShows = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
@@ -74,34 +74,36 @@ const TVShows = () => {
     }
 
     try {
-      let response;
+      const today = new Date().toISOString().split("T")[0];
       
-      if (activeTab === "latest" || activeTab === "on_air") {
-        // Use discover endpoint for latest and on_air
-        const params = new URLSearchParams({
-          api_key: "fc6d85b3839330e3458701b975195487",
-          include_adult: "false",
-          page: pageNum.toString(),
-          sort_by: activeTab === "latest" ? "first_air_date.desc" : "popularity.desc",
-          ...(activeTab === "latest" && { "first_air_date.lte": new Date().toISOString().split("T")[0] }),
-          ...(activeTab === "on_air" && { "air_date.gte": new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] }),
-          ...(selectedGenres.length > 0 && { with_genres: selectedGenres.join(",") }),
-        });
-        const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
-        response = await res.json();
-      } else {
-        response = activeTab === "top_rated" 
-          ? await getTopRatedTV(pageNum) 
-          : await getPopularTV(pageNum);
+      // Build params for discover endpoint - sorted by first air date desc
+      const params = new URLSearchParams({
+        api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
+        page: pageNum.toString(),
+        sort_by: "first_air_date.desc",
+        "vote_count.gte": "20",
+        "first_air_date.lte": today,
+      });
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          params.set("first_air_date.lte", "2019-12-31");
+        } else {
+          params.set("first_air_date_year", selectedYear);
+        }
       }
 
-      // Filter by genre if genres are selected (for non-discover endpoints)
-      let filteredResults = filterAdultContent(response.results) as Movie[];
-      if (selectedGenres.length > 0 && activeTab !== "latest" && activeTab !== "on_air") {
-        filteredResults = filteredResults.filter((show: Movie) =>
-          selectedGenres.some(genreId => show.genre_ids?.includes(genreId))
-        );
+      // Genre filter
+      if (selectedGenres.length > 0) {
+        params.set("with_genres", selectedGenres.join(","));
       }
+
+      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+      const response = await res.json();
+
+      const filteredResults = filterAdultContent(response.results) as Movie[];
 
       if (reset) {
         setShows(filteredResults);
@@ -115,9 +117,9 @@ const TVShows = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [activeTab, selectedGenres]);
+  }, [selectedGenres, selectedYear]);
 
-  // Reset and fetch when tab or genres change (skip if just initialized from cache)
+  // Reset and fetch when filters change
   useEffect(() => {
     if (!isInitialized) return;
     if (isRestoredFromCache) {
@@ -128,7 +130,7 @@ const TVShows = () => {
     setShows([]);
     setHasMore(true);
     fetchShows(1, true);
-  }, [activeTab, selectedGenres, isInitialized]);
+  }, [selectedGenres, selectedYear, isInitialized]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -171,6 +173,11 @@ const TVShows = () => {
     setSelectedGenres([]);
   };
 
+  const clearFilters = () => {
+    setSelectedGenres([]);
+    setSelectedYear(null);
+  };
+
   // Convert genres to CategoryNav format
   const genresForNav = genres.map(g => ({ id: g.id, name: g.name }));
 
@@ -178,7 +185,7 @@ const TVShows = () => {
     <>
       <Helmet>
         <title>TV Shows - DanieWatch</title>
-        <meta name="description" content="Browse popular, latest, and top rated TV shows." />
+        <meta name="description" content="Browse TV shows sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -190,12 +197,12 @@ const TVShows = () => {
           {/* Category Navigation */}
           <div className="mb-8">
             <CategoryNav
-              activeTab={activeTab}
-              onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
               genres={genresForNav}
               selectedGenres={selectedGenres}
               onGenreToggle={toggleGenre}
               onClearGenres={clearGenres}
+              selectedYear={selectedYear}
+              onYearChange={setSelectedYear}
             />
           </div>
 
@@ -223,7 +230,7 @@ const TVShows = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">No TV shows found with the selected filters.</p>
               <button
-                onClick={clearGenres}
+                onClick={clearFilters}
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
               >
                 Clear filters
