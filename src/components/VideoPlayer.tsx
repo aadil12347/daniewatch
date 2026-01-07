@@ -125,15 +125,17 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       className={containerClasses}
       style={containerStyle}
     >
-      {/* Close button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className={`absolute ${inline ? 'top-20 md:top-24 z-[80]' : 'top-4 z-[10000]'} right-4 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-sm text-white pointer-events-auto`}
-        onClick={onClose}
-      >
-        <X className="w-5 h-5" />
-      </Button>
+      {/* Close button - only show in inline mode, player has its own controls */}
+      {inline && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-20 md:top-24 z-[80] right-4 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-sm text-white pointer-events-auto"
+          onClick={onClose}
+        >
+          <X className="w-5 h-5" />
+        </Button>
+      )}
 
       {/* Simple loading spinner while checking for video source */}
       {isLoading && (
