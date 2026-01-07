@@ -1,5 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
-import { Star, Play, Bookmark, Ban, Pin } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Star, Play, Bookmark, Ban } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -19,8 +19,7 @@ interface MovieCardProps {
 export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0 }: MovieCardProps) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
-  const { isBlocked, isPinned } = usePostModeration();
-  const location = useLocation();
+  const { isBlocked } = usePostModeration();
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as 'movie' | 'tv');
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
@@ -29,10 +28,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const rating = movie.vote_average?.toFixed(1);
   
   const blocked = isBlocked(movie.id, mediaType as 'movie' | 'tv');
-  const pinned = isPinned(movie.id, mediaType as 'movie' | 'tv');
-  
-  // Determine if we're on homepage (don't show pin option there)
-  const isHomePage = location.pathname === '/';
   
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -102,19 +97,12 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               {rating}
             </div>
             
-            {/* Admin indicators */}
-            {isAdmin && (blocked || pinned) && (
+            {/* Admin indicator for blocked */}
+            {isAdmin && blocked && (
               <div className="absolute top-2 left-2 flex items-center gap-1">
-                {blocked && (
-                  <div className="p-1 rounded-md bg-destructive/80 backdrop-blur-sm" title="Blocked">
-                    <Ban className="w-3 h-3 text-destructive-foreground" />
-                  </div>
-                )}
-                {pinned && (
-                  <div className="p-1 rounded-md bg-primary/80 backdrop-blur-sm" title="Pinned">
-                    <Pin className="w-3 h-3 text-primary-foreground" />
-                  </div>
-                )}
+                <div className="p-1 rounded-md bg-destructive/80 backdrop-blur-sm" title="Blocked">
+                  <Ban className="w-3 h-3 text-destructive-foreground" />
+                </div>
               </div>
             )}
           </div>
@@ -172,7 +160,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           </button>
         )}
         
-        {/* Admin Controls - Always visible 3-dot menu for admins */}
+        {/* Admin Controls - Instantly visible 3-dot menu for admins */}
         {isAdmin && (
           <div className="absolute top-10 right-2 z-20">
             <AdminPostControls
@@ -180,7 +168,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               mediaType={mediaType as 'movie' | 'tv'}
               title={title}
               posterPath={movie.poster_path}
-              showPinOption={!isHomePage}
             />
           </div>
         )}
