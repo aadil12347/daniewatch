@@ -33,11 +33,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { 
   Shield, 
   Search,
@@ -50,9 +45,7 @@ import {
   Archive,
   RotateCcw,
   Link2,
-  ClipboardPaste,
-  ChevronDown,
-  ChevronUp
+  ClipboardPaste
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -102,9 +95,6 @@ const UpdateLinks = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
   
-  // Collapsible states for link boxes
-  const [watchLinksExpanded, setWatchLinksExpanded] = useState(false);
-  const [downloadLinksExpanded, setDownloadLinksExpanded] = useState(false);
 
   const handleSearch = useCallback(async () => {
     if (!tmdbId.trim()) return;
@@ -363,16 +353,16 @@ const UpdateLinks = () => {
     });
   };
 
-  // Paste handlers
+  // Paste handlers - replace content instead of appending
   const handlePasteWatch = async () => {
     try {
       const text = await navigator.clipboard.readText();
       if (tmdbResult?.type === "movie") {
-        setMovieWatchLink(prev => prev ? `${prev}\n${text}` : text);
+        setMovieWatchLink(text);
       } else {
-        setSeriesWatchLinks(prev => prev ? `${prev}\n${text}` : text);
+        setSeriesWatchLinks(text);
       }
-      toast({ title: "Pasted", description: "Content pasted from clipboard." });
+      toast({ title: "Pasted", description: "Content replaced from clipboard." });
     } catch {
       toast({ title: "Error", description: "Failed to read clipboard.", variant: "destructive" });
     }
@@ -382,11 +372,11 @@ const UpdateLinks = () => {
     try {
       const text = await navigator.clipboard.readText();
       if (tmdbResult?.type === "movie") {
-        setMovieDownloadLink(prev => prev ? `${prev}\n${text}` : text);
+        setMovieDownloadLink(text);
       } else {
-        setSeriesDownloadLinks(prev => prev ? `${prev}\n${text}` : text);
+        setSeriesDownloadLinks(text);
       }
-      toast({ title: "Pasted", description: "Content pasted from clipboard." });
+      toast({ title: "Pasted", description: "Content replaced from clipboard." });
     } catch {
       toast({ title: "Error", description: "Failed to read clipboard.", variant: "destructive" });
     }
@@ -541,117 +531,75 @@ const UpdateLinks = () => {
                 </CardContent>
               </Card>
 
-              {/* Links Form - Shown first, above poster */}
-              {tmdbResult && (
-                <Card>
-                  <CardContent className="pt-4 space-y-4">
-                    {/* Watch Online - Collapsible */}
-                    <Collapsible open={watchLinksExpanded} onOpenChange={setWatchLinksExpanded}>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-base font-semibold">Watch Online</Label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {getWatchLinkCount()} links
-                            {tmdbResult.type === "series" && ` / ${getExpectedEpisodeCount()} ep`}
-                          </span>
-                          <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="gap-1 h-7 px-2">
-                            <ClipboardPaste className="w-3 h-3" />
-                            Paste
-                          </Button>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 px-2">
-                              {watchLinksExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </Button>
-                          </CollapsibleTrigger>
-                        </div>
+              {/* Links Form - Always visible */}
+              <Card>
+                <CardContent className="pt-4 space-y-4">
+                  {/* Watch Online */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Watch Online</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {getWatchLinkCount()} links
+                          {tmdbResult && tmdbResult.type === "series" && ` / ${getExpectedEpisodeCount()} ep`}
+                        </span>
+                        <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="gap-1 h-7 px-2">
+                          <ClipboardPaste className="w-3 h-3" />
+                          Paste
+                        </Button>
                       </div>
-                      
-                      {/* Preview when collapsed */}
-                      {!watchLinksExpanded && (
-                        <div 
-                          className="mt-2 p-2 bg-muted/50 rounded-md text-xs font-mono text-muted-foreground truncate cursor-pointer"
-                          onClick={() => setWatchLinksExpanded(true)}
-                        >
-                          {tmdbResult.type === "movie" 
-                            ? (movieWatchLink || "Click to add watch link...")
-                            : (seriesWatchLinks.split('\n')[0] || "Click to add watch links...")}
-                        </div>
-                      )}
-                      
-                      <CollapsibleContent>
-                        {tmdbResult.type === "movie" ? (
-                          <Textarea
-                            value={movieWatchLink}
-                            onChange={(e) => setMovieWatchLink(e.target.value)}
-                            className="mt-2 min-h-[80px] font-mono text-sm"
-                            placeholder="Paste watch link here..."
-                          />
-                        ) : (
-                          <Textarea
-                            value={seriesWatchLinks}
-                            onChange={(e) => setSeriesWatchLinks(e.target.value)}
-                            className="mt-2 font-mono text-sm"
-                            style={{ minHeight: Math.max(80, Math.min(300, getWatchLinkCount() * 24 + 40)) }}
-                            placeholder="Paste episode links here (one per line)..."
-                          />
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-                    
-                    {/* Download Links - Collapsible */}
-                    <Collapsible open={downloadLinksExpanded} onOpenChange={setDownloadLinksExpanded}>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-base font-semibold">Download Links</Label>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {getDownloadLinkCount()} links
-                          </span>
-                          <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="gap-1 h-7 px-2">
-                            <ClipboardPaste className="w-3 h-3" />
-                            Paste
-                          </Button>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 px-2">
-                              {downloadLinksExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </Button>
-                          </CollapsibleTrigger>
-                        </div>
+                    </div>
+                    {tmdbResult?.type === "movie" ? (
+                      <Textarea
+                        value={movieWatchLink}
+                        onChange={(e) => setMovieWatchLink(e.target.value)}
+                        className="min-h-[80px] font-mono text-sm"
+                        placeholder="Paste watch link here..."
+                      />
+                    ) : (
+                      <Textarea
+                        value={seriesWatchLinks}
+                        onChange={(e) => setSeriesWatchLinks(e.target.value)}
+                        className="font-mono text-sm"
+                        style={{ minHeight: Math.max(80, Math.min(300, getWatchLinkCount() * 24 + 40)) }}
+                        placeholder="Paste episode links here (one per line)..."
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Download Links */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Download Links</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {getDownloadLinkCount()} links
+                        </span>
+                        <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="gap-1 h-7 px-2">
+                          <ClipboardPaste className="w-3 h-3" />
+                          Paste
+                        </Button>
                       </div>
-                      
-                      {/* Preview when collapsed */}
-                      {!downloadLinksExpanded && (
-                        <div 
-                          className="mt-2 p-2 bg-muted/50 rounded-md text-xs font-mono text-muted-foreground truncate cursor-pointer"
-                          onClick={() => setDownloadLinksExpanded(true)}
-                        >
-                          {tmdbResult.type === "movie" 
-                            ? (movieDownloadLink || "Click to add download link...")
-                            : (seriesDownloadLinks.split('\n')[0] || "Click to add download links...")}
-                        </div>
-                      )}
-                      
-                      <CollapsibleContent>
-                        {tmdbResult.type === "movie" ? (
-                          <Input
-                            value={movieDownloadLink}
-                            onChange={(e) => setMovieDownloadLink(e.target.value)}
-                            className="mt-2 font-mono text-sm"
-                            placeholder="Paste download link here..."
-                          />
-                        ) : (
-                          <Textarea
-                            value={seriesDownloadLinks}
-                            onChange={(e) => setSeriesDownloadLinks(e.target.value)}
-                            className="mt-2 font-mono text-sm"
-                            style={{ minHeight: Math.max(80, Math.min(300, getDownloadLinkCount() * 24 + 40)) }}
-                            placeholder="Paste download links here (one per line)..."
-                          />
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </CardContent>
-                </Card>
-              )}
+                    </div>
+                    {tmdbResult?.type === "movie" ? (
+                      <Input
+                        value={movieDownloadLink}
+                        onChange={(e) => setMovieDownloadLink(e.target.value)}
+                        className="font-mono text-sm"
+                        placeholder="Paste download link here..."
+                      />
+                    ) : (
+                      <Textarea
+                        value={seriesDownloadLinks}
+                        onChange={(e) => setSeriesDownloadLinks(e.target.value)}
+                        className="font-mono text-sm"
+                        style={{ minHeight: Math.max(80, Math.min(300, getDownloadLinkCount() * 24 + 40)) }}
+                        placeholder="Paste download links here (one per line)..."
+                      />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Compact Result Card with Poster and Details */}
               {tmdbResult && (
