@@ -10,7 +10,7 @@ import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchBloggerForTmdbId, BloggerVideoResult } from "@/lib/blogger";
+import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedia } from "@/contexts/MediaContext";
@@ -38,7 +38,7 @@ const MovieDetails = () => {
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [bloggerResult, setBloggerResult] = useState<BloggerVideoResult | null>(null);
+  const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
@@ -89,9 +89,9 @@ const MovieDetails = () => {
           setLogoUrl(getImageUrl(logo.file_path, "w500"));
         }
 
-        // Check Blogger for download link
-        const bloggerRes = await searchBloggerForTmdbId(Number(id), "movie");
-        setBloggerResult(bloggerRes);
+        // Check for media links (Supabase -> Blogger -> fallback)
+        const mediaRes = await getMediaLinks(Number(id), "movie");
+        setMediaResult(mediaRes);
       } catch (error) {
         console.error("Failed to fetch movie details:", error);
       } finally {
@@ -260,13 +260,13 @@ const MovieDetails = () => {
                     <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(movie.id, 'movie') ? 'fill-current' : ''}`} />
                   )}
                 </Button>
-                {bloggerResult?.downloadLink && (
+                {mediaResult?.downloadUrl && (
                   <Button
                     size="icon"
                     variant="outline"
                     className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border backdrop-blur-sm text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 transition-all"
                     onClick={() => {
-                      window.open(bloggerResult.downloadLink, '_blank');
+                      window.open(mediaResult.downloadUrl, '_blank');
                     }}
                   >
                     <Download className="w-5 h-5 md:w-4 md:h-4" />

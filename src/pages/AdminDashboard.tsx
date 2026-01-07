@@ -56,10 +56,12 @@ import {
   Sparkles,
   CheckCheck,
   RotateCcw,
-  Archive
+  Archive,
+  Link2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { UpdateLinksTab } from "@/components/admin/UpdateLinksTab";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
   switch (status) {
@@ -783,6 +785,10 @@ const AdminDashboard = () => {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="links" className="gap-2">
+                <Link2 className="w-4 h-4" />
+                Update Links
+              </TabsTrigger>
               <TabsTrigger value="admins" className="gap-2">
                 <Users className="w-4 h-4" />
                 Admins
@@ -1111,6 +1117,10 @@ const AdminDashboard = () => {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="links">
+              <UpdateLinksTab />
             </TabsContent>
 
             <TabsContent value="admins">
