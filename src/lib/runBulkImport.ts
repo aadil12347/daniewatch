@@ -98,24 +98,6 @@ export const runBulkImport = async (): Promise<{
   }
   
   console.log(`Bulk import completed: ${success} success, ${failed} failed out of ${entries.length} total`);
-  toast.success(`Bulk import completed: ${success} entries imported successfully!`);
   
   return { success, failed, total: entries.length };
-};
-
-// Auto-run on import (one-time)
-let hasRun = false;
-export const executeImportOnce = async () => {
-  if (hasRun) return;
-  hasRun = true;
-  
-  toast.info("Starting bulk import of 273 entries...");
-  
-  try {
-    const result = await runBulkImport();
-    console.log("Import result:", result);
-  } catch (error) {
-    console.error("Import failed:", error);
-    toast.error("Import failed: " + (error as Error).message);
-  }
 };

@@ -46,8 +46,10 @@ import {
   ArrowLeft,
   Archive,
   RotateCcw,
-  Link2
+  Link2,
+  Upload
 } from "lucide-react";
+import { runBulkImport } from "@/lib/runBulkImport";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { getMovieDetails, getTVDetails, getImageUrl } from "@/lib/tmdb";
@@ -95,6 +97,26 @@ const UpdateLinks = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleBulkImport = async () => {
+    setIsImporting(true);
+    try {
+      const result = await runBulkImport();
+      toast({
+        title: "Import Complete",
+        description: `Successfully imported ${result.success} of ${result.total} entries. ${result.failed > 0 ? `${result.failed} failed.` : ""}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Import Failed",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (!tmdbId.trim()) return;
@@ -418,21 +440,50 @@ const UpdateLinks = () => {
 
         <div className="container mx-auto px-4 pt-24 pb-12">
           {/* Header */}
-          <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="icon" asChild>
-              <Link to="/admin">
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <Link2 className="w-8 h-8 text-primary" />
-                <h1 className="text-3xl font-bold">Update Links</h1>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" asChild>
+                <Link to="/admin">
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
+              </Button>
+              <div>
+                <div className="flex items-center gap-3">
+                  <Link2 className="w-8 h-8 text-primary" />
+                  <h1 className="text-3xl font-bold">Update Links</h1>
+                </div>
+                <p className="text-muted-foreground mt-1">
+                  Manage watch and download links for movies and series
+                </p>
               </div>
-              <p className="text-muted-foreground mt-1">
-                Manage watch and download links for movies and series
-              </p>
             </div>
+            
+            {/* Bulk Import Button */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={isImporting}>
+                  {isImporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
+                  {isImporting ? "Importing..." : "Import 273 Entries"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Bulk Import Entries</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will import 273 movie and series entries with their watch and download links into the database. 
+                    Existing entries will be updated, new entries will be created.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkImport}>Import All</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           {/* Tabs */}

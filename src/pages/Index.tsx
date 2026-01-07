@@ -6,7 +6,6 @@ import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
 import { Footer } from "@/components/Footer";
 import { usePostModeration } from "@/hooks/usePostModeration";
-import { executeImportOnce } from "@/lib/runBulkImport";
 import {
   getTrending,
   getPopularMovies,
@@ -19,9 +18,6 @@ import {
   filterAdultContent,
   Movie,
 } from "@/lib/tmdb";
-
-// Run bulk import once on app load
-executeImportOnce();
 
 const Index = () => {
   const [trending, setTrending] = useState<Movie[]>([]);
