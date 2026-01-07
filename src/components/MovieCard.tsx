@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
-import { Star, Play, Bookmark } from "lucide-react";
+import { Star, Play, Bookmark, Ban, Pin } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useState, useEffect } from "react";
+import { AdminPostControls } from "./AdminPostControls";
+import { usePostModeration } from "@/hooks/usePostModeration";
+import { useAdmin } from "@/hooks/useAdmin";
 
 interface MovieCardProps {
   movie: Movie;
@@ -15,12 +18,17 @@ interface MovieCardProps {
 
 export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0 }: MovieCardProps) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
+  const { isAdmin } = useAdmin();
+  const { isBlocked, isPinned } = usePostModeration();
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as 'movie' | 'tv');
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
   const rating = movie.vote_average?.toFixed(1);
+  
+  const blocked = isBlocked(movie.id, mediaType as 'movie' | 'tv');
+  const pinned = isPinned(movie.id, mediaType as 'movie' | 'tv');
   
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -89,6 +97,22 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
               {rating}
             </div>
+            
+            {/* Admin indicators */}
+            {isAdmin && (blocked || pinned) && (
+              <div className="absolute top-2 left-2 flex items-center gap-1">
+                {blocked && (
+                  <div className="p-1 rounded-md bg-destructive/80 backdrop-blur-sm" title="Blocked">
+                    <Ban className="w-3 h-3 text-destructive-foreground" />
+                  </div>
+                )}
+                {pinned && (
+                  <div className="p-1 rounded-md bg-primary/80 backdrop-blur-sm" title="Pinned">
+                    <Pin className="w-3 h-3 text-primary-foreground" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Info */}
@@ -142,6 +166,18 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               )}
             />
           </button>
+        )}
+        
+        {/* Admin Controls */}
+        {isAdmin && (
+          <div className="absolute bottom-[4.5rem] left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            <AdminPostControls
+              tmdbId={movie.id}
+              mediaType={mediaType as 'movie' | 'tv'}
+              title={title}
+              posterPath={movie.poster_path}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -1,19 +1,22 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2 } from "lucide-react";
+import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2, Ban, Pin } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { AdminPostControls } from "@/components/AdminPostControls";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedia } from "@/contexts/MediaContext";
+import { useAdmin } from "@/hooks/useAdmin";
+import { usePostModeration } from "@/hooks/usePostModeration";
 import {
   getMovieDetails,
   getMovieCredits,
@@ -42,6 +45,8 @@ const MovieDetails = () => {
   const [isBookmarking, setIsBookmarking] = useState(false);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
+  const { isBlocked, isPinned, filterBlockedPosts } = usePostModeration();
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
 
   // URL-driven player state
@@ -271,6 +276,18 @@ const MovieDetails = () => {
                   >
                     <Download className="w-5 h-5 md:w-4 md:h-4" />
                   </Button>
+                )}
+                
+                {/* Admin Controls */}
+                {isAdmin && movie && (
+                  <AdminPostControls
+                    tmdbId={movie.id}
+                    mediaType="movie"
+                    title={movie.title}
+                    posterPath={movie.poster_path}
+                    variant="icon"
+                    className="ml-2"
+                  />
                 )}
               </div>
             </div>
