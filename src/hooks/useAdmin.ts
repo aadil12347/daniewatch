@@ -3,6 +3,38 @@ import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 const OWNER_EMAIL = 'mdaniyalaadil@gmail.com';
+const ADMIN_CACHE_KEY = 'admin_status_cache';
+
+// Get cached admin status instantly (sync)
+const getCachedAdminStatus = (): { isAdmin: boolean; isOwner: boolean } | null => {
+  try {
+    const cached = localStorage.getItem(ADMIN_CACHE_KEY);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+};
+
+// Save admin status to cache
+const setCachedAdminStatus = (isAdmin: boolean, isOwner: boolean) => {
+  try {
+    localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify({ isAdmin, isOwner }));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+// Clear admin cache on logout
+const clearAdminCache = () => {
+  try {
+    localStorage.removeItem(ADMIN_CACHE_KEY);
+  } catch {
+    // Ignore errors
+  }
+};
 
 export interface UserRole {
   id: string;
@@ -29,8 +61,10 @@ export interface AdminRequest {
 
 export const useAdmin = () => {
   const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
+  // Initialize from cache for instant display
+  const cached = getCachedAdminStatus();
+  const [isAdmin, setIsAdmin] = useState(cached?.isAdmin ?? false);
+  const [isOwner, setIsOwner] = useState(cached?.isOwner ?? false);
   const [isLoading, setIsLoading] = useState(true);
   const [allRequests, setAllRequests] = useState<AdminRequest[]>([]);
   const [admins, setAdmins] = useState<UserRole[]>([]);
@@ -41,6 +75,7 @@ export const useAdmin = () => {
     if (!user || !isSupabaseConfigured) {
       setIsAdmin(false);
       setIsOwner(false);
+      clearAdminCache();
       setIsLoading(false);
       return;
     }
@@ -62,8 +97,11 @@ export const useAdmin = () => {
         console.error('Error checking admin status:', error);
         // If owner but not in table yet, still consider admin
         setIsAdmin(userIsOwner);
+        setCachedAdminStatus(userIsOwner, userIsOwner);
       } else {
-        setIsAdmin(!!data || userIsOwner);
+        const adminStatus = !!data || userIsOwner;
+        setIsAdmin(adminStatus);
+        setCachedAdminStatus(adminStatus, userIsOwner);
       }
 
       // If owner and not in user_roles, auto-add
