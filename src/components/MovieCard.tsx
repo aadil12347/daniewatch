@@ -162,7 +162,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
         
         {/* Admin Controls - Instantly visible 3-dot menu for admins */}
         {isAdmin && (
-          <div className="absolute top-10 right-2 z-20">
+          <div className="absolute top-2 left-2 z-30">
             <AdminPostControls
               tmdbId={movie.id}
               mediaType={mediaType as 'movie' | 'tv'}
