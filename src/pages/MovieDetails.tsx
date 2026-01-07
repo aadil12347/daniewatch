@@ -285,7 +285,6 @@ const MovieDetails = () => {
                     mediaType="movie"
                     title={movie.title}
                     posterPath={movie.poster_path}
-                    variant="icon"
                     className="ml-2"
                   />
                 )}

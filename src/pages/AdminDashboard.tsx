@@ -58,8 +58,12 @@ import {
   RotateCcw,
   Archive,
   Link2,
-  ExternalLink
+  ExternalLink,
+  Ban,
+  ShieldOff
 } from "lucide-react";
+import { usePostModeration } from "@/hooks/usePostModeration";
+import { getImageUrl } from "@/lib/tmdb";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -381,6 +385,61 @@ const AdminManagement = () => {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+const BlockedPostsManagement = () => {
+  const { getBlockedPosts, unblockPost } = usePostModeration();
+  const blockedPosts = getBlockedPosts();
+
+  if (blockedPosts.length === 0) {
+    return (
+      <Card className="text-center py-12">
+        <CardContent>
+          <Ban className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">No blocked posts</h2>
+          <p className="text-muted-foreground">
+            Posts you block will appear here.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {blockedPosts.map((post) => (
+        <Card key={`${post.tmdb_id}-${post.media_type}`}>
+          <CardContent className="pt-6">
+            <div className="flex gap-4 items-center">
+              {post.poster_path ? (
+                <img
+                  src={getImageUrl(post.poster_path, "w92")}
+                  alt={post.title || "Post"}
+                  className="w-16 h-24 object-cover rounded-lg"
+                />
+              ) : (
+                <div className="w-16 h-24 bg-secondary rounded-lg flex items-center justify-center">
+                  <Ban className="w-6 h-6 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1">
+                <h3 className="font-semibold">{post.title || `ID: ${post.tmdb_id}`}</h3>
+                <p className="text-sm text-muted-foreground capitalize">{post.media_type}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => unblockPost(post.tmdb_id, post.media_type)}
+                className="gap-1"
+              >
+                <ShieldOff className="w-4 h-4" /> Unblock
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 };
@@ -792,6 +851,10 @@ const AdminDashboard = () => {
                   <ExternalLink className="w-3 h-3 ml-1" />
                 </Link>
               </TabsTrigger>
+              <TabsTrigger value="blocked" className="gap-2">
+                <Ban className="w-4 h-4" />
+                Blocked Posts
+              </TabsTrigger>
               <TabsTrigger value="admins" className="gap-2">
                 <Users className="w-4 h-4" />
                 Admins
@@ -1120,6 +1183,10 @@ const AdminDashboard = () => {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="blocked">
+              <BlockedPostsManagement />
             </TabsContent>
 
             <TabsContent value="admins">
