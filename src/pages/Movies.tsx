@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getMovieGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -24,6 +25,7 @@ const Movies = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
+  const { filterBlockedPosts, sortWithPinnedFirst } = usePostModeration();
 
   // Fetch genres on mount
   useEffect(() => {
@@ -216,7 +218,7 @@ const Movies = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : movies.map((movie, index) => (
+              : sortWithPinnedFirst(filterBlockedPosts(movies, 'movie'), 'movies', 'movie').map((movie, index) => (
                   <MovieCard 
                     key={`${movie.id}-${index}`} 
                     movie={{ ...movie, media_type: "movie" }} 
