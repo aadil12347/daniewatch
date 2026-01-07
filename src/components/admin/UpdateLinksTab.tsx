@@ -73,10 +73,18 @@ export const UpdateLinksTab = () => {
     setEntryExists(false);
     
     try {
-      let result: TMDBResult;
+      let result: TMDBResult | null = null;
+      let detectedType: "movie" | "series" | null = null;
       
-      if (mediaType === "movie") {
-        const movie = await getMovieDetails(Number(tmdbId));
+      // Try both APIs in parallel to auto-detect type
+      const [movieResult, tvResult] = await Promise.allSettled([
+        getMovieDetails(Number(tmdbId)),
+        getTVDetails(Number(tmdbId))
+      ]);
+      
+      // Check if movie exists (has a title)
+      if (movieResult.status === "fulfilled" && movieResult.value.title) {
+        const movie = movieResult.value;
         result = {
           id: movie.id,
           title: movie.title,
@@ -84,22 +92,44 @@ export const UpdateLinksTab = () => {
           year: movie.release_date?.split("-")[0] || "N/A",
           type: "movie",
         };
-      } else {
-        const show = await getTVDetails(Number(tmdbId));
+        detectedType = "movie";
+      }
+      
+      // Check if TV show exists (has a name) - prioritize TV if both exist based on which has more data
+      if (tvResult.status === "fulfilled" && tvResult.value.name) {
+        const show = tvResult.value;
         const validSeasons = show.seasons?.filter(s => s.season_number > 0) || [];
-        result = {
-          id: show.id,
-          title: show.name || "Unknown",
-          posterUrl: getImageUrl(show.poster_path, "w185"),
-          year: show.first_air_date?.split("-")[0] || "N/A",
-          type: "series",
-          seasons: show.number_of_seasons,
-          seasonDetails: validSeasons.map(s => ({
-            season_number: s.season_number,
-            episode_count: s.episode_count,
-          })),
-        };
-        setSelectedSeason(validSeasons[0]?.season_number || 1);
+        
+        // If both exist, prefer the one that seems more valid (has more details)
+        const shouldUseTv = !result || 
+          (show.number_of_seasons && show.number_of_seasons > 0) ||
+          (show.first_air_date && !result.year);
+        
+        if (shouldUseTv || !result) {
+          result = {
+            id: show.id,
+            title: show.name || "Unknown",
+            posterUrl: getImageUrl(show.poster_path, "w185"),
+            year: show.first_air_date?.split("-")[0] || "N/A",
+            type: "series",
+            seasons: show.number_of_seasons,
+            seasonDetails: validSeasons.map(s => ({
+              season_number: s.season_number,
+              episode_count: s.episode_count,
+            })),
+          };
+          detectedType = "series";
+          setSelectedSeason(validSeasons[0]?.season_number || 1);
+        }
+      }
+      
+      if (!result) {
+        throw new Error("Not found");
+      }
+      
+      // Auto-select the detected type
+      if (detectedType) {
+        setMediaType(detectedType);
       }
       
       setTmdbResult(result);
