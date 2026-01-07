@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Ban, Pin, PinOff, Shield, ShieldOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Ban, Pin, PinOff, MoreVertical, Link2, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,12 +21,11 @@ interface AdminPostControlsProps {
   mediaType: 'movie' | 'tv';
   title?: string;
   posterPath?: string;
-  variant?: 'icon' | 'dropdown';
   className?: string;
+  showPinOption?: boolean;
 }
 
 const PIN_PAGES = [
-  { value: 'home', label: 'Home' },
   { value: 'movies', label: 'Movies' },
   { value: 'tvshows', label: 'TV Shows' },
   { value: 'anime', label: 'Anime' },
@@ -38,10 +38,11 @@ export const AdminPostControls = ({
   mediaType,
   title,
   posterPath,
-  variant = 'dropdown',
   className = '',
+  showPinOption = true,
 }: AdminPostControlsProps) => {
   const { isAdmin } = useAdmin();
+  const navigate = useNavigate();
   const { isBlocked, isPinned, getPinnedPage, blockPost, unblockPost, pinPost, unpinPost } = usePostModeration();
   
   if (!isAdmin) return null;
@@ -49,6 +50,10 @@ export const AdminPostControls = ({
   const blocked = isBlocked(tmdbId, mediaType);
   const pinned = isPinned(tmdbId, mediaType);
   const pinnedPage = getPinnedPage(tmdbId, mediaType);
+  
+  const handleUpdateLinks = () => {
+    navigate(`/admin/update-links?id=${tmdbId}`);
+  };
   
   const handleBlock = () => {
     if (blocked) {
@@ -75,78 +80,65 @@ export const AdminPostControls = ({
     toast.success(`"${title || 'Post'}" unpinned`);
   };
   
-  if (variant === 'icon') {
-    return (
-      <div className={`flex items-center gap-1 ${className}`}>
-        <Button
-          size="icon"
-          variant={blocked ? "destructive" : "ghost"}
-          className="w-8 h-8"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleBlock();
-          }}
-          title={blocked ? 'Unblock post' : 'Block post'}
-        >
-          {blocked ? <ShieldOff className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="icon"
-              variant={pinned ? "default" : "ghost"}
-              className="w-8 h-8"
-              onClick={(e) => e.stopPropagation()}
-              title={pinned ? `Pinned to ${pinnedPage}` : 'Pin post'}
-            >
-              {pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-            {pinned && (
-              <>
-                <DropdownMenuItem onClick={handleUnpin}>
-                  <PinOff className="w-4 h-4 mr-2" />
-                  Unpin
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            )}
-            {PIN_PAGES.map((page) => (
-              <DropdownMenuItem 
-                key={page.value} 
-                onClick={() => handlePin(page.value)}
-                className={pinnedPage === page.value ? 'bg-primary/20' : ''}
-              >
-                <Pin className="w-4 h-4 mr-2" />
-                Pin to {page.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  }
-  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           size="icon"
           variant="ghost"
-          className={`w-8 h-8 ${blocked ? 'text-destructive' : ''} ${pinned ? 'text-primary' : ''} ${className}`}
+          className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className}`}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
           }}
           title="Admin controls"
         >
-          <Shield className="w-4 h-4" />
+          <MoreVertical className="w-4 h-4 text-white" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={handleBlock}>
+        {/* Update Links */}
+        <DropdownMenuItem onClick={handleUpdateLinks}>
+          <Link2 className="w-4 h-4 mr-2" />
+          Update Links
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        {/* Pin to page - only show if showPinOption is true (not on homepage) */}
+        {showPinOption && (
+          <>
+            {pinned && (
+              <DropdownMenuItem onClick={handleUnpin}>
+                <PinOff className="w-4 h-4 mr-2" />
+                Unpin from {pinnedPage}
+              </DropdownMenuItem>
+            )}
+            
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Pin className="w-4 h-4 mr-2" />
+                Pin to page
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {PIN_PAGES.map((page) => (
+                  <DropdownMenuItem 
+                    key={page.value} 
+                    onClick={() => handlePin(page.value)}
+                    className={pinnedPage === page.value ? 'bg-primary/20' : ''}
+                  >
+                    {page.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            
+            <DropdownMenuSeparator />
+          </>
+        )}
+        
+        {/* Block/Unblock */}
+        <DropdownMenuItem onClick={handleBlock} className={blocked ? 'text-green-500' : 'text-destructive'}>
           {blocked ? (
             <>
               <ShieldOff className="w-4 h-4 mr-2" />
@@ -159,33 +151,6 @@ export const AdminPostControls = ({
             </>
           )}
         </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        {pinned && (
-          <DropdownMenuItem onClick={handleUnpin}>
-            <PinOff className="w-4 h-4 mr-2" />
-            Unpin from {pinnedPage}
-          </DropdownMenuItem>
-        )}
-        
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Pin className="w-4 h-4 mr-2" />
-            Pin to page
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            {PIN_PAGES.map((page) => (
-              <DropdownMenuItem 
-                key={page.value} 
-                onClick={() => handlePin(page.value)}
-                className={pinnedPage === page.value ? 'bg-primary/20' : ''}
-              >
-                {page.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
   );

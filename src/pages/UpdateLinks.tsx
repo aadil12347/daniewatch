@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useEntries } from "@/hooks/useEntries";
 import { useEntriesTrash, TrashedEntry } from "@/hooks/useEntriesTrash";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -42,14 +41,12 @@ import {
   Trash2,
   Film,
   Tv,
-  Info,
   ArrowLeft,
   Archive,
   RotateCcw,
   Link2,
-  Upload
+  ClipboardPaste
 } from "lucide-react";
-import { runBulkImport } from "@/lib/runBulkImport";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { getMovieDetails, getTVDetails, getImageUrl } from "@/lib/tmdb";
@@ -71,12 +68,12 @@ const UpdateLinks = () => {
   const { toast } = useToast();
   const { fetchEntry, saveMovieEntry, saveSeriesSeasonEntry, deleteEntry, deleteSeasonFromEntry } = useEntries();
   const { trashedEntries, moveToTrash, restoreFromTrash, permanentlyDelete, emptyTrash } = useEntriesTrash();
+  const [searchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<"update" | "trash">("update");
   
   // Search state
   const [tmdbId, setTmdbId] = useState("");
-  const [mediaType, setMediaType] = useState<"movie" | "series">("movie");
   const [isSearching, setIsSearching] = useState(false);
   const [tmdbResult, setTmdbResult] = useState<TMDBResult | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -97,28 +94,8 @@ const UpdateLinks = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
 
-  const handleBulkImport = async () => {
-    setIsImporting(true);
-    try {
-      const result = await runBulkImport();
-      toast({
-        title: "Import Complete",
-        description: `Successfully imported ${result.success} of ${result.total} entries. ${result.failed > 0 ? `${result.failed} failed.` : ""}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Import Failed",
-        description: (error as Error).message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!tmdbId.trim()) return;
     
     setIsSearching(true);
@@ -128,7 +105,6 @@ const UpdateLinks = () => {
     
     try {
       let result: TMDBResult | null = null;
-      let detectedType: "movie" | "series" | null = null;
       
       // Try both APIs in parallel to auto-detect type
       const [movieResult, tvResult] = await Promise.allSettled([
@@ -142,11 +118,10 @@ const UpdateLinks = () => {
         result = {
           id: movie.id,
           title: movie.title,
-          posterUrl: getImageUrl(movie.poster_path, "w185"),
+          posterUrl: getImageUrl(movie.poster_path, "w342"),
           year: movie.release_date?.split("-")[0] || "N/A",
           type: "movie",
         };
-        detectedType = "movie";
       }
       
       // Check if TV show exists (has a name) - prioritize TV if both exist based on which has more data
@@ -163,7 +138,7 @@ const UpdateLinks = () => {
           result = {
             id: show.id,
             title: show.name || "Unknown",
-            posterUrl: getImageUrl(show.poster_path, "w185"),
+            posterUrl: getImageUrl(show.poster_path, "w342"),
             year: show.first_air_date?.split("-")[0] || "N/A",
             type: "series",
             seasons: show.number_of_seasons,
@@ -172,18 +147,12 @@ const UpdateLinks = () => {
               episode_count: s.episode_count,
             })),
           };
-          detectedType = "series";
           setSelectedSeason(validSeasons[0]?.season_number || 1);
         }
       }
       
       if (!result) {
         throw new Error("Not found");
-      }
-      
-      // Auto-select the detected type
-      if (detectedType) {
-        setMediaType(detectedType);
       }
       
       setTmdbResult(result);
@@ -215,7 +184,25 @@ const UpdateLinks = () => {
     } finally {
       setIsSearching(false);
     }
-  };
+  }, [tmdbId, fetchEntry]);
+
+  // Read URL params on mount
+  useEffect(() => {
+    const idParam = searchParams.get('id');
+    if (idParam) {
+      setTmdbId(idParam);
+    }
+  }, [searchParams]);
+
+  // Live search with debounce
+  useEffect(() => {
+    if (tmdbId.trim().length >= 3) {
+      const timer = setTimeout(() => {
+        handleSearch();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [tmdbId, handleSearch]);
 
   const loadSeasonData = async (content: any, season: number) => {
     const seasonKey = `season_${season}`;
@@ -250,7 +237,7 @@ const UpdateLinks = () => {
     
     setIsSaving(true);
     
-    if (mediaType === "movie") {
+    if (tmdbResult.type === "movie") {
       const result = await saveMovieEntry(
         String(tmdbResult.id),
         movieWatchLink,
@@ -258,6 +245,7 @@ const UpdateLinks = () => {
       );
       if (result.success) {
         setEntryExists(true);
+        toast({ title: "Saved", description: "Movie links saved successfully." });
       }
     } else {
       const watchLinks = seriesWatchLinks.split("\n").filter(l => l.trim());
@@ -271,6 +259,7 @@ const UpdateLinks = () => {
       );
       if (result.success) {
         setEntryExists(true);
+        toast({ title: "Saved", description: `Season ${selectedSeason} links saved successfully.` });
       }
     }
     
@@ -369,8 +358,50 @@ const UpdateLinks = () => {
     });
   };
 
-  const getWatchLinkCount = () => seriesWatchLinks.split("\n").filter(l => l.trim()).length;
-  const getDownloadLinkCount = () => seriesDownloadLinks.split("\n").filter(l => l.trim()).length;
+  // Paste handlers
+  const handlePasteWatch = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (tmdbResult?.type === "movie") {
+        setMovieWatchLink(prev => prev ? `${prev}\n${text}` : text);
+      } else {
+        setSeriesWatchLinks(prev => prev ? `${prev}\n${text}` : text);
+      }
+      toast({ title: "Pasted", description: "Content pasted from clipboard." });
+    } catch {
+      toast({ title: "Error", description: "Failed to read clipboard.", variant: "destructive" });
+    }
+  };
+
+  const handlePasteDownload = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (tmdbResult?.type === "movie") {
+        setMovieDownloadLink(prev => prev ? `${prev}\n${text}` : text);
+      } else {
+        setSeriesDownloadLinks(prev => prev ? `${prev}\n${text}` : text);
+      }
+      toast({ title: "Pasted", description: "Content pasted from clipboard." });
+    } catch {
+      toast({ title: "Error", description: "Failed to read clipboard.", variant: "destructive" });
+    }
+  };
+
+  // Link counts
+  const getWatchLinkCount = () => {
+    if (tmdbResult?.type === "movie") {
+      return movieWatchLink.trim() ? 1 : 0;
+    }
+    return seriesWatchLinks.split("\n").filter(l => l.trim()).length;
+  };
+  
+  const getDownloadLinkCount = () => {
+    if (tmdbResult?.type === "movie") {
+      return movieDownloadLink.trim() ? 1 : 0;
+    }
+    return seriesDownloadLinks.split("\n").filter(l => l.trim()).length;
+  };
+  
   const getExpectedEpisodeCount = () => {
     if (!tmdbResult?.seasonDetails) return 0;
     const season = tmdbResult.seasonDetails.find(s => s.season_number === selectedSeason);
@@ -440,50 +471,21 @@ const UpdateLinks = () => {
 
         <div className="container mx-auto px-4 pt-24 pb-12">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild>
-                <Link to="/admin">
-                  <ArrowLeft className="w-5 h-5" />
-                </Link>
-              </Button>
-              <div>
-                <div className="flex items-center gap-3">
-                  <Link2 className="w-8 h-8 text-primary" />
-                  <h1 className="text-3xl font-bold">Update Links</h1>
-                </div>
-                <p className="text-muted-foreground mt-1">
-                  Manage watch and download links for movies and series
-                </p>
+          <div className="flex items-center gap-4 mb-6">
+            <Button variant="ghost" size="icon" asChild>
+              <Link to="/admin">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+            </Button>
+            <div>
+              <div className="flex items-center gap-3">
+                <Link2 className="w-8 h-8 text-primary" />
+                <h1 className="text-3xl font-bold">Update Links</h1>
               </div>
+              <p className="text-muted-foreground mt-1">
+                Manage watch and download links for movies and series
+              </p>
             </div>
-            
-            {/* Bulk Import Button */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={isImporting}>
-                  {isImporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Upload className="w-4 h-4 mr-2" />
-                  )}
-                  {isImporting ? "Importing..." : "Import 273 Entries"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Bulk Import Entries</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will import 273 movie and series entries with their watch and download links into the database. 
-                    Existing entries will be updated, new entries will be created.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleBulkImport}>Import All</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </div>
 
           {/* Tabs */}
@@ -505,11 +507,11 @@ const UpdateLinks = () => {
                 <CardHeader>
                   <CardTitle className="text-lg">Search by TMDB ID</CardTitle>
                   <CardDescription>
-                    Enter the TMDB ID of the movie or TV show to manage its links
+                    Enter the TMDB ID - results appear as you type
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
+                <CardContent>
+                  <div className="flex gap-4">
                     <div className="flex-1">
                       <Input
                         placeholder="Enter TMDB ID (e.g., 93405)"
@@ -518,26 +520,6 @@ const UpdateLinks = () => {
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                       />
                     </div>
-                    
-                    <RadioGroup
-                      value={mediaType}
-                      onValueChange={(v) => setMediaType(v as "movie" | "series")}
-                      className="flex gap-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="movie" id="movie" />
-                        <Label htmlFor="movie" className="flex items-center gap-1 cursor-pointer">
-                          <Film className="w-4 h-4" /> Movie
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="series" id="series" />
-                        <Label htmlFor="series" className="flex items-center gap-1 cursor-pointer">
-                          <Tv className="w-4 h-4" /> Series
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                    
                     <Button onClick={handleSearch} disabled={isSearching || !tmdbId.trim()}>
                       {isSearching ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -549,38 +531,45 @@ const UpdateLinks = () => {
                   </div>
                   
                   {searchError && (
-                    <p className="text-sm text-destructive">{searchError}</p>
+                    <p className="text-sm text-destructive mt-2">{searchError}</p>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Result Card */}
+              {/* Result Card with Poster and Details */}
               {tmdbResult && (
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="flex gap-4 items-start">
-                      {tmdbResult.posterUrl ? (
-                        <img
-                          src={tmdbResult.posterUrl}
-                          alt={tmdbResult.title}
-                          className="w-20 h-30 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-20 h-30 bg-secondary rounded-lg flex items-center justify-center">
-                          {tmdbResult.type === "movie" ? (
-                            <Film className="w-8 h-8 text-muted-foreground" />
-                          ) : (
-                            <Tv className="w-8 h-8 text-muted-foreground" />
-                          )}
-                        </div>
-                      )}
+                    <div className="flex gap-6 items-start">
+                      {/* Larger Poster */}
+                      <div className="flex-shrink-0">
+                        {tmdbResult.posterUrl ? (
+                          <img
+                            src={tmdbResult.posterUrl}
+                            alt={tmdbResult.title}
+                            className="w-32 h-48 object-cover rounded-lg shadow-lg"
+                          />
+                        ) : (
+                          <div className="w-32 h-48 bg-secondary rounded-lg flex items-center justify-center">
+                            {tmdbResult.type === "movie" ? (
+                              <Film className="w-12 h-12 text-muted-foreground" />
+                            ) : (
+                              <Tv className="w-12 h-12 text-muted-foreground" />
+                            )}
+                          </div>
+                        )}
+                      </div>
                       
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold">{tmdbResult.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {tmdbResult.year} • {tmdbResult.type === "movie" ? "Movie" : `${tmdbResult.seasons} Season${tmdbResult.seasons !== 1 ? "s" : ""}`}
-                        </p>
-                        <div className="flex gap-2 mt-2">
+                      {/* Info */}
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h3 className="text-xl font-bold">{tmdbResult.title}</h3>
+                          <p className="text-muted-foreground">
+                            {tmdbResult.year} • {tmdbResult.type === "movie" ? "Movie" : "Series"}
+                          </p>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
                           <Badge variant="outline">TMDB: {tmdbResult.id}</Badge>
                           {entryExists ? (
                             <Badge variant="default" className="bg-green-500">Entry Exists</Badge>
@@ -588,98 +577,89 @@ const UpdateLinks = () => {
                             <Badge variant="secondary">New Entry</Badge>
                           )}
                         </div>
+                        
+                        {/* Season details for series */}
+                        {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
+                          <div className="pt-2">
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {tmdbResult.seasons} Season{tmdbResult.seasons !== 1 ? "s" : ""}
+                            </p>
+                            <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {tmdbResult.seasonDetails.map((s) => (
+                                  <SelectItem key={s.season_number} value={String(s.season_number)}>
+                                    Season {s.season_number} ({s.episode_count} episodes)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Movie Form */}
-              {tmdbResult && mediaType === "movie" && (
+              {/* Links Form */}
+              {tmdbResult && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Movie Links</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="pt-6 space-y-6">
+                    {/* Watch Online */}
                     <div className="space-y-2">
-                      <Label htmlFor="movieWatch">Watch Online Link (paste full iframe HTML or URL)</Label>
-                      <Textarea
-                        id="movieWatch"
-                        placeholder='<iframe src="https://bysebuho.com/e/..."></iframe>'
-                        value={movieWatchLink}
-                        onChange={(e) => setMovieWatchLink(e.target.value)}
-                        className="min-h-[80px] font-mono text-sm"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="movieDownload">Download Link</Label>
-                      <Input
-                        id="movieDownload"
-                        placeholder="https://dldclv-my.sharepoint.com/..."
-                        value={movieDownloadLink}
-                        onChange={(e) => setMovieDownloadLink(e.target.value)}
-                        className="font-mono text-sm"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Series Form */}
-              {tmdbResult && mediaType === "series" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Series Links</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Select Season</Label>
-                      <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tmdbResult.seasonDetails?.map((s) => (
-                            <SelectItem key={s.season_number} value={String(s.season_number)}>
-                              Season {s.season_number} ({s.episode_count} eps)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="seriesWatch">
-                        Watch Online Links (one per line, ep1 first, ep2 second, etc.)
-                      </Label>
-                      <Textarea
-                        id="seriesWatch"
-                        placeholder={'<iframe src="...s01e01..."></iframe>\n<iframe src="...s01e02..."></iframe>\n<iframe src="...s01e03..."></iframe>'}
-                        value={seriesWatchLinks}
-                        onChange={(e) => setSeriesWatchLinks(e.target.value)}
-                        className="min-h-[150px] font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Info className="w-3 h-3" />
-                        {getExpectedEpisodeCount()} episodes in Season {selectedSeason} (TMDB) | {getWatchLinkCount()} watch links entered
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Watch Online</Label>
+                        <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="gap-1">
+                          <ClipboardPaste className="w-4 h-4" />
+                          Paste
+                        </Button>
+                      </div>
+                      {tmdbResult.type === "movie" ? (
+                        <Textarea
+                          value={movieWatchLink}
+                          onChange={(e) => setMovieWatchLink(e.target.value)}
+                          className="min-h-[100px] font-mono text-sm"
+                        />
+                      ) : (
+                        <Textarea
+                          value={seriesWatchLinks}
+                          onChange={(e) => setSeriesWatchLinks(e.target.value)}
+                          className="min-h-[150px] font-mono text-sm"
+                        />
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Total links: {getWatchLinkCount()}
+                        {tmdbResult.type === "series" && ` / ${getExpectedEpisodeCount()} episodes expected`}
                       </p>
                     </div>
                     
+                    {/* Download Links */}
                     <div className="space-y-2">
-                      <Label htmlFor="seriesDownload">
-                        Download Links (one per line, same order as above)
-                      </Label>
-                      <Textarea
-                        id="seriesDownload"
-                        placeholder={"https://dldclv.../ep01...\nhttps://dldclv.../ep02...\nhttps://dldclv.../ep03..."}
-                        value={seriesDownloadLinks}
-                        onChange={(e) => setSeriesDownloadLinks(e.target.value)}
-                        className="min-h-[150px] font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Info className="w-3 h-3" />
-                        {getDownloadLinkCount()} download links entered
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Download Links</Label>
+                        <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="gap-1">
+                          <ClipboardPaste className="w-4 h-4" />
+                          Paste
+                        </Button>
+                      </div>
+                      {tmdbResult.type === "movie" ? (
+                        <Input
+                          value={movieDownloadLink}
+                          onChange={(e) => setMovieDownloadLink(e.target.value)}
+                          className="font-mono text-sm"
+                        />
+                      ) : (
+                        <Textarea
+                          value={seriesDownloadLinks}
+                          onChange={(e) => setSeriesDownloadLinks(e.target.value)}
+                          className="min-h-[150px] font-mono text-sm"
+                        />
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Total links: {getDownloadLinkCount()}
                       </p>
                     </div>
                   </CardContent>
@@ -695,10 +675,10 @@ const UpdateLinks = () => {
                     ) : (
                       <Save className="w-4 h-4 mr-2" />
                     )}
-                    {mediaType === "series" ? `Save Season ${selectedSeason}` : "Save Entry"}
+                    {tmdbResult.type === "series" ? `Save Season ${selectedSeason}` : "Save Entry"}
                   </Button>
                   
-                  {entryExists && mediaType === "series" && (
+                  {entryExists && tmdbResult.type === "series" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" className="text-destructive" disabled={isDeletingSeason}>
@@ -859,7 +839,10 @@ const UpdateLinks = () => {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handlePermanentDelete(entry.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  <AlertDialogAction 
+                                    onClick={() => handlePermanentDelete(entry.id)} 
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
                                     Delete Forever
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
