@@ -89,6 +89,7 @@ const Movies = () => {
           // Use discover endpoint for latest movies
           const params = new URLSearchParams({
             api_key: "fc6d85b3839330e3458701b975195487",
+            include_adult: "false",
             page: pageNum.toString(),
             sort_by: "release_date.desc",
             "release_date.lte": new Date().toISOString().split("T")[0],

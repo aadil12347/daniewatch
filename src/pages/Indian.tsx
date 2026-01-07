@@ -6,7 +6,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
-import { Movie, filterAdultContent } from "@/lib/tmdb";
+import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
 // Indian content genres
@@ -144,6 +144,7 @@ const Indian = () => {
       // Build movie params
       const movieParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
         page: pageNum.toString(),
         sort_by: getSortBy(currentTab),
         with_origin_country: "IN",
@@ -163,6 +164,7 @@ const Indian = () => {
       // Build TV params
       const tvParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
         page: pageNum.toString(),
         sort_by: getTvSortBy(currentTab),
         with_origin_country: "IN",
@@ -190,11 +192,12 @@ const Indian = () => {
         tvRes.json()
       ]);
 
-      // Combine with media_type tags and filter adult content
-      const combinedResults: Movie[] = filterAdultContent([
+      // Combine with media_type tags and filter adult content with strict certification checks
+      const combined = [
         ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
         ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
-      ]);
+      ];
+      const combinedResults: Movie[] = await filterAdultContentStrict(combined);
 
       // Sort by date for popular/latest, by popularity otherwise
       const sortedResults = combinedResults.sort((a, b) => {

@@ -31,6 +31,7 @@ import {
   getTVImages,
   getTVEpisodeGroupDetails,
   EPISODE_GROUP_CONFIG,
+  filterAdultContentStrict,
   TVDetails as TVDetailsType,
   Cast,
   Movie,
@@ -99,7 +100,13 @@ const TVDetails = () => {
 
         setShow(showRes);
         setCast(creditsRes.cast.slice(0, 12));
-        setSimilar(similarRes.results.slice(0, 14));
+        
+        // Filter similar shows with strict certification check
+        const filteredSimilar = await filterAdultContentStrict(
+          similarRes.results.map(s => ({ ...s, media_type: "tv" as const })),
+          "tv"
+        );
+        setSimilar(filteredSimilar.slice(0, 14));
 
         // Get the first English logo or any available logo
         const logo = imagesRes.logos?.find(l => l.iso_639_1 === 'en') || imagesRes.logos?.[0];

@@ -80,6 +80,7 @@ const TVShows = () => {
         // Use discover endpoint for latest and on_air
         const params = new URLSearchParams({
           api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
           page: pageNum.toString(),
           sort_by: activeTab === "latest" ? "first_air_date.desc" : "popularity.desc",
           ...(activeTab === "latest" && { "first_air_date.lte": new Date().toISOString().split("T")[0] }),
