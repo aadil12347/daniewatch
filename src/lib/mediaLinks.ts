@@ -1,8 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import { searchBloggerForTmdbId, BloggerVideoResult } from "./blogger";
 
 export interface MediaLinkResult {
-  source: "supabase" | "blogger" | "fallback";
+  source: "supabase" | "fallback";
   found: boolean;
   watchUrl?: string;
   downloadUrl?: string;
@@ -54,7 +53,7 @@ function getVideasyFallbackUrl(tmdbId: number, type: "movie" | "tv", season?: nu
   }
 }
 
-// Main function to get media links with priority
+// Main function to get media links with priority: Supabase → Videasy fallback
 export async function getMediaLinks(
   tmdbId: number,
   type: "movie" | "tv",
@@ -67,12 +66,12 @@ export async function getMediaLinks(
   };
 
   try {
-    // Step 1: Check Supabase entries table
+    // Check Supabase entries table
     const { data: entry, error } = await supabase
       .from("entries")
       .select("*")
       .eq("id", String(tmdbId))
-      .single();
+      .maybeSingle();
 
     if (!error && entry) {
       const content = entry.content as EntryContent | null;
@@ -140,44 +139,25 @@ export async function getMediaLinks(
     console.log("[MediaLinks] Supabase check error:", err);
   }
 
-  // Step 2: Check Blogger
-  try {
-    const bloggerResult: BloggerVideoResult = await searchBloggerForTmdbId(
-      tmdbId,
-      type,
-      season,
-      episode
-    );
-
-    if (bloggerResult.found) {
-      result.source = "blogger";
-      result.found = true;
-      
-      if (bloggerResult.iframeSrc) {
-        result.watchUrl = bloggerResult.iframeSrc;
-      }
-      if (bloggerResult.downloadLink) {
-        result.downloadUrl = bloggerResult.downloadLink;
-      }
-      if (bloggerResult.seasonEpisodeLinks) {
-        result.seasonEpisodeLinks = bloggerResult.seasonEpisodeLinks;
-      }
-      if (bloggerResult.seasonDownloadLinks) {
-        result.seasonDownloadLinks = bloggerResult.seasonDownloadLinks;
-      }
-      
-      console.log(`[MediaLinks] Found in Blogger for TMDB ${tmdbId}:`, result);
-      return result;
-    }
-  } catch (err) {
-    console.log("[MediaLinks] Blogger check error:", err);
-  }
-
-  // Step 3: Return Videasy fallback
+  // Fallback: Return Videasy URL
   result.watchUrl = getVideasyFallbackUrl(tmdbId, type, season, episode);
   result.source = "fallback";
   result.found = false;
   
   console.log(`[MediaLinks] Using Videasy fallback for TMDB ${tmdbId}:`, result.watchUrl);
   return result;
+}
+
+// Function to trigger download
+export function triggerDownload(url: string, filename?: string) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  if (filename) {
+    link.download = filename;
+  }
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
