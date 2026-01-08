@@ -22,7 +22,7 @@ export const getProfileUrl = (path: string | null) => {
 async function fetchTMDB<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
   const searchParams = new URLSearchParams({
     api_key: TMDB_API_KEY,
-    include_adult: "false",
+    include_adult: "true",
     ...params,
   });
 
