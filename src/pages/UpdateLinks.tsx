@@ -40,7 +40,6 @@ import {
   RotateCcw,
   Link2,
   ClipboardPaste,
-  RefreshCw,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -71,7 +70,7 @@ const UpdateLinks = () => {
   const [tmdbId, setTmdbId] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  // Store the active result and potentially valid candidates for both types
+  // Store active result AND candidates for manual switching
   const [tmdbResult, setTmdbResult] = useState<TMDBResult | null>(null);
   const [candidates, setCandidates] = useState<{ movie: TMDBResult | null; series: TMDBResult | null }>({
     movie: null,
@@ -109,13 +108,13 @@ const UpdateLinks = () => {
       let movieCandidate: TMDBResult | null = null;
       let seriesCandidate: TMDBResult | null = null;
 
-      // Try both APIs in parallel
+      // Fetch both Movie and TV details
       const [movieResult, tvResult] = await Promise.allSettled([
         getMovieDetails(Number(tmdbId)),
         getTVDetails(Number(tmdbId)),
       ]);
 
-      // Process Movie Result
+      // Process Movie
       if (movieResult.status === "fulfilled" && movieResult.value.title) {
         const movie = movieResult.value;
         movieCandidate = {
@@ -127,7 +126,7 @@ const UpdateLinks = () => {
         };
       }
 
-      // Process TV Result
+      // Process Series
       if (tvResult.status === "fulfilled" && tvResult.value.name) {
         const show = tvResult.value;
         const validSeasons = show.seasons?.filter((s) => s.season_number > 0) || [];
@@ -146,38 +145,26 @@ const UpdateLinks = () => {
         };
       }
 
-      // Store candidates
       setCandidates({ movie: movieCandidate, series: seriesCandidate });
 
-      // Auto-detect Logic: Pick the "best" result
+      // Auto-select logic
       let finalResult: TMDBResult | null = null;
-
-      // Logic: If both exist, prioritize TV if it has seasons, otherwise Movie
-      // If only one exists, pick that.
       if (seriesCandidate && movieCandidate) {
-        // If series has valid seasons or movie has no year, prefer series
-        const showHasSeasons = (seriesCandidate.seasons || 0) > 0;
-        if (showHasSeasons) {
-          finalResult = seriesCandidate;
-        } else {
-          finalResult = movieCandidate;
-        }
-      } else if (movieCandidate) {
-        finalResult = movieCandidate;
-      } else if (seriesCandidate) {
-        finalResult = seriesCandidate;
+        // Prefer series if it has seasons, otherwise movie
+        finalResult = (seriesCandidate.seasons || 0) > 0 ? seriesCandidate : movieCandidate;
+      } else {
+        finalResult = movieCandidate || seriesCandidate;
       }
 
-      if (!finalResult) {
-        throw new Error("Not found");
-      }
+      if (!finalResult) throw new Error("Not found");
 
       setTmdbResult(finalResult);
+
       if (finalResult.type === "series" && finalResult.seasonDetails?.length) {
         setSelectedSeason(finalResult.seasonDetails[0].season_number);
       }
 
-      // Check DB for the selected result
+      // Check DB
       await checkAndLoadEntry(finalResult);
     } catch (error) {
       console.error("Search error:", error);
@@ -187,9 +174,8 @@ const UpdateLinks = () => {
     }
   }, [tmdbId]);
 
-  // Helper to load DB data
+  // Check DB for existing entry
   const checkAndLoadEntry = async (result: TMDBResult) => {
-    // Reset form
     setMovieWatchLink("");
     setMovieDownloadLink("");
     setSeriesWatchLinks("");
@@ -197,64 +183,44 @@ const UpdateLinks = () => {
     setEntryExists(false);
 
     const entry = await fetchEntry(String(result.id));
-    if (entry) {
+    if (entry && entry.type === result.type) {
       setEntryExists(true);
-
-      // Only load data if the DB type matches our current UI type
-      if (entry.type === result.type) {
-        if (entry.type === "movie") {
-          const content = entry.content as { watch_link?: string; download_link?: string };
-          setMovieWatchLink(content.watch_link || "");
-          setMovieDownloadLink(content.download_link || "");
-        } else if (entry.type === "series") {
-          const firstSeasonNum = result.seasonDetails?.[0]?.season_number || 1;
-          // If we just switched types, we might need to rely on the state's selectedSeason if it matches
-          // But usually we just load the default or current selectedSeason
-          // We'll update inputs for the currently selected season variable
-          // NOTE: When switching type initially, selectedSeason might need update, handled in handleTypeSwitch
-          loadSeasonData(entry.content, selectedSeason || firstSeasonNum);
-        }
+      if (entry.type === "movie") {
+        const content = entry.content as { watch_link?: string; download_link?: string };
+        setMovieWatchLink(content.watch_link || "");
+        setMovieDownloadLink(content.download_link || "");
+      } else if (entry.type === "series") {
+        // We'll rely on the UI's selectedSeason state to load data in render or explicit calls
+        // Just trigger load for current season
+        loadSeasonData(entry.content, selectedSeason);
       }
     }
   };
 
-  // Manual Type Switch
-  const handleTypeSwitch = async (type: "movie" | "series") => {
-    const newResult = candidates[type];
-    if (!newResult) {
-      toast({
-        title: "Not Found",
-        description: `No ${type === "movie" ? "Movie" : "Series"} data found for this ID.`,
-        variant: "destructive",
-      });
-      return;
-    }
+  // MANUAL SWITCH HANDLER
+  const handleManualSwitch = async (type: "movie" | "series") => {
+    const candidate = candidates[type];
+    if (!candidate) return;
 
-    setTmdbResult(newResult);
+    setTmdbResult(candidate);
 
-    // If switching to series, set default season
-    let seasonToLoad = 1;
-    if (newResult.type === "series" && newResult.seasonDetails?.length) {
-      // Keep current selected if valid, otherwise reset to first
-      const hasCurrent = newResult.seasonDetails.some((s) => s.season_number === selectedSeason);
-      if (!hasCurrent) {
-        seasonToLoad = newResult.seasonDetails[0].season_number;
-        setSelectedSeason(seasonToLoad);
-      } else {
-        seasonToLoad = selectedSeason;
+    // If switching to series, ensure a valid season is selected
+    if (type === "series" && candidate.seasonDetails?.length) {
+      // If current selection is invalid for this show, reset to season 1
+      const validSeason = candidate.seasonDetails.find((s) => s.season_number === selectedSeason);
+      if (!validSeason) {
+        setSelectedSeason(candidate.seasonDetails[0].season_number);
       }
     }
 
-    // Reload DB data for the new type
-    // We pass the newResult to use the correct type for checking logic
-    // We explicitly call checkAndLoadEntry which clears inputs first
-    await checkAndLoadEntry(newResult);
+    await checkAndLoadEntry(candidate);
 
-    // If we just switched to series and checkAndLoadEntry found data, ensure specific season data loads
-    if (newResult.type === "series") {
-      const entry = await fetchEntry(String(newResult.id));
+    // If we switched to series and data exists, explicitly load season data again
+    // (checkAndLoadEntry handles general existence, this handles specific field population)
+    if (type === "series") {
+      const entry = await fetchEntry(String(candidate.id));
       if (entry && entry.type === "series") {
-        loadSeasonData(entry.content, seasonToLoad);
+        loadSeasonData(entry.content, selectedSeason);
       }
     }
   };
@@ -649,10 +615,34 @@ const UpdateLinks = () => {
                 </CardContent>
               </Card>
 
-              {/* Compact Result Card with Poster and Details */}
+              {/* Result Card with Type Toggle */}
               {tmdbResult && (
                 <Card>
                   <CardContent className="pt-4">
+                    {/* Manual Toggle Buttons */}
+                    <div className="flex gap-2 mb-4">
+                      <Button
+                        variant={tmdbResult.type === "movie" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleManualSwitch("movie")}
+                        disabled={!candidates.movie}
+                        className="flex-1"
+                      >
+                        <Film className="w-4 h-4 mr-2" />
+                        Movie {candidates.movie ? "" : "(N/A)"}
+                      </Button>
+                      <Button
+                        variant={tmdbResult.type === "series" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleManualSwitch("series")}
+                        disabled={!candidates.series}
+                        className="flex-1"
+                      >
+                        <Tv className="w-4 h-4 mr-2" />
+                        Series {candidates.series ? "" : "(N/A)"}
+                      </Button>
+                    </div>
+
                     <div className="flex gap-4 items-start">
                       {/* Small Poster */}
                       <div className="flex-shrink-0">
@@ -675,32 +665,10 @@ const UpdateLinks = () => {
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-bold truncate">{tmdbResult.title}</h3>
-                            <p className="text-sm text-muted-foreground">{tmdbResult.year}</p>
-                          </div>
-
-                          {/* Manual Switch - Only show if both candidates exist or forcing type is needed */}
-                          <div className="w-[140px]">
-                            <Select
-                              value={tmdbResult.type}
-                              onValueChange={(v) => handleTypeSwitch(v as "movie" | "series")}
-                            >
-                              <SelectTrigger className="h-7 text-xs">
-                                <SelectValue placeholder="Content Type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="movie" disabled={!candidates.movie}>
-                                  Type: Movie {candidates.movie ? "" : "(N/A)"}
-                                </SelectItem>
-                                <SelectItem value="series" disabled={!candidates.series}>
-                                  Type: Series {candidates.series ? "" : "(N/A)"}
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                        <h3 className="font-bold truncate">{tmdbResult.title}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {tmdbResult.year} • {tmdbResult.type === "movie" ? "Movie" : "Series"}
+                        </p>
 
                         <div className="flex flex-wrap gap-1 mt-2">
                           <Badge variant="outline" className="text-xs">
