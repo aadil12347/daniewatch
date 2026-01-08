@@ -177,7 +177,25 @@ const hasBlockedCertification = async (id: number, mediaType: string): Promise<b
   }
 };
 
+// Minimal filter - only blocks admin-blocked IDs and explicit adult flag
+// Used for general search (movies, TV shows, etc.)
+export const filterMinimal = <T extends { 
+  id: number;
+  adult?: boolean; 
+}>(items: T[]): T[] => {
+  return items.filter(item => {
+    // Check blocklist first (admin-blocked content)
+    if (BLOCKED_IDS.has(item.id)) return false;
+    
+    // Check adult flag from TMDB
+    if (item.adult) return false;
+    
+    return true;
+  });
+};
+
 // Helper to filter adult content client-side with comprehensive checks
+// Used for Anime and Korean pages only
 export const filterAdultContent = <T extends { 
   id: number;
   adult?: boolean; 

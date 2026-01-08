@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMulti, searchAnime, searchKorean, filterAdultContent, Movie } from "@/lib/tmdb";
+import { searchMulti, searchAnime, searchKorean, filterAdultContent, filterMinimal, Movie } from "@/lib/tmdb";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -48,15 +48,17 @@ const Search = () => {
 
         if (requestId !== requestIdRef.current) return;
 
-        setResults(
-          filterAdultContent(
-            category
-              ? response.results
-              : response.results.filter(
-                  (item) => item.media_type === "movie" || item.media_type === "tv",
-                )
-          ),
-        );
+        // For anime/korean categories, strict filtering is already applied in searchAnime/searchKorean
+        // For general search, only apply minimal filtering (admin-blocked + explicit adult flag)
+        const filteredResults = category
+          ? response.results
+          : filterMinimal(
+              response.results.filter(
+                (item) => item.media_type === "movie" || item.media_type === "tv",
+              )
+            );
+        
+        setResults(filteredResults);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);
