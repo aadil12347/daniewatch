@@ -15,13 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +27,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { 
-  Shield, 
+import {
+  Shield,
   Search,
   Loader2,
   Save,
@@ -45,7 +39,8 @@ import {
   Archive,
   RotateCcw,
   Link2,
-  ClipboardPaste
+  ClipboardPaste,
+  RefreshCw,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -71,52 +66,59 @@ const UpdateLinks = () => {
   const [searchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<"update" | "trash">("update");
-  
+
   // Search state
   const [tmdbId, setTmdbId] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+
+  // Store the active result and potentially valid candidates for both types
   const [tmdbResult, setTmdbResult] = useState<TMDBResult | null>(null);
+  const [candidates, setCandidates] = useState<{ movie: TMDBResult | null; series: TMDBResult | null }>({
+    movie: null,
+    series: null,
+  });
   const [searchError, setSearchError] = useState<string | null>(null);
-  
+
   // Entry state
   const [entryExists, setEntryExists] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
-  
+
   // Movie inputs
   const [movieWatchLink, setMovieWatchLink] = useState("");
   const [movieDownloadLink, setMovieDownloadLink] = useState("");
-  
+
   // Series inputs
   const [seriesWatchLinks, setSeriesWatchLinks] = useState("");
   const [seriesDownloadLinks, setSeriesDownloadLinks] = useState("");
-  
+
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
-  
 
   const handleSearch = useCallback(async () => {
     if (!tmdbId.trim()) return;
-    
+
     setIsSearching(true);
     setSearchError(null);
     setTmdbResult(null);
+    setCandidates({ movie: null, series: null });
     setEntryExists(false);
-    
+
     try {
-      let result: TMDBResult | null = null;
-      
-      // Try both APIs in parallel to auto-detect type
+      let movieCandidate: TMDBResult | null = null;
+      let seriesCandidate: TMDBResult | null = null;
+
+      // Try both APIs in parallel
       const [movieResult, tvResult] = await Promise.allSettled([
         getMovieDetails(Number(tmdbId)),
-        getTVDetails(Number(tmdbId))
+        getTVDetails(Number(tmdbId)),
       ]);
-      
-      // Check if movie exists (has a title)
+
+      // Process Movie Result
       if (movieResult.status === "fulfilled" && movieResult.value.title) {
         const movie = movieResult.value;
-        result = {
+        movieCandidate = {
           id: movie.id,
           title: movie.title,
           posterUrl: getImageUrl(movie.poster_path, "w342"),
@@ -124,75 +126,144 @@ const UpdateLinks = () => {
           type: "movie",
         };
       }
-      
-      // Check if TV show exists (has a name) - prioritize TV if both exist based on which has more data
+
+      // Process TV Result
       if (tvResult.status === "fulfilled" && tvResult.value.name) {
         const show = tvResult.value;
-        const validSeasons = show.seasons?.filter(s => s.season_number > 0) || [];
-        
-        // If both exist, prefer the one that seems more valid (has more details)
-        const shouldUseTv = !result || 
-          (show.number_of_seasons && show.number_of_seasons > 0) ||
-          (show.first_air_date && !result.year);
-        
-        if (shouldUseTv || !result) {
-          result = {
-            id: show.id,
-            title: show.name || "Unknown",
-            posterUrl: getImageUrl(show.poster_path, "w342"),
-            year: show.first_air_date?.split("-")[0] || "N/A",
-            type: "series",
-            seasons: show.number_of_seasons,
-            seasonDetails: validSeasons.map(s => ({
-              season_number: s.season_number,
-              episode_count: s.episode_count,
-            })),
-          };
-          setSelectedSeason(validSeasons[0]?.season_number || 1);
-        }
+        const validSeasons = show.seasons?.filter((s) => s.season_number > 0) || [];
+
+        seriesCandidate = {
+          id: show.id,
+          title: show.name || "Unknown",
+          posterUrl: getImageUrl(show.poster_path, "w342"),
+          year: show.first_air_date?.split("-")[0] || "N/A",
+          type: "series",
+          seasons: show.number_of_seasons,
+          seasonDetails: validSeasons.map((s) => ({
+            season_number: s.season_number,
+            episode_count: s.episode_count,
+          })),
+        };
       }
-      
-      if (!result) {
+
+      // Store candidates
+      setCandidates({ movie: movieCandidate, series: seriesCandidate });
+
+      // Auto-detect Logic: Pick the "best" result
+      let finalResult: TMDBResult | null = null;
+
+      // Logic: If both exist, prioritize TV if it has seasons, otherwise Movie
+      // If only one exists, pick that.
+      if (seriesCandidate && movieCandidate) {
+        // If series has valid seasons or movie has no year, prefer series
+        const showHasSeasons = (seriesCandidate.seasons || 0) > 0;
+        if (showHasSeasons) {
+          finalResult = seriesCandidate;
+        } else {
+          finalResult = movieCandidate;
+        }
+      } else if (movieCandidate) {
+        finalResult = movieCandidate;
+      } else if (seriesCandidate) {
+        finalResult = seriesCandidate;
+      }
+
+      if (!finalResult) {
         throw new Error("Not found");
       }
-      
-      setTmdbResult(result);
-      
-      // Check if entry exists in database
-      const entry = await fetchEntry(String(result.id));
-      if (entry) {
-        setEntryExists(true);
-        
-        if (entry.type === "movie") {
-          const content = entry.content as { watch_link?: string; download_link?: string };
-          setMovieWatchLink(content.watch_link || "");
-          setMovieDownloadLink(content.download_link || "");
-        } else if (entry.type === "series") {
-          // Load first season by default
-          const firstSeasonNum = result.seasonDetails?.[0]?.season_number || 1;
-          loadSeasonData(entry.content, firstSeasonNum);
-        }
-      } else {
-        // Reset form
-        setMovieWatchLink("");
-        setMovieDownloadLink("");
-        setSeriesWatchLinks("");
-        setSeriesDownloadLinks("");
+
+      setTmdbResult(finalResult);
+      if (finalResult.type === "series" && finalResult.seasonDetails?.length) {
+        setSelectedSeason(finalResult.seasonDetails[0].season_number);
       }
+
+      // Check DB for the selected result
+      await checkAndLoadEntry(finalResult);
     } catch (error) {
       console.error("Search error:", error);
       setSearchError("Failed to find content with this TMDB ID. Please check the ID and try again.");
     } finally {
       setIsSearching(false);
     }
-  }, [tmdbId, fetchEntry]);
+  }, [tmdbId]);
+
+  // Helper to load DB data
+  const checkAndLoadEntry = async (result: TMDBResult) => {
+    // Reset form
+    setMovieWatchLink("");
+    setMovieDownloadLink("");
+    setSeriesWatchLinks("");
+    setSeriesDownloadLinks("");
+    setEntryExists(false);
+
+    const entry = await fetchEntry(String(result.id));
+    if (entry) {
+      setEntryExists(true);
+
+      // Only load data if the DB type matches our current UI type
+      if (entry.type === result.type) {
+        if (entry.type === "movie") {
+          const content = entry.content as { watch_link?: string; download_link?: string };
+          setMovieWatchLink(content.watch_link || "");
+          setMovieDownloadLink(content.download_link || "");
+        } else if (entry.type === "series") {
+          const firstSeasonNum = result.seasonDetails?.[0]?.season_number || 1;
+          // If we just switched types, we might need to rely on the state's selectedSeason if it matches
+          // But usually we just load the default or current selectedSeason
+          // We'll update inputs for the currently selected season variable
+          // NOTE: When switching type initially, selectedSeason might need update, handled in handleTypeSwitch
+          loadSeasonData(entry.content, selectedSeason || firstSeasonNum);
+        }
+      }
+    }
+  };
+
+  // Manual Type Switch
+  const handleTypeSwitch = async (type: "movie" | "series") => {
+    const newResult = candidates[type];
+    if (!newResult) {
+      toast({
+        title: "Not Found",
+        description: `No ${type === "movie" ? "Movie" : "Series"} data found for this ID.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTmdbResult(newResult);
+
+    // If switching to series, set default season
+    let seasonToLoad = 1;
+    if (newResult.type === "series" && newResult.seasonDetails?.length) {
+      // Keep current selected if valid, otherwise reset to first
+      const hasCurrent = newResult.seasonDetails.some((s) => s.season_number === selectedSeason);
+      if (!hasCurrent) {
+        seasonToLoad = newResult.seasonDetails[0].season_number;
+        setSelectedSeason(seasonToLoad);
+      } else {
+        seasonToLoad = selectedSeason;
+      }
+    }
+
+    // Reload DB data for the new type
+    // We pass the newResult to use the correct type for checking logic
+    // We explicitly call checkAndLoadEntry which clears inputs first
+    await checkAndLoadEntry(newResult);
+
+    // If we just switched to series and checkAndLoadEntry found data, ensure specific season data loads
+    if (newResult.type === "series") {
+      const entry = await fetchEntry(String(newResult.id));
+      if (entry && entry.type === "series") {
+        loadSeasonData(entry.content, seasonToLoad);
+      }
+    }
+  };
 
   // Read URL params on mount and trigger search
   useEffect(() => {
-    const idParam = searchParams.get('id');
+    const idParam = searchParams.get("id");
     if (idParam) {
       setTmdbId(idParam);
-      // Trigger search after a brief delay to ensure state is set
       setTimeout(() => {
         handleSearch();
       }, 100);
@@ -202,7 +273,7 @@ const UpdateLinks = () => {
   const loadSeasonData = async (content: any, season: number) => {
     const seasonKey = `season_${season}`;
     const seasonData = content[seasonKey];
-    
+
     if (seasonData) {
       setSeriesWatchLinks(seasonData.watch_links?.join("\n") || "");
       setSeriesDownloadLinks(seasonData.download_links?.join("\n") || "");
@@ -215,7 +286,7 @@ const UpdateLinks = () => {
   const handleSeasonChange = async (season: string) => {
     const seasonNum = parseInt(season, 10);
     setSelectedSeason(seasonNum);
-    
+
     if (tmdbResult && entryExists) {
       const entry = await fetchEntry(String(tmdbResult.id));
       if (entry?.type === "series") {
@@ -229,43 +300,34 @@ const UpdateLinks = () => {
 
   const handleSave = async () => {
     if (!tmdbResult) return;
-    
+
     setIsSaving(true);
-    
+
     if (tmdbResult.type === "movie") {
-      const result = await saveMovieEntry(
-        String(tmdbResult.id),
-        movieWatchLink,
-        movieDownloadLink
-      );
+      const result = await saveMovieEntry(String(tmdbResult.id), movieWatchLink, movieDownloadLink);
       if (result.success) {
         setEntryExists(true);
         toast({ title: "Saved", description: "Movie links saved successfully." });
       }
     } else {
-      const watchLinks = seriesWatchLinks.split("\n").filter(l => l.trim());
-      const downloadLinks = seriesDownloadLinks.split("\n").filter(l => l.trim());
-      
-      const result = await saveSeriesSeasonEntry(
-        String(tmdbResult.id),
-        selectedSeason,
-        watchLinks,
-        downloadLinks
-      );
+      const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
+      const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
+
+      const result = await saveSeriesSeasonEntry(String(tmdbResult.id), selectedSeason, watchLinks, downloadLinks);
       if (result.success) {
         setEntryExists(true);
         toast({ title: "Saved", description: `Season ${selectedSeason} links saved successfully.` });
       }
     }
-    
+
     setIsSaving(false);
   };
 
   const handleDeleteEntry = async () => {
     if (!tmdbResult) return;
-    
+
     setIsDeleting(true);
-    
+
     // Get the current entry data before deleting
     const entry = await fetchEntry(String(tmdbResult.id));
     if (entry) {
@@ -279,7 +341,7 @@ const UpdateLinks = () => {
         deletedAt: new Date().toISOString(),
       });
     }
-    
+
     const result = await deleteEntry(String(tmdbResult.id));
     if (result.success) {
       setEntryExists(false);
@@ -297,13 +359,13 @@ const UpdateLinks = () => {
 
   const handleDeleteSeason = async () => {
     if (!tmdbResult) return;
-    
+
     setIsDeletingSeason(true);
     const result = await deleteSeasonFromEntry(String(tmdbResult.id), selectedSeason);
     if (result.success) {
       setSeriesWatchLinks("");
       setSeriesDownloadLinks("");
-      
+
       // Check if entry still exists
       const entry = await fetchEntry(String(tmdbResult.id));
       setEntryExists(!!entry);
@@ -313,13 +375,11 @@ const UpdateLinks = () => {
 
   const handleRestoreEntry = async (entry: TrashedEntry) => {
     // Restore to database
-    const { error } = await supabase
-      .from("entries")
-      .upsert({
-        id: entry.id,
-        type: entry.type,
-        content: entry.content,
-      });
+    const { error } = await supabase.from("entries").upsert({
+      id: entry.id,
+      type: entry.type,
+      content: entry.content,
+    });
 
     if (error) {
       toast({
@@ -353,7 +413,7 @@ const UpdateLinks = () => {
     });
   };
 
-  // Paste handlers - replace content instead of appending
+  // Paste handlers
   const handlePasteWatch = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -387,19 +447,19 @@ const UpdateLinks = () => {
     if (tmdbResult?.type === "movie") {
       return movieWatchLink.trim() ? 1 : 0;
     }
-    return seriesWatchLinks.split("\n").filter(l => l.trim()).length;
+    return seriesWatchLinks.split("\n").filter((l) => l.trim()).length;
   };
-  
+
   const getDownloadLinkCount = () => {
     if (tmdbResult?.type === "movie") {
       return movieDownloadLink.trim() ? 1 : 0;
     }
-    return seriesDownloadLinks.split("\n").filter(l => l.trim()).length;
+    return seriesDownloadLinks.split("\n").filter((l) => l.trim()).length;
   };
-  
+
   const getExpectedEpisodeCount = () => {
     if (!tmdbResult?.seasonDetails) return 0;
-    const season = tmdbResult.seasonDetails.find(s => s.season_number === selectedSeason);
+    const season = tmdbResult.seasonDetails.find((s) => s.season_number === selectedSeason);
     return season?.episode_count || 0;
   };
 
@@ -477,9 +537,7 @@ const UpdateLinks = () => {
                 <Link2 className="w-8 h-8 text-primary" />
                 <h1 className="text-3xl font-bold">Update Links</h1>
               </div>
-              <p className="text-muted-foreground mt-1">
-                Manage watch and download links for movies and series
-              </p>
+              <p className="text-muted-foreground mt-1">Manage watch and download links for movies and series</p>
             </div>
           </div>
 
@@ -501,9 +559,7 @@ const UpdateLinks = () => {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Search by TMDB ID</CardTitle>
-                  <CardDescription>
-                    Enter the TMDB ID and press Search or Enter
-                  </CardDescription>
+                  <CardDescription>Enter the TMDB ID and press Search or Enter</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
@@ -516,18 +572,12 @@ const UpdateLinks = () => {
                       />
                     </div>
                     <Button onClick={handleSearch} disabled={isSearching || !tmdbId.trim()}>
-                      {isSearching ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Search className="w-4 h-4" />
-                      )}
+                      {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                       <span className="ml-2">Search</span>
                     </Button>
                   </div>
-                  
-                  {searchError && (
-                    <p className="text-sm text-destructive mt-2">{searchError}</p>
-                  )}
+
+                  {searchError && <p className="text-sm text-destructive mt-2">{searchError}</p>}
                 </CardContent>
               </Card>
 
@@ -566,15 +616,13 @@ const UpdateLinks = () => {
                       />
                     )}
                   </div>
-                  
+
                   {/* Download Links */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-base font-semibold">Download Links</Label>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {getDownloadLinkCount()} links
-                        </span>
+                        <span className="text-xs text-muted-foreground">{getDownloadLinkCount()} links</span>
                         <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="gap-1 h-7 px-2">
                           <ClipboardPaste className="w-3 h-3" />
                           Paste
@@ -624,23 +672,51 @@ const UpdateLinks = () => {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold truncate">{tmdbResult.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {tmdbResult.year} • {tmdbResult.type === "movie" ? "Movie" : "Series"}
-                        </p>
-                        
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold truncate">{tmdbResult.title}</h3>
+                            <p className="text-sm text-muted-foreground">{tmdbResult.year}</p>
+                          </div>
+
+                          {/* Manual Switch - Only show if both candidates exist or forcing type is needed */}
+                          <div className="w-[140px]">
+                            <Select
+                              value={tmdbResult.type}
+                              onValueChange={(v) => handleTypeSwitch(v as "movie" | "series")}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Content Type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="movie" disabled={!candidates.movie}>
+                                  Type: Movie {candidates.movie ? "" : "(N/A)"}
+                                </SelectItem>
+                                <SelectItem value="series" disabled={!candidates.series}>
+                                  Type: Series {candidates.series ? "" : "(N/A)"}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
                         <div className="flex flex-wrap gap-1 mt-2">
-                          <Badge variant="outline" className="text-xs">TMDB: {tmdbResult.id}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            TMDB: {tmdbResult.id}
+                          </Badge>
                           {entryExists ? (
-                            <Badge variant="default" className="bg-green-500 text-xs">Exists</Badge>
+                            <Badge variant="default" className="bg-green-500 text-xs">
+                              Exists
+                            </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">New</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              New
+                            </Badge>
                           )}
                         </div>
-                        
+
                         {/* Season selector for series */}
                         {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
                           <div className="mt-2">
@@ -668,14 +744,10 @@ const UpdateLinks = () => {
               {tmdbResult && (
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleSave} disabled={isSaving}>
-                    {isSaving ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-2" />
-                    )}
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     {tmdbResult.type === "series" ? `Save Season ${selectedSeason}` : "Save Entry"}
                   </Button>
-                  
+
                   {entryExists && tmdbResult.type === "series" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -697,14 +769,17 @@ const UpdateLinks = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteSeason} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          <AlertDialogAction
+                            onClick={handleDeleteSeason}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
                             Delete Season
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   )}
-                  
+
                   {entryExists && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -726,7 +801,10 @@ const UpdateLinks = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteEntry} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          <AlertDialogAction
+                            onClick={handleDeleteEntry}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
                             Move to Trash
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -742,9 +820,9 @@ const UpdateLinks = () => {
               <div className="flex justify-end">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="text-destructive hover:text-destructive"
                       disabled={trashedEntries.length === 0}
                     >
@@ -756,12 +834,16 @@ const UpdateLinks = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Empty Trash?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to permanently delete {trashedEntries.length} entries? This cannot be undone.
+                        Are you sure you want to permanently delete {trashedEntries.length} entries? This cannot be
+                        undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleEmptyTrash} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction
+                        onClick={handleEmptyTrash}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
                         Empty Trash
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -775,9 +857,7 @@ const UpdateLinks = () => {
                   <CardContent>
                     <Archive className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                     <h2 className="text-xl font-semibold mb-2">Trash is empty</h2>
-                    <p className="text-muted-foreground">
-                      Deleted entries will appear here for recovery.
-                    </p>
+                    <p className="text-muted-foreground">Deleted entries will appear here for recovery.</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -801,7 +881,7 @@ const UpdateLinks = () => {
                               )}
                             </div>
                           )}
-                          
+
                           <div className="flex-1">
                             <h3 className="font-semibold">{entry.title}</h3>
                             <div className="flex gap-2 mt-1">
@@ -812,10 +892,10 @@ const UpdateLinks = () => {
                               Deleted {formatDistanceToNow(new Date(entry.deletedAt), { addSuffix: true })}
                             </p>
                           </div>
-                          
+
                           <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
                               onClick={() => handleRestoreEntry(entry)}
                               className="gap-1"
@@ -824,7 +904,11 @@ const UpdateLinks = () => {
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive gap-1"
+                                >
                                   <Trash2 className="w-4 h-4" /> Delete Forever
                                 </Button>
                               </AlertDialogTrigger>
@@ -837,8 +921,8 @@ const UpdateLinks = () => {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handlePermanentDelete(entry.id)} 
+                                  <AlertDialogAction
+                                    onClick={() => handlePermanentDelete(entry.id)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
                                     Delete Forever
