@@ -8,17 +8,17 @@ export interface EntryAvailability {
 }
 
 interface MovieContent {
-  watchLink?: string;
-  downloadLink?: string;
+  watch_link?: string;
+  download_link?: string;
 }
 
 interface SeriesSeasonContent {
-  watchLinks?: string[];
-  downloadLinks?: string[];
+  watch_links?: string[];
+  download_links?: string[];
 }
 
 interface SeriesContent {
-  seasons: Record<string, SeriesSeasonContent>;
+  [key: string]: SeriesSeasonContent;
 }
 
 interface EntryData {
@@ -50,20 +50,21 @@ export const useEntryAvailability = () => {
 
         if (entry.type === 'movie') {
           const content = entry.content as MovieContent;
-          hasWatch = !!(content.watchLink && content.watchLink.trim());
-          hasDownload = !!(content.downloadLink && content.downloadLink.trim());
+          hasWatch = !!(content.watch_link && content.watch_link.trim());
+          hasDownload = !!(content.download_link && content.download_link.trim());
         } else if (entry.type === 'series') {
           const content = entry.content as SeriesContent;
-          if (content.seasons) {
-            Object.values(content.seasons).forEach((season) => {
-              if (season.watchLinks?.some(link => link && link.trim())) {
+          Object.keys(content).forEach((key) => {
+            if (key.startsWith('season_')) {
+              const season = content[key];
+              if (season.watch_links?.some(link => link && link.trim())) {
                 hasWatch = true;
               }
-              if (season.downloadLinks?.some(link => link && link.trim())) {
+              if (season.download_links?.some(link => link && link.trim())) {
                 hasDownload = true;
               }
-            });
-          }
+            }
+          });
         }
 
         map.set(entry.id, { hasWatch, hasDownload });
