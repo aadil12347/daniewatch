@@ -176,24 +176,24 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             posterPath={movie.poster_path}
           />
           {/* Link Availability Indicators - Admin Only */}
-          <div className="flex items-center gap-1 ml-0.5">
+          <div className="flex items-center gap-1.5 ml-1">
             {/* Watch Link Indicator (Green) */}
             <div 
               className={cn(
-                "w-2 h-2 rounded-full transition-all duration-300",
+                "w-2.5 h-2.5 rounded-full transition-all duration-300",
                 hasWatch 
-                  ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" 
-                  : "bg-green-500/30"
+                  ? "bg-green-400 shadow-[0_0_6px_2px_rgba(74,222,128,1),0_0_12px_4px_rgba(74,222,128,0.8),0_0_20px_6px_rgba(74,222,128,0.5)]" 
+                  : "bg-green-900/50"
               )}
               title={hasWatch ? "Watch link available" : "No watch link"}
             />
             {/* Download Link Indicator (Red) */}
             <div 
               className={cn(
-                "w-2 h-2 rounded-full transition-all duration-300",
+                "w-2.5 h-2.5 rounded-full transition-all duration-300",
                 hasDownload 
-                  ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" 
-                  : "bg-red-500/30"
+                  ? "bg-red-400 shadow-[0_0_6px_2px_rgba(248,113,113,1),0_0_12px_4px_rgba(248,113,113,0.8),0_0_20px_6px_rgba(248,113,113,0.5)]" 
+                  : "bg-red-900/50"
               )}
               title={hasDownload ? "Download link available" : "No download link"}
             />
