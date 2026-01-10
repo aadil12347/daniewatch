@@ -3,6 +3,7 @@ import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useMedia } from "@/contexts/MediaContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface VideoPlayerProps {
   tmdbId: number;
@@ -17,6 +18,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   const [isLoading, setIsLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const { setIsVideoPlaying } = useMedia();
+  const isMobile = useIsMobile();
 
   // Check for video sources with priority: Supabase -> Blogger -> Videasy
   useEffect(() => {
@@ -125,8 +127,8 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       className={containerClasses}
       style={containerStyle}
     >
-      {/* Close button - only show in inline mode, player has its own controls */}
-      {inline && (
+      {/* Close button - only show in inline mode on desktop, hidden on mobile/tablet */}
+      {inline && !isMobile && (
         <Button
           variant="ghost"
           size="icon"
