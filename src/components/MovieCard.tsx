@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAdmin } from "@/hooks/useAdmin";
-
+import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 interface MovieCardProps {
   movie: Movie;
   index?: number;
@@ -20,6 +20,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
   const { isBlocked } = usePostModeration();
+  const { getAvailability } = useEntryAvailability();
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as 'movie' | 'tv');
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
@@ -28,6 +29,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const rating = movie.vote_average?.toFixed(1);
   
   const blocked = isBlocked(movie.id, mediaType as 'movie' | 'tv');
+  const { hasWatch, hasDownload } = getAvailability(movie.id);
   
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -163,7 +165,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
         {/* Admin Controls - Always rendered, visibility controlled by opacity/pointer-events */}
         <div 
           className={cn(
-            "absolute top-2 left-2 z-30 transition-opacity duration-0",
+            "absolute top-2 left-2 z-30 flex items-center gap-1 transition-opacity duration-0",
             isAdmin ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           )}
         >
@@ -173,6 +175,29 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             title={title}
             posterPath={movie.poster_path}
           />
+          {/* Link Availability Indicators - Admin Only */}
+          <div className="flex items-center gap-1 ml-0.5">
+            {/* Watch Link Indicator (Green) */}
+            <div 
+              className={cn(
+                "w-2 h-2 rounded-full transition-all duration-300",
+                hasWatch 
+                  ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" 
+                  : "bg-green-500/30"
+              )}
+              title={hasWatch ? "Watch link available" : "No watch link"}
+            />
+            {/* Download Link Indicator (Red) */}
+            <div 
+              className={cn(
+                "w-2 h-2 rounded-full transition-all duration-300",
+                hasDownload 
+                  ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" 
+                  : "bg-red-500/30"
+              )}
+              title={hasDownload ? "Download link available" : "No download link"}
+            />
+          </div>
         </div>
       </div>
     </div>
