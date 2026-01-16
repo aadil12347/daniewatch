@@ -35,14 +35,9 @@ const Movies = () => {
 
   const setPageParam = useCallback(
     (nextPage: number, replace = false) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set("page", String(nextPage));
-          return next;
-        },
-        { replace },
-      );
+      const next = new URLSearchParams(window.location.search);
+      next.set("page", String(nextPage));
+      setSearchParams(next, { replace });
     },
     [setSearchParams],
   );
