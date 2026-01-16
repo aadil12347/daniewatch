@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -34,6 +34,8 @@ const Korean = () => {
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const didMountRef = useRef(false);
 
   const setPageParam = useCallback(
     (nextPage: number, replace = false) => {
@@ -139,9 +141,14 @@ const Korean = () => {
     [selectedTags, selectedYear],
   );
 
+  // When filters change, reset to page 1 (skip initial mount so back button preserves page)
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
     if (page !== 1) setPageParam(1, true);
-  }, [selectedTags, selectedYear]);
+  }, [selectedTags, selectedYear, page, setPageParam]);
 
   useEffect(() => {
     fetchKorean(page);
