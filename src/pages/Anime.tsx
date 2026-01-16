@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
-import { useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PaginationBar } from "@/components/PaginationBar";
-import { Movie, filterAdultContent, sortByReleaseAirDateDesc } from "@/lib/tmdb";
+import { Movie, filterAdultContent } from "@/lib/tmdb";
+import { Loader2 } from "lucide-react";
+import { useListStateCache } from "@/hooks/useListStateCache";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
-const MIN_RATING = 6; // 3 stars
 
+// Anime-specific sub-genres/tags
 const ANIME_TAGS = [
   { id: "action", label: "Action", genreId: 10759 },
   { id: "comedy", label: "Comedy", genreId: 35 },
@@ -24,137 +24,174 @@ const ANIME_TAGS = [
 ];
 
 const Anime = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
-
   const [items, setItems] = useState<Movie[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const didMountRef = useRef(false);
+  const { saveCache, getCache } = useListStateCache<Movie>();
 
-  const setPageParam = useCallback(
-    (nextPage: number, replace = false) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set("page", String(nextPage));
-          return next;
-        },
-        { replace },
-      );
-    },
-    [setSearchParams],
-  );
-
-  const fetchAnime = useCallback(
-    async (pageNum: number) => {
-      setIsLoading(true);
-      try {
-        const today = new Date().toISOString().split("T")[0];
-        const allGenres = [ANIME_GENRE_ID, ...selectedTags];
-
-        const params = new URLSearchParams({
-          api_key: "fc6d85b3839330e3458701b975195487",
-          include_adult: "false",
-          page: pageNum.toString(),
-          sort_by: "first_air_date.desc",
-          with_genres: allGenres.join(","),
-          with_original_language: "ja",
-          "vote_average.gte": String(MIN_RATING),
-          "vote_count.gte": "20",
-          "first_air_date.lte": today,
-        });
-
-        if (selectedYear) {
-          if (selectedYear === "older") {
-            params.set("first_air_date.lte", "2019-12-31");
-          } else {
-            params.set("first_air_date_year", selectedYear);
-          }
-        }
-
-        const res = await fetch(
-          `https://api.themoviedb.org/3/discover/tv?${params}`,
-        );
-        const response = await res.json();
-
-        const filteredResults = sortByReleaseAirDateDesc(
-          filterAdultContent(response.results).filter(
-            (m: Movie) => (m.vote_average ?? 0) >= MIN_RATING,
-          ) as Movie[],
-        );
-
-        setItems(filteredResults);
-        const fallbackTotalPages = Math.ceil((response.total_results || 0) / 20) || 1;
-        setTotalPages(Math.max(1, Number(response.total_pages) || fallbackTotalPages));
-      } catch (error) {
-        console.error("Failed to fetch anime:", error);
-        setItems([]);
-        setTotalPages(1);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [selectedTags, selectedYear],
-  );
-
-  // When filters change, reset to page 1 (skip initial mount so back button preserves page)
+  // Try to restore from cache on mount
   useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
+    const cached = getCache("default", selectedTags);
+    if (cached && cached.items.length > 0) {
+      setItems(cached.items);
+      setPage(cached.page);
+      setHasMore(cached.hasMore);
+      setIsLoading(false);
+      setIsRestoredFromCache(true);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save cache before unmount
+  useEffect(() => {
+    return () => {
+      if (items.length > 0) {
+        saveCache({
+          items,
+          page,
+          hasMore,
+          activeTab: "default",
+          selectedFilters: selectedTags,
+        });
+      }
+    };
+  }, [items, page, hasMore, selectedTags, saveCache]);
+
+  const fetchAnime = useCallback(async (pageNum: number, reset: boolean = false) => {
+    if (reset) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
     }
 
-    // Important: do NOT depend on `page` here, otherwise changing pages would immediately reset back to 1.
-    setPageParam(1, true);
-  }, [selectedTags, selectedYear, setPageParam]);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const allGenres = [ANIME_GENRE_ID, ...selectedTags];
+      
+      // Build params - sorted by first air date desc
+      const params = new URLSearchParams({
+        api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
+        page: pageNum.toString(),
+        sort_by: "first_air_date.desc",
+        with_genres: allGenres.join(","),
+        with_original_language: "ja",
+        "vote_count.gte": "20",
+        "first_air_date.lte": today,
+      });
 
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          params.set("first_air_date.lte", "2019-12-31");
+        } else {
+          params.set("first_air_date_year", selectedYear);
+        }
+      }
+
+      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+      const response = await res.json();
+
+      const filteredResults = filterAdultContent(response.results) as Movie[];
+      if (reset) {
+        setItems(filteredResults);
+      } else {
+        setItems(prev => [...prev, ...filteredResults]);
+      }
+      setHasMore(response.page < response.total_pages);
+    } catch (error) {
+      console.error("Failed to fetch anime:", error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [selectedTags, selectedYear]);
+
+  // Reset and fetch when filters change
   useEffect(() => {
-    fetchAnime(page);
-  }, [fetchAnime, page]);
+    if (!isInitialized) return;
+    if (isRestoredFromCache) {
+      setIsRestoredFromCache(false);
+      return;
+    }
+    setPage(1);
+    setItems([]);
+    setHasMore(true);
+    fetchAnime(1, true);
+  }, [selectedTags, selectedYear, isInitialized]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [hasMore, isLoading, isLoadingMore]);
+
+  // Fetch more when page changes
+  useEffect(() => {
+    if (page > 1 && !isRestoredFromCache) {
+      fetchAnime(page);
+    }
+  }, [page, fetchAnime, isRestoredFromCache]);
 
   const toggleTag = (genreId: number) => {
-    setSelectedTags((prev) =>
+    setSelectedTags(prev =>
       prev.includes(genreId)
-        ? prev.filter((id) => id !== genreId)
-        : [...prev, genreId],
+        ? prev.filter(id => id !== genreId)
+        : [...prev, genreId]
     );
   };
 
-  const clearTags = () => setSelectedTags([]);
+  const clearTags = () => {
+    setSelectedTags([]);
+  };
 
   const clearFilters = () => {
     setSelectedTags([]);
     setSelectedYear(null);
-    setPageParam(1);
   };
 
-  const genresForNav = useMemo(
-    () => ANIME_TAGS.map((tag) => ({ id: tag.genreId, name: tag.label })),
-    [],
-  );
+  // Convert tags to genre format for CategoryNav
+  const genresForNav = ANIME_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
 
   return (
     <>
       <Helmet>
         <title>Anime - DanieWatch</title>
-        <meta
-          name="description"
-          content="Watch the best anime series sorted by latest release. Filter by genre and year."
-        />
+        <meta name="description" content="Watch the best anime series sorted by latest release. Filter by genre and year." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        <main className="container mx-auto px-4 pt-24 pb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">
-            Anime
-          </h1>
+        <div className="container mx-auto px-4 pt-24 pb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">Anime</h1>
 
+          {/* Category Navigation */}
           <div className="mb-8">
             <CategoryNav
               genres={genresForNav}
@@ -166,6 +203,7 @@ const Anime = () => {
             />
           </div>
 
+          {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {isLoading
               ? Array.from({ length: 18 }).map((_, i) => (
@@ -176,19 +214,18 @@ const Anime = () => {
                   </div>
                 ))
               : items.map((item, index) => (
-                  <MovieCard
-                    key={`${item.id}-${index}`}
-                    movie={{ ...item, media_type: "tv" }}
+                  <MovieCard 
+                    key={`${item.id}-${index}`} 
+                    movie={{ ...item, media_type: "tv" }} 
                     animationDelay={Math.min(index * 30, 300)}
                   />
                 ))}
           </div>
 
+          {/* No results message */}
           {!isLoading && items.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                No anime found with the selected filters.
-              </p>
+              <p className="text-muted-foreground">No anime found with the selected filters.</p>
               <button
                 onClick={clearFilters}
                 className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
@@ -198,14 +235,19 @@ const Anime = () => {
             </div>
           )}
 
-          <div className="py-10">
-            <PaginationBar
-              page={page}
-              totalPages={totalPages}
-              onPageChange={(p) => setPageParam(p)}
-            />
+          {/* Loading More Indicator */}
+          <div ref={loadMoreRef} className="flex justify-center py-8">
+            {isLoadingMore && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading more...</span>
+              </div>
+            )}
+            {!hasMore && items.length > 0 && (
+              <p className="text-muted-foreground">You've reached the end</p>
+            )}
           </div>
-        </main>
+        </div>
 
         <Footer />
       </div>

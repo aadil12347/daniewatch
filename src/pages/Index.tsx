@@ -16,11 +16,8 @@ import {
   getAnimePopular,
   getKoreanPopular,
   filterAdultContent,
-  sortByReleaseAirDateDesc,
   Movie,
 } from "@/lib/tmdb";
-
-const MIN_RATING = 6; // 3 stars
 
 const Index = () => {
   const [trending, setTrending] = useState<Movie[]>([]);
@@ -32,39 +29,7 @@ const Index = () => {
   const [animePopular, setAnimePopular] = useState<Movie[]>([]);
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { filterBlockedPosts, getPinnedPosts } = usePostModeration();
-
-  const minRated = (items: Movie[]) =>
-    items.filter((m) => (m.vote_average ?? 0) >= MIN_RATING);
-
-  const applyPinnedAndDateSort = (
-    items: Movie[],
-    page: string,
-    defaultMediaType?: "movie" | "tv",
-  ) => {
-    const filtered = filterBlockedPosts(items, defaultMediaType);
-    const pinnedForPage = getPinnedPosts(page);
-
-    if (pinnedForPage.length === 0) return sortByReleaseAirDateDesc(filtered);
-
-    const pinnedItems: Movie[] = [];
-    const nonPinned: Movie[] = [];
-
-    filtered.forEach((item) => {
-      const mediaType = (item.media_type ||
-        (item.first_air_date ? "tv" : defaultMediaType || "movie")) as
-        | "movie"
-        | "tv";
-
-      const isPinnedItem = pinnedForPage.some(
-        (p) => p.tmdb_id === String(item.id) && p.media_type === mediaType,
-      );
-
-      (isPinnedItem ? pinnedItems : nonPinned).push(item);
-    });
-
-    return [...pinnedItems, ...sortByReleaseAirDateDesc(nonPinned)];
-  };
+  const { filterBlockedPosts, sortWithPinnedFirst } = usePostModeration();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -89,14 +54,14 @@ const Index = () => {
           getKoreanPopular(),
         ]);
 
-        setTrending(minRated(filterAdultContent(trendingRes.results)));
-        setPopularMovies(minRated(filterAdultContent(popularMoviesRes.results)));
-        setTopRatedMovies(minRated(filterAdultContent(topRatedMoviesRes.results)));
-        setPopularTV(minRated(filterAdultContent(popularTVRes.results)));
-        setTopRatedTV(minRated(filterAdultContent(topRatedTVRes.results)));
-        setIndianPopular(minRated(filterAdultContent(indianRes.results)));
-        setAnimePopular(minRated(filterAdultContent(animeRes.results)));
-        setKoreanPopular(minRated(filterAdultContent(koreanRes.results)));
+        setTrending(filterAdultContent(trendingRes.results));
+        setPopularMovies(filterAdultContent(popularMoviesRes.results));
+        setTopRatedMovies(filterAdultContent(topRatedMoviesRes.results));
+        setPopularTV(filterAdultContent(popularTVRes.results));
+        setTopRatedTV(filterAdultContent(topRatedTVRes.results));
+        setIndianPopular(filterAdultContent(indianRes.results));
+        setAnimePopular(filterAdultContent(animeRes.results));
+        setKoreanPopular(filterAdultContent(koreanRes.results));
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -119,18 +84,12 @@ const Index = () => {
 
       <div className="min-h-screen bg-background">
         <Navbar />
-        <HeroSection
-          items={sortByReleaseAirDateDesc(trending)}
-          isLoading={isLoading}
-        />
+        <HeroSection items={trending} isLoading={isLoading} />
 
         <div className="relative z-10 -mt-16">
           <ContentRow
             title="Top 10 Today"
-            items={applyPinnedAndDateSort(sortByReleaseAirDateDesc(trending), "home").slice(
-              0,
-              10,
-            )}
+            items={sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), 'home')}
             isLoading={isLoading}
             showRank
             size="lg"
@@ -138,81 +97,46 @@ const Index = () => {
 
           <TabbedContentRow
             title="Trending Now"
-            moviesItems={applyPinnedAndDateSort(
-              sortByReleaseAirDateDesc(trending).filter(
-                (item) => item.media_type === "movie",
-              ),
-              "home",
-              "movie",
-            )}
-            tvItems={applyPinnedAndDateSort(
-              sortByReleaseAirDateDesc(trending).filter(
-                (item) => item.media_type === "tv",
-              ),
-              "home",
-              "tv",
-            )}
+            moviesItems={filterBlockedPosts(trending.filter(item => item.media_type === 'movie'), 'movie')}
+            tvItems={filterBlockedPosts(trending.filter(item => item.media_type === 'tv'), 'tv')}
             isLoading={isLoading}
           />
 
           <TabbedContentRow
             title="Popular"
-            moviesItems={applyPinnedAndDateSort(popularMovies, "home", "movie")}
-            tvItems={applyPinnedAndDateSort(popularTV, "home", "tv")}
+            moviesItems={filterBlockedPosts(popularMovies, 'movie')}
+            tvItems={filterBlockedPosts(popularTV, 'tv')}
             isLoading={isLoading}
           />
 
+          {/* Regional Popular Sections */}
           <TabbedContentRow
             title="Indian Popular"
-            moviesItems={applyPinnedAndDateSort(
-              indianPopular.filter((item) => item.media_type === "movie"),
-              "home",
-              "movie",
-            )}
-            tvItems={applyPinnedAndDateSort(
-              indianPopular.filter((item) => item.media_type === "tv"),
-              "home",
-              "tv",
-            )}
+            moviesItems={filterBlockedPosts(indianPopular.filter(item => item.media_type === 'movie'), 'movie')}
+            tvItems={filterBlockedPosts(indianPopular.filter(item => item.media_type === 'tv'), 'tv')}
             isLoading={isLoading}
           />
 
           <TabbedContentRow
             title="Anime Popular"
-            moviesItems={applyPinnedAndDateSort(
-              animePopular.filter((item) => item.media_type === "movie"),
-              "home",
-              "movie",
-            )}
-            tvItems={applyPinnedAndDateSort(
-              animePopular.filter((item) => item.media_type === "tv"),
-              "home",
-              "tv",
-            )}
+            moviesItems={filterBlockedPosts(animePopular.filter(item => item.media_type === 'movie'), 'movie')}
+            tvItems={filterBlockedPosts(animePopular.filter(item => item.media_type === 'tv'), 'tv')}
             isLoading={isLoading}
             defaultTab="tv"
           />
 
           <TabbedContentRow
             title="Korean Popular"
-            moviesItems={applyPinnedAndDateSort(
-              koreanPopular.filter((item) => item.media_type === "movie"),
-              "home",
-              "movie",
-            )}
-            tvItems={applyPinnedAndDateSort(
-              koreanPopular.filter((item) => item.media_type === "tv"),
-              "home",
-              "tv",
-            )}
+            moviesItems={filterBlockedPosts(koreanPopular.filter(item => item.media_type === 'movie'), 'movie')}
+            tvItems={filterBlockedPosts(koreanPopular.filter(item => item.media_type === 'tv'), 'tv')}
             isLoading={isLoading}
             defaultTab="tv"
           />
 
           <TabbedContentRow
             title="Top Rated"
-            moviesItems={applyPinnedAndDateSort(topRatedMovies, "home", "movie")}
-            tvItems={applyPinnedAndDateSort(topRatedTV, "home", "tv")}
+            moviesItems={filterBlockedPosts(topRatedMovies, 'movie')}
+            tvItems={filterBlockedPosts(topRatedTV, 'tv')}
             isLoading={isLoading}
           />
         </div>

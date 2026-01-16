@@ -32,7 +32,6 @@ import {
   getTVEpisodeGroupDetails,
   EPISODE_GROUP_CONFIG,
   filterAdultContentStrict,
-  sortByReleaseAirDateDesc,
   TVDetails as TVDetailsType,
   Cast,
   Movie,
@@ -47,10 +46,6 @@ const TVDetails = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-
-  const backgroundLocation = (location.state as any)?.backgroundLocation;
-  const isModal = Boolean(backgroundLocation);
-
   const [show, setShow] = useState<TVDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -108,10 +103,10 @@ const TVDetails = () => {
         
         // Filter similar shows with strict certification check
         const filteredSimilar = await filterAdultContentStrict(
-          similarRes.results.map((s) => ({ ...s, media_type: "tv" as const })),
-          "tv",
+          similarRes.results.map(s => ({ ...s, media_type: "tv" as const })),
+          "tv"
         );
-        setSimilar(sortByReleaseAirDateDesc(filteredSimilar).slice(0, 14));
+        setSimilar(filteredSimilar.slice(0, 14));
 
         // Get the first English logo or any available logo
         const logo = imagesRes.logos?.find(l => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
@@ -167,8 +162,8 @@ const TVDetails = () => {
     };
 
     fetchData();
-    if (!isModal) window.scrollTo(0, 0);
-  }, [id, isModal]);
+    window.scrollTo(0, 0);
+  }, [id]);
 
   const handleSeasonChange = async (partOrSeasonNumber: number) => {
     if (!id || partOrSeasonNumber === selectedSeason) return;
@@ -216,7 +211,7 @@ const TVDetails = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        {!isModal && <Navbar />}
+        <Navbar />
         <div className="h-screen relative">
           <Skeleton className="absolute inset-0" />
         </div>
@@ -227,7 +222,7 @@ const TVDetails = () => {
   if (!show) {
     return (
       <div className="min-h-screen bg-background">
-        {!isModal && <Navbar />}
+        <Navbar />
         <div className="container mx-auto px-4 pt-32 text-center">
           <h1 className="text-2xl font-bold mb-4">TV Show not found</h1>
           <Button asChild>
@@ -259,7 +254,7 @@ const TVDetails = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        {!isModal && <Navbar />}
+        <Navbar />
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
@@ -599,7 +594,7 @@ const TVDetails = () => {
           </section>
         )}
 
-        {!isModal && <Footer />}
+        <Footer />
       </div>
     </>
   );

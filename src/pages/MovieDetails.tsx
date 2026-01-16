@@ -23,7 +23,6 @@ import {
   getSimilarMovies,
   getMovieImages,
   filterAdultContentStrict,
-  sortByReleaseAirDateDesc,
   MovieDetails as MovieDetailsType,
   Cast,
   Movie,
@@ -37,10 +36,6 @@ const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-
-  const backgroundLocation = (location.state as any)?.backgroundLocation;
-  const isModal = Boolean(backgroundLocation);
-
   const [movie, setMovie] = useState<MovieDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -88,10 +83,10 @@ const MovieDetails = () => {
         
         // Filter similar movies with strict certification check
         const filteredSimilar = await filterAdultContentStrict(
-          similarRes.results.map((m) => ({ ...m, media_type: "movie" as const })),
-          "movie",
+          similarRes.results.map(m => ({ ...m, media_type: "movie" as const })),
+          "movie"
         );
-        setSimilar(sortByReleaseAirDateDesc(filteredSimilar).slice(0, 14));
+        setSimilar(filteredSimilar.slice(0, 14));
         
         // Get the first English logo or any available logo
         const logo = imagesRes.logos?.find(l => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
@@ -110,13 +105,13 @@ const MovieDetails = () => {
     };
 
     fetchData();
-    if (!isModal) window.scrollTo(0, 0);
-  }, [id, isModal]);
+    window.scrollTo(0, 0);
+  }, [id]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        {!isModal && <Navbar />}
+        <Navbar />
         <div className="h-screen relative">
           <Skeleton className="absolute inset-0" />
         </div>
@@ -127,11 +122,11 @@ const MovieDetails = () => {
   if (!movie) {
     return (
       <div className="min-h-screen bg-background">
-        {!isModal && <Navbar />}
+        <Navbar />
         <div className="container mx-auto px-4 pt-32 text-center">
           <h1 className="text-2xl font-bold mb-4">Movie not found</h1>
           <Button asChild>
-            <Link to={"/"}>
+            <Link to="/">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Link>
@@ -155,7 +150,7 @@ const MovieDetails = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        {!isModal && <Navbar />}
+        <Navbar />
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
@@ -326,7 +321,7 @@ const MovieDetails = () => {
           </section>
         )}
 
-        {!isModal && <Footer />}
+        <Footer />
       </div>
     </>
   );

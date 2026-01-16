@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, type Location } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MediaProvider } from "./contexts/MediaContext";
@@ -14,9 +14,7 @@ import { TutorialOverlay } from "./components/TutorialOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
-import MovieDetailsModal from "./pages/MovieDetailsModal";
 import TVDetails from "./pages/TVDetails";
-import TVDetailsModal from "./pages/TVDetailsModal";
 import Movies from "./pages/Movies";
 import TVShows from "./pages/TVShows";
 import Anime from "./pages/Anime";
@@ -56,38 +54,27 @@ const queryClient = new QueryClient();
 
 const AnimatedRoutes = () => {
   const location = useLocation();
-  const state = location.state as { backgroundLocation?: Location } | null;
-  const backgroundLocation = state?.backgroundLocation;
 
   return (
-    <>
-      <PageTransition key={(backgroundLocation || location).pathname}>
-        <Routes location={backgroundLocation || location}>
-          <Route path="/" element={<Index />} />
-          <Route path="/movie/:id" element={<MovieDetails />} />
-          <Route path="/tv/:id" element={<TVDetails />} />
-          <Route path="/movies" element={<Movies />} />
-          <Route path="/tv" element={<TVShows />} />
-          <Route path="/indian" element={<Indian />} />
-          <Route path="/anime" element={<Anime />} />
-          <Route path="/korean" element={<Korean />} />
-          <Route path="/watchlist" element={<Watchlist />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/requests" element={<Requests />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/update-links" element={<UpdateLinks />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </PageTransition>
-
-      {backgroundLocation && (
-        <Routes>
-          <Route path="/movie/:id" element={<MovieDetailsModal />} />
-          <Route path="/tv/:id" element={<TVDetailsModal />} />
-        </Routes>
-      )}
-    </>
+    <PageTransition key={location.pathname + location.search}>
+      <Routes location={location}>
+        <Route path="/" element={<Index />} />
+        <Route path="/movie/:id" element={<MovieDetails />} />
+        <Route path="/tv/:id" element={<TVDetails />} />
+        <Route path="/movies" element={<Movies />} />
+        <Route path="/tv" element={<TVShows />} />
+        <Route path="/indian" element={<Indian />} />
+        <Route path="/anime" element={<Anime />} />
+        <Route path="/korean" element={<Korean />} />
+        <Route path="/watchlist" element={<Watchlist />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/requests" element={<Requests />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/update-links" element={<UpdateLinks />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </PageTransition>
   );
 };
 

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Star, Play, Bookmark, Ban } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,6 @@ interface MovieCardProps {
 }
 
 export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0 }: MovieCardProps) => {
-  const location = useLocation();
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
   const { isBlocked } = usePostModeration();
@@ -68,11 +67,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
       )}
 
       <div className={cn("relative", sizeClasses[size])}>
-        <Link
-          to={`/${mediaType}/${movie.id}`}
-          state={{ backgroundLocation: location }}
-          className="block"
-        >
+        <Link to={`/${mediaType}/${movie.id}`} className="block">
           {/* Card */}
           <div className="cinema-card relative aspect-[2/3] rounded-xl overflow-hidden bg-card">
             {posterUrl ? (
