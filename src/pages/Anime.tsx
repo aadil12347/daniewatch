@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Movie, filterAdultContent } from "@/lib/tmdb";
+import { Movie, filterAdultContent, sortByReleaseAirDateDesc } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
@@ -29,7 +29,7 @@ const Anime = () => {
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [page, setPage] = useState(0); // dayOffset cursor (0=today)
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
@@ -66,7 +66,7 @@ const Anime = () => {
     };
   }, [items, page, hasMore, selectedTags, saveCache]);
 
-  const fetchAnime = useCallback(async (dayOffset: number, reset: boolean = false) => {
+  const fetchAnime = useCallback(async (pageNum: number, reset: boolean = false) => {
     if (reset) {
       setIsLoading(true);
     } else {
@@ -74,63 +74,42 @@ const Anime = () => {
     }
 
     try {
-      const MIN_ITEMS = 18;
-      const MAX_DAYS_SCAN = 7;
-
-      const today = new Date();
+      const today = new Date().toISOString().split("T")[0];
       const allGenres = [ANIME_GENRE_ID, ...selectedTags];
+      
+      // Build params - fetched by popularity, then displayed newest-first
+      const params = new URLSearchParams({
+        api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
+        page: pageNum.toString(),
+        sort_by: "popularity.desc",
+        with_genres: allGenres.join(","),
+        with_original_language: "ja",
+        "vote_count.gte": "20",
+        "first_air_date.lte": today,
+      });
 
-      const isDateAllowed = (dateISO: string) => {
-        if (!selectedYear) return true;
-        if (selectedYear === "older") return dateISO <= "2019-12-31";
-        return dateISO.startsWith(`${selectedYear}-`);
-      };
-
-      const toISODate = (d: Date) => d.toISOString().split("T")[0];
-
-      let offset = dayOffset;
-      let daysScanned = 0;
-      const collected: Movie[] = [];
-
-      while (collected.length < MIN_ITEMS && daysScanned < MAX_DAYS_SCAN) {
-        const target = new Date(today);
-        target.setDate(today.getDate() - offset);
-        const dateISO = toISODate(target);
-
-        offset += 1;
-        daysScanned += 1;
-
-        if (!isDateAllowed(dateISO)) continue;
-
-        const params = new URLSearchParams({
-          api_key: "fc6d85b3839330e3458701b975195487",
-          include_adult: "false",
-          page: "1",
-          sort_by: "popularity.desc",
-          with_genres: allGenres.join(","),
-          with_original_language: "ja",
-          "vote_count.gte": "20",
-          "first_air_date.gte": dateISO,
-          "first_air_date.lte": dateISO,
-        });
-
-        const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
-        const response = await res.json();
-
-        const dayResults = filterAdultContent(response.results || []) as Movie[];
-        if (dayResults.length > 0) {
-          collected.push(...dayResults);
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          params.set("first_air_date.lte", "2019-12-31");
+        } else {
+          params.set("first_air_date_year", selectedYear);
         }
       }
 
-      if (reset) {
-        setItems(collected);
-      } else {
-        setItems((prev) => [...prev, ...collected]);
-      }
+      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+      const response = await res.json();
 
-      setPage(offset);
-      setHasMore(true);
+      const filteredResults = sortByReleaseAirDateDesc(
+        filterAdultContent(response.results) as Movie[],
+      );
+      if (reset) {
+        setItems(filteredResults);
+      } else {
+        setItems((prev) => [...prev, ...filteredResults]);
+      }
+      setHasMore(response.page < response.total_pages);
     } catch (error) {
       console.error("Failed to fetch anime:", error);
     } finally {
@@ -146,10 +125,10 @@ const Anime = () => {
       setIsRestoredFromCache(false);
       return;
     }
-    setPage(0);
+    setPage(1);
     setItems([]);
     setHasMore(true);
-    fetchAnime(0, true);
+    fetchAnime(1, true);
   }, [selectedTags, selectedYear, isInitialized]);
 
   // Infinite scroll observer
@@ -161,7 +140,7 @@ const Anime = () => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          fetchAnime(page, false);
+          setPage(prev => prev + 1);
         }
       },
       { threshold: 0.1 }
@@ -172,8 +151,14 @@ const Anime = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [hasMore, isLoading, isLoadingMore, page, fetchAnime]);
+  }, [hasMore, isLoading, isLoadingMore]);
 
+  // Fetch more when page changes
+  useEffect(() => {
+    if (page > 1 && !isRestoredFromCache) {
+      fetchAnime(page);
+    }
+  }, [page, fetchAnime, isRestoredFromCache]);
 
   const toggleTag = (genreId: number) => {
     setSelectedTags(prev =>
