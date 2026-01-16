@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
@@ -24,8 +24,10 @@ const ANIME_TAGS = [
 ];
 
 const Anime = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const page = Math.max(1, Number(new URLSearchParams(location.search).get("page") ?? "1") || 1);
 
   const [items, setItems] = useState<Movie[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -37,11 +39,18 @@ const Anime = () => {
 
   const setPageParam = useCallback(
     (nextPage: number, replace = false) => {
-      const next = new URLSearchParams(window.location.search);
+      const next = new URLSearchParams(location.search);
       next.set("page", String(nextPage));
-      setSearchParams(next, { replace });
+      const search = next.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: search ? `?${search}` : "",
+        },
+        { replace },
+      );
     },
-    [setSearchParams],
+    [location.pathname, location.search, navigate],
   );
 
   const fetchAnime = useCallback(
@@ -83,7 +92,8 @@ const Anime = () => {
         );
 
         setItems(filteredResults);
-        setTotalPages(Math.max(1, response.total_pages || 1));
+        const fallbackTotalPages = Math.ceil((response.total_results || 0) / 20) || 1;
+        setTotalPages(Math.max(1, Number(response.total_pages) || fallbackTotalPages));
       } catch (error) {
         console.error("Failed to fetch anime:", error);
         setItems([]);

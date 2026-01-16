@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
@@ -26,8 +26,10 @@ const TV_ACTION_GENRE = 10759;
 const TV_FANTASY_GENRE = 10765;
 
 const Korean = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const page = Math.max(1, Number(new URLSearchParams(location.search).get("page") ?? "1") || 1);
 
   const [items, setItems] = useState<Movie[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -39,11 +41,18 @@ const Korean = () => {
 
   const setPageParam = useCallback(
     (nextPage: number, replace = false) => {
-      const next = new URLSearchParams(window.location.search);
+      const next = new URLSearchParams(location.search);
       next.set("page", String(nextPage));
-      setSearchParams(next, { replace });
+      const search = next.toString();
+      navigate(
+        {
+          pathname: location.pathname,
+          search: search ? `?${search}` : "",
+        },
+        { replace },
+      );
     },
-    [setSearchParams],
+    [location.pathname, location.search, navigate],
   );
 
   const fetchKorean = useCallback(
@@ -127,9 +136,13 @@ const Korean = () => {
         const sorted = sortByReleaseAirDateDesc(minRated).slice(0, 20);
 
         setItems(sorted);
-        setTotalPages(
-          Math.max(1, Math.max(moviesData.total_pages || 1, tvData.total_pages || 1)),
-        );
+
+        const moviesFallback = Math.ceil((moviesData.total_results || 0) / 20) || 1;
+        const tvFallback = Math.ceil((tvData.total_results || 0) / 20) || 1;
+        const moviesPages = Math.max(1, Number(moviesData.total_pages) || moviesFallback);
+        const tvPages = Math.max(1, Number(tvData.total_pages) || tvFallback);
+
+        setTotalPages(Math.max(1, Math.max(moviesPages, tvPages)));
       } catch (error) {
         console.error("Failed to fetch Korean content:", error);
         setItems([]);
