@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMovieGenres, filterAdultContent, sortByReleaseAirDateDesc, Movie, Genre } from "@/lib/tmdb";
+import { getMovieGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { usePostModeration } from "@/hooks/usePostModeration";
@@ -17,7 +17,7 @@ const Movies = () => {
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0); // dayOffset cursor (0=today)
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
@@ -68,7 +68,7 @@ const Movies = () => {
     };
   }, [movies, page, hasMore, selectedGenres, saveCache]);
 
-  const fetchMovies = useCallback(async (pageNum: number, reset: boolean = false) => {
+  const fetchMovies = useCallback(async (dayOffset: number, reset: boolean = false) => {
     if (reset) {
       setIsLoading(true);
     } else {
@@ -76,45 +76,64 @@ const Movies = () => {
     }
 
     try {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Build params for discover endpoint - fetched by popularity, then displayed newest-first
-      const params = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "popularity.desc",
-        "vote_count.gte": "50",
-        "primary_release_date.lte": today,
-      });
+      const MIN_ITEMS = 18;
+      const MAX_DAYS_SCAN = 7;
 
-      // Year filter
-      if (selectedYear) {
-        if (selectedYear === "older") {
-          params.set("primary_release_date.lte", "2019-12-31");
-        } else {
-          params.set("primary_release_year", selectedYear);
+      const today = new Date();
+
+      const isDateAllowed = (dateISO: string) => {
+        if (!selectedYear) return true;
+        if (selectedYear === "older") return dateISO <= "2019-12-31";
+        return dateISO.startsWith(`${selectedYear}-`);
+      };
+
+      const toISODate = (d: Date) => d.toISOString().split("T")[0];
+
+      let offset = dayOffset;
+      let daysScanned = 0;
+      const collected: Movie[] = [];
+
+      while (collected.length < MIN_ITEMS && daysScanned < MAX_DAYS_SCAN) {
+        const target = new Date(today);
+        target.setDate(today.getDate() - offset);
+        const dateISO = toISODate(target);
+
+        offset += 1;
+        daysScanned += 1;
+
+        if (!isDateAllowed(dateISO)) continue;
+
+        const params = new URLSearchParams({
+          api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
+          page: "1",
+          sort_by: "popularity.desc",
+          "vote_count.gte": "50",
+          "primary_release_date.gte": dateISO,
+          "primary_release_date.lte": dateISO,
+        });
+
+        if (selectedGenres.length > 0) {
+          params.set("with_genres", selectedGenres.join(","));
+        }
+
+        const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
+        const response = await res.json();
+
+        const dayResults = filterAdultContent(response.results || []) as Movie[];
+        if (dayResults.length > 0) {
+          collected.push(...dayResults);
         }
       }
 
-      // Genre filter
-      if (selectedGenres.length > 0) {
-        params.set("with_genres", selectedGenres.join(","));
-      }
-
-      const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
-      const response = await res.json();
-
-      const filteredResults = sortByReleaseAirDateDesc(
-        filterAdultContent(response.results) as Movie[],
-      );
-
       if (reset) {
-        setMovies(filteredResults);
+        setMovies(collected);
       } else {
-        setMovies((prev) => [...prev, ...filteredResults]);
+        setMovies((prev) => [...prev, ...collected]);
       }
-      setHasMore(response.page < response.total_pages);
+
+      setPage(offset); // next dayOffset cursor
+      setHasMore(true);
     } catch (error) {
       console.error("Failed to fetch movies:", error);
     } finally {
@@ -130,10 +149,10 @@ const Movies = () => {
       setIsRestoredFromCache(false);
       return;
     }
-    setPage(1);
+    setPage(0);
     setMovies([]);
     setHasMore(true);
-    fetchMovies(1, true);
+    fetchMovies(0, true);
   }, [selectedGenres, selectedYear, isInitialized]);
 
   // Infinite scroll observer
@@ -145,7 +164,7 @@ const Movies = () => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage(prev => prev + 1);
+          fetchMovies(page, false);
         }
       },
       { threshold: 0.1 }
@@ -156,14 +175,8 @@ const Movies = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [hasMore, isLoading, isLoadingMore]);
+  }, [hasMore, isLoading, isLoadingMore, page, fetchMovies]);
 
-  // Fetch more when page changes
-  useEffect(() => {
-    if (page > 1 && !isRestoredFromCache) {
-      fetchMovies(page);
-    }
-  }, [page, fetchMovies, isRestoredFromCache]);
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres(prev =>
