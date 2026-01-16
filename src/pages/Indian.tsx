@@ -81,23 +81,23 @@ const Indian = () => {
       const movieGenres = selectedTags.join(",");
       const tvGenres = selectedTags.map(g => g === 28 ? TV_ACTION_GENRE : g).join(",");
 
-      // Build movie params - sorted by release date desc
+      // Build movie params - fetched by popularity, then displayed newest-first
       const movieParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: "primary_release_date.desc",
+        sort_by: "popularity.desc",
         with_origin_country: "IN",
         "vote_count.gte": "50",
         "primary_release_date.lte": today,
       });
 
-      // Build TV params - sorted by first air date desc
+      // Build TV params - fetched by popularity, then displayed newest-first
       const tvParams = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: "first_air_date.desc",
+        sort_by: "popularity.desc",
         with_origin_country: "IN",
         "vote_count.gte": "20",
         "first_air_date.lte": today,
