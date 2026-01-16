@@ -16,9 +16,15 @@ type Props = {
   className?: string;
 };
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
-export const PaginationBar: React.FC<Props> = ({ page, totalPages, onPageChange, className }) => {
+export const PaginationBar: React.FC<Props> = ({
+  page,
+  totalPages,
+  onPageChange,
+  className,
+}) => {
   const safeTotal = Math.max(1, totalPages || 1);
   const safePage = clamp(page || 1, 1, safeTotal);
 
@@ -26,7 +32,6 @@ export const PaginationBar: React.FC<Props> = ({ page, totalPages, onPageChange,
     const clamped = clamp(nextPage, 1, safeTotal);
     if (clamped !== safePage) {
       onPageChange(clamped);
-      // Make the change feel immediate and avoid "stuck on page 1" confusion when user is scrolled down.
       requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
@@ -34,29 +39,29 @@ export const PaginationBar: React.FC<Props> = ({ page, totalPages, onPageChange,
   };
 
   const pages = React.useMemo(() => {
-    // Simple pagination: show only early pages (1 2 3 …) + a small window near the current page.
     const last = safeTotal;
     if (last <= 3) return Array.from({ length: last }, (_, i) => i + 1);
 
-    const start = [1, 2, 3];
-    if (safePage <= 3) return start;
-
-    const window = [safePage - 1, safePage, safePage + 1]
-      .filter((p) => p >= 4 && p <= last)
-      .filter((p, i, arr) => arr.indexOf(p) === i);
-
-    return [...start, ...window];
+    // Mobile-friendly sliding window:
+    // 1-3 => 1 2 3 …
+    // 4 => 2 3 4 …
+    // 5 => 3 4 5 …
+    const start = clamp(safePage - 2, 1, Math.max(1, last - 2));
+    return [start, start + 1, start + 2].filter((p) => p >= 1 && p <= last);
   }, [safePage, safeTotal]);
 
   if (safeTotal <= 1) return null;
 
+  const showTrailingEllipsis = pages[pages.length - 1] < safeTotal;
+
   return (
     <Pagination className={className}>
-      <PaginationContent>
+      <PaginationContent className="flex-wrap justify-center gap-1 sm:gap-2">
         {safePage > 1 && (
           <PaginationItem>
             <PaginationPrevious
               href="#"
+              className="px-2 sm:px-3 [&>span]:hidden sm:[&>span]:inline"
               onClick={(e) => {
                 e.preventDefault();
                 goTo(safePage - 1);
@@ -65,34 +70,23 @@ export const PaginationBar: React.FC<Props> = ({ page, totalPages, onPageChange,
           </PaginationItem>
         )}
 
-        {pages.map((p, idx) => {
-          const prev = pages[idx - 1];
-          const needsEllipsis = prev !== undefined && p - prev > 1;
+        {pages.map((p) => (
+          <PaginationItem key={p}>
+            <PaginationLink
+              href="#"
+              isActive={p === safePage}
+              className="h-9 w-9 px-0"
+              onClick={(e) => {
+                e.preventDefault();
+                goTo(p);
+              }}
+            >
+              {p}
+            </PaginationLink>
+          </PaginationItem>
+        ))}
 
-          return (
-            <React.Fragment key={p}>
-              {needsEllipsis && (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              )}
-              <PaginationItem>
-                <PaginationLink
-                  href="#"
-                  isActive={p === safePage}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    goTo(p);
-                  }}
-                >
-                  {p}
-                </PaginationLink>
-              </PaginationItem>
-            </React.Fragment>
-          );
-        })}
-
-        {safeTotal > pages[pages.length - 1] && (
+        {showTrailingEllipsis && (
           <PaginationItem>
             <PaginationEllipsis />
           </PaginationItem>
@@ -102,7 +96,10 @@ export const PaginationBar: React.FC<Props> = ({ page, totalPages, onPageChange,
           <PaginationNext
             href="#"
             aria-disabled={safePage === safeTotal}
-            className={safePage === safeTotal ? "pointer-events-none opacity-50" : undefined}
+            className={
+              (safePage === safeTotal ? "pointer-events-none opacity-50 " : "") +
+              "px-2 sm:px-3 [&>span]:hidden sm:[&>span]:inline"
+            }
             onClick={(e) => {
               e.preventDefault();
               goTo(safePage + 1);
@@ -113,3 +110,4 @@ export const PaginationBar: React.FC<Props> = ({ page, totalPages, onPageChange,
     </Pagination>
   );
 };
+
