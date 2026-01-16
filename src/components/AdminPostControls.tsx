@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { QuickEditLinksDropdown } from '@/components/admin/QuickEditLinksDropdown';
 import { UpdateLinksPanel } from '@/components/admin/UpdateLinksPanel';
 import { usePostModeration } from '@/hooks/usePostModeration';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -68,8 +69,13 @@ export const AdminPostControls = ({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-          {/* Update Links */}
+        <DropdownMenuContent onClick={(e) => e.stopPropagation()} className="z-50">
+          {/* Quick Edit (in dropdown) */}
+          <QuickEditLinksDropdown tmdbId={modalInitialId} mediaType={mediaType} />
+
+          <DropdownMenuSeparator />
+
+          {/* Full editor (modal) */}
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();
@@ -77,7 +83,7 @@ export const AdminPostControls = ({
             }}
           >
             <Link2 className="w-4 h-4 mr-2" />
-            Update Links
+            Update Links (Full)
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
