@@ -23,6 +23,7 @@ import {
   getSimilarMovies,
   getMovieImages,
   filterAdultContentStrict,
+  sortByReleaseAirDateDesc,
   MovieDetails as MovieDetailsType,
   Cast,
   Movie,
@@ -83,10 +84,10 @@ const MovieDetails = () => {
         
         // Filter similar movies with strict certification check
         const filteredSimilar = await filterAdultContentStrict(
-          similarRes.results.map(m => ({ ...m, media_type: "movie" as const })),
-          "movie"
+          similarRes.results.map((m) => ({ ...m, media_type: "movie" as const })),
+          "movie",
         );
-        setSimilar(filteredSimilar.slice(0, 14));
+        setSimilar(sortByReleaseAirDateDesc(filteredSimilar).slice(0, 14));
         
         // Get the first English logo or any available logo
         const logo = imagesRes.logos?.find(l => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
