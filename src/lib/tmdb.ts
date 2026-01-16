@@ -11,7 +11,10 @@ export const getBackdropUrl = (path: string | null) => {
   return getImageUrl(path, "original");
 };
 
-export const getPosterUrl = (path: string | null, size: "w185" | "w342" | "w500" | "w780" | "original" = "w500") => {
+export const getPosterUrl = (
+  path: string | null,
+  size: "w185" | "w342" | "w500" | "w780" | "original" = "w500",
+) => {
   return getImageUrl(path, size);
 };
 
@@ -19,7 +22,10 @@ export const getProfileUrl = (path: string | null) => {
   return getImageUrl(path, "w185");
 };
 
-async function fetchTMDB<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
+async function fetchTMDB<T>(
+  endpoint: string,
+  params: Record<string, string> = {},
+): Promise<T> {
   const searchParams = new URLSearchParams({
     api_key: TMDB_API_KEY,
     include_adult: "true",
@@ -27,7 +33,7 @@ async function fetchTMDB<T>(endpoint: string, params: Record<string, string> = {
   });
 
   const response = await fetch(`${BASE_URL}${endpoint}?${searchParams}`);
-  
+
   if (!response.ok) {
     throw new Error(`TMDB API error: ${response.status}`);
   }
@@ -63,7 +69,9 @@ export const getReleaseOrAirDateKey = (item: {
  * Returns a NEW array sorted newest-first by release_date/first_air_date.
  * Items with missing dates are pushed to the bottom.
  */
-export const sortByReleaseAirDateDesc = <T extends { release_date?: string; first_air_date?: string }>(
+export const sortByReleaseAirDateDesc = <
+  T extends { release_date?: string; first_air_date?: string },
+>(
   items: T[],
 ): T[] => {
   return [...items].sort((a, b) => {
@@ -74,129 +82,211 @@ export const sortByReleaseAirDateDesc = <T extends { release_date?: string; firs
     if (!aKey) return 1;
     if (!bKey) return -1;
 
-    // ISO date strings (YYYY-MM-DD) are lexicographically sortable
     return bKey.localeCompare(aKey);
   });
 };
 
 // Comprehensive blocked words list for adult content filtering
 export const BLOCKED_WORDS = [
-  // Sexual terms
-  "sex", "sexy", "sexual", "sexuality",
-  "erotic", "erotica", "eroticism",
-  "porn", "porno", "pornographic", "pornography",
-  "xxx", "x-rated", "x rated",
-  "nude", "naked", "nudity", "nudist",
-  "orgasm", "orgasmic",
-  "breast", "breasts", "boob", "boobs",
-  "dick", "penis", "cock", "vagina", "pussy",
-  "masturbat", "masturbation",
-  "hentai", "ecchi",
-  "sensual", "seduction", "seduce",
-  "lustful", "lust",
-  "softcore", "hardcore",
-  "adult film", "adult movie", "adult content",
-  "18+", "19+", "r-rated",
-  "nsfw", "explicit",
-  "steamy", "intimate scene",
-  "cohabitation", "affair", "one night stand",
-  "stripper", "strip club", "escort",
-  "fetish", "bdsm", "bondage",
-  "milf", "cougar",
-  "threesome", "foursome",
-  "hot mom", "hot mother", "sexy mom", "sexy mother",
-  "stepmother", "step mother", "stepsister", "step sister",
-  "takes off his pants", "takes off her pants",
-  "double life", "secret affair",
-  "naughty", "provocative", "temptation",
-  "forbidden love", "forbidden relationship",
-  "seductive", "aroused", "arousing",
-  "intimate", "passionate night",
-  "one-night", "hookup", "hook up",
-  "carnal", "sensuous", "titillating",
-  "risque", "risqué", "raunchy",
-  "indecent", "lewd", "obscene",
-  "voluptuous", "busty", "cleavage",
-  "undress", "undressing", "disrobe",
-  "bedroom scene", "love scene",
-  "scandalous", "taboo",
-  "kiss room", "kissroom",
+  "sex",
+  "sexy",
+  "sexual",
+  "sexuality",
+  "erotic",
+  "erotica",
+  "eroticism",
+  "porn",
+  "porno",
+  "pornographic",
+  "pornography",
+  "xxx",
+  "x-rated",
+  "x rated",
+  "nude",
+  "naked",
+  "nudity",
+  "nudist",
+  "orgasm",
+  "orgasmic",
+  "breast",
+  "breasts",
+  "boob",
+  "boobs",
+  "dick",
+  "penis",
+  "cock",
+  "vagina",
+  "pussy",
+  "masturbat",
+  "masturbation",
+  "hentai",
+  "ecchi",
+  "sensual",
+  "seduction",
+  "seduce",
+  "lustful",
+  "lust",
+  "softcore",
+  "hardcore",
+  "adult film",
+  "adult movie",
+  "adult content",
+  "18+",
+  "19+",
+  "r-rated",
+  "nsfw",
+  "explicit",
+  "steamy",
+  "intimate scene",
+  "cohabitation",
+  "affair",
+  "one night stand",
+  "stripper",
+  "strip club",
+  "escort",
+  "fetish",
+  "bdsm",
+  "bondage",
+  "milf",
+  "cougar",
+  "threesome",
+  "foursome",
+  "hot mom",
+  "hot mother",
+  "sexy mom",
+  "sexy mother",
+  "stepmother",
+  "step mother",
+  "stepsister",
+  "step sister",
+  "takes off his pants",
+  "takes off her pants",
+  "double life",
+  "secret affair",
+  "naughty",
+  "provocative",
+  "temptation",
+  "forbidden love",
+  "forbidden relationship",
+  "seductive",
+  "aroused",
+  "arousing",
+  "intimate",
+  "passionate night",
+  "one-night",
+  "hookup",
+  "hook up",
+  "carnal",
+  "sensuous",
+  "titillating",
+  "risque",
+  "risqué",
+  "raunchy",
+  "indecent",
+  "lewd",
+  "obscene",
+  "voluptuous",
+  "busty",
+  "cleavage",
+  "undress",
+  "undressing",
+  "disrobe",
+  "bedroom scene",
+  "love scene",
+  "scandalous",
+  "taboo",
+  "kiss room",
+  "kissroom",
 ];
 
-// Blocklist for specific movie/TV IDs that slip through other filters
-export const BLOCKED_IDS = new Set<number>([
-  // Add specific movie/TV IDs here as they are found
-]);
+export const BLOCKED_IDS = new Set<number>([]);
 
-// Blocked certifications/ratings that indicate adult content
 const BLOCKED_RATINGS = new Set([
-  "19", "19+", "NC-17", "NC17", "X", "XXX", 
-  "R18", "R18+", "R-18", "R21", "R-21",
-  "ADULTS ONLY", "AO", "TV-MA",
-  "청소년관람불가", // Korean "Not for Youth"
+  "19",
+  "19+",
+  "NC-17",
+  "NC17",
+  "X",
+  "XXX",
+  "R18",
+  "R18+",
+  "R-18",
+  "R21",
+  "R-21",
+  "ADULTS ONLY",
+  "AO",
+  "TV-MA",
+  "청소년관람불가",
 ]);
 
-// Check if a rating indicates adult content
 const isBlockedRating = (rating: string): boolean => {
   const normalized = rating.trim().toUpperCase();
   if (BLOCKED_RATINGS.has(normalized)) return true;
-  // Also check for patterns like "19" in the rating
   if (/^19\+?$/.test(normalized)) return true;
   return false;
 };
 
-// Cache for certification checks to avoid repeated API calls
 const certificationCache = new Map<string, boolean>();
 
-// Get movie release dates/certifications
-export const getMovieReleaseDates = async (id: number): Promise<{ iso_3166_1: string; certification: string }[]> => {
+export const getMovieReleaseDates = async (
+  id: number,
+): Promise<{ iso_3166_1: string; certification: string }[]> => {
   try {
     const response = await fetchTMDB<{
-      results: { iso_3166_1: string; release_dates: { certification: string }[] }[];
+      results: {
+        iso_3166_1: string;
+        release_dates: { certification: string }[];
+      }[];
     }>(`/movie/${id}/release_dates`);
-    
-    return response.results.flatMap(country => 
+
+    return response.results.flatMap((country) =>
       country.release_dates
-        .filter(rd => rd.certification)
-        .map(rd => ({ iso_3166_1: country.iso_3166_1, certification: rd.certification }))
+        .filter((rd) => rd.certification)
+        .map((rd) => ({
+          iso_3166_1: country.iso_3166_1,
+          certification: rd.certification,
+        })),
     );
   } catch {
     return [];
   }
 };
 
-// Get TV content ratings
-export const getTVContentRatings = async (id: number): Promise<{ iso_3166_1: string; rating: string }[]> => {
+export const getTVContentRatings = async (
+  id: number,
+): Promise<{ iso_3166_1: string; rating: string }[]> => {
   try {
     const response = await fetchTMDB<{
       results: { iso_3166_1: string; rating: string }[];
     }>(`/tv/${id}/content_ratings`);
-    
-    return response.results.filter(r => r.rating);
+
+    return response.results.filter((r) => r.rating);
   } catch {
     return [];
   }
 };
 
-// Check if a single item has a blocked certification
-const hasBlockedCertification = async (id: number, mediaType: string): Promise<boolean> => {
+const hasBlockedCertification = async (
+  id: number,
+  mediaType: string,
+): Promise<boolean> => {
   const cacheKey = `${mediaType}:${id}`;
-  
+
   if (certificationCache.has(cacheKey)) {
     return certificationCache.get(cacheKey)!;
   }
-  
+
   try {
     let isBlocked = false;
-    
+
     if (mediaType === "movie") {
       const certs = await getMovieReleaseDates(id);
-      isBlocked = certs.some(c => isBlockedRating(c.certification));
+      isBlocked = certs.some((c) => isBlockedRating(c.certification));
     } else {
       const ratings = await getTVContentRatings(id);
-      isBlocked = ratings.some(r => isBlockedRating(r.rating));
+      isBlocked = ratings.some((r) => isBlockedRating(r.rating));
     }
-    
+
     certificationCache.set(cacheKey, isBlocked);
     return isBlocked;
   } catch {
@@ -204,86 +294,76 @@ const hasBlockedCertification = async (id: number, mediaType: string): Promise<b
   }
 };
 
-// Minimal filter - only blocks admin-blocked IDs and explicit adult flag
-// Used for general search (movies, TV shows, etc.)
-export const filterMinimal = <T extends { 
-  id: number;
-  adult?: boolean; 
-}>(items: T[]): T[] => {
-  return items.filter(item => {
-    // Check blocklist first (admin-blocked content)
+export const filterMinimal = <T extends { id: number; adult?: boolean }>(
+  items: T[],
+): T[] => {
+  return items.filter((item) => {
     if (BLOCKED_IDS.has(item.id)) return false;
-    
-    // Check adult flag from TMDB
     if (item.adult) return false;
-    
     return true;
   });
 };
 
-// Helper to filter adult content client-side with comprehensive checks
-// Used for Anime and Korean pages only
-export const filterAdultContent = <T extends { 
-  id: number;
-  adult?: boolean; 
-  title?: string; 
-  name?: string; 
-  overview?: string;
-}>(items: T[]): T[] => {
-  return items.filter(item => {
-    // Check blocklist first
+export const filterAdultContent = <
+  T extends {
+    id: number;
+    adult?: boolean;
+    title?: string;
+    name?: string;
+    overview?: string;
+  },
+>(
+  items: T[],
+): T[] => {
+  return items.filter((item) => {
     if (BLOCKED_IDS.has(item.id)) return false;
-    
-    // Check adult flag
     if (item.adult) return false;
-    
-    // Check title, name, and overview for blocked words
-    const textToCheck = [
-      item.title || '',
-      item.name || '',
-      item.overview || ''
-    ].join(' ').toLowerCase();
-    
-    // Check if any blocked word is present
-    const hasBlockedWord = BLOCKED_WORDS.some(word => 
-      textToCheck.includes(word.toLowerCase())
+
+    const textToCheck = [item.title || "", item.name || "", item.overview || ""]
+      .join(" ")
+      .toLowerCase();
+
+    const hasBlockedWord = BLOCKED_WORDS.some((word) =>
+      textToCheck.includes(word.toLowerCase()),
     );
-    
+
     if (hasBlockedWord) return false;
-    
+
     return true;
   });
 };
 
-// Strict async filter that also checks certifications (use for Korean/regional content)
-export const filterAdultContentStrict = async <T extends { 
-  id: number;
-  adult?: boolean; 
-  title?: string; 
-  name?: string; 
-  overview?: string;
-  media_type?: string;
-}>(items: T[], defaultMediaType: "movie" | "tv" = "movie"): Promise<T[]> => {
-  // First pass: quick text-based filtering
+export const filterAdultContentStrict = async <
+  T extends {
+    id: number;
+    adult?: boolean;
+    title?: string;
+    name?: string;
+    overview?: string;
+    media_type?: string;
+  },
+>(
+  items: T[],
+  defaultMediaType: "movie" | "tv" = "movie",
+): Promise<T[]> => {
   const quickFiltered = filterAdultContent(items);
-  
-  // Second pass: check certifications in batches
+
   const BATCH_SIZE = 5;
   const results: T[] = [];
-  
+
   for (let i = 0; i < quickFiltered.length; i += BATCH_SIZE) {
     const batch = quickFiltered.slice(i, i + BATCH_SIZE);
     const checks = await Promise.all(
-      batch.map(async item => {
+      batch.map(async (item) => {
         const mediaType = item.media_type || defaultMediaType;
         const isBlocked = await hasBlockedCertification(item.id, mediaType);
         return { item, isBlocked };
-      })
+      }),
     );
-    
-    results.push(...checks.filter(c => !c.isBlocked).map(c => c.item));
+
+    results.push(...checks.filter((c) => !c.isBlocked).map((c) => c.item));
   }
-  
+
   return results;
 };
 
@@ -356,7 +436,6 @@ export interface Genre {
   name: string;
 }
 
-// Episode Group interfaces (for shows with custom groupings like Parts)
 export interface EpisodeGroupEpisode {
   id: number;
   name: string;
@@ -386,9 +465,8 @@ export interface EpisodeGroupDetails {
   groups: EpisodeGroup[];
 }
 
-// Map of TV show IDs to their preferred episode group IDs
 export const EPISODE_GROUP_CONFIG: Record<number, string> = {
-  71446: "5eb730dfca7ec6001f7beb51", // La Casa de Papel - Parts
+  71446: "5eb730dfca7ec6001f7beb51",
 };
 
 interface TMDBResponse<T> {
@@ -398,9 +476,10 @@ interface TMDBResponse<T> {
   total_results: number;
 }
 
-// Movie endpoints
 export const getTrending = (timeWindow: "day" | "week" = "day", page: number = 1) =>
-  fetchTMDB<TMDBResponse<Movie>>(`/trending/all/${timeWindow}`, { page: page.toString() });
+  fetchTMDB<TMDBResponse<Movie>>(`/trending/all/${timeWindow}`, {
+    page: page.toString(),
+  });
 
 export const getPopularMovies = (page: number = 1) =>
   fetchTMDB<TMDBResponse<Movie>>("/movie/popular", { page: page.toString() });
@@ -415,10 +494,16 @@ export const getUpcomingMovies = (page: number = 1) =>
   fetchTMDB<TMDBResponse<Movie>>("/movie/upcoming", { page: page.toString() });
 
 export const getMovieDetails = (id: number) =>
-  fetchTMDB<MovieDetails>(`/movie/${id}`, { append_to_response: "videos,images", include_image_language: "en,null" });
+  fetchTMDB<MovieDetails>(`/movie/${id}`, {
+    append_to_response: "videos,images",
+    include_image_language: "en,null",
+  });
 
 export const getMovieImages = (id: number) =>
-  fetchTMDB<{ logos: { file_path: string; iso_639_1: string | null }[] }>(`/movie/${id}/images`, { include_image_language: "en,null" });
+  fetchTMDB<{ logos: { file_path: string; iso_639_1: string | null }[] }>(
+    `/movie/${id}/images`,
+    { include_image_language: "en,null" },
+  );
 
 export const getMovieCredits = (id: number) =>
   fetchTMDB<{ cast: Cast[] }>(`/movie/${id}/credits`);
@@ -429,7 +514,6 @@ export const getSimilarMovies = (id: number) =>
 export const getMovieRecommendations = (id: number) =>
   fetchTMDB<TMDBResponse<Movie>>(`/movie/${id}/recommendations`);
 
-// TV endpoints
 export const getPopularTV = (page: number = 1) =>
   fetchTMDB<TMDBResponse<Movie>>("/tv/popular", { page: page.toString() });
 
@@ -437,10 +521,16 @@ export const getTopRatedTV = (page: number = 1) =>
   fetchTMDB<TMDBResponse<Movie>>("/tv/top_rated", { page: page.toString() });
 
 export const getTVDetails = (id: number) =>
-  fetchTMDB<TVDetails>(`/tv/${id}`, { append_to_response: "videos,images", include_image_language: "en,null" });
+  fetchTMDB<TVDetails>(`/tv/${id}`, {
+    append_to_response: "videos,images",
+    include_image_language: "en,null",
+  });
 
 export const getTVImages = (id: number) =>
-  fetchTMDB<{ logos: { file_path: string; iso_639_1: string | null }[] }>(`/tv/${id}/images`, { include_image_language: "en,null" });
+  fetchTMDB<{ logos: { file_path: string; iso_639_1: string | null }[] }>(
+    `/tv/${id}/images`,
+    { include_image_language: "en,null" },
+  );
 
 export const getTVCredits = (id: number) =>
   fetchTMDB<{ cast: Cast[] }>(`/tv/${id}/credits`);
@@ -451,12 +541,14 @@ export const getSimilarTV = (id: number) =>
 export const getTVSeasonDetails = (tvId: number, seasonNumber: number) =>
   fetchTMDB<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
 
-// Get episode group details (for shows with custom groupings like Parts)
 export const getTVEpisodeGroupDetails = (groupId: string) =>
   fetchTMDB<EpisodeGroupDetails>(`/tv/episode_group/${groupId}`);
 
-// Discover TV with filters
-export const discoverTV = (page: number = 1, genreIds: number[] = [], sortBy: string = "popularity.desc") =>
+export const discoverTV = (
+  page: number = 1,
+  genreIds: number[] = [],
+  sortBy: string = "popularity.desc",
+) =>
   fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
     page: page.toString(),
     with_genres: genreIds.join(","),
@@ -464,19 +556,23 @@ export const discoverTV = (page: number = 1, genreIds: number[] = [], sortBy: st
     with_original_language: "ja",
   });
 
-// Search
-export const searchMulti = (query: string) =>
-  fetchTMDB<TMDBResponse<Movie>>("/search/multi", { query });
+export const searchMulti = (query: string, page: number = 1) =>
+  fetchTMDB<TMDBResponse<Movie>>("/search/multi", {
+    query,
+    page: page.toString(),
+  });
 
-// Search for anime (Japanese animation)
-export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> => {
-  const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
-  // Filter to only Japanese animation
-  const filteredResults = results.results.filter(
-    (item) => item.genre_ids?.includes(16) // Animation genre
-  );
-  
-  // Also search for Japanese origin
+export const searchAnime = async (
+  query: string,
+  page: number = 1,
+): Promise<TMDBResponse<Movie>> => {
+  const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", {
+    query,
+    page: page.toString(),
+  });
+
+  const filteredResults = results.results.filter((item) => item.genre_ids?.includes(16));
+
   const detailedResults: Movie[] = [];
   for (const item of filteredResults.slice(0, 20)) {
     try {
@@ -485,56 +581,58 @@ export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> =
         detailedResults.push({ ...item, media_type: "tv" });
       }
     } catch {
-      // Skip if can't fetch details
+      // Skip
     }
   }
-  
+
   return { ...results, results: filterAdultContent(detailedResults) };
 };
 
-// Search for Korean, Chinese, and Turkish dramas
-export const searchKorean = async (query: string): Promise<TMDBResponse<Movie>> => {
-  const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
-  
-  // Supported countries and languages for this category
-  const supportedCountries = ["KR", "CN", "TW", "HK", "TR"]; // Korea, China, Taiwan, Hong Kong, Turkey
-  const supportedLanguages = ["ko", "zh", "tr"]; // Korean, Chinese, Turkish
-  
-  // Filter to only Korean, Chinese, and Turkish content
+export const searchKorean = async (
+  query: string,
+  page: number = 1,
+): Promise<TMDBResponse<Movie>> => {
+  const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", {
+    query,
+    page: page.toString(),
+  });
+
+  const supportedCountries = ["KR", "CN", "TW", "HK", "TR"];
+  const supportedLanguages = ["ko", "zh", "tr"];
+
   const detailedResults: Movie[] = [];
   for (const item of results.results.slice(0, 30)) {
     try {
       const details = await fetchTMDB<any>(`/tv/${item.id}`);
-      const hasMatchingCountry = details.origin_country?.some((country: string) => 
-        supportedCountries.includes(country)
+      const hasMatchingCountry = details.origin_country?.some((country: string) =>
+        supportedCountries.includes(country),
       );
       const hasMatchingLanguage = supportedLanguages.includes(details.original_language);
-      
+
       if (hasMatchingCountry || hasMatchingLanguage) {
         detailedResults.push({ ...item, media_type: "tv" });
       }
     } catch {
-      // Skip if can't fetch details
+      // Skip
     }
   }
-  
+
   return { ...results, results: filterAdultContent(detailedResults) };
 };
 
-// Genres
 export const getMovieGenres = () =>
   fetchTMDB<{ genres: Genre[] }>("/genre/movie/list");
 
-export const getTVGenres = () =>
-  fetchTMDB<{ genres: Genre[] }>("/genre/tv/list");
+export const getTVGenres = () => fetchTMDB<{ genres: Genre[] }>("/genre/tv/list");
 
-// Regional Popular Content (Latest Released)
-export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
-  const today = new Date().toISOString().split('T')[0];
+export const getIndianPopular = async (
+  page: number = 1,
+): Promise<TMDBResponse<Movie>> => {
+  const today = new Date().toISOString().split("T")[0];
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
-  
+  const dateFrom = sixMonthsAgo.toISOString().split("T")[0];
+
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
@@ -551,21 +649,28 @@ export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<M
       "first_air_date.lte": today,
     }),
   ]);
-  
+
   const combined = [
-    ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
-    ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
-  ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
-  
+    ...filterAdultContent(movies.results).map((m) => ({
+      ...m,
+      media_type: "movie" as const,
+    })),
+    ...filterAdultContent(tv.results).map((t) => ({ ...t, media_type: "tv" as const })),
+  ]
+    .sort((a, b) => b.vote_average - a.vote_average)
+    .slice(0, 20);
+
   return { ...movies, results: combined };
 };
 
-export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
-  const today = new Date().toISOString().split('T')[0];
+export const getAnimePopular = async (
+  page: number = 1,
+): Promise<TMDBResponse<Movie>> => {
+  const today = new Date().toISOString().split("T")[0];
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
-  
+  const dateFrom = sixMonthsAgo.toISOString().split("T")[0];
+
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
@@ -584,21 +689,28 @@ export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Mo
       "first_air_date.lte": today,
     }),
   ]);
-  
+
   const combined = [
-    ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
-    ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
-  ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
-  
+    ...filterAdultContent(movies.results).map((m) => ({
+      ...m,
+      media_type: "movie" as const,
+    })),
+    ...filterAdultContent(tv.results).map((t) => ({ ...t, media_type: "tv" as const })),
+  ]
+    .sort((a, b) => b.vote_average - a.vote_average)
+    .slice(0, 20);
+
   return { ...movies, results: combined };
 };
 
-export const getKoreanPopular = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
-  const today = new Date().toISOString().split('T')[0];
+export const getKoreanPopular = async (
+  page: number = 1,
+): Promise<TMDBResponse<Movie>> => {
+  const today = new Date().toISOString().split("T")[0];
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
-  
+  const dateFrom = sixMonthsAgo.toISOString().split("T")[0];
+
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
@@ -615,34 +727,35 @@ export const getKoreanPopular = async (page: number = 1): Promise<TMDBResponse<M
       "first_air_date.lte": today,
     }),
   ]);
-  
+
   const combined = [
-    ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
-    ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
-  ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
-  
+    ...filterAdultContent(movies.results).map((m) => ({
+      ...m,
+      media_type: "movie" as const,
+    })),
+    ...filterAdultContent(tv.results).map((t) => ({ ...t, media_type: "tv" as const })),
+  ]
+    .sort((a, b) => b.vote_average - a.vote_average)
+    .slice(0, 20);
+
   return { ...movies, results: combined };
 };
 
-// Helper to format runtime
 export const formatRuntime = (minutes: number) => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 };
 
-// Helper to get year from date
 export const getYear = (date: string | undefined) => {
   if (!date) return "N/A";
   return new Date(date).getFullYear();
 };
 
-// Helper to get display title
 export const getDisplayTitle = (item: Movie) => {
   return item.title || item.name || "Unknown";
 };
 
-// Helper to get release date
 export const getReleaseDate = (item: Movie) => {
   return item.release_date || item.first_air_date;
 };

@@ -6,14 +6,27 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMulti, searchAnime, searchKorean, filterAdultContent, filterMinimal, sortByReleaseAirDateDesc, Movie } from "@/lib/tmdb";
+import { PaginationBar } from "@/components/PaginationBar";
+import {
+  searchMulti,
+  searchAnime,
+  searchKorean,
+  filterMinimal,
+  sortByReleaseAirDateDesc,
+  Movie,
+} from "@/lib/tmdb";
+
+const MIN_RATING = 6; // 3 stars
 
 const Search = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const category = searchParams.get("category") || "";
   const refreshKey = searchParams.get("t") || "";
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+
   const [results, setResults] = useState<Movie[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const requestIdRef = useRef(0);
 
@@ -23,12 +36,19 @@ const Search = () => {
     return "";
   };
 
+  // Reset page when query/category changes
   useEffect(() => {
-    // Increment request id so late responses from older searches can't overwrite new results
-    const requestId = ++requestIdRef.current;
-    console.log("[search] start", { query, category, refreshKey, requestId });
+    if (page !== 1) {
+      const next = new URLSearchParams(searchParams);
+      next.set("page", "1");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, category]);
 
-    // Always clear results and show loading state for a fresh search
+  useEffect(() => {
+    const requestId = ++requestIdRef.current;
+
     setResults([]);
     setIsLoading(true);
 
@@ -41,16 +61,14 @@ const Search = () => {
       try {
         const response =
           category === "anime"
-            ? await searchAnime(query)
+            ? await searchAnime(query, page)
             : category === "korean"
-              ? await searchKorean(query)
-              : await searchMulti(query);
+              ? await searchKorean(query, page)
+              : await searchMulti(query, page);
 
         if (requestId !== requestIdRef.current) return;
 
-        // For anime/korean categories, strict filtering is already applied in searchAnime/searchKorean
-        // For general search, only apply minimal filtering (admin-blocked + explicit adult flag)
-        const filteredResults = category
+        const base = category
           ? response.results
           : filterMinimal(
               response.results.filter(
@@ -58,40 +76,52 @@ const Search = () => {
               ),
             );
 
-        setResults(sortByReleaseAirDateDesc(filteredResults));
+        const filtered = base.filter((m) => (m.vote_average ?? 0) >= MIN_RATING);
+
+        setResults(sortByReleaseAirDateDesc(filtered));
+        setTotalPages(Math.max(1, response.total_pages || 1));
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);
         setResults([]);
+        setTotalPages(1);
       } finally {
-        if (requestId === requestIdRef.current) {
-          console.log("[search] done", { query, category, refreshKey, requestId, results: (category ? "category" : "multi") });
-          setIsLoading(false);
-        }
+        if (requestId === requestIdRef.current) setIsLoading(false);
       }
     };
 
     fetchResults();
-  }, [query, category, refreshKey]);
+  }, [query, category, refreshKey, page]);
 
   return (
     <>
       <Helmet>
-        <title>{query ? `Search: ${query}${category ? ` in ${getCategoryLabel()}` : ""}` : "Search"} - DanieWatch</title>
-        <meta name="description" content={`Search results for ${query}${category ? ` in ${getCategoryLabel()}` : ""}`} />
+        <title>
+          {query
+            ? `Search: ${query}${category ? ` in ${getCategoryLabel()}` : ""}`
+            : "Search"} - DanieWatch
+        </title>
+        <meta
+          name="description"
+          content={`Search results for ${query}${category ? ` in ${getCategoryLabel()}` : ""}`}
+        />
       </Helmet>
 
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        <div className="container mx-auto px-4 pt-24 pb-8">
+        <main className="container mx-auto px-4 pt-24 pb-8">
           {query ? (
             <>
               <div className="flex items-center gap-3 mb-2">
-                {category === "anime" && <Sparkles className="w-6 h-6 text-primary" />}
+                {category === "anime" && (
+                  <Sparkles className="w-6 h-6 text-primary" />
+                )}
                 {category === "korean" && <Heart className="w-6 h-6 text-primary" />}
                 <h1 className="text-2xl md:text-3xl font-bold">
-                  {category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}
+                  {category
+                    ? `${getCategoryLabel()} Results for "${query}"`
+                    : `Search Results for "${query}"`}
                 </h1>
               </div>
               {category && (
@@ -100,7 +130,7 @@ const Search = () => {
                 </p>
               )}
               <p className="text-muted-foreground mb-8">
-                {isLoading ? "Searching..." : `Found ${results.length} results`}
+                {isLoading ? "Searching..." : `Page ${page} of ${totalPages}`}
               </p>
             </>
           ) : (
@@ -113,7 +143,6 @@ const Search = () => {
             </div>
           )}
 
-          {/* Results Grid */}
           {(isLoading || results.length > 0) && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
               {isLoading
@@ -128,18 +157,29 @@ const Search = () => {
             </div>
           )}
 
-          {/* No Results */}
           {!isLoading && query && results.length === 0 && (
             <div className="text-center py-20">
               <p className="text-xl text-muted-foreground">
                 No results found for "{query}"
               </p>
-              <p className="text-muted-foreground mt-2">
-                Try searching for something else
-              </p>
+              <p className="text-muted-foreground mt-2">Try searching for something else</p>
             </div>
           )}
-        </div>
+
+          {query && (
+            <div className="py-10">
+              <PaginationBar
+                page={page}
+                totalPages={totalPages}
+                onPageChange={(p) => {
+                  const next = new URLSearchParams(searchParams);
+                  next.set("page", String(p));
+                  setSearchParams(next);
+                }}
+              />
+            </div>
+          )}
+        </main>
 
         <Footer />
       </div>
