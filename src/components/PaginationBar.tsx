@@ -4,10 +4,9 @@ import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
   page: number;
@@ -59,30 +58,31 @@ export const PaginationBar: React.FC<Props> = ({
       <PaginationContent className="flex-wrap justify-center gap-1 sm:gap-2">
         {safePage > 1 && (
           <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              className="px-2 sm:px-3 [&>span]:hidden sm:[&>span]:inline"
-              onClick={(e) => {
-                e.preventDefault();
-                goTo(safePage - 1);
-              }}
-            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1 px-2 sm:px-3"
+              onClick={() => goTo(safePage - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Previous</span>
+            </Button>
           </PaginationItem>
         )}
 
         {pages.map((p) => (
           <PaginationItem key={p}>
-            <PaginationLink
-              href="#"
-              isActive={p === safePage}
-              className="h-9 w-9 px-0"
-              onClick={(e) => {
-                e.preventDefault();
-                goTo(p);
-              }}
+            <Button
+              type="button"
+              variant={p === safePage ? "outline" : "ghost"}
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => goTo(p)}
+              aria-current={p === safePage ? "page" : undefined}
             >
               {p}
-            </PaginationLink>
+            </Button>
           </PaginationItem>
         ))}
 
@@ -93,21 +93,21 @@ export const PaginationBar: React.FC<Props> = ({
         )}
 
         <PaginationItem>
-          <PaginationNext
-            href="#"
-            aria-disabled={safePage === safeTotal}
-            className={
-              (safePage === safeTotal ? "pointer-events-none opacity-50 " : "") +
-              "px-2 sm:px-3 [&>span]:hidden sm:[&>span]:inline"
-            }
-            onClick={(e) => {
-              e.preventDefault();
-              goTo(safePage + 1);
-            }}
-          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1 px-2 sm:px-3"
+            disabled={safePage === safeTotal}
+            onClick={() => goTo(safePage + 1)}
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </PaginationItem>
       </PaginationContent>
     </Pagination>
   );
 };
+
 
