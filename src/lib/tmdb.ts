@@ -11,7 +11,10 @@ export const getBackdropUrl = (path: string | null) => {
   return getImageUrl(path, "original");
 };
 
-export const getPosterUrl = (path: string | null, size: "w185" | "w342" | "w500" | "w780" | "original" = "w500") => {
+export const getPosterUrl = (
+  path: string | null,
+  size: "w185" | "w342" | "w500" | "w780" | "original" = "w500"
+) => {
   return getImageUrl(path, size);
 };
 
@@ -27,7 +30,7 @@ async function fetchTMDB<T>(endpoint: string, params: Record<string, string> = {
   });
 
   const response = await fetch(`${BASE_URL}${endpoint}?${searchParams}`);
-  
+
   if (!response.ok) {
     throw new Error(`TMDB API error: ${response.status}`);
   }
@@ -364,7 +367,7 @@ export const EPISODE_GROUP_CONFIG: Record<number, string> = {
   71446: "5eb730dfca7ec6001f7beb51", // La Casa de Papel - Parts
 };
 
-interface TMDBResponse<T> {
+export interface TMDBResponse<T> {
   page: number;
   results: T[];
   total_pages: number;
@@ -501,7 +504,429 @@ export const getMovieGenres = () =>
 export const getTVGenres = () =>
   fetchTMDB<{ genres: Genre[] }>("/genre/tv/list");
 
-// Regional Popular Content (Latest Released)
+// ---- New helpers for year-grouped browsing + rails ----
+
+export type BrowseMode = "global" | "indian" | "anime" | "korean";
+
+const todayISO = () => new Date().toISOString().split("T")[0];
+
+const yearWindow = (year: number) => {
+  const today = todayISO();
+  const start = `${year}-01-01`;
+  const end = year === new Date().getFullYear() ? today : `${year}-12-31`;
+  return { start, end };
+};
+
+export const blendResults = (
+  global: Movie[],
+  regional: Movie[],
+  desiredCount: number,
+  regionalRatio: number = 0.5
+): Movie[] => {
+  const seen = new Set<string>();
+  const key = (m: Movie) => `${m.id}-${m.media_type ?? "unknown"}`;
+
+  const uniq = (arr: Movie[]) =>
+    arr.filter((m) => {
+      const k = key(m);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+  const r = uniq(regional);
+  const g = uniq(global);
+
+  const takeRegional = Math.max(0, Math.min(desiredCount, Math.round(desiredCount * regionalRatio)));
+  const out: Movie[] = [];
+
+  // interleave for a "mixed" feel
+  let ri = 0;
+  let gi = 0;
+  while (out.length < desiredCount && (ri < r.length || gi < g.length)) {
+    if (out.length < takeRegional && ri < r.length) out.push(r[ri++]);
+    if (out.length < desiredCount && gi < g.length) out.push(g[gi++]);
+    if (out.length < takeRegional && ri < r.length) out.push(r[ri++]);
+  }
+
+  // fill remainder
+  while (out.length < desiredCount && ri < r.length) out.push(r[ri++]);
+  while (out.length < desiredCount && gi < g.length) out.push(g[gi++]);
+
+  return out.slice(0, desiredCount);
+};
+
+const buildDiscoverParams = (params: Record<string, string | undefined>) => {
+  const out: Record<string, string> = {};
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === "") return;
+    out[k] = v;
+  });
+  return out;
+};
+
+export const discoverMoviesByYear = async ({
+  year,
+  page,
+  mode,
+  genreIds,
+  selectedYear,
+}: {
+  year: number;
+  page: number;
+  mode: BrowseMode;
+  genreIds: number[];
+  selectedYear: string | null;
+}): Promise<TMDBResponse<Movie>> => {
+  const { start, end } = yearWindow(year);
+  const today = todayISO();
+
+  const base = {
+    page: String(page),
+    include_adult: "false",
+    sort_by: "primary_release_date.desc",
+    "vote_count.gte": "50",
+    "primary_release_date.lte": today,
+    ...(selectedYear === "older" ? { "primary_release_date.lte": "2019-12-31" } : {}),
+  } as Record<string, string>;
+
+  if (!selectedYear) {
+    base["primary_release_date.gte"] = start;
+    base["primary_release_date.lte"] = end;
+  }
+
+  if (selectedYear && selectedYear !== "older") {
+    base["primary_release_year"] = selectedYear;
+  }
+
+  if (genreIds.length) base["with_genres"] = genreIds.join(",");
+
+  // Mode constraints
+  if (mode === "anime") {
+    base["with_genres"] = ["16", ...(genreIds.length ? genreIds.map(String) : [])].join(",");
+    base["with_original_language"] = "ja";
+  }
+
+  if (mode === "korean") {
+    base["with_original_language"] = "ko";
+  }
+
+  if (mode === "indian") {
+    base["with_origin_country"] = "IN";
+  }
+
+  return fetchTMDB<TMDBResponse<Movie>>("/discover/movie", buildDiscoverParams(base));
+};
+
+export const discoverTVByYear = async ({
+  year,
+  page,
+  mode,
+  genreIds,
+  selectedYear,
+}: {
+  year: number;
+  page: number;
+  mode: BrowseMode;
+  genreIds: number[];
+  selectedYear: string | null;
+}): Promise<TMDBResponse<Movie>> => {
+  const { start, end } = yearWindow(year);
+  const today = todayISO();
+
+  const base = {
+    page: String(page),
+    include_adult: "false",
+    sort_by: "first_air_date.desc",
+    "vote_count.gte": "20",
+    "first_air_date.lte": today,
+    ...(selectedYear === "older" ? { "first_air_date.lte": "2019-12-31" } : {}),
+  } as Record<string, string>;
+
+  if (!selectedYear) {
+    base["first_air_date.gte"] = start;
+    base["first_air_date.lte"] = end;
+  }
+
+  if (selectedYear && selectedYear !== "older") {
+    base["first_air_date_year"] = selectedYear;
+  }
+
+  if (genreIds.length) base["with_genres"] = genreIds.join(",");
+
+  // Mode constraints
+  if (mode === "anime") {
+    base["with_genres"] = ["16", ...(genreIds.length ? genreIds.map(String) : [])].join(",");
+    base["with_original_language"] = "ja";
+  }
+
+  if (mode === "korean") {
+    base["with_original_language"] = "ko";
+  }
+
+  if (mode === "indian") {
+    base["with_origin_country"] = "IN";
+  }
+
+  return fetchTMDB<TMDBResponse<Movie>>("/discover/tv", buildDiscoverParams(base));
+};
+
+export const discoverMixedByYear = async ({
+  year,
+  page,
+  mode,
+  genreIds,
+  selectedYear,
+}: {
+  year: number;
+  page: number;
+  mode: BrowseMode;
+  genreIds: number[];
+  selectedYear: string | null;
+}): Promise<TMDBResponse<Movie>> => {
+  const [movies, tv] = await Promise.all([
+    discoverMoviesByYear({ year, page, mode, genreIds, selectedYear }),
+    discoverTVByYear({ year, page, mode, genreIds, selectedYear }),
+  ]);
+
+  const combined = [
+    ...(movies.results ?? []).map((m) => ({ ...m, media_type: "movie" as const })),
+    ...(tv.results ?? []).map((t) => ({ ...t, media_type: "tv" as const })),
+  ].sort((a, b) => {
+    const dateA = a.release_date || a.first_air_date || "";
+    const dateB = b.release_date || b.first_air_date || "";
+    return dateB.localeCompare(dateA);
+  });
+
+  return {
+    page: Math.min(movies.page, tv.page),
+    results: combined,
+    total_pages: Math.max(movies.total_pages, tv.total_pages),
+    total_results: Math.max(movies.total_results, tv.total_results),
+  };
+};
+
+const latestMoviesForMode = async (mode: BrowseMode): Promise<Movie[]> => {
+  const today = todayISO();
+  const params: Record<string, string> = {
+    page: "1",
+    include_adult: "false",
+    sort_by: "primary_release_date.desc",
+    "primary_release_date.lte": today,
+    "vote_count.gte": "10",
+  };
+
+  if (mode === "anime") {
+    params["with_genres"] = "16";
+    params["with_original_language"] = "ja";
+  }
+  if (mode === "korean") params["with_original_language"] = "ko";
+  if (mode === "indian") params["with_origin_country"] = "IN";
+
+  const res = await fetchTMDB<TMDBResponse<Movie>>("/discover/movie", params);
+  return res.results.map((m) => ({ ...m, media_type: "movie" as const }));
+};
+
+const latestTVForMode = async (mode: BrowseMode): Promise<Movie[]> => {
+  const today = todayISO();
+  const params: Record<string, string> = {
+    page: "1",
+    include_adult: "false",
+    sort_by: "first_air_date.desc",
+    "first_air_date.lte": today,
+    "vote_count.gte": "10",
+  };
+
+  if (mode === "anime") {
+    params["with_genres"] = "16";
+    params["with_original_language"] = "ja";
+  }
+  if (mode === "korean") params["with_original_language"] = "ko";
+  if (mode === "indian") params["with_origin_country"] = "IN";
+
+  const res = await fetchTMDB<TMDBResponse<Movie>>("/discover/tv", params);
+  return res.results.map((t) => ({ ...t, media_type: "tv" as const }));
+};
+
+const popularMoviesForMode = async (mode: BrowseMode): Promise<Movie[]> => {
+  if (mode === "global") return (await getPopularMovies()).results.map((m) => ({ ...m, media_type: "movie" as const }));
+  const res = await fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+    page: "1",
+    include_adult: "false",
+    sort_by: "popularity.desc",
+    ...(mode === "anime" ? { with_genres: "16", with_original_language: "ja" } : {}),
+    ...(mode === "korean" ? { with_original_language: "ko" } : {}),
+    ...(mode === "indian" ? { with_origin_country: "IN" } : {}),
+  });
+  return res.results.map((m) => ({ ...m, media_type: "movie" as const }));
+};
+
+const popularTVForMode = async (mode: BrowseMode): Promise<Movie[]> => {
+  if (mode === "global") return (await getPopularTV()).results.map((t) => ({ ...t, media_type: "tv" as const }));
+  const res = await fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+    page: "1",
+    include_adult: "false",
+    sort_by: "popularity.desc",
+    ...(mode === "anime" ? { with_genres: "16", with_original_language: "ja" } : {}),
+    ...(mode === "korean" ? { with_original_language: "ko" } : {}),
+    ...(mode === "indian" ? { with_origin_country: "IN" } : {}),
+  });
+  return res.results.map((t) => ({ ...t, media_type: "tv" as const }));
+};
+
+const topRatedMoviesForMode = async (mode: BrowseMode): Promise<Movie[]> => {
+  if (mode === "global") return (await getTopRatedMovies()).results.map((m) => ({ ...m, media_type: "movie" as const }));
+  const res = await fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+    page: "1",
+    include_adult: "false",
+    sort_by: "vote_average.desc",
+    "vote_count.gte": "200",
+    ...(mode === "anime" ? { with_genres: "16", with_original_language: "ja" } : {}),
+    ...(mode === "korean" ? { with_original_language: "ko" } : {}),
+    ...(mode === "indian" ? { with_origin_country: "IN" } : {}),
+  });
+  return res.results.map((m) => ({ ...m, media_type: "movie" as const }));
+};
+
+const topRatedTVForMode = async (mode: BrowseMode): Promise<Movie[]> => {
+  if (mode === "global") return (await getTopRatedTV()).results.map((t) => ({ ...t, media_type: "tv" as const }));
+  const res = await fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+    page: "1",
+    include_adult: "false",
+    sort_by: "vote_average.desc",
+    "vote_count.gte": "200",
+    ...(mode === "anime" ? { with_genres: "16", with_original_language: "ja" } : {}),
+    ...(mode === "korean" ? { with_original_language: "ko" } : {}),
+    ...(mode === "indian" ? { with_origin_country: "IN" } : {}),
+  });
+  return res.results.map((t) => ({ ...t, media_type: "tv" as const }));
+};
+
+const applyModeFilters = async (mode: BrowseMode, items: Movie[], defaultMedia: "movie" | "tv") => {
+  if (mode === "indian" || mode === "korean") return filterAdultContentStrict(items, defaultMedia);
+  if (mode === "global") return filterMinimal(items);
+  return filterAdultContent(items);
+};
+
+export const getPopularMixed = async (mode: BrowseMode): Promise<{ movies: Movie[]; tv: Movie[] }> => {
+  // Only "global" gets India blending (as per requirement: exclude anime/korean pages)
+  const globalMovies = await popularMoviesForMode(mode);
+  const globalTV = await popularTVForMode(mode);
+
+  if (mode !== "global") {
+    return {
+      movies: await applyModeFilters(mode, globalMovies, "movie"),
+      tv: await applyModeFilters(mode, globalTV, "tv"),
+    };
+  }
+
+  // region-IN blend for global
+  const today = todayISO();
+  const [indiaMoviesRes, indiaTVRes] = await Promise.all([
+    fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+      page: "1",
+      include_adult: "false",
+      sort_by: "popularity.desc",
+      region: "IN",
+      "primary_release_date.lte": today,
+    }),
+    fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+      page: "1",
+      include_adult: "false",
+      sort_by: "popularity.desc",
+      region: "IN",
+      "first_air_date.lte": today,
+    }),
+  ]);
+
+  const indiaMovies = indiaMoviesRes.results.map((m) => ({ ...m, media_type: "movie" as const }));
+  const indiaTV = indiaTVRes.results.map((t) => ({ ...t, media_type: "tv" as const }));
+
+  return {
+    movies: filterMinimal(blendResults(globalMovies, indiaMovies, 20, 0.6)),
+    tv: filterMinimal(blendResults(globalTV, indiaTV, 20, 0.6)),
+  };
+};
+
+export const getTopRatedMixed = async (mode: BrowseMode): Promise<{ movies: Movie[]; tv: Movie[] }> => {
+  const globalMovies = await topRatedMoviesForMode(mode);
+  const globalTV = await topRatedTVForMode(mode);
+
+  if (mode !== "global") {
+    return {
+      movies: await applyModeFilters(mode, globalMovies, "movie"),
+      tv: await applyModeFilters(mode, globalTV, "tv"),
+    };
+  }
+
+  const today = todayISO();
+  const [indiaMoviesRes, indiaTVRes] = await Promise.all([
+    fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+      page: "1",
+      include_adult: "false",
+      sort_by: "vote_average.desc",
+      "vote_count.gte": "200",
+      region: "IN",
+      "primary_release_date.lte": today,
+    }),
+    fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+      page: "1",
+      include_adult: "false",
+      sort_by: "vote_average.desc",
+      "vote_count.gte": "200",
+      region: "IN",
+      "first_air_date.lte": today,
+    }),
+  ]);
+
+  const indiaMovies = indiaMoviesRes.results.map((m) => ({ ...m, media_type: "movie" as const }));
+  const indiaTV = indiaTVRes.results.map((t) => ({ ...t, media_type: "tv" as const }));
+
+  return {
+    movies: filterMinimal(blendResults(globalMovies, indiaMovies, 20, 0.6)),
+    tv: filterMinimal(blendResults(globalTV, indiaTV, 20, 0.6)),
+  };
+};
+
+export const getLatestReleasedMixed = async (mode: BrowseMode): Promise<{ movies: Movie[]; tv: Movie[] }> => {
+  const movies = await latestMoviesForMode(mode);
+  const tv = await latestTVForMode(mode);
+
+  if (mode !== "global") {
+    return {
+      movies: await applyModeFilters(mode, movies, "movie"),
+      tv: await applyModeFilters(mode, tv, "tv"),
+    };
+  }
+
+  const today = todayISO();
+  const [indiaMoviesRes, indiaTVRes] = await Promise.all([
+    fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
+      page: "1",
+      include_adult: "false",
+      sort_by: "primary_release_date.desc",
+      region: "IN",
+      "primary_release_date.lte": today,
+    }),
+    fetchTMDB<TMDBResponse<Movie>>("/discover/tv", {
+      page: "1",
+      include_adult: "false",
+      sort_by: "first_air_date.desc",
+      region: "IN",
+      "first_air_date.lte": today,
+    }),
+  ]);
+
+  const indiaMovies = indiaMoviesRes.results.map((m) => ({ ...m, media_type: "movie" as const }));
+  const indiaTV = indiaTVRes.results.map((t) => ({ ...t, media_type: "tv" as const }));
+
+  return {
+    movies: filterMinimal(blendResults(movies, indiaMovies, 20, 0.6)),
+    tv: filterMinimal(blendResults(tv, indiaTV, 20, 0.6)),
+  };
+};
+
+// ---- Regional Popular Content (Latest Released) ----
 export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<Movie>> => {
   const today = new Date().toISOString().split('T')[0];
   const sixMonthsAgo = new Date();

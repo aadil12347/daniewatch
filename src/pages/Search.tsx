@@ -1,12 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { MovieCard } from "@/components/MovieCard";
-import { Skeleton } from "@/components/ui/skeleton";
-import { searchMulti, searchAnime, searchKorean, filterAdultContent, filterMinimal, Movie } from "@/lib/tmdb";
+import { StandardRails } from "@/components/browse/StandardRails";
+import { YearSection } from "@/components/browse/YearSection";
+import { searchMulti, searchAnime, searchKorean, filterMinimal, Movie } from "@/lib/tmdb";
+
+const getItemYear = (item: Movie): number | null => {
+  const date = item.release_date || item.first_air_date;
+  if (!date) return null;
+  const y = Number(date.slice(0, 4));
+  return Number.isFinite(y) ? y : null;
+};
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -24,11 +31,8 @@ const Search = () => {
   };
 
   useEffect(() => {
-    // Increment request id so late responses from older searches can't overwrite new results
     const requestId = ++requestIdRef.current;
-    console.log("[search] start", { query, category, refreshKey, requestId });
 
-    // Always clear results and show loading state for a fresh search
     setResults([]);
     setIsLoading(true);
 
@@ -48,31 +52,36 @@ const Search = () => {
 
         if (requestId !== requestIdRef.current) return;
 
-        // For anime/korean categories, strict filtering is already applied in searchAnime/searchKorean
-        // For general search, only apply minimal filtering (admin-blocked + explicit adult flag)
         const filteredResults = category
           ? response.results
-          : filterMinimal(
-              response.results.filter(
-                (item) => item.media_type === "movie" || item.media_type === "tv",
-              )
-            );
-        
+          : filterMinimal(response.results.filter((item) => item.media_type === "movie" || item.media_type === "tv"));
+
         setResults(filteredResults);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);
         setResults([]);
       } finally {
-        if (requestId === requestIdRef.current) {
-          console.log("[search] done", { query, category, refreshKey, requestId, results: (category ? "category" : "multi") });
-          setIsLoading(false);
-        }
+        if (requestId === requestIdRef.current) setIsLoading(false);
       }
     };
 
     fetchResults();
   }, [query, category, refreshKey]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<number, Movie[]>();
+    results.forEach((item) => {
+      const y = getItemYear(item);
+      if (!y) return;
+      const arr = map.get(y) ?? [];
+      arr.push(item);
+      map.set(y, arr);
+    });
+
+    const years = Array.from(map.keys()).sort((a, b) => b - a);
+    return { years, byYear: map };
+  }, [results]);
 
   return (
     <>
@@ -94,49 +103,41 @@ const Search = () => {
                   {category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}
                 </h1>
               </div>
-              {category && (
-                <p className="text-sm text-primary/80 mb-2">
-                  Showing only {getCategoryLabel()} content
-                </p>
-              )}
-              <p className="text-muted-foreground mb-8">
-                {isLoading ? "Searching..." : `Found ${results.length} results`}
-              </p>
+              {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
+              <p className="text-muted-foreground mb-8">{isLoading ? "Searching..." : `Found ${results.length} results`}</p>
+
+              {/* Top rails */}
+              <StandardRails mode={category === "anime" ? "anime" : category === "korean" ? "korean" : "global"} />
+
+              {/* Grouped results */}
+              {grouped.years.map((y) => (
+                <YearSection
+                  key={y}
+                  yearLabel={String(y)}
+                  items={grouped.byYear.get(y) ?? []}
+                  isLoading={false}
+                  mediaType="mixed"
+                />
+              ))}
+
+              {/* Bottom rails */}
+              <StandardRails
+                mode={category === "anime" ? "anime" : category === "korean" ? "korean" : "global"}
+                titlePrefix="More"
+              />
             </>
           ) : (
             <div className="text-center py-20">
               <SearchIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h1 className="text-2xl font-bold mb-2">Search Movies & TV Shows</h1>
-              <p className="text-muted-foreground">
-                Use the search bar above to find your favorite content
-              </p>
+              <p className="text-muted-foreground">Use the search bar above to find your favorite content</p>
             </div>
           )}
 
-          {/* Results Grid */}
-          {(isLoading || results.length > 0) && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {isLoading
-                ? Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i}>
-                      <Skeleton className="aspect-[2/3] rounded-xl" />
-                      <Skeleton className="h-4 w-3/4 mt-3" />
-                      <Skeleton className="h-3 w-1/2 mt-2" />
-                    </div>
-                  ))
-                : results.map((item) => <MovieCard key={item.id} movie={item} />)}
-            </div>
-          )}
-
-          {/* No Results */}
           {!isLoading && query && results.length === 0 && (
             <div className="text-center py-20">
-              <p className="text-xl text-muted-foreground">
-                No results found for "{query}"
-              </p>
-              <p className="text-muted-foreground mt-2">
-                Try searching for something else
-              </p>
+              <p className="text-xl text-muted-foreground">No results found for "{query}"</p>
+              <p className="text-muted-foreground mt-2">Try searching for something else</p>
             </div>
           )}
         </div>
@@ -148,3 +149,4 @@ const Search = () => {
 };
 
 export default Search;
+
