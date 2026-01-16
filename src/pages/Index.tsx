@@ -20,6 +20,8 @@ import {
   Movie,
 } from "@/lib/tmdb";
 
+const MIN_RATING = 6; // 3 stars
+
 const Index = () => {
   const [trending, setTrending] = useState<Movie[]>([]);
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
@@ -31,6 +33,9 @@ const Index = () => {
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { filterBlockedPosts, getPinnedPosts } = usePostModeration();
+
+  const minRated = (items: Movie[]) =>
+    items.filter((m) => (m.vote_average ?? 0) >= MIN_RATING);
 
   const applyPinnedAndDateSort = (
     items: Movie[],
@@ -84,14 +89,14 @@ const Index = () => {
           getKoreanPopular(),
         ]);
 
-        setTrending(filterAdultContent(trendingRes.results));
-        setPopularMovies(filterAdultContent(popularMoviesRes.results));
-        setTopRatedMovies(filterAdultContent(topRatedMoviesRes.results));
-        setPopularTV(filterAdultContent(popularTVRes.results));
-        setTopRatedTV(filterAdultContent(topRatedTVRes.results));
-        setIndianPopular(filterAdultContent(indianRes.results));
-        setAnimePopular(filterAdultContent(animeRes.results));
-        setKoreanPopular(filterAdultContent(koreanRes.results));
+        setTrending(minRated(filterAdultContent(trendingRes.results)));
+        setPopularMovies(minRated(filterAdultContent(popularMoviesRes.results)));
+        setTopRatedMovies(minRated(filterAdultContent(topRatedMoviesRes.results)));
+        setPopularTV(minRated(filterAdultContent(popularTVRes.results)));
+        setTopRatedTV(minRated(filterAdultContent(topRatedTVRes.results)));
+        setIndianPopular(minRated(filterAdultContent(indianRes.results)));
+        setAnimePopular(minRated(filterAdultContent(animeRes.results)));
+        setKoreanPopular(minRated(filterAdultContent(koreanRes.results)));
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -114,12 +119,18 @@ const Index = () => {
 
       <div className="min-h-screen bg-background">
         <Navbar />
-        <HeroSection items={sortByReleaseAirDateDesc(trending)} isLoading={isLoading} />
+        <HeroSection
+          items={sortByReleaseAirDateDesc(trending)}
+          isLoading={isLoading}
+        />
 
         <div className="relative z-10 -mt-16">
           <ContentRow
             title="Top 10 Today"
-            items={applyPinnedAndDateSort(sortByReleaseAirDateDesc(trending), "home").slice(0, 10)}
+            items={applyPinnedAndDateSort(sortByReleaseAirDateDesc(trending), "home").slice(
+              0,
+              10,
+            )}
             isLoading={isLoading}
             showRank
             size="lg"
@@ -151,7 +162,6 @@ const Index = () => {
             isLoading={isLoading}
           />
 
-          {/* Regional Popular Sections */}
           <TabbedContentRow
             title="Indian Popular"
             moviesItems={applyPinnedAndDateSort(
