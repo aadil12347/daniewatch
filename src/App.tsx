@@ -11,7 +11,6 @@ import { TutorialProvider } from "./contexts/TutorialContext";
 import { PageTransition } from "./components/PageTransition";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -94,11 +93,9 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <ErrorBoundary>
-                  <AppContent />
-                  <FloatingRequestButton />
-                  <TutorialOverlay />
-                </ErrorBoundary>
+                <AppContent />
+                <FloatingRequestButton />
+                <TutorialOverlay />
               </BrowserRouter>
             </TooltipProvider>
           </MediaProvider>
@@ -109,4 +106,3 @@ const App = () => (
 );
 
 export default App;
-
