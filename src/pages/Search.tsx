@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMulti, searchAnime, searchKorean, filterAdultContent, filterMinimal, Movie } from "@/lib/tmdb";
+import { searchMulti, searchAnime, searchKorean, filterAdultContent, filterMinimal, sortByReleaseAirDateDesc, Movie } from "@/lib/tmdb";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -55,10 +55,10 @@ const Search = () => {
           : filterMinimal(
               response.results.filter(
                 (item) => item.media_type === "movie" || item.media_type === "tv",
-              )
+              ),
             );
-        
-        setResults(filteredResults);
+
+        setResults(sortByReleaseAirDateDesc(filteredResults));
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);

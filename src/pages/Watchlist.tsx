@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -7,11 +8,17 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
 import { Bookmark, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { sortByReleaseAirDateDesc } from "@/lib/tmdb";
 
 const Watchlist = () => {
   const { user } = useAuth();
   const { getWatchlistAsMovies, loading } = useWatchlist();
   const watchlistMovies = getWatchlistAsMovies();
+
+  const sortedWatchlistMovies = useMemo(
+    () => sortByReleaseAirDateDesc(watchlistMovies),
+    [watchlistMovies],
+  );
 
   return (
     <>
@@ -60,7 +67,7 @@ const Watchlist = () => {
           ) : (
             // Watchlist grid
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              {watchlistMovies.map((item) => (
+              {sortedWatchlistMovies.map((item) => (
                 <MovieCard key={`${item.media_type}-${item.id}`} movie={item} size="md" />
               ))}
             </div>

@@ -52,6 +52,33 @@ export interface Movie {
   adult?: boolean;
 }
 
+export const getReleaseOrAirDateKey = (item: {
+  release_date?: string;
+  first_air_date?: string;
+}): string => {
+  return item.release_date || item.first_air_date || "";
+};
+
+/**
+ * Returns a NEW array sorted newest-first by release_date/first_air_date.
+ * Items with missing dates are pushed to the bottom.
+ */
+export const sortByReleaseAirDateDesc = <T extends { release_date?: string; first_air_date?: string }>(
+  items: T[],
+): T[] => {
+  return [...items].sort((a, b) => {
+    const aKey = getReleaseOrAirDateKey(a);
+    const bKey = getReleaseOrAirDateKey(b);
+
+    if (!aKey && !bKey) return 0;
+    if (!aKey) return 1;
+    if (!bKey) return -1;
+
+    // ISO date strings (YYYY-MM-DD) are lexicographically sortable
+    return bKey.localeCompare(aKey);
+  });
+};
+
 // Comprehensive blocked words list for adult content filtering
 export const BLOCKED_WORDS = [
   // Sexual terms
