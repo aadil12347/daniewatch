@@ -147,8 +147,10 @@ const Korean = () => {
       didMountRef.current = true;
       return;
     }
-    if (page !== 1) setPageParam(1, true);
-  }, [selectedTags, selectedYear, page, setPageParam]);
+
+    // Important: do NOT depend on `page` here, otherwise changing pages would immediately reset back to 1.
+    setPageParam(1, true);
+  }, [selectedTags, selectedYear, setPageParam]);
 
   useEffect(() => {
     fetchKorean(page);
