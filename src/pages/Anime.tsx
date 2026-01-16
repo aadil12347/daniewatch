@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Movie, filterAdultContent } from "@/lib/tmdb";
+import { Movie, filterAdultContent, sortByReleaseAirDateDesc } from "@/lib/tmdb";
 import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
@@ -77,12 +77,12 @@ const Anime = () => {
       const today = new Date().toISOString().split("T")[0];
       const allGenres = [ANIME_GENRE_ID, ...selectedTags];
       
-      // Build params - sorted by first air date desc
+      // Build params - fetched by popularity, then displayed newest-first
       const params = new URLSearchParams({
         api_key: "fc6d85b3839330e3458701b975195487",
         include_adult: "false",
         page: pageNum.toString(),
-        sort_by: "first_air_date.desc",
+        sort_by: "popularity.desc",
         with_genres: allGenres.join(","),
         with_original_language: "ja",
         "vote_count.gte": "20",
@@ -101,11 +101,13 @@ const Anime = () => {
       const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
       const response = await res.json();
 
-      const filteredResults = filterAdultContent(response.results) as Movie[];
+      const filteredResults = sortByReleaseAirDateDesc(
+        filterAdultContent(response.results) as Movie[],
+      );
       if (reset) {
         setItems(filteredResults);
       } else {
-        setItems(prev => [...prev, ...filteredResults]);
+        setItems((prev) => [...prev, ...filteredResults]);
       }
       setHasMore(response.page < response.total_pages);
     } catch (error) {
