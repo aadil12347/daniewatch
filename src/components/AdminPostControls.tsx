@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { Ban, MoreVertical, Link2, ShieldOff } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Ban, Link2, MoreVertical, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,6 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { UpdateLinksPanel } from '@/components/admin/UpdateLinksPanel';
 import { usePostModeration } from '@/hooks/usePostModeration';
 import { useAdmin } from '@/hooks/useAdmin';
 import { toast } from 'sonner';
@@ -28,17 +30,16 @@ export const AdminPostControls = ({
   className = '',
 }: AdminPostControlsProps) => {
   const { isAdmin } = useAdmin();
-  const navigate = useNavigate();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
-  
+
+  const [linksOpen, setLinksOpen] = useState(false);
+
   if (!isAdmin) return null;
-  
+
   const blocked = isBlocked(tmdbId, mediaType);
-  
-  const handleUpdateLinks = () => {
-    navigate(`/admin/update-links?id=${tmdbId}`);
-  };
-  
+
+  const modalInitialId = useMemo(() => String(tmdbId), [tmdbId]);
+
   const handleBlock = () => {
     if (blocked) {
       unblockPost(tmdbId, mediaType);
@@ -48,47 +49,68 @@ export const AdminPostControls = ({
       toast.success(`"${title || 'Post'}" blocked`);
     }
   };
-  
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size="icon"
-          variant="ghost"
-          className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className}`}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          title="Admin controls"
-        >
-          <MoreVertical className="w-4 h-4 text-white" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-        {/* Update Links */}
-        <DropdownMenuItem onClick={handleUpdateLinks}>
-          <Link2 className="w-4 h-4 mr-2" />
-          Update Links
-        </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        {/* Block/Unblock */}
-        <DropdownMenuItem onClick={handleBlock} className={blocked ? 'text-green-500' : 'text-destructive'}>
-          {blocked ? (
-            <>
-              <ShieldOff className="w-4 h-4 mr-2" />
-              Unblock Post
-            </>
-          ) : (
-            <>
-              <Ban className="w-4 h-4 mr-2" />
-              Block Post
-            </>
-          )}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            title="Admin controls"
+          >
+            <MoreVertical className="w-4 h-4 text-white" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+          {/* Update Links */}
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setLinksOpen(true);
+            }}
+          >
+            <Link2 className="w-4 h-4 mr-2" />
+            Update Links
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          {/* Block/Unblock */}
+          <DropdownMenuItem onClick={handleBlock} className={blocked ? 'text-green-500' : 'text-destructive'}>
+            {blocked ? (
+              <>
+                <ShieldOff className="w-4 h-4 mr-2" />
+                Unblock Post
+              </>
+            ) : (
+              <>
+                <Ban className="w-4 h-4 mr-2" />
+                Block Post
+              </>
+            )}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DialogContent
+        className="max-w-6xl w-[95vw] h-[90vh] overflow-hidden p-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DialogHeader className="px-4 py-3 border-b">
+          <DialogTitle>Update Links</DialogTitle>
+        </DialogHeader>
+        <div className="h-[calc(90vh-56px)] overflow-y-auto p-4">
+          <UpdateLinksPanel embedded initialTmdbId={modalInitialId} />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
+
