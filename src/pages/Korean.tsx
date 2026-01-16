@@ -39,11 +39,16 @@ const Korean = () => {
 
   const setPageParam = useCallback(
     (nextPage: number, replace = false) => {
-      const next = new URLSearchParams(searchParams);
-      next.set("page", String(nextPage));
-      setSearchParams(next, { replace });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("page", String(nextPage));
+          return next;
+        },
+        { replace },
+      );
     },
-    [searchParams, setSearchParams],
+    [setSearchParams],
   );
 
   const fetchKorean = useCallback(

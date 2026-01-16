@@ -47,6 +47,10 @@ const TVDetails = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const backgroundLocation = (location.state as any)?.backgroundLocation;
+  const isModal = Boolean(backgroundLocation);
+
   const [show, setShow] = useState<TVDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -163,8 +167,8 @@ const TVDetails = () => {
     };
 
     fetchData();
-    window.scrollTo(0, 0);
-  }, [id]);
+    if (!isModal) window.scrollTo(0, 0);
+  }, [id, isModal]);
 
   const handleSeasonChange = async (partOrSeasonNumber: number) => {
     if (!id || partOrSeasonNumber === selectedSeason) return;
@@ -212,7 +216,7 @@ const TVDetails = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        {!isModal && <Navbar />}
         <div className="h-screen relative">
           <Skeleton className="absolute inset-0" />
         </div>
@@ -223,7 +227,7 @@ const TVDetails = () => {
   if (!show) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        {!isModal && <Navbar />}
         <div className="container mx-auto px-4 pt-32 text-center">
           <h1 className="text-2xl font-bold mb-4">TV Show not found</h1>
           <Button asChild>
@@ -255,7 +259,7 @@ const TVDetails = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        {!isModal && <Navbar />}
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
@@ -595,7 +599,7 @@ const TVDetails = () => {
           </section>
         )}
 
-        <Footer />
+        {!isModal && <Footer />}
       </div>
     </>
   );

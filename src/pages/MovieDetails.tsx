@@ -37,6 +37,10 @@ const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const backgroundLocation = (location.state as any)?.backgroundLocation;
+  const isModal = Boolean(backgroundLocation);
+
   const [movie, setMovie] = useState<MovieDetailsType | null>(null);
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -106,13 +110,13 @@ const MovieDetails = () => {
     };
 
     fetchData();
-    window.scrollTo(0, 0);
-  }, [id]);
+    if (!isModal) window.scrollTo(0, 0);
+  }, [id, isModal]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        {!isModal && <Navbar />}
         <div className="h-screen relative">
           <Skeleton className="absolute inset-0" />
         </div>
@@ -123,11 +127,11 @@ const MovieDetails = () => {
   if (!movie) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        {!isModal && <Navbar />}
         <div className="container mx-auto px-4 pt-32 text-center">
           <h1 className="text-2xl font-bold mb-4">Movie not found</h1>
           <Button asChild>
-            <Link to="/">
+            <Link to={"/"}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Link>
@@ -151,7 +155,7 @@ const MovieDetails = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        {!isModal && <Navbar />}
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
         <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
@@ -322,7 +326,7 @@ const MovieDetails = () => {
           </section>
         )}
 
-        <Footer />
+        {!isModal && <Footer />}
       </div>
     </>
   );
