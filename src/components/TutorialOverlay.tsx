@@ -230,36 +230,84 @@ export const TutorialOverlay = () => {
     setIsAnimating(true);
     const timer = setTimeout(() => setIsAnimating(false), 300);
 
-    const findAndHighlight = () => {
-      const target = document.querySelector(currentStepData.targetSelector!);
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const selector = currentStepData.targetSelector;
+
+    const findAndHighlight = (opts?: { logIfMissing?: boolean }) => {
+      if (cancelled) return;
+
+      const target = document.querySelector(selector);
       if (target) {
         const rect = target.getBoundingClientRect();
         setTargetRect(rect);
-      } else {
-        setTargetRect(null);
+        return true;
+      }
+
+      setTargetRect(null);
+
+      if (opts?.logIfMissing) {
+        console.warn("[TutorialOverlay] Target element not found", {
+          stepId: currentStepData.id,
+          selector,
+          isMobile,
+          href: window.location.href,
+        });
+      }
+
+      return false;
+    };
+
+    // Initial attempt + short retry window (helps right after login / route transitions)
+    let attempts = 0;
+    const tryFindWithRetries = () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      const found = findAndHighlight({ logIfMissing: attempts === 10 });
+      if (!found && attempts < 10) {
+        retryTimer = window.setTimeout(tryFindWithRetries, 100);
       }
     };
 
-    findAndHighlight();
-    
+    tryFindWithRetries();
+
     // Re-calculate position on scroll/resize
-    window.addEventListener("scroll", findAndHighlight, true);
-    window.addEventListener("resize", findAndHighlight);
+    window.addEventListener("scroll", findAndHighlight as any, true);
+    window.addEventListener("resize", findAndHighlight as any);
 
     return () => {
+      cancelled = true;
       clearTimeout(timer);
-      window.removeEventListener("scroll", findAndHighlight, true);
-      window.removeEventListener("resize", findAndHighlight);
+      if (retryTimer) window.clearTimeout(retryTimer);
+      window.removeEventListener("scroll", findAndHighlight as any, true);
+      window.removeEventListener("resize", findAndHighlight as any);
     };
-  }, [isTutorialActive, currentStep, currentStepData?.targetSelector]);
+  }, [isTutorialActive, currentStep, currentStepData?.targetSelector, currentStepData?.id, isMobile]);
+
+  // Emergency exit: ESC closes tutorial
+  useEffect(() => {
+    if (!isTutorialActive) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") skipTutorial();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isTutorialActive, skipTutorial]);
 
   if (!isTutorialActive) return null;
 
-  const isFullscreenStep = !currentStepData?.targetSelector;
+  const isTargetedStep = !!currentStepData?.targetSelector;
+  const isTargetMissing = isTargetedStep && !targetRect;
+  const isFullscreenStep = !isTargetedStep || isTargetMissing;
+
+  const safeDescription = isTargetMissing
+    ? `${currentStepData.description} (Agar highlight nazar na aaye, “Next” dabaa kar aglay step par chalein ya X se skip kar dein.)`
+    : currentStepData.description;
 
   return (
     <>
-
       <div className="fixed inset-0 z-[150] pointer-events-auto">
         {/* Overlay with cutout */}
         {!isFullscreenStep && targetRect ? (
@@ -274,21 +322,11 @@ export const TutorialOverlay = () => {
                   height={targetRect.height + 16}
                   rx="16"
                   fill="black"
-                  className={cn(
-                    "transition-all duration-500",
-                    isAnimating && "animate-pulse"
-                  )}
+                  className={cn("transition-all duration-500", isAnimating && "animate-pulse")}
                 />
               </mask>
             </defs>
-            <rect
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              fill="rgba(0, 0, 0, 0.85)"
-              mask="url(#spotlight-mask)"
-            />
+            <rect x="0" y="0" width="100%" height="100%" fill="rgba(0, 0, 0, 0.85)" mask="url(#spotlight-mask)" />
           </svg>
         ) : (
           <div className="absolute inset-0 bg-background/95 backdrop-blur-sm" />
@@ -312,55 +350,46 @@ export const TutorialOverlay = () => {
 
         {/* Tooltip positioning */}
         {isFullscreenStep ? (
-              // Centered modal for welcome/final steps
-              <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="animate-scale-in flex flex-col items-center">
-                  <TutorialTooltip
-                    title={currentStepData.title}
-                    description={currentStepData.description}
-                    icon={currentStepData.icon}
-                    position="center"
-                    currentStep={currentStep}
-                    totalSteps={totalSteps}
-                    onNext={nextStep}
-                    onSkip={skipTutorial}
-                    isLastStep={isLastStep}
-                  />
-                  {/* Show Demo Request Card */}
-                  {currentStepData.showDemoRequest && <DemoRequestCard />}
-                  {/* Show Important Info Box */}
-                  {currentStepData.showInfoBox && <ImportantInfoBox />}
-                </div>
-              </div>
-            ) : targetRect ? (
-              // Positioned near target element
-              <div
-                className="absolute transition-all duration-500"
-                style={{
-                  left: Math.min(
-                    Math.max(16, targetRect.left + targetRect.width / 2 - 160),
-                    window.innerWidth - 336
-                  ),
-                  top:
-                    currentStepData.position === "top"
-                      ? targetRect.top - 16
-                      : targetRect.bottom + 16,
-                }}
-              >
-                <TutorialTooltip
-                  title={currentStepData.title}
-                  description={currentStepData.description}
-                  icon={currentStepData.icon}
-                  position={currentStepData.position}
-                  currentStep={currentStep}
-                  totalSteps={totalSteps}
-                  onNext={nextStep}
-                  onSkip={skipTutorial}
-                  isLastStep={isLastStep}
-                />
-              </div>
-            ) : null}
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="animate-scale-in flex flex-col items-center">
+              <TutorialTooltip
+                title={currentStepData.title}
+                description={safeDescription}
+                icon={currentStepData.icon}
+                position="center"
+                currentStep={currentStep}
+                totalSteps={totalSteps}
+                onNext={nextStep}
+                onSkip={skipTutorial}
+                isLastStep={isLastStep}
+              />
+              {currentStepData.showDemoRequest && <DemoRequestCard />}
+              {currentStepData.showInfoBox && <ImportantInfoBox />}
+            </div>
+          </div>
+        ) : targetRect ? (
+          <div
+            className="absolute transition-all duration-500"
+            style={{
+              left: Math.min(Math.max(16, targetRect.left + targetRect.width / 2 - 160), window.innerWidth - 336),
+              top: currentStepData.position === "top" ? targetRect.top - 16 : targetRect.bottom + 16,
+            }}
+          >
+            <TutorialTooltip
+              title={currentStepData.title}
+              description={safeDescription}
+              icon={currentStepData.icon}
+              position={currentStepData.position}
+              currentStep={currentStep}
+              totalSteps={totalSteps}
+              onNext={nextStep}
+              onSkip={skipTutorial}
+              isLastStep={isLastStep}
+            />
+          </div>
+        ) : null}
       </div>
     </>
   );
 };
+
