@@ -175,7 +175,7 @@ const MovieDetails = () => {
                 onClose={() => navigate(-1)}
                 inline
                 fill
-                className="player-splash-in"
+                className="player-reveal-fast"
                 style={{
                   ["--reveal-x" as any]: revealOrigin ? `${revealOrigin.x}px` : "18%",
                   ["--reveal-y" as any]: revealOrigin ? `${revealOrigin.y}px` : "85%",
@@ -264,7 +264,15 @@ const MovieDetails = () => {
                       setRevealOrigin(null);
                     }
 
-                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    // Instant scroll (override global scroll-behavior: smooth)
+                    const root = document.documentElement;
+                    const prev = root.style.scrollBehavior;
+                    root.style.scrollBehavior = "auto";
+                    window.scrollTo({ top: 0, left: 0 });
+                    requestAnimationFrame(() => {
+                      root.style.scrollBehavior = prev;
+                    });
+
                     // Add watch param to URL - this creates a history entry
                     const params = new URLSearchParams(location.search);
                     params.set("watch", "1");
