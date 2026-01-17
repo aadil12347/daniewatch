@@ -94,8 +94,12 @@ export const VideoPlayer = ({
 
   // Keep loader visible for at least this long (even if the iframe loads instantly)
   const MIN_IFRAME_LOADER_MS = 3000;
+  // Safety: never show the loader longer than this (even if iframe never fires onLoad)
+  const MAX_IFRAME_LOADER_MS = 10000;
+
   const iframeLoadStartedAtRef = useRef<number>(Date.now());
   const iframeMinDelayTimerRef = useRef<number | null>(null);
+  const iframeHardTimeoutRef = useRef<number | null>(null);
 
   const { setIsVideoPlaying } = useMedia();
   const isMobile = useIsMobile();
@@ -152,6 +156,20 @@ export const VideoPlayer = ({
     return videasyUrl;
   }, [episode, mediaResult, moviesApiUrl, type, useAlternate, videasyUrl]);
 
+  const hideIframeLoader = () => {
+    setIsIframeLoading(false);
+
+    if (iframeMinDelayTimerRef.current) {
+      window.clearTimeout(iframeMinDelayTimerRef.current);
+      iframeMinDelayTimerRef.current = null;
+    }
+
+    if (iframeHardTimeoutRef.current) {
+      window.clearTimeout(iframeHardTimeoutRef.current);
+      iframeHardTimeoutRef.current = null;
+    }
+  };
+
   // Whenever the iframe src changes, show the loader until the iframe finishes loading.
   useEffect(() => {
     iframeLoadStartedAtRef.current = Date.now();
@@ -161,7 +179,17 @@ export const VideoPlayer = ({
       iframeMinDelayTimerRef.current = null;
     }
 
+    if (iframeHardTimeoutRef.current) {
+      window.clearTimeout(iframeHardTimeoutRef.current);
+      iframeHardTimeoutRef.current = null;
+    }
+
     setIsIframeLoading(true);
+
+    // Hard stop: hide loader after 10s no matter what.
+    iframeHardTimeoutRef.current = window.setTimeout(() => {
+      hideIframeLoader();
+    }, MAX_IFRAME_LOADER_MS);
   }, [embedUrl]);
 
   // Cleanup any pending loader timers
@@ -170,6 +198,10 @@ export const VideoPlayer = ({
       if (iframeMinDelayTimerRef.current) {
         window.clearTimeout(iframeMinDelayTimerRef.current);
         iframeMinDelayTimerRef.current = null;
+      }
+      if (iframeHardTimeoutRef.current) {
+        window.clearTimeout(iframeHardTimeoutRef.current);
+        iframeHardTimeoutRef.current = null;
       }
     };
   }, []);
@@ -313,13 +345,12 @@ export const VideoPlayer = ({
               const remaining = Math.max(0, MIN_IFRAME_LOADER_MS - elapsed);
 
               if (remaining === 0) {
-                setIsIframeLoading(false);
+                hideIframeLoader();
                 return;
               }
 
               iframeMinDelayTimerRef.current = window.setTimeout(() => {
-                setIsIframeLoading(false);
-                iframeMinDelayTimerRef.current = null;
+                hideIframeLoader();
               }, remaining);
             }}
           />
