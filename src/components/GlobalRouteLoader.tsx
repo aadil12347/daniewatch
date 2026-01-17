@@ -8,6 +8,10 @@ import { useLocation } from "react-router-dom";
  * - minimum visible time: 1.5s (prevents flicker/glitch)
  * - maximum visible time: 10s (never blocks UI forever)
  * - fade in/out transition
+ *
+ * Extra rules:
+ * - hides as soon as the next page reports "content ready" (so we don't wait for every request)
+ * - disables scrolling while the overlay is visible
  */
 export function GlobalRouteLoader() {
   const location = useLocation();
@@ -25,12 +29,16 @@ export function GlobalRouteLoader() {
   const [isOpen, setIsOpen] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
 
-  const currentRouteKey = useMemo(() => location.pathname + location.search, [location.pathname, location.search]);
+  const currentRouteKey = useMemo(
+    () => location.pathname + location.search,
+    [location.pathname, location.search]
+  );
   const lastRouteKeyRef = useRef(currentRouteKey);
 
   const prevWantedRef = useRef(false);
   const cycleIdRef = useRef(0);
   const shownAtRef = useRef(0);
+  const contentReadyRef = useRef(false);
 
   const hardTimeoutRef = useRef<number | null>(null);
   const hideTimerRef = useRef<number | null>(null);
@@ -79,10 +87,24 @@ export function GlobalRouteLoader() {
     };
   }, []);
 
+  // Pages can tell us "first content rendered" so we can stop the fullscreen loader earlier.
+  useEffect(() => {
+    const onContentReady = () => {
+      contentReadyRef.current = true;
+      if (!routePending) return;
+      const raf = requestAnimationFrame(() => setRoutePending(false));
+      return () => cancelAnimationFrame(raf);
+    };
+
+    window.addEventListener("route:content-ready", onContentReady as EventListener);
+    return () => window.removeEventListener("route:content-ready", onContentReady as EventListener);
+  }, [routePending]);
+
   // Mark navigation as pending immediately when route changes.
   useEffect(() => {
     if (lastRouteKeyRef.current !== currentRouteKey) {
       lastRouteKeyRef.current = currentRouteKey;
+      contentReadyRef.current = false;
       setRoutePending(true);
       // New route = new loader cycle, so allow showing again even if the previous one timed out.
       setTimedOut(false);
@@ -97,9 +119,10 @@ export function GlobalRouteLoader() {
     if (!rawWanted && timedOut) setTimedOut(false);
   }, [rawWanted, timedOut]);
 
-  // Clear pending state once there are no requests left.
+  // Clear pending state once there are no requests left (or once page reports content ready).
   useEffect(() => {
     if (!routePending) return;
+    if (contentReadyRef.current) return;
     if (inflight > 0) return;
 
     // Let the new page paint first, then hide.
@@ -167,13 +190,43 @@ export function GlobalRouteLoader() {
     }
   }, [wanted]);
 
+  // Disable scroll while fullscreen loader is visible.
+  useEffect(() => {
+    if (!isMounted || !isOpen) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+
+    const prevent = (e: Event) => e.preventDefault();
+
+    window.addEventListener("wheel", prevent, { passive: false });
+    window.addEventListener("touchmove", prevent, { passive: false });
+
+    return () => {
+      window.removeEventListener("wheel", prevent);
+      window.removeEventListener("touchmove", prevent);
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, [isMounted, isOpen]);
+
   // Cleanup timers on unmount
   useEffect(() => clearTimers, []);
 
   if (!isMounted) return null;
 
   return (
-    <div className="app-loader-overlay" data-state={isOpen ? "open" : "closed"} role="status" aria-label="Loading">
+    <div
+      className="app-loader-overlay"
+      data-state={isOpen ? "open" : "closed"}
+      role="status"
+      aria-label="Loading"
+    >
       <div className="app-loader" aria-hidden="true">
         <div className="circle" />
         <div className="circle" />
@@ -185,3 +238,4 @@ export function GlobalRouteLoader() {
     </div>
   );
 }
+

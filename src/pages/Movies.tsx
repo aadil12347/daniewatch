@@ -6,9 +6,10 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMovieGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
-import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { InlineDotsLoader } from "@/components/InlineDotsLoader";
+import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -16,7 +17,7 @@ const Movies = () => {
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -68,58 +69,61 @@ const Movies = () => {
     };
   }, [movies, page, hasMore, selectedGenres, saveCache]);
 
-  const fetchMovies = useCallback(async (pageNum: number, reset: boolean = false) => {
-    if (reset) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Build params for discover endpoint - sorted by release date desc
-      const params = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "primary_release_date.desc",
-        "vote_count.gte": "50",
-        "primary_release_date.lte": today,
-      });
-
-      // Year filter
-      if (selectedYear) {
-        if (selectedYear === "older") {
-          params.set("primary_release_date.lte", "2019-12-31");
-        } else {
-          params.set("primary_release_year", selectedYear);
-        }
-      }
-
-      // Genre filter
-      if (selectedGenres.length > 0) {
-        params.set("with_genres", selectedGenres.join(","));
-      }
-
-      const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
-      const response = await res.json();
-
-      const filteredResults = filterAdultContent(response.results) as Movie[];
-
+  const fetchMovies = useCallback(
+    async (pageNum: number, reset: boolean = false) => {
       if (reset) {
-        setMovies(filteredResults);
+        setIsLoading(true);
       } else {
-        setMovies(prev => [...prev, ...filteredResults]);
+        setIsLoadingMore(true);
       }
-      setHasMore(response.page < response.total_pages);
-    } catch (error) {
-      console.error("Failed to fetch movies:", error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [selectedGenres, selectedYear]);
+
+      try {
+        const today = new Date().toISOString().split("T")[0];
+
+        // Build params for discover endpoint - sorted by release date desc
+        const params = new URLSearchParams({
+          api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
+          page: pageNum.toString(),
+          sort_by: "primary_release_date.desc",
+          "vote_count.gte": "50",
+          "primary_release_date.lte": today,
+        });
+
+        // Year filter
+        if (selectedYear) {
+          if (selectedYear === "older") {
+            params.set("primary_release_date.lte", "2019-12-31");
+          } else {
+            params.set("primary_release_year", selectedYear);
+          }
+        }
+
+        // Genre filter
+        if (selectedGenres.length > 0) {
+          params.set("with_genres", selectedGenres.join(","));
+        }
+
+        const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
+        const response = await res.json();
+
+        const filteredResults = filterAdultContent(response.results) as Movie[];
+
+        if (reset) {
+          setMovies(filteredResults);
+        } else {
+          setMovies((prev) => [...prev, ...filteredResults]);
+        }
+        setHasMore(response.page < response.total_pages);
+      } catch (error) {
+        console.error("Failed to fetch movies:", error);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [selectedGenres, selectedYear, setIsLoadingMore]
+  );
 
   // Reset and fetch when filters change
   useEffect(() => {
@@ -134,6 +138,13 @@ const Movies = () => {
     fetchMovies(1, true);
   }, [selectedGenres, selectedYear, isInitialized]);
 
+  // Tell global loader it can stop as soon as we have real content on screen.
+  useEffect(() => {
+    if (!isLoading && movies.length > 0) {
+      requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
+    }
+  }, [isLoading, movies.length]);
+
   // Infinite scroll observer
   useEffect(() => {
     if (observerRef.current) {
@@ -143,7 +154,7 @@ const Movies = () => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage(prev => prev + 1);
+          setPage((prev) => prev + 1);
         }
       },
       { threshold: 0.1 }
@@ -164,10 +175,8 @@ const Movies = () => {
   }, [page, fetchMovies, isRestoredFromCache]);
 
   const toggleGenre = (genreId: number) => {
-    setSelectedGenres(prev =>
-      prev.includes(genreId)
-        ? prev.filter(id => id !== genreId)
-        : [...prev, genreId]
+    setSelectedGenres((prev) =>
+      prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]
     );
   };
 
@@ -181,7 +190,7 @@ const Movies = () => {
   };
 
   // Convert genres to CategoryNav format
-  const genresForNav = genres.map(g => ({ id: g.id, name: g.name }));
+  const genresForNav = genres.map((g) => ({ id: g.id, name: g.name }));
 
   return (
     <>
@@ -218,13 +227,15 @@ const Movies = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : sortWithPinnedFirst(filterBlockedPosts(movies, 'movie'), 'movies', 'movie').map((movie, index) => (
-                  <MovieCard 
-                    key={`${movie.id}-${index}`} 
-                    movie={{ ...movie, media_type: "movie" }} 
-                    animationDelay={Math.min(index * 30, 300)}
-                  />
-                ))}
+              : sortWithPinnedFirst(filterBlockedPosts(movies, "movie"), "movies", "movie").map(
+                  (movie, index) => (
+                    <MovieCard
+                      key={`${movie.id}-${index}`}
+                      movie={{ ...movie, media_type: "movie" }}
+                      animationDelay={Math.min(index * 30, 300)}
+                    />
+                  )
+                )}
           </div>
 
           {/* No results message */}
@@ -241,16 +252,9 @@ const Movies = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-8">
-            {isLoadingMore && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading more...</span>
-              </div>
-            )}
-            {!hasMore && movies.length > 0 && (
-              <p className="text-muted-foreground">You've reached the end</p>
-            )}
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+            {!hasMore && movies.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 
@@ -261,3 +265,4 @@ const Movies = () => {
 };
 
 export default Movies;
+
