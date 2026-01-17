@@ -377,7 +377,7 @@ const TVDetails = () => {
                 <button
                   type="button"
                   className={
-                    "relative w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border border-border backdrop-blur-sm transition-all duration-150 hover:bg-secondary/80 " +
+                    "relative flex items-center justify-center w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border border-border backdrop-blur-sm transition-all duration-150 hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                     (displayedInWatchlist ? "text-primary border-primary bg-primary/20 " : "text-foreground ") +
                     (watchlistAnim === "add" ? "bookmark-burst " : "") +
                     (watchlistAnim === "remove" ? "bookmark-unburst " : "")
