@@ -79,10 +79,13 @@ const Indian = () => {
             api_key: "fc6d85b3839330e3458701b975195487",
             include_adult: "false",
             page: pageNum.toString(),
+            // Latest → old
             sort_by: "primary_release_date.desc",
             with_origin_country: "IN",
             with_original_language: lang,
-            "vote_count.gte": "20",
+            // Don’t hide content behind “popular/top rated” thresholds, but also avoid unrated items.
+            "vote_count.gte": "1",
+            "vote_average.gte": "1",
             "primary_release_date.lte": today,
           });
 
@@ -91,10 +94,12 @@ const Indian = () => {
             api_key: "fc6d85b3839330e3458701b975195487",
             include_adult: "false",
             page: pageNum.toString(),
+            // Latest → old
             sort_by: "first_air_date.desc",
             with_origin_country: "IN",
             with_original_language: lang,
-            "vote_count.gte": "10",
+            "vote_count.gte": "1",
+            "vote_average.gte": "1",
             "first_air_date.lte": today,
           });
 
