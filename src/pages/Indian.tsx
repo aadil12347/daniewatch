@@ -27,6 +27,10 @@ const Indian = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
 
+  const MIN_LOAD_MORE_MS = 2000;
+  const loadMoreStartedAtRef = useRef(0);
+  const loadMoreMinTimerRef = useRef<number | null>(null);
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +53,10 @@ const Indian = () => {
   // Save cache before unmount / route change
   useEffect(() => {
     return () => {
+      if (loadMoreMinTimerRef.current) {
+        window.clearTimeout(loadMoreMinTimerRef.current);
+        loadMoreMinTimerRef.current = null;
+      }
       if (items.length > 0) {
         saveCache({
           items,
@@ -63,8 +71,16 @@ const Indian = () => {
 
   const fetchIndian = useCallback(
     async (pageNum: number, reset: boolean = false) => {
-      if (reset) setIsLoading(true);
-      else setIsLoadingMore(true);
+      if (reset) {
+        setIsLoading(true);
+      } else {
+        loadMoreStartedAtRef.current = Date.now();
+        if (loadMoreMinTimerRef.current) {
+          window.clearTimeout(loadMoreMinTimerRef.current);
+          loadMoreMinTimerRef.current = null;
+        }
+        setIsLoadingMore(true);
+      }
 
       try {
         const today = new Date().toISOString().split("T")[0];
@@ -146,7 +162,24 @@ const Indian = () => {
         console.error("Failed to fetch Indian content:", error);
       } finally {
         setIsLoading(false);
-        setIsLoadingMore(false);
+
+        if (reset) {
+          setIsLoadingMore(false);
+          return;
+        }
+
+        // Keep the small inline loader visible for at least 2s (prevents flicker/glitch).
+        const elapsed = Date.now() - loadMoreStartedAtRef.current;
+        const remaining = Math.max(0, MIN_LOAD_MORE_MS - elapsed);
+        if (remaining === 0) {
+          setIsLoadingMore(false);
+          return;
+        }
+
+        loadMoreMinTimerRef.current = window.setTimeout(() => {
+          setIsLoadingMore(false);
+          loadMoreMinTimerRef.current = null;
+        }, remaining);
       }
     },
     [selectedLang]
