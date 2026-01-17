@@ -361,7 +361,8 @@ html {
     align-items: center;
     justify-content: center;
     background: hsl(var(--background));
-    z-index: 9998;
+    /* Keep header visible (Navbar uses z-50) */
+    z-index: 40;
     opacity: 0;
     transition: opacity var(--transition-smooth);
     will-change: opacity;
