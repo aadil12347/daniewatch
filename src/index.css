@@ -387,6 +387,14 @@ html {
     z-index: 1;
   }
 
+  /* Smaller inline loader (for infinite scroll, buttons, etc.) */
+  .app-loader.app-loader--sm {
+    transform: scale(0.5);
+    transform-origin: center;
+    width: 200px;
+    height: 60px;
+  }
+
   .app-loader .circle {
     width: 20px;
     height: 20px;

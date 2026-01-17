@@ -90,7 +90,9 @@ export function GlobalRouteLoader() {
   }, [currentRouteKey]);
 
   // If everything is settled, clear timeout suppression so the next load can show normally.
-  const rawWanted = docPending || routePending || inflight > 0;
+  // IMPORTANT: we only *show* the global overlay for initial doc load + route navigations.
+  // Background fetches (e.g., infinite scroll) should use inline loaders, not a fullscreen overlay.
+  const rawWanted = docPending || routePending;
   useEffect(() => {
     if (!rawWanted && timedOut) setTimedOut(false);
   }, [rawWanted, timedOut]);
