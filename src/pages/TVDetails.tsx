@@ -60,7 +60,7 @@ const TVDetails = () => {
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
-  const [isWatchlistAnimating, setIsWatchlistAnimating] = useState(false);
+  const [watchlistAnim, setWatchlistAnim] = useState<"add" | "remove" | null>(null);
   const [revealOrigin, setRevealOrigin] = useState<{ x: number; y: number } | null>(null);
   const [episodeGroups, setEpisodeGroups] = useState<EpisodeGroup[] | null>(null);
   const [useEpisodeGroups, setUseEpisodeGroups] = useState(false);
@@ -377,10 +377,10 @@ const TVDetails = () => {
                 <button
                   type="button"
                   className={
-                    "relative w-11 h-11 md:w-10 md:h-10 rounded-full glass border border-border/60 backdrop-blur-sm transition-all duration-150 " +
-                    (displayedInWatchlist ? "bg-primary/40" : "hover:bg-primary/20") +
-                    " " +
-                    (isWatchlistAnimating ? "bookmark-burst" : "")
+                    "relative w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border border-border backdrop-blur-sm transition-all duration-150 hover:bg-secondary/80 " +
+                    (displayedInWatchlist ? "text-primary border-primary bg-primary/20 " : "text-foreground ") +
+                    (watchlistAnim === "add" ? "bookmark-burst " : "") +
+                    (watchlistAnim === "remove" ? "bookmark-unburst " : "")
                   }
                   onClick={async () => {
                     if (!show || isBookmarking) return;
@@ -388,10 +388,8 @@ const TVDetails = () => {
                     const next = !displayedInWatchlist;
                     setOptimisticInWatchlist(next);
 
-                    if (next) {
-                      setIsWatchlistAnimating(true);
-                      window.setTimeout(() => setIsWatchlistAnimating(false), 400);
-                    }
+                    setWatchlistAnim(next ? "add" : "remove");
+                    window.setTimeout(() => setWatchlistAnim(null), 400);
 
                     setIsBookmarking(true);
                     const showData: Movie = {
@@ -418,10 +416,11 @@ const TVDetails = () => {
                     <Bookmark
                       className={
                         "w-5 h-5 md:w-4 md:h-4 transition-all duration-150 " +
-                        (isWatchlistAnimating ? "bookmark-pop " : "") +
+                        (watchlistAnim === "add" ? "bookmark-pop " : "") +
+                        (watchlistAnim === "remove" ? "bookmark-unpop " : "") +
                         (displayedInWatchlist
-                          ? "text-primary fill-primary scale-110"
-                          : "text-foreground fill-transparent scale-100")
+                          ? "fill-primary scale-110"
+                          : "fill-transparent scale-100")
                       }
                     />
                   )}
