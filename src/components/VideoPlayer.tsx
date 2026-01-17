@@ -290,7 +290,7 @@ export const VideoPlayer = ({
         {showSwitch && (
           <div
             className={
-              "fixed top-3 right-3 md:top-20 md:right-[8.75rem] z-[80] pointer-events-auto transition-opacity " +
+              "fixed top-3 right-3 md:top-20 md:right-4 z-[80] pointer-events-auto transition-opacity " +
               switchVisibilityClass
             }
           >
