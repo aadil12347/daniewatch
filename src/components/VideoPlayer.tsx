@@ -66,10 +66,10 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       const result = await getMediaLinks(tmdbId, type, season, episode);
       setMediaResult(result);
 
-      // Workaround: MoviesAPI blocks Lovable's sandboxed preview iframe.
-      // In preview only, switch to Videasy automatically.
-      if (isSandboxed && result.source === "moviesapi") {
-        setUseAlternate(true);
+      // Note: MoviesAPI often fails inside Lovable's sandboxed preview iframe,
+      // so we keep Videasy as the default and only allow MoviesAPI outside sandbox.
+      if (isSandboxed) {
+        setUseAlternate(false);
       }
 
       setIsLoading(false);
@@ -79,10 +79,11 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   }, [tmdbId, type, season, episode, isSandboxed]);
 
   const getEmbedUrl = () => {
-    if (!mediaResult) return moviesApiUrl;
+    // Default player: Videasy
+    if (!mediaResult) return videasyUrl;
 
-    // Manual alternate player switch (MoviesAPI -> Videasy)
-    if (mediaResult.source === "moviesapi" && useAlternate) return videasyUrl;
+    // Manual alternate player switch (Videasy <-> MoviesAPI)
+    if (useAlternate && !isSandboxed) return moviesApiUrl;
 
     // For TV shows, check seasonEpisodeLinks first (Cloud DB)
     if (type === "tv" && mediaResult.seasonEpisodeLinks && episode) {
@@ -92,7 +93,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
 
     if (mediaResult.watchUrl) return mediaResult.watchUrl;
 
-    return moviesApiUrl;
+    return videasyUrl;
   };
 
   // Listen for player events
@@ -146,7 +147,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
 
   const containerStyle = inline ? undefined : ({ position: "fixed" as const, width: "100vw", height: "100vh", top: 0, left: 0 } as const);
 
-  const showSwitch = !isLoading && mediaResult?.source === "moviesapi";
+  const showSwitch = !isLoading;
 
   // Desktop: keep it hidden until hover/focus (feels like video controls)
   // Mobile: always visible (no hover)
@@ -166,14 +167,21 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
                   variant="outline"
                   size="icon"
                   className="h-9 w-9 md:h-10 md:w-10 bg-background/20 hover:bg-background/30 backdrop-blur-sm"
-                  onClick={() => setUseAlternate((v) => !v)}
+                  onClick={() => {
+                    if (isSandboxed) return;
+                    setUseAlternate((v) => !v);
+                  }}
                   aria-label="Switch player"
                 >
                   <ArrowLeftRight className={"h-4 w-4 transition-transform " + (useAlternate ? "rotate-180" : "rotate-0")} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" align="start">
-                {useAlternate ? "Switch to MoviesAPI" : "Switch to Videasy"}
+                {isSandboxed
+                  ? "MoviesAPI disabled in preview"
+                  : useAlternate
+                    ? "Switch to Videasy"
+                    : "Switch to MoviesAPI"}
               </TooltipContent>
             </Tooltip>
           </div>
