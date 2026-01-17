@@ -25,6 +25,7 @@ export const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -117,6 +118,27 @@ export const Navbar = () => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
+  // Expose header height as a CSS var so global loaders can start below it.
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+
+    const update = () => {
+      document.documentElement.style.setProperty("--app-header-offset", `${el.offsetHeight}px`);
+    };
+
+    update();
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
   // Prevent body scroll when menu is open
   useEffect(() => {
     if (isMenuOpen) {
@@ -204,6 +226,7 @@ export const Navbar = () => {
   return (
     <>
       <nav
+        ref={navRef}
         className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-[background-color,padding,transform,opacity] duration-300 ease-out will-change-[transform,opacity]",
           isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4",
