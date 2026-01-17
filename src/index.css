@@ -362,6 +362,18 @@ html {
     justify-content: center;
     background: hsl(var(--background));
     z-index: 9998;
+    opacity: 0;
+    transition: opacity var(--transition-smooth);
+    will-change: opacity;
+  }
+
+  .app-loader-overlay[data-state="open"] {
+    opacity: 1;
+  }
+
+  .app-loader-overlay[data-state="closed"] {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .app-loader {
