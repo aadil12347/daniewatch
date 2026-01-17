@@ -660,7 +660,24 @@ html {
     }
   }
 
-  /* Bookmark burst ring effect */
+  /* Bookmark remove subtle reverse pop */
+  .bookmark-unpop {
+    animation: bookmarkUnpop 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes bookmarkUnpop {
+    0% {
+      transform: scale(1.1);
+    }
+    50% {
+      transform: scale(0.85);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  /* Bookmark burst ring effect (add) */
   .bookmark-burst::after {
     content: '';
     position: absolute;
@@ -678,6 +695,31 @@ html {
     }
     100% {
       transform: scale(1.8);
+      opacity: 0;
+    }
+  }
+
+  /* Bookmark burst ring effect (remove) */
+  .bookmark-unburst::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid hsl(var(--muted-foreground));
+    animation: burstRingReverse 0.35s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes burstRingReverse {
+    0% {
+      transform: scale(1.35);
+      opacity: 0;
+    }
+    30% {
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(0.9);
       opacity: 0;
     }
   }
