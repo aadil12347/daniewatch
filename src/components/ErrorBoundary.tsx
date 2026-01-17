@@ -13,6 +13,9 @@ type State = {
 export class ErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false };
 
+  private autoRecoveredOnce = false;
+  private autoRecoverTimer: number | null = null;
+
   static getDerivedStateFromError(error: unknown) {
     return { hasError: true, error };
   }
@@ -20,6 +23,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
   componentDidCatch(error: unknown, info: unknown) {
     // This will show up in Lovable console logs.
     console.error("[ErrorBoundary] Unhandled render error", error, info);
+
+    // If this is a transient first-render issue (common around auth/admin),
+    // automatically do what the user was manually doing via "Try again" once.
+    if (!this.autoRecoveredOnce) {
+      this.autoRecoveredOnce = true;
+      if (this.autoRecoverTimer) window.clearTimeout(this.autoRecoverTimer);
+      this.autoRecoverTimer = window.setTimeout(() => {
+        this.setState({ hasError: false, error: undefined });
+      }, 50);
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.autoRecoverTimer) window.clearTimeout(this.autoRecoverTimer);
   }
 
   render() {
