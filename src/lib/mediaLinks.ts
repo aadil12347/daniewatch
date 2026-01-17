@@ -53,15 +53,15 @@ function getVideasyFallbackUrl(tmdbId: number, type: "movie" | "tv", season?: nu
   }
 }
 
-// Get MoviesAPI (moviesapi.to) embed URL
+// Get MoviesAPI (moviesapi.club) embed URL
 function getMoviesApiUrl(tmdbId: number, type: "movie" | "tv", season?: number, episode?: number): string {
   if (type === "movie") {
-    return `https://moviesapi.to/movie/${tmdbId}`;
+    return `https://moviesapi.club/movie/${tmdbId}`;
   }
 
   const safeSeason = season || 1;
   const safeEpisode = episode || 1;
-  return `https://moviesapi.to/tv/${tmdbId}-${safeSeason}-${safeEpisode}`;
+  return `https://moviesapi.club/tv/${tmdbId}-${safeSeason}-${safeEpisode}`;
 }
 
 // Main function to get media links with priority: Supabase → MoviesAPI → Videasy fallback

@@ -20,8 +20,8 @@ function getVideasyEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number
 }
 
 function getMoviesApiEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number, episode: number) {
-  if (type === "movie") return `https://moviesapi.to/movie/${tmdbId}`;
-  return `https://moviesapi.to/tv/${tmdbId}-${season}-${episode}`;
+  if (type === "movie") return `https://moviesapi.club/movie/${tmdbId}`;
+  return `https://moviesapi.club/tv/${tmdbId}-${season}-${episode}`;
 }
 
 export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, inline = false }: VideoPlayerProps) => {
