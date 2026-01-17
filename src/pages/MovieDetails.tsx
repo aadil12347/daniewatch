@@ -158,10 +158,10 @@ const MovieDetails = () => {
           <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
             {/* Background Trailer (hide when playing) */}
             {!isPlayerOpen ? (
-              <BackgroundTrailer 
-                videoKey={trailerKey} 
-                backdropUrl={backdropUrl} 
-                title={movie.title} 
+              <BackgroundTrailer
+                videoKey={trailerKey}
+                backdropUrl={backdropUrl}
+                title={movie.title}
               />
             ) : (
               <VideoPlayer
@@ -170,6 +170,7 @@ const MovieDetails = () => {
                 onClose={() => navigate(-1)}
                 inline
                 fill
+                className="player-genie-in"
               />
             )}
 
@@ -185,18 +186,16 @@ const MovieDetails = () => {
           {/* Details block (animates below player; overlays trailer when not playing) */}
           <div
             className={
-              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin,transform] duration-500 ease-out " +
-              (isPlayerOpen
-                ? "mt-4 md:mt-8 translate-y-6"
-                : "-mt-44 md:-mt-64 translate-y-0")
+              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin,transform] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] " +
+              (isPlayerOpen ? "mt-6 md:mt-10 translate-y-10" : "-mt-44 md:-mt-64 translate-y-0")
             }
           >
             <div className="animate-slide-up max-w-xl lg:max-w-2xl md:px-8 lg:px-12">
               {/* Logo */}
               {logoUrl ? (
-                <img 
-                  src={logoUrl} 
-                  alt={movie.title} 
+                <img
+                  src={logoUrl}
+                  alt={movie.title}
                   className="h-16 md:h-20 lg:h-24 object-contain object-left mb-3 md:mb-4"
                 />
               ) : (
@@ -243,7 +242,7 @@ const MovieDetails = () => {
                   size="sm"
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                     // Add watch param to URL - this creates a history entry
                     const params = new URLSearchParams(location.search);
                     params.set("watch", "1");
@@ -257,7 +256,7 @@ const MovieDetails = () => {
                   size="icon"
                   variant="outline"
                   className={`w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
-                    isInWatchlist(movie.id, 'movie') ? 'text-primary border-primary' : ''
+                    isInWatchlist(movie.id, "movie") ? "text-primary border-primary" : ""
                   }`}
                   onClick={async () => {
                     if (isBookmarking) return;
@@ -270,8 +269,8 @@ const MovieDetails = () => {
                       backdrop_path: movie.backdrop_path,
                       vote_average: movie.vote_average,
                       release_date: movie.release_date,
-                      genre_ids: movie.genres?.map(g => g.id) || [],
-                      media_type: 'movie',
+                      genre_ids: movie.genres?.map((g) => g.id) || [],
+                      media_type: "movie",
                     };
                     await toggleWatchlist(movieData);
                     setIsBookmarking(false);
@@ -281,7 +280,7 @@ const MovieDetails = () => {
                   {isBookmarking ? (
                     <Loader2 className="w-5 h-5 md:w-4 md:h-4 animate-spin" />
                   ) : (
-                    <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(movie.id, 'movie') ? 'fill-current' : ''}`} />
+                    <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(movie.id, "movie") ? "fill-current" : ""}`} />
                   )}
                 </Button>
                 {mediaResult?.downloadUrl && (
@@ -290,13 +289,13 @@ const MovieDetails = () => {
                     variant="outline"
                     className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border backdrop-blur-sm text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 transition-all"
                     onClick={() => {
-                      window.open(mediaResult.downloadUrl, '_blank');
+                      window.open(mediaResult.downloadUrl, "_blank");
                     }}
                   >
                     <Download className="w-5 h-5 md:w-4 md:h-4" />
                   </Button>
                 )}
-                
+
                 {/* Admin Controls */}
                 {isAdmin && movie && (
                   <AdminPostControls
