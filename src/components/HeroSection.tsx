@@ -1,9 +1,21 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Play, Info, Star } from "lucide-react";
-import { Movie, getBackdropUrl, getDisplayTitle, getReleaseDate, getYear, getMovieGenres, getTVGenres, getMovieImages, getTVImages, getImageUrl, Genre } from "@/lib/tmdb";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Star, Bookmark, Loader2 } from "lucide-react";
+import {
+  Movie,
+  getBackdropUrl,
+  getDisplayTitle,
+  getReleaseDate,
+  getYear,
+  getMovieGenres,
+  getTVGenres,
+  getMovieImages,
+  getTVImages,
+  getImageUrl,
+} from "@/lib/tmdb";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AnimatedPlayButton } from "@/components/AnimatedPlayButton";
+import { useWatchlist } from "@/hooks/useWatchlist";
 
 interface HeroSectionProps {
   items: Movie[];
@@ -11,9 +23,15 @@ interface HeroSectionProps {
 }
 
 export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
+  const navigate = useNavigate();
+  const { toggleWatchlist, isInWatchlist } = useWatchlist();
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [genres, setGenres] = useState<Record<number, string>>({});
   const [logos, setLogos] = useState<Record<number, string | null>>({});
+
+  const [watchlistAnim, setWatchlistAnim] = useState<"add" | "remove" | null>(null);
+  const [isBookmarking, setIsBookmarking] = useState(false);
 
   useEffect(() => {
     const loadGenres = async () => {
@@ -156,27 +174,72 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            <Button
-              asChild
-              size="default"
-              className="gradient-red text-foreground font-medium px-6 md:px-5 h-11 md:h-10 text-base md:text-sm hover:opacity-90 transition-opacity shadow-glow"
+            <AnimatedPlayButton
+              className="h-11 md:h-10 px-6 md:px-8 shadow-glow"
+              label="Play"
+              onClick={() => {
+                const params = new URLSearchParams();
+                params.set("watch", "1");
+                if (mediaType === "tv") {
+                  params.set("s", "1");
+                  params.set("e", "1");
+                }
+                navigate({ pathname: `/${mediaType}/${current.id}`, search: params.toString() });
+              }}
+            />
+
+            <button
+              type="button"
+              className={
+                "relative flex items-center justify-center w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border border-border backdrop-blur-sm transition-all duration-150 hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                (isInWatchlist(current.id, mediaType as "movie" | "tv") ? "text-primary border-primary bg-primary/20 " : "text-foreground ") +
+                (watchlistAnim === "add" ? "bookmark-burst " : "") +
+                (watchlistAnim === "remove" ? "bookmark-unburst " : "")
+              }
+              onClick={async () => {
+                if (isBookmarking) return;
+
+                const next = !isInWatchlist(current.id, mediaType as "movie" | "tv");
+                setWatchlistAnim(next ? "add" : "remove");
+                window.setTimeout(() => setWatchlistAnim(null), 400);
+
+                setIsBookmarking(true);
+                await toggleWatchlist({ ...current, media_type: mediaType });
+                setIsBookmarking(false);
+              }}
+              aria-label={
+                isInWatchlist(current.id, mediaType as "movie" | "tv")
+                  ? "Remove from watchlist"
+                  : "Add to watchlist"
+              }
+              title={
+                isInWatchlist(current.id, mediaType as "movie" | "tv")
+                  ? "Remove from watchlist"
+                  : "Add to watchlist"
+              }
             >
-              <Link to={`/${mediaType}/${current.id}`}>
-                <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1.5 fill-current" />
-                Play Now
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="default"
-              variant="outline"
-              className="bg-secondary/50 border-border hover:bg-secondary/80 h-11 md:h-10 px-5 md:px-4 text-base md:text-sm"
-            >
-              <Link to={`/${mediaType}/${current.id}`}>
-                <Info className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1.5" />
-                More Info
-              </Link>
-            </Button>
+              {isBookmarking ? (
+                <Loader2 className="w-5 h-5 md:w-4 md:h-4 animate-spin" />
+              ) : (
+                <Bookmark
+                  className={
+                    "w-5 h-5 md:w-4 md:h-4 transition-all duration-150 " +
+                    (watchlistAnim === "add" ? "bookmark-pop " : "") +
+                    (watchlistAnim === "remove" ? "bookmark-unpop " : "") +
+                    (isInWatchlist(current.id, mediaType as "movie" | "tv")
+                      ? "fill-primary scale-110"
+                      : "fill-transparent scale-100")
+                  }
+                />
+              )}
+            </button>
+
+            {/* Keep link to details accessible via title click; optional direct nav */}
+            <Link
+              to={`/${mediaType}/${current.id}`}
+              className="sr-only"
+              aria-label="Open details"
+            />
           </div>
         </div>
       </div>
