@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface MediaLinkResult {
-  source: "supabase" | "fallback";
+  source: "supabase" | "moviesapi" | "videasy";
   found: boolean;
   watchUrl?: string;
   downloadUrl?: string;
@@ -53,7 +53,18 @@ function getVideasyFallbackUrl(tmdbId: number, type: "movie" | "tv", season?: nu
   }
 }
 
-// Main function to get media links with priority: Supabase → Videasy fallback
+// Get MoviesAPI (moviesapi.to) embed URL
+function getMoviesApiUrl(tmdbId: number, type: "movie" | "tv", season?: number, episode?: number): string {
+  if (type === "movie") {
+    return `https://moviesapi.to/movie/${tmdbId}`;
+  }
+
+  const safeSeason = season || 1;
+  const safeEpisode = episode || 1;
+  return `https://moviesapi.to/tv/${tmdbId}-${safeSeason}-${safeEpisode}`;
+}
+
+// Main function to get media links with priority: Supabase → MoviesAPI → Videasy fallback
 export async function getMediaLinks(
   tmdbId: number,
   type: "movie" | "tv",
@@ -61,7 +72,7 @@ export async function getMediaLinks(
   episode?: number
 ): Promise<MediaLinkResult> {
   const result: MediaLinkResult = {
-    source: "fallback",
+    source: "moviesapi",
     found: false,
   };
 
@@ -139,14 +150,21 @@ export async function getMediaLinks(
     console.log("[MediaLinks] Supabase check error:", err);
   }
 
-  // Fallback: Return Videasy URL
-  result.watchUrl = getVideasyFallbackUrl(tmdbId, type, season, episode);
-  result.source = "fallback";
+  // Fallback #1: MoviesAPI
+  result.watchUrl = getMoviesApiUrl(tmdbId, type, season, episode);
+  result.source = "moviesapi";
   result.found = false;
-  
-  console.log(`[MediaLinks] Using Videasy fallback for TMDB ${tmdbId}:`, result.watchUrl);
+
+  // Keep Videasy available as a last-resort fallback in the player UI
+  const videasyFallback = getVideasyFallbackUrl(tmdbId, type, season, episode);
+
+  console.log(`[MediaLinks] Using MoviesAPI fallback for TMDB ${tmdbId}:`, {
+    moviesApi: result.watchUrl,
+    videasyFallback,
+  });
   return result;
 }
+
 
 // Function to trigger download
 export function triggerDownload(url: string, filename?: string) {

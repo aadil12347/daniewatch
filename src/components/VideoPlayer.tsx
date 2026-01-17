@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
@@ -14,21 +14,36 @@ interface VideoPlayerProps {
   inline?: boolean;
 }
 
+function getVideasyEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number, episode: number) {
+  if (type === "movie") return `https://player.videasy.net/movie/${tmdbId}`;
+  return `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
+}
+
+function getMoviesApiEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number, episode: number) {
+  if (type === "movie") return `https://moviesapi.to/movie/${tmdbId}`;
+  return `https://moviesapi.to/tv/${tmdbId}-${season}-${episode}`;
+}
+
 export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, inline = false }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
+  const [useAlternate, setUseAlternate] = useState(false);
   const { setIsVideoPlaying } = useMedia();
   const isMobile = useIsMobile();
 
-  // Check for video sources with priority: Supabase -> Blogger -> Videasy
+  const moviesApiUrl = useMemo(() => getMoviesApiEmbedUrl(tmdbId, type, season, episode), [tmdbId, type, season, episode]);
+  const videasyUrl = useMemo(() => getVideasyEmbedUrl(tmdbId, type, season, episode), [tmdbId, type, season, episode]);
+
+  // Check for video sources with priority: Cloud DB -> MoviesAPI -> Videasy
   useEffect(() => {
     const fetchMediaLinks = async () => {
       setIsLoading(true);
+      setUseAlternate(false);
       const result = await getMediaLinks(tmdbId, type, season, episode);
       setMediaResult(result);
       setIsLoading(false);
     };
-    
+
     fetchMediaLinks();
   }, [tmdbId, type, season, episode]);
 
@@ -36,14 +51,16 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   const getEmbedUrl = () => {
     if (!mediaResult) {
       // Fallback while loading
-      if (type === "movie") {
-        return `https://player.videasy.net/movie/${tmdbId}`;
-      } else {
-        return `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
-      }
+      return moviesApiUrl;
     }
 
-    // For TV shows, check seasonEpisodeLinks first
+    // Manual alternate player switch (MoviesAPI -> Videasy)
+    if (mediaResult.source === "moviesapi" && useAlternate) {
+      console.log(`[VideoPlayer] Using alternate (Videasy) URL:`, videasyUrl);
+      return videasyUrl;
+    }
+
+    // For TV shows, check seasonEpisodeLinks first (Cloud DB)
     if (type === "tv" && mediaResult.seasonEpisodeLinks && episode) {
       const episodeLink = mediaResult.seasonEpisodeLinks[episode - 1];
       if (episodeLink) {
@@ -59,11 +76,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
     }
 
     // Final fallback
-    if (type === "movie") {
-      return `https://player.videasy.net/movie/${tmdbId}`;
-    } else {
-      return `https://player.videasy.net/tv/${tmdbId}/${season}/${episode}`;
-    }
+    return moviesApiUrl;
   };
 
   // Listen for player events
@@ -139,6 +152,18 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
         </Button>
       )}
 
+      {/* MoviesAPI -> Videasy manual fallback */}
+      {!isLoading && mediaResult?.source === "moviesapi" && (
+        <Button
+          type="button"
+          variant="outline"
+          className="absolute top-20 md:top-24 left-4 z-[80] pointer-events-auto bg-background/20 hover:bg-background/30 backdrop-blur-sm"
+          onClick={() => setUseAlternate(v => !v)}
+        >
+          {useAlternate ? "Use MoviesAPI" : "Try alternate player"}
+        </Button>
+      )}
+
       {/* Simple loading spinner while checking for video source */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black">
@@ -150,7 +175,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       {!isLoading && (
         <iframe
           src={getEmbedUrl()}
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
           allowFullScreen
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         />
