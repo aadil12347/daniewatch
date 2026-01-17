@@ -5,9 +5,10 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
 import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
+import { InlineDotsLoader } from "@/components/InlineDotsLoader";
+import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -30,7 +31,7 @@ const Korean = () => {
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -68,104 +69,106 @@ const Korean = () => {
     };
   }, [items, page, hasMore, selectedTags, saveCache]);
 
-  const fetchKorean = useCallback(async (pageNum: number, reset: boolean = false) => {
-    if (reset) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Build genre params - handle action/fantasy genre difference for TV
-      const movieGenres = selectedTags.join(",");
-      const tvGenres = selectedTags.map(g => {
-        if (g === 28) return TV_ACTION_GENRE;
-        if (g === 14) return TV_FANTASY_GENRE;
-        return g;
-      }).join(",");
-
-      // Build movie params - sorted by release date desc
-      const movieParams = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "primary_release_date.desc",
-        with_original_language: "ko",
-        "vote_count.gte": "50",
-        "primary_release_date.lte": today,
-      });
-
-      // Build TV params - sorted by first air date desc
-      const tvParams = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "first_air_date.desc",
-        with_original_language: "ko",
-        "vote_count.gte": "20",
-        "first_air_date.lte": today,
-      });
-
-      // Year filter
-      if (selectedYear) {
-        if (selectedYear === "older") {
-          movieParams.set("primary_release_date.lte", "2019-12-31");
-          tvParams.set("first_air_date.lte", "2019-12-31");
-        } else {
-          movieParams.set("primary_release_year", selectedYear);
-          tvParams.set("first_air_date_year", selectedYear);
-        }
-      }
-
-      // Genre filter
-      if (selectedTags.length > 0) {
-        movieParams.set("with_genres", movieGenres);
-        tvParams.set("with_genres", tvGenres);
-      }
-
-      // Fetch both movies and TV in parallel
-      const [moviesRes, tvRes] = await Promise.all([
-        fetch(`https://api.themoviedb.org/3/discover/movie?${movieParams}`),
-        fetch(`https://api.themoviedb.org/3/discover/tv?${tvParams}`)
-      ]);
-
-      const [moviesData, tvData] = await Promise.all([
-        moviesRes.json(),
-        tvRes.json()
-      ]);
-
-      // Combine with media_type tags and filter adult content with strict certification checks
-      const combined = [
-        ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
-        ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
-      ];
-      const combinedResults = await filterAdultContentStrict(combined);
-
-      // Sort by release date descending
-      const sortedResults = combinedResults.sort((a, b) => {
-        const dateA = a.release_date || a.first_air_date || "";
-        const dateB = b.release_date || b.first_air_date || "";
-        return dateB.localeCompare(dateA);
-      });
-
+  const fetchKorean = useCallback(
+    async (pageNum: number, reset: boolean = false) => {
       if (reset) {
-        setItems(sortedResults);
+        setIsLoading(true);
       } else {
-        setItems(prev => [...prev, ...sortedResults]);
+        setIsLoadingMore(true);
       }
 
-      // Has more if either endpoint has more pages
-      const maxPages = Math.max(moviesData.total_pages || 0, tvData.total_pages || 0);
-      setHasMore(pageNum < maxPages);
-    } catch (error) {
-      console.error("Failed to fetch Korean content:", error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [selectedTags, selectedYear]);
+      try {
+        const today = new Date().toISOString().split("T")[0];
+
+        // Build genre params - handle action/fantasy genre difference for TV
+        const movieGenres = selectedTags.join(",");
+        const tvGenres = selectedTags
+          .map((g) => {
+            if (g === 28) return TV_ACTION_GENRE;
+            if (g === 14) return TV_FANTASY_GENRE;
+            return g;
+          })
+          .join(",");
+
+        // Build movie params - sorted by release date desc
+        const movieParams = new URLSearchParams({
+          api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
+          page: pageNum.toString(),
+          sort_by: "primary_release_date.desc",
+          with_original_language: "ko",
+          "vote_count.gte": "50",
+          "primary_release_date.lte": today,
+        });
+
+        // Build TV params - sorted by first air date desc
+        const tvParams = new URLSearchParams({
+          api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
+          page: pageNum.toString(),
+          sort_by: "first_air_date.desc",
+          with_original_language: "ko",
+          "vote_count.gte": "20",
+          "first_air_date.lte": today,
+        });
+
+        // Year filter
+        if (selectedYear) {
+          if (selectedYear === "older") {
+            movieParams.set("primary_release_date.lte", "2019-12-31");
+            tvParams.set("first_air_date.lte", "2019-12-31");
+          } else {
+            movieParams.set("primary_release_year", selectedYear);
+            tvParams.set("first_air_date_year", selectedYear);
+          }
+        }
+
+        // Genre filter
+        if (selectedTags.length > 0) {
+          movieParams.set("with_genres", movieGenres);
+          tvParams.set("with_genres", tvGenres);
+        }
+
+        // Fetch both movies and TV in parallel
+        const [moviesRes, tvRes] = await Promise.all([
+          fetch(`https://api.themoviedb.org/3/discover/movie?${movieParams}`),
+          fetch(`https://api.themoviedb.org/3/discover/tv?${tvParams}`),
+        ]);
+
+        const [moviesData, tvData] = await Promise.all([moviesRes.json(), tvRes.json()]);
+
+        // Combine with media_type tags and filter adult content with strict certification checks
+        const combined = [
+          ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
+          ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const })),
+        ];
+        const combinedResults = await filterAdultContentStrict(combined);
+
+        // Sort by release date descending
+        const sortedResults = combinedResults.sort((a, b) => {
+          const dateA = a.release_date || a.first_air_date || "";
+          const dateB = b.release_date || b.first_air_date || "";
+          return dateB.localeCompare(dateA);
+        });
+
+        if (reset) {
+          setItems(sortedResults);
+        } else {
+          setItems((prev) => [...prev, ...sortedResults]);
+        }
+
+        // Has more if either endpoint has more pages
+        const maxPages = Math.max(moviesData.total_pages || 0, tvData.total_pages || 0);
+        setHasMore(pageNum < maxPages);
+      } catch (error) {
+        console.error("Failed to fetch Korean content:", error);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [selectedTags, selectedYear, setIsLoadingMore]
+  );
 
   // Reset and fetch when filters change
   useEffect(() => {
@@ -180,6 +183,13 @@ const Korean = () => {
     fetchKorean(1, true);
   }, [selectedTags, selectedYear, isInitialized]);
 
+  // Tell global loader it can stop as soon as we have real content on screen.
+  useEffect(() => {
+    if (!isLoading && items.length > 0) {
+      requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
+    }
+  }, [isLoading, items.length]);
+
   // Infinite scroll observer
   useEffect(() => {
     if (observerRef.current) {
@@ -189,7 +199,7 @@ const Korean = () => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage(prev => prev + 1);
+          setPage((prev) => prev + 1);
         }
       },
       { threshold: 0.1 }
@@ -210,11 +220,7 @@ const Korean = () => {
   }, [page, fetchKorean, isRestoredFromCache]);
 
   const toggleTag = (genreId: number) => {
-    setSelectedTags(prev =>
-      prev.includes(genreId)
-        ? prev.filter(id => id !== genreId)
-        : [...prev, genreId]
-    );
+    setSelectedTags((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
   };
 
   const clearTags = () => {
@@ -227,13 +233,16 @@ const Korean = () => {
   };
 
   // Convert tags to genre format for CategoryNav
-  const genresForNav = KOREAN_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
+  const genresForNav = KOREAN_TAGS.map((tag) => ({ id: tag.genreId, name: tag.label }));
 
   return (
     <>
       <Helmet>
         <title>Korean Movies & TV - DanieWatch</title>
-        <meta name="description" content="Watch the best Korean movies and TV series sorted by latest release. Filter by genre and year." />
+        <meta
+          name="description"
+          content="Watch the best Korean movies and TV series sorted by latest release. Filter by genre and year."
+        />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -265,9 +274,9 @@ const Korean = () => {
                   </div>
                 ))
               : items.map((item, index) => (
-                  <MovieCard 
-                    key={`${item.id}-${item.media_type}-${index}`} 
-                    movie={item} 
+                  <MovieCard
+                    key={`${item.id}-${item.media_type}-${index}`}
+                    movie={item}
                     animationDelay={Math.min(index * 30, 300)}
                   />
                 ))}
@@ -287,16 +296,9 @@ const Korean = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-8">
-            {isLoadingMore && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading more...</span>
-              </div>
-            )}
-            {!hasMore && items.length > 0 && (
-              <p className="text-muted-foreground">You've reached the end</p>
-            )}
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+            {!hasMore && items.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 
@@ -307,3 +309,4 @@ const Korean = () => {
 };
 
 export default Korean;
+

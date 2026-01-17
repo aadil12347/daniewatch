@@ -6,8 +6,9 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
-import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
+import { InlineDotsLoader } from "@/components/InlineDotsLoader";
+import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 
 const TVShows = () => {
   const [shows, setShows] = useState<Movie[]>([]);
@@ -15,7 +16,7 @@ const TVShows = () => {
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -66,58 +67,61 @@ const TVShows = () => {
     };
   }, [shows, page, hasMore, selectedGenres, saveCache]);
 
-  const fetchShows = useCallback(async (pageNum: number, reset: boolean = false) => {
-    if (reset) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Build params for discover endpoint - sorted by first air date desc
-      const params = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "first_air_date.desc",
-        "vote_count.gte": "20",
-        "first_air_date.lte": today,
-      });
-
-      // Year filter
-      if (selectedYear) {
-        if (selectedYear === "older") {
-          params.set("first_air_date.lte", "2019-12-31");
-        } else {
-          params.set("first_air_date_year", selectedYear);
-        }
-      }
-
-      // Genre filter
-      if (selectedGenres.length > 0) {
-        params.set("with_genres", selectedGenres.join(","));
-      }
-
-      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
-      const response = await res.json();
-
-      const filteredResults = filterAdultContent(response.results) as Movie[];
-
+  const fetchShows = useCallback(
+    async (pageNum: number, reset: boolean = false) => {
       if (reset) {
-        setShows(filteredResults);
+        setIsLoading(true);
       } else {
-        setShows(prev => [...prev, ...filteredResults]);
+        setIsLoadingMore(true);
       }
-      setHasMore(response.page < response.total_pages);
-    } catch (error) {
-      console.error("Failed to fetch TV shows:", error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [selectedGenres, selectedYear]);
+
+      try {
+        const today = new Date().toISOString().split("T")[0];
+
+        // Build params for discover endpoint - sorted by first air date desc
+        const params = new URLSearchParams({
+          api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
+          page: pageNum.toString(),
+          sort_by: "first_air_date.desc",
+          "vote_count.gte": "20",
+          "first_air_date.lte": today,
+        });
+
+        // Year filter
+        if (selectedYear) {
+          if (selectedYear === "older") {
+            params.set("first_air_date.lte", "2019-12-31");
+          } else {
+            params.set("first_air_date_year", selectedYear);
+          }
+        }
+
+        // Genre filter
+        if (selectedGenres.length > 0) {
+          params.set("with_genres", selectedGenres.join(","));
+        }
+
+        const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+        const response = await res.json();
+
+        const filteredResults = filterAdultContent(response.results) as Movie[];
+
+        if (reset) {
+          setShows(filteredResults);
+        } else {
+          setShows((prev) => [...prev, ...filteredResults]);
+        }
+        setHasMore(response.page < response.total_pages);
+      } catch (error) {
+        console.error("Failed to fetch TV shows:", error);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [selectedGenres, selectedYear, setIsLoadingMore]
+  );
 
   // Reset and fetch when filters change
   useEffect(() => {
@@ -132,6 +136,13 @@ const TVShows = () => {
     fetchShows(1, true);
   }, [selectedGenres, selectedYear, isInitialized]);
 
+  // Tell global loader it can stop as soon as we have real content on screen.
+  useEffect(() => {
+    if (!isLoading && shows.length > 0) {
+      requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
+    }
+  }, [isLoading, shows.length]);
+
   // Infinite scroll observer
   useEffect(() => {
     if (observerRef.current) {
@@ -141,7 +152,7 @@ const TVShows = () => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage(prev => prev + 1);
+          setPage((prev) => prev + 1);
         }
       },
       { threshold: 0.1 }
@@ -162,11 +173,7 @@ const TVShows = () => {
   }, [page, fetchShows, isRestoredFromCache]);
 
   const toggleGenre = (genreId: number) => {
-    setSelectedGenres(prev =>
-      prev.includes(genreId)
-        ? prev.filter(id => id !== genreId)
-        : [...prev, genreId]
-    );
+    setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
   };
 
   const clearGenres = () => {
@@ -179,7 +186,7 @@ const TVShows = () => {
   };
 
   // Convert genres to CategoryNav format
-  const genresForNav = genres.map(g => ({ id: g.id, name: g.name }));
+  const genresForNav = genres.map((g) => ({ id: g.id, name: g.name }));
 
   return (
     <>
@@ -217,9 +224,9 @@ const TVShows = () => {
                   </div>
                 ))
               : shows.map((show, index) => (
-                  <MovieCard 
-                    key={`${show.id}-${index}`} 
-                    movie={{ ...show, media_type: "tv" }} 
+                  <MovieCard
+                    key={`${show.id}-${index}`}
+                    movie={{ ...show, media_type: "tv" }}
                     animationDelay={Math.min(index * 30, 300)}
                   />
                 ))}
@@ -239,16 +246,9 @@ const TVShows = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-8">
-            {isLoadingMore && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading more...</span>
-              </div>
-            )}
-            {!hasMore && shows.length > 0 && (
-              <p className="text-muted-foreground">You've reached the end</p>
-            )}
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+            {!hasMore && shows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 
@@ -259,3 +259,4 @@ const TVShows = () => {
 };
 
 export default TVShows;
+

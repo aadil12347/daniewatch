@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
+import { InlineDotsLoader } from "@/components/InlineDotsLoader";
+import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 
 type IndianLang = "all" | "ta" | "te" | "hi";
 
@@ -21,15 +23,11 @@ const Indian = () => {
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedLang, setSelectedLang] = useState<IndianLang>("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
-
-  const MIN_LOAD_MORE_MS = 2000;
-  const loadMoreStartedAtRef = useRef(0);
-  const loadMoreMinTimerRef = useRef<number | null>(null);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -53,10 +51,6 @@ const Indian = () => {
   // Save cache before unmount / route change
   useEffect(() => {
     return () => {
-      if (loadMoreMinTimerRef.current) {
-        window.clearTimeout(loadMoreMinTimerRef.current);
-        loadMoreMinTimerRef.current = null;
-      }
       if (items.length > 0) {
         saveCache({
           items,
@@ -74,11 +68,6 @@ const Indian = () => {
       if (reset) {
         setIsLoading(true);
       } else {
-        loadMoreStartedAtRef.current = Date.now();
-        if (loadMoreMinTimerRef.current) {
-          window.clearTimeout(loadMoreMinTimerRef.current);
-          loadMoreMinTimerRef.current = null;
-        }
         setIsLoadingMore(true);
       }
 
@@ -162,27 +151,10 @@ const Indian = () => {
         console.error("Failed to fetch Indian content:", error);
       } finally {
         setIsLoading(false);
-
-        if (reset) {
-          setIsLoadingMore(false);
-          return;
-        }
-
-        // Keep the small inline loader visible for at least 2s (prevents flicker/glitch).
-        const elapsed = Date.now() - loadMoreStartedAtRef.current;
-        const remaining = Math.max(0, MIN_LOAD_MORE_MS - elapsed);
-        if (remaining === 0) {
-          setIsLoadingMore(false);
-          return;
-        }
-
-        loadMoreMinTimerRef.current = window.setTimeout(() => {
-          setIsLoadingMore(false);
-          loadMoreMinTimerRef.current = null;
-        }, remaining);
+        setIsLoadingMore(false);
       }
     },
-    [selectedLang]
+    [selectedLang, setIsLoadingMore]
   );
 
   // Reset and fetch when language changes
@@ -198,6 +170,13 @@ const Indian = () => {
     setHasMore(true);
     fetchIndian(1, true);
   }, [selectedLang, isInitialized, fetchIndian, isRestoredFromCache]);
+
+  // Tell global loader it can stop as soon as we have real content on screen.
+  useEffect(() => {
+    if (!isLoading && items.length > 0) {
+      requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
+    }
+  }, [isLoading, items.length]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -230,7 +209,10 @@ const Indian = () => {
     <>
       <Helmet>
         <title>Indian - DanieWatch</title>
-        <meta name="description" content="Tamil, Telugu and Bollywood movies & TV sorted from latest to oldest with infinite scroll." />
+        <meta
+          name="description"
+          content="Tamil, Telugu and Bollywood movies & TV sorted from latest to oldest with infinite scroll."
+        />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -269,7 +251,11 @@ const Indian = () => {
                   </div>
                 ))
               : items.map((item, index) => (
-                  <MovieCard key={`${item.id}-${item.media_type}`} movie={item} animationDelay={Math.min(index * 30, 300)} />
+                  <MovieCard
+                    key={`${item.id}-${item.media_type}`}
+                    movie={item}
+                    animationDelay={Math.min(index * 30, 300)}
+                  />
                 ))}
           </div>
 
@@ -282,18 +268,7 @@ const Indian = () => {
 
           {/* Load more sentinel (stop quietly at end) */}
           <div ref={loadMoreRef} className="flex justify-center py-6">
-            {isLoadingMore && (
-              <div className="flex items-center justify-center">
-                <div className="app-loader app-loader--sm" aria-hidden="true">
-                  <div className="circle" />
-                  <div className="circle" />
-                  <div className="circle" />
-                  <div className="shadow" />
-                  <div className="shadow" />
-                  <div className="shadow" />
-                </div>
-              </div>
-            )}
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
           </div>
         </div>
 
@@ -304,3 +279,4 @@ const Indian = () => {
 };
 
 export default Indian;
+

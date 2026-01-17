@@ -6,8 +6,9 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Movie, filterAdultContent } from "@/lib/tmdb";
-import { Loader2 } from "lucide-react";
 import { useListStateCache } from "@/hooks/useListStateCache";
+import { InlineDotsLoader } from "@/components/InlineDotsLoader";
+import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -28,7 +29,7 @@ const Anime = () => {
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -66,55 +67,58 @@ const Anime = () => {
     };
   }, [items, page, hasMore, selectedTags, saveCache]);
 
-  const fetchAnime = useCallback(async (pageNum: number, reset: boolean = false) => {
-    if (reset) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const allGenres = [ANIME_GENRE_ID, ...selectedTags];
-      
-      // Build params - sorted by first air date desc
-      const params = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "first_air_date.desc",
-        with_genres: allGenres.join(","),
-        with_original_language: "ja",
-        "vote_count.gte": "20",
-        "first_air_date.lte": today,
-      });
-
-      // Year filter
-      if (selectedYear) {
-        if (selectedYear === "older") {
-          params.set("first_air_date.lte", "2019-12-31");
-        } else {
-          params.set("first_air_date_year", selectedYear);
-        }
-      }
-
-      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
-      const response = await res.json();
-
-      const filteredResults = filterAdultContent(response.results) as Movie[];
+  const fetchAnime = useCallback(
+    async (pageNum: number, reset: boolean = false) => {
       if (reset) {
-        setItems(filteredResults);
+        setIsLoading(true);
       } else {
-        setItems(prev => [...prev, ...filteredResults]);
+        setIsLoadingMore(true);
       }
-      setHasMore(response.page < response.total_pages);
-    } catch (error) {
-      console.error("Failed to fetch anime:", error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [selectedTags, selectedYear]);
+
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const allGenres = [ANIME_GENRE_ID, ...selectedTags];
+
+        // Build params - sorted by first air date desc
+        const params = new URLSearchParams({
+          api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
+          page: pageNum.toString(),
+          sort_by: "first_air_date.desc",
+          with_genres: allGenres.join(","),
+          with_original_language: "ja",
+          "vote_count.gte": "20",
+          "first_air_date.lte": today,
+        });
+
+        // Year filter
+        if (selectedYear) {
+          if (selectedYear === "older") {
+            params.set("first_air_date.lte", "2019-12-31");
+          } else {
+            params.set("first_air_date_year", selectedYear);
+          }
+        }
+
+        const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+        const response = await res.json();
+
+        const filteredResults = filterAdultContent(response.results) as Movie[];
+        if (reset) {
+          setItems(filteredResults);
+        } else {
+          setItems((prev) => [...prev, ...filteredResults]);
+        }
+        setHasMore(response.page < response.total_pages);
+      } catch (error) {
+        console.error("Failed to fetch anime:", error);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [selectedTags, selectedYear, setIsLoadingMore]
+  );
 
   // Reset and fetch when filters change
   useEffect(() => {
@@ -129,6 +133,13 @@ const Anime = () => {
     fetchAnime(1, true);
   }, [selectedTags, selectedYear, isInitialized]);
 
+  // Tell global loader it can stop as soon as we have real content on screen.
+  useEffect(() => {
+    if (!isLoading && items.length > 0) {
+      requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
+    }
+  }, [isLoading, items.length]);
+
   // Infinite scroll observer
   useEffect(() => {
     if (observerRef.current) {
@@ -138,7 +149,7 @@ const Anime = () => {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage(prev => prev + 1);
+          setPage((prev) => prev + 1);
         }
       },
       { threshold: 0.1 }
@@ -159,11 +170,7 @@ const Anime = () => {
   }, [page, fetchAnime, isRestoredFromCache]);
 
   const toggleTag = (genreId: number) => {
-    setSelectedTags(prev =>
-      prev.includes(genreId)
-        ? prev.filter(id => id !== genreId)
-        : [...prev, genreId]
-    );
+    setSelectedTags((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
   };
 
   const clearTags = () => {
@@ -176,7 +183,7 @@ const Anime = () => {
   };
 
   // Convert tags to genre format for CategoryNav
-  const genresForNav = ANIME_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
+  const genresForNav = ANIME_TAGS.map((tag) => ({ id: tag.genreId, name: tag.label }));
 
   return (
     <>
@@ -214,9 +221,9 @@ const Anime = () => {
                   </div>
                 ))
               : items.map((item, index) => (
-                  <MovieCard 
-                    key={`${item.id}-${index}`} 
-                    movie={{ ...item, media_type: "tv" }} 
+                  <MovieCard
+                    key={`${item.id}-${index}`}
+                    movie={{ ...item, media_type: "tv" }}
                     animationDelay={Math.min(index * 30, 300)}
                   />
                 ))}
@@ -236,16 +243,9 @@ const Anime = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-8">
-            {isLoadingMore && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading more...</span>
-              </div>
-            )}
-            {!hasMore && items.length > 0 && (
-              <p className="text-muted-foreground">You've reached the end</p>
-            )}
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+            {!hasMore && items.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 
@@ -256,3 +256,4 @@ const Anime = () => {
 };
 
 export default Anime;
+
