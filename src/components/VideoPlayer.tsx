@@ -54,22 +54,13 @@ function getMoviesApiEmbedUrl(tmdbId: number, type: "movie" | "tv", season: numb
 function PlayerLoader() {
   return (
     <div className="player-iframe-loader" aria-label="Loading video" role="status">
-      <div className="loader">
-        <svg viewBox="0 0 80 80" aria-hidden="true">
-          <circle r="32" cy="40" cx="40" />
-        </svg>
-      </div>
-
-      <div className="loader triangle" aria-hidden="true">
-        <svg viewBox="0 0 86 80">
-          <polygon points="43 8 79 72 7 72" />
-        </svg>
-      </div>
-
-      <div className="loader" aria-hidden="true">
-        <svg viewBox="0 0 80 80">
-          <rect height="64" width="64" y="8" x="8" />
-        </svg>
+      <div className="app-loader" aria-hidden="true">
+        <div className="circle" />
+        <div className="circle" />
+        <div className="circle" />
+        <div className="shadow" />
+        <div className="shadow" />
+        <div className="shadow" />
       </div>
     </div>
   );

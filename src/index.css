@@ -351,169 +351,115 @@ html {
     .player-genie-in {
       animation: none;
     }
+  }
 
-    .player-iframe-loader .loader,
-    .player-iframe-loader .loader * {
-      animation: none !important;
+  /* Global / Player loading animation (bouncing dots) */
+  .app-loader-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: hsl(var(--background));
+    z-index: 9998;
+  }
+
+  .app-loader {
+    width: 200px;
+    height: 60px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-loader .circle {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    border-radius: 999px;
+    background-color: hsl(var(--muted-foreground));
+    left: 15%;
+    transform-origin: 50%;
+    animation: appLoaderCircle 0.5s alternate infinite ease;
+  }
+
+  @keyframes appLoaderCircle {
+    0% {
+      top: 60px;
+      height: 5px;
+      border-radius: 999px 999px 999px 999px;
+      transform: scaleX(1.7);
+    }
+    40% {
+      height: 20px;
+      border-radius: 999px;
+      transform: scaleX(1);
+    }
+    100% {
+      top: 0%;
     }
   }
 
-  /* Iframe loading animation (SVG loaders) */
+  .app-loader .circle:nth-child(2) {
+    left: 45%;
+    animation-delay: 0.2s;
+  }
+
+  .app-loader .circle:nth-child(3) {
+    left: auto;
+    right: 15%;
+    animation-delay: 0.3s;
+  }
+
+  .app-loader .shadow {
+    width: 20px;
+    height: 4px;
+    border-radius: 999px;
+    background-color: hsl(var(--foreground) / 0.25);
+    position: absolute;
+    top: 62px;
+    transform-origin: 50%;
+    z-index: -1;
+    left: 15%;
+    filter: blur(1px);
+    animation: appLoaderShadow 0.5s alternate infinite ease;
+  }
+
+  @keyframes appLoaderShadow {
+    0% {
+      transform: scaleX(1.5);
+    }
+    40% {
+      transform: scaleX(1);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scaleX(0.2);
+      opacity: 0.4;
+    }
+  }
+
+  .app-loader .shadow:nth-child(4) {
+    left: 45%;
+    animation-delay: 0.2s;
+  }
+
+  .app-loader .shadow:nth-child(5) {
+    left: auto;
+    right: 15%;
+    animation-delay: 0.3s;
+  }
+
+  /* Player loader uses the same animation, just centered */
   .player-iframe-loader {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 16px;
   }
 
-  .player-iframe-loader .loader {
-    --path: hsl(var(--muted-foreground));
-    --dot: hsl(var(--primary));
-    --duration: 1.6s;
-
-    width: 44px;
-    height: 44px;
-    position: relative;
-    display: inline-block;
-  }
-
-  .player-iframe-loader .loader:before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    position: absolute;
-    display: block;
-    background: var(--dot);
-    top: 37px;
-    left: 19px;
-    transform: translate(-18px, -18px);
-    animation: dotRect var(--duration) cubic-bezier(0.785, 0.135, 0.15, 0.86) infinite;
-  }
-
-  .player-iframe-loader .loader svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  .player-iframe-loader .loader svg rect,
-  .player-iframe-loader .loader svg polygon,
-  .player-iframe-loader .loader svg circle {
-    fill: none;
-    stroke: var(--path);
-    stroke-width: 10px;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-  }
-
-  .player-iframe-loader .loader svg polygon {
-    stroke-dasharray: 145 76 145 76;
-    stroke-dashoffset: 0;
-    animation: pathTriangle var(--duration) cubic-bezier(0.785, 0.135, 0.15, 0.86) infinite;
-  }
-
-  .player-iframe-loader .loader svg rect {
-    stroke-dasharray: 192 64 192 64;
-    stroke-dashoffset: 0;
-    animation: pathRect var(--duration) cubic-bezier(0.785, 0.135, 0.15, 0.86) infinite;
-  }
-
-  .player-iframe-loader .loader svg circle {
-    stroke-dasharray: 150 50 150 50;
-    stroke-dashoffset: 75;
-    animation: pathCircle var(--duration) cubic-bezier(0.785, 0.135, 0.15, 0.86) infinite;
-  }
-
-  .player-iframe-loader .loader.triangle {
-    width: 48px;
-  }
-
-  .player-iframe-loader .loader.triangle:before {
-    left: 21px;
-    transform: translate(-10px, -18px);
-    animation: dotTriangle var(--duration) cubic-bezier(0.785, 0.135, 0.15, 0.86) infinite;
-  }
-
-  @keyframes pathTriangle {
-    33% {
-      stroke-dashoffset: 74;
-    }
-
-    66% {
-      stroke-dashoffset: 147;
-    }
-
-    100% {
-      stroke-dashoffset: 221;
-    }
-  }
-
-  @keyframes dotTriangle {
-    33% {
-      transform: translate(0, 0);
-    }
-
-    66% {
-      transform: translate(10px, -18px);
-    }
-
-    100% {
-      transform: translate(-10px, -18px);
-    }
-  }
-
-  @keyframes pathRect {
-    25% {
-      stroke-dashoffset: 64;
-    }
-
-    50% {
-      stroke-dashoffset: 128;
-    }
-
-    75% {
-      stroke-dashoffset: 192;
-    }
-
-    100% {
-      stroke-dashoffset: 256;
-    }
-  }
-
-  @keyframes dotRect {
-    25% {
-      transform: translate(0, 0);
-    }
-
-    50% {
-      transform: translate(18px, -18px);
-    }
-
-    75% {
-      transform: translate(0, -36px);
-    }
-
-    100% {
-      transform: translate(-18px, -18px);
-    }
-  }
-
-  @keyframes pathCircle {
-    25% {
-      stroke-dashoffset: 125;
-    }
-
-    50% {
-      stroke-dashoffset: 175;
-    }
-
-    75% {
-      stroke-dashoffset: 225;
-    }
-
-    100% {
-      stroke-dashoffset: 275;
+  @media (prefers-reduced-motion: reduce) {
+    .app-loader .circle,
+    .app-loader .shadow {
+      animation: none !important;
     }
   }
 
