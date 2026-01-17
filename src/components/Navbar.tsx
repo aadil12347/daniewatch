@@ -7,6 +7,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
+import { AnimatedBackButton } from "@/components/AnimatedBackButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -407,14 +408,7 @@ export const Navbar = () => {
       {/* Sticky Back button on details pages - hidden on mobile */}
       {isDetailsPage && (
         <div className="hidden md:block fixed left-4 top-20 z-[60]">
-          <button
-            onClick={handleBack}
-            className="p-2.5 rounded-full bg-background/90 backdrop-blur-md border border-border hover:bg-secondary/50 transition-colors flex items-center gap-2 shadow-lg"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">Back</span>
-          </button>
+          <AnimatedBackButton label="Back" size="navbar" />
         </div>
       )}
 
