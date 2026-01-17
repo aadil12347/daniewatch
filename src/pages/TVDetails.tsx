@@ -283,7 +283,14 @@ const TVDetails = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
 
           {/* Content - Bottom left positioned, adjusted for mobile */}
-          <div className="absolute bottom-6 md:bottom-0 left-0 right-0 px-4 md:px-0 md:left-0 md:right-auto md:p-8 lg:p-12">
+          <div
+            className={
+              "absolute bottom-6 md:bottom-0 left-0 right-0 px-4 md:px-0 md:left-0 md:right-auto md:p-8 lg:p-12 transform-gpu transition-all duration-500 ease-out " +
+              (playerState.isOpen
+                ? "translate-y-28 md:translate-y-40 opacity-0 pointer-events-none"
+                : "translate-y-0 opacity-100")
+            }
+          >
             <div className="animate-slide-up max-w-xl lg:max-w-2xl">
               {/* Logo */}
               {logoUrl ? (
