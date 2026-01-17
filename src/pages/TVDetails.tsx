@@ -265,9 +265,6 @@ const TVDetails = () => {
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
           <div className="relative">
-          <div className="absolute left-4 top-24 z-30 md:left-8">
-            <AnimatedBackButton />
-          </div>
           <div ref={heroRef} className="relative h-[70vh] md:h-screen md:min-h-[700px]">
             {/* Background Trailer (hide when playing) */}
             {!playerState.isOpen ? (
