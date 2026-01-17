@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { applyHoverSwipe } from "@/lib/hoverSwipe";
 import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
@@ -227,12 +228,7 @@ const Indian = () => {
               <button
                 key={l.key}
                 type="button"
-                onMouseMove={(e) => {
-                  const el = e.currentTarget;
-                  const rect = el.getBoundingClientRect();
-                  el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
-                  el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
-                }}
+                onMouseMove={(e) => applyHoverSwipe(e.currentTarget, e.clientX, e.clientY)}
                 onClick={() => setSelectedLang(l.key)}
                 className={cn(
                   "hover-swipe rounded-full border px-4 py-2 text-sm transition-colors",
