@@ -3,45 +3,38 @@ import { Helmet } from "react-helmet-async";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
-import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
-// Indian content genres
-const INDIAN_TAGS = [
-  { id: "drama", label: "Drama", genreId: 18 },
-  { id: "romance", label: "Romance", genreId: 10749 },
-  { id: "action", label: "Action", genreId: 28 },
-  { id: "comedy", label: "Comedy", genreId: 35 },
-  { id: "thriller", label: "Thriller", genreId: 53 },
-  { id: "crime", label: "Crime", genreId: 80 },
-  { id: "family", label: "Family", genreId: 10751 },
-  { id: "musical", label: "Musical", genreId: 10402 },
-];
+type IndianLang = "all" | "ta" | "te" | "hi";
 
-// Action genre ID for TV is different
-const TV_ACTION_GENRE = 10759;
+const INDIAN_LANGS: Array<{ key: IndianLang; label: string; tmdbLang?: string }> = [
+  { key: "all", label: "All" },
+  { key: "ta", label: "Tamil", tmdbLang: "ta" },
+  { key: "te", label: "Telugu", tmdbLang: "te" },
+  { key: "hi", label: "Bollywood", tmdbLang: "hi" },
+];
 
 const Indian = () => {
   const [items, setItems] = useState<Movie[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [selectedLang, setSelectedLang] = useState<IndianLang>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
 
-  // Try to restore from cache on mount
+  // Restore from cache on mount
   useEffect(() => {
-    const cached = getCache("default", selectedTags);
+    const cached = getCache(selectedLang, []);
     if (cached && cached.items.length > 0) {
       setItems(cached.items);
       setPage(cached.page);
@@ -50,9 +43,10 @@ const Indian = () => {
       setIsRestoredFromCache(true);
     }
     setIsInitialized(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save cache before unmount
+  // Save cache before unmount / route change
   useEffect(() => {
     return () => {
       if (items.length > 0) {
@@ -60,136 +54,121 @@ const Indian = () => {
           items,
           page,
           hasMore,
-          activeTab: "default",
-          selectedFilters: selectedTags,
+          activeTab: selectedLang,
+          selectedFilters: [],
         });
       }
     };
-  }, [items, page, hasMore, selectedTags, saveCache]);
+  }, [items, page, hasMore, selectedLang, saveCache]);
 
-  const fetchIndian = useCallback(async (pageNum: number, reset: boolean = false) => {
-    if (reset) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
+  const fetchIndian = useCallback(
+    async (pageNum: number, reset: boolean = false) => {
+      if (reset) setIsLoading(true);
+      else setIsLoadingMore(true);
 
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Build genre params - handle action genre difference for TV
-      const movieGenres = selectedTags.join(",");
-      const tvGenres = selectedTags.map(g => g === 28 ? TV_ACTION_GENRE : g).join(",");
+      try {
+        const today = new Date().toISOString().split("T")[0];
 
-      // Build movie params - sorted by release date desc
-      const movieParams = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "primary_release_date.desc",
-        with_origin_country: "IN",
-        "vote_count.gte": "50",
-        "primary_release_date.lte": today,
-      });
+        const langsToFetch =
+          selectedLang === "all"
+            ? INDIAN_LANGS.filter((l) => l.key !== "all").map((l) => l.tmdbLang!)
+            : [INDIAN_LANGS.find((l) => l.key === selectedLang)?.tmdbLang!].filter(Boolean);
 
-      // Build TV params - sorted by first air date desc
-      const tvParams = new URLSearchParams({
-        api_key: "fc6d85b3839330e3458701b975195487",
-        include_adult: "false",
-        page: pageNum.toString(),
-        sort_by: "first_air_date.desc",
-        with_origin_country: "IN",
-        "vote_count.gte": "20",
-        "first_air_date.lte": today,
-      });
+        const buildMovieParams = (lang: string) =>
+          new URLSearchParams({
+            api_key: "fc6d85b3839330e3458701b975195487",
+            include_adult: "false",
+            page: pageNum.toString(),
+            sort_by: "primary_release_date.desc",
+            with_origin_country: "IN",
+            with_original_language: lang,
+            "vote_count.gte": "20",
+            "primary_release_date.lte": today,
+          });
 
-      // Year filter
-      if (selectedYear) {
-        if (selectedYear === "older") {
-          movieParams.set("primary_release_date.lte", "2019-12-31");
-          tvParams.set("first_air_date.lte", "2019-12-31");
-        } else {
-          movieParams.set("primary_release_year", selectedYear);
-          tvParams.set("first_air_date_year", selectedYear);
-        }
-      }
+        const buildTvParams = (lang: string) =>
+          new URLSearchParams({
+            api_key: "fc6d85b3839330e3458701b975195487",
+            include_adult: "false",
+            page: pageNum.toString(),
+            sort_by: "first_air_date.desc",
+            with_origin_country: "IN",
+            with_original_language: lang,
+            "vote_count.gte": "10",
+            "first_air_date.lte": today,
+          });
 
-      // Genre filter
-      if (selectedTags.length > 0) {
-        movieParams.set("with_genres", movieGenres);
-        tvParams.set("with_genres", tvGenres);
-      }
+        // Fetch movies+tv for each language in parallel
+        const requests = langsToFetch.flatMap((lang) => [
+          fetch(`https://api.themoviedb.org/3/discover/movie?${buildMovieParams(lang)}`),
+          fetch(`https://api.themoviedb.org/3/discover/tv?${buildTvParams(lang)}`),
+        ]);
 
-      // Fetch both movies and TV in parallel
-      const [moviesRes, tvRes] = await Promise.all([
-        fetch(`https://api.themoviedb.org/3/discover/movie?${movieParams}`),
-        fetch(`https://api.themoviedb.org/3/discover/tv?${tvParams}`)
-      ]);
+        const responses = await Promise.all(requests);
+        const jsons = await Promise.all(responses.map((r) => r.json()));
 
-      const [moviesData, tvData] = await Promise.all([
-        moviesRes.json(),
-        tvRes.json()
-      ]);
-
-      // Combine with media_type tags and filter adult content with strict certification checks
-      const combined = [
-        ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
-        ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))
-      ];
-      const combinedResults: Movie[] = await filterAdultContentStrict(combined);
-
-      // Sort by release date descending
-      const sortedResults = combinedResults.sort((a, b) => {
-        const dateA = a.release_date || a.first_air_date || "";
-        const dateB = b.release_date || b.first_air_date || "";
-        return dateB.localeCompare(dateA);
-      });
-
-      if (reset) {
-        setItems(sortedResults);
-      } else {
-        setItems(prev => {
-          // Deduplicate by id + media_type
-          const existingKeys = new Set(prev.map(item => `${item.id}-${item.media_type}`));
-          const newItems = sortedResults.filter(item => !existingKeys.has(`${item.id}-${item.media_type}`));
-          return [...prev, ...newItems];
+        // Combine results (movie/tv alternates in jsons)
+        const combined = jsons.flatMap((data, idx) => {
+          const isMovie = idx % 2 === 0;
+          const mediaType = isMovie ? ("movie" as const) : ("tv" as const);
+          return (data?.results || []).map((m: Movie) => ({ ...m, media_type: mediaType }));
         });
+
+        const combinedResults: Movie[] = await filterAdultContentStrict(combined);
+
+        // Sort by release/air date desc
+        const sortedResults = combinedResults.sort((a, b) => {
+          const dateA = a.release_date || a.first_air_date || "";
+          const dateB = b.release_date || b.first_air_date || "";
+          return dateB.localeCompare(dateA);
+        });
+
+        if (reset) {
+          setItems(sortedResults);
+        } else {
+          setItems((prev) => {
+            const existingKeys = new Set(prev.map((item) => `${item.id}-${item.media_type}`));
+            const newItems = sortedResults.filter((item) => !existingKeys.has(`${item.id}-${item.media_type}`));
+            return [...prev, ...newItems];
+          });
+        }
+
+        // Determine pagination
+        const totalPages = jsons.map((d) => Number(d?.total_pages || 0));
+        const maxPages = Math.max(...totalPages, 0);
+        setHasMore(pageNum < maxPages);
+      } catch (error) {
+        console.error("Failed to fetch Indian content:", error);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
       }
+    },
+    [selectedLang]
+  );
 
-      // Has more if either endpoint has more pages
-      const maxPages = Math.max(moviesData.total_pages || 0, tvData.total_pages || 0);
-      setHasMore(pageNum < maxPages);
-    } catch (error) {
-      console.error("Failed to fetch Indian content:", error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [selectedTags, selectedYear]);
-
-  // Reset and fetch when filters change
+  // Reset and fetch when language changes
   useEffect(() => {
     if (!isInitialized) return;
     if (isRestoredFromCache) {
       setIsRestoredFromCache(false);
       return;
     }
+
     setPage(1);
     setItems([]);
     setHasMore(true);
     fetchIndian(1, true);
-  }, [selectedTags, selectedYear, isInitialized, fetchIndian]);
+  }, [selectedLang, isInitialized, fetchIndian, isRestoredFromCache]);
 
   // Infinite scroll observer
   useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
+    observerRef.current?.disconnect();
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage(prev => prev + 1);
+          setPage((prev) => prev + 1);
         }
       },
       { threshold: 0.1 }
@@ -209,49 +188,36 @@ const Indian = () => {
     }
   }, [page, fetchIndian, isRestoredFromCache]);
 
-  const toggleTag = (genreId: number) => {
-    setSelectedTags(prev =>
-      prev.includes(genreId)
-        ? prev.filter(id => id !== genreId)
-        : [...prev, genreId]
-    );
-  };
-
-  const clearTags = () => {
-    setSelectedTags([]);
-  };
-
-  const clearFilters = () => {
-    setSelectedTags([]);
-    setSelectedYear(null);
-  };
-
-  // Convert tags to genre format for CategoryNav
-  const genresForNav = INDIAN_TAGS.map(tag => ({ id: tag.genreId, name: tag.label }));
-
   return (
     <>
       <Helmet>
-        <title>Indian Movies & TV - DanieWatch</title>
-        <meta name="description" content="Watch the best Indian movies and TV series sorted by latest release. Filter by genre and year." />
+        <title>Indian - DanieWatch</title>
+        <meta name="description" content="Tamil, Telugu and Bollywood movies & TV sorted from latest to oldest with infinite scroll." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
         <Navbar />
 
         <div className="container mx-auto px-4 pt-24 pb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">Indian</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-6 content-reveal">Indian</h1>
 
-          {/* Category Navigation */}
-          <div className="mb-8">
-            <CategoryNav
-              genres={genresForNav}
-              selectedGenres={selectedTags}
-              onGenreToggle={toggleTag}
-              onClearGenres={clearTags}
-              selectedYear={selectedYear}
-              onYearChange={setSelectedYear}
-            />
+          {/* Language chips */}
+          <div className="mb-8 flex flex-wrap gap-2">
+            {INDIAN_LANGS.map((l) => (
+              <button
+                key={l.key}
+                type="button"
+                onClick={() => setSelectedLang(l.key)}
+                className={cn(
+                  "rounded-full border px-4 py-2 text-sm transition-colors",
+                  l.key === selectedLang
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary/30 text-foreground border-border hover:bg-secondary/50"
+                )}
+              >
+                {l.label}
+              </button>
+            ))}
           </div>
 
           {/* Grid */}
@@ -265,37 +231,30 @@ const Indian = () => {
                   </div>
                 ))
               : items.map((item, index) => (
-                  <MovieCard 
-                    key={`${item.id}-${item.media_type}`} 
-                    movie={item} 
-                    animationDelay={Math.min(index * 30, 300)}
-                  />
+                  <MovieCard key={`${item.id}-${item.media_type}`} movie={item} animationDelay={Math.min(index * 30, 300)} />
                 ))}
           </div>
 
-          {/* No results message */}
+          {/* No results */}
           {!isLoading && items.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No Indian content found with the selected filters.</p>
-              <button
-                onClick={clearFilters}
-                className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
-              >
-                Clear filters
-              </button>
+              <p className="text-muted-foreground">No results found.</p>
             </div>
           )}
 
-          {/* Loading More Indicator */}
+          {/* Load more sentinel (stop quietly at end) */}
           <div ref={loadMoreRef} className="flex justify-center py-8">
             {isLoadingMore && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading more...</span>
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <div className="app-loader" aria-hidden="true">
+                  <div className="circle" />
+                  <div className="circle" />
+                  <div className="circle" />
+                  <div className="shadow" />
+                  <div className="shadow" />
+                  <div className="shadow" />
+                </div>
               </div>
-            )}
-            {!hasMore && items.length > 0 && (
-              <p className="text-muted-foreground">You've reached the end</p>
             )}
           </div>
         </div>
