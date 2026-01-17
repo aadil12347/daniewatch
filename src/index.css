@@ -324,158 +324,35 @@ html {
     animation: scaleIn 0.4s ease-out forwards;
   }
 
-  /* Player splash reveal (from Play button) */
-  .player-splash-in {
-    animation: playerSplashIn 3000ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    will-change: transform, clip-path, filter;
-  }
-
-  .player-splash-in::before {
-    content: "";
-    position: absolute;
-    inset: -35%;
-    pointer-events: none;
-    background:
-      radial-gradient(
-        circle at var(--reveal-x, 18%) var(--reveal-y, 85%),
-        hsl(var(--primary) / 0) 0%,
-        hsl(var(--primary) / 0) 38%,
-        hsl(var(--primary) / 0.22) 44%,
-        hsl(var(--primary) / 0) 52%,
-        hsl(var(--primary) / 0.18) 56%,
-        hsl(var(--primary) / 0) 70%
-      );
-    opacity: 0;
-    transform: translate3d(0, 0, 0) scale(0.15);
-    animation: playerSplashRipple 3000ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    mix-blend-mode: screen;
-  }
-
-  /* Player "genie out of lamp" reveal (legacy) */
+  /* Player reveal (fast + smooth, GPU-friendly) */
+  .player-reveal-fast,
+  .player-splash-in,
   .player-genie-in {
-    animation: playerGenieIn 950ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    will-change: transform, clip-path, filter;
+    animation: playerRevealFast 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
-  .player-genie-in::before {
-    content: "";
-    position: absolute;
-    inset: -20%;
-    pointer-events: none;
-    background: radial-gradient(circle, hsl(var(--primary) / 0.35) 0%, transparent 55%);
-    transform: translate3d(0, 0, 0) scale(0.2);
-    opacity: 0;
-    animation: playerRippleOut 950ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    mix-blend-mode: screen;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(15px) translateZ(0);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) translateZ(0);
-    }
-  }
-
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes playerGenieIn {
+  @keyframes playerRevealFast {
     0% {
-      transform: translate3d(0, 42px, 0) scale(0.92);
-      filter: blur(10px);
-      clip-path: circle(0% at 18% 85%);
-    }
-    45% {
-      transform: translate3d(0, 18px, 0) scale(0.98);
-      filter: blur(4px);
-      clip-path: circle(60% at 18% 85%);
+      opacity: 0;
+      transform: translate3d(0, 10px, 0) scale(0.995);
     }
     100% {
+      opacity: 1;
       transform: translate3d(0, 0, 0) scale(1);
-      filter: blur(0);
-      clip-path: circle(140% at 50% 50%);
     }
   }
 
-  @keyframes playerSplashIn {
-    0% {
-      transform: translate3d(0, 32px, 0) scale(0.96);
-      filter: blur(14px);
-      clip-path: circle(0% at var(--reveal-x, 18%) var(--reveal-y, 85%));
-    }
-    40% {
-      transform: translate3d(0, 12px, 0) scale(0.99);
-      filter: blur(6px);
-      clip-path: circle(58% at var(--reveal-x, 18%) var(--reveal-y, 85%));
-    }
-    75% {
-      transform: translate3d(0, 2px, 0) scale(1);
-      filter: blur(2px);
-      clip-path: circle(120% at 50% 55%);
-    }
-    100% {
-      transform: translate3d(0, 0, 0) scale(1);
-      filter: blur(0);
-      clip-path: circle(170% at 50% 50%);
+  @media (prefers-reduced-motion: reduce) {
+    .player-reveal-fast,
+    .player-splash-in,
+    .player-genie-in {
+      animation: none;
     }
   }
 
-  @keyframes playerRippleOut {
-    0% {
-      opacity: 0;
-      transform: translate3d(-18%, 18%, 0) scale(0.15);
-    }
-    35% {
-      opacity: 0.9;
-      transform: translate3d(-8%, 10%, 0) scale(0.55);
-    }
-    100% {
-      opacity: 0;
-      transform: translate3d(0, 0, 0) scale(1.25);
-    }
-  }
-
-  @keyframes playerSplashRipple {
-    0% {
-      opacity: 0;
-      transform: translate3d(0, 18px, 0) scale(0.12);
-      filter: blur(8px);
-    }
-    18% {
-      opacity: 0.95;
-    }
-    55% {
-      opacity: 0.25;
-      transform: translate3d(0, -6px, 0) scale(0.9);
-      filter: blur(2px);
-    }
-    100% {
-      opacity: 0;
-      transform: translate3d(0, -10px, 0) scale(1.35);
-      filter: blur(0);
-    }
-  }
 
   @keyframes creator-glow {
     0%, 100% {
