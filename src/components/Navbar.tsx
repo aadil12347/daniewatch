@@ -129,12 +129,16 @@ export const Navbar = () => {
 
     update();
 
-    const ro = new ResizeObserver(() => update());
-    ro.observe(el);
+    // Some environments may not support ResizeObserver; avoid crashing the app.
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => update());
+      ro.observe(el);
+    }
 
     window.addEventListener("resize", update);
     return () => {
-      ro.disconnect();
+      ro?.disconnect();
       window.removeEventListener("resize", update);
     };
   }, []);
