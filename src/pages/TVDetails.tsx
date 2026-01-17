@@ -279,17 +279,21 @@ const TVDetails = () => {
               />
             )}
 
-            {/* Readability overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
+            {/* Readability overlays (disabled while playing so iframe controls stay clear) */}
+            {!playerState.isOpen && (
+              <>
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
+              </>
+            )}
           </div>
 
           {/* Details block (animates below player; overlays trailer when not playing) */}
           <div
             className={
-              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu transition-all duration-500 ease-out " +
+              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin,transform] duration-500 ease-out " +
               (playerState.isOpen
-                ? "mt-4 md:mt-8 translate-y-0"
+                ? "mt-4 md:mt-8 translate-y-6"
                 : "-mt-44 md:-mt-64 translate-y-0")
             }
           >
