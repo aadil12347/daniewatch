@@ -17,6 +17,14 @@ interface VideoPlayerProps {
    * When false, render as a fullscreen overlay.
    */
   inline?: boolean;
+  /**
+   * When true (and inline), fill the parent container (useful for hero overlays).
+   */
+  fill?: boolean;
+  /**
+   * Optional extra classes for the outer container.
+   */
+  className?: string;
 }
 
 function getVideasyEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number, episode: number) {
@@ -29,7 +37,7 @@ function getMoviesApiEmbedUrl(tmdbId: number, type: "movie" | "tv", season: numb
   return `https://moviesapi.club/tv/${tmdbId}-${season}-${episode}`;
 }
 
-export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, inline = false }: VideoPlayerProps) => {
+export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, inline = false, fill = false, className }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [useAlternate, setUseAlternate] = useState(false);
@@ -131,7 +139,9 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   }, [inline, onClose]);
 
   const containerClasses = inline
-    ? "relative w-full aspect-video bg-background overflow-hidden"
+    ? fill
+      ? "absolute inset-0 w-full h-full bg-background overflow-hidden"
+      : "relative w-full aspect-video bg-background overflow-hidden"
     : "fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-background";
 
   const containerStyle = inline ? undefined : ({ position: "fixed" as const, width: "100vw", height: "100vh", top: 0, left: 0 } as const);
@@ -144,7 +154,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
 
   return (
     <TooltipProvider>
-      <div className={"group " + containerClasses} style={containerStyle}>
+      <div className={"group " + containerClasses + (className ? " " + className : "")} style={containerStyle}>
         {/* Close button: desktop only */}
         {!isMobile && (
           <Button

@@ -256,9 +256,17 @@ const TVDetails = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
 
-        {/* Embedded player (below header) */}
-        {playerState.isOpen && id && (
-          <div className="container mx-auto px-4 pt-24 md:pt-28">
+
+        {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
+        <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
+          {/* Background Trailer (hide when playing) */}
+          {!playerState.isOpen ? (
+            <BackgroundTrailer 
+              videoKey={trailerKey} 
+              backdropUrl={backdropUrl} 
+              title={title} 
+            />
+          ) : (
             <VideoPlayer
               tmdbId={Number(id)}
               type="tv"
@@ -266,18 +274,13 @@ const TVDetails = () => {
               episode={playerState.episode}
               onClose={() => navigate(-1)}
               inline
+              fill
             />
-          </div>
-        )}
+          )}
 
-        {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
-        <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
-          {/* Background Trailer */}
-          <BackgroundTrailer 
-            videoKey={trailerKey} 
-            backdropUrl={backdropUrl} 
-            title={title} 
-          />
+          {/* Readability overlays (keep text/buttons visible while playing) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
 
           {/* Content - Bottom left positioned, adjusted for mobile */}
           <div className="absolute bottom-6 md:bottom-0 left-0 right-0 px-4 md:px-0 md:left-0 md:right-auto md:p-8 lg:p-12">
