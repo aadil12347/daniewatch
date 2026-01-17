@@ -123,7 +123,7 @@ export const CategoryNav = ({
             onMouseMove={setHoverSwipeVars}
             onClick={() => setIsGenreOpen(!isGenreOpen)}
             className={cn(
-              "hover-swipe flex items-center gap-1 px-3 sm:px-4 py-2 rounded-none text-xs sm:text-sm font-medium transition-colors duration-200",
+              "hover-swipe flex items-center gap-1 px-4 sm:px-5 py-3 tracking-tight rounded-none text-xs sm:text-sm font-medium transition-colors duration-200",
               selectedGenres.length > 0
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : isGenreOpen
@@ -163,7 +163,7 @@ export const CategoryNav = ({
                     onMouseMove={setHoverSwipeVars}
                     onClick={() => onGenreToggle(genre.id)}
                     className={cn(
-                      "hover-swipe px-2 sm:px-3 py-1 sm:py-1.5 rounded-none text-[10px] sm:text-xs font-medium transition-colors duration-200",
+                      "hover-swipe px-3 sm:px-4 py-2 tracking-tight rounded-none text-[10px] sm:text-xs font-medium transition-colors duration-200",
                       selectedGenres.includes(genre.id)
                         ? "bg-primary text-primary-foreground shadow-md"
                         : "bg-secondary/50 text-foreground/70 hover:text-primary-foreground"
@@ -202,7 +202,7 @@ export const CategoryNav = ({
             onMouseMove={setHoverSwipeVars}
             onClick={() => setIsYearOpen(!isYearOpen)}
             className={cn(
-              "hover-swipe flex items-center gap-1 px-3 sm:px-4 py-2 rounded-none text-xs sm:text-sm font-medium transition-colors duration-200",
+              "hover-swipe flex items-center gap-1 px-4 sm:px-5 py-3 tracking-tight rounded-none text-xs sm:text-sm font-medium transition-colors duration-200",
               selectedYear
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : isYearOpen
@@ -239,7 +239,7 @@ export const CategoryNav = ({
                     setIsYearOpen(false);
                   }}
                   className={cn(
-                    "hover-swipe w-full px-3 py-2 text-left text-xs sm:text-sm rounded-none transition-colors",
+                    "hover-swipe w-full px-4 py-3 tracking-tight text-left text-xs sm:text-sm rounded-none transition-colors",
                     selectedYear === option.value
                       ? "bg-primary text-primary-foreground"
                       : "text-foreground/70 hover:text-primary-foreground"
