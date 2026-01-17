@@ -248,10 +248,10 @@ const Indian = () => {
           )}
 
           {/* Load more sentinel (stop quietly at end) */}
-          <div ref={loadMoreRef} className="flex justify-center py-8">
+          <div ref={loadMoreRef} className="flex justify-center py-6">
             {isLoadingMore && (
-              <div className="flex items-center gap-3 text-muted-foreground">
-                <div className="app-loader" aria-hidden="true">
+              <div className="flex items-center justify-center">
+                <div className="app-loader app-loader--sm" aria-hidden="true">
                   <div className="circle" />
                   <div className="circle" />
                   <div className="circle" />
