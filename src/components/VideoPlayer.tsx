@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeftRight, Loader2, X } from "lucide-react";
+import { ArrowLeftRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMedia } from "@/contexts/MediaContext";
@@ -155,22 +155,10 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   return (
     <TooltipProvider>
       <div className={"group " + containerClasses + (className ? " " + className : "")} style={containerStyle}>
-        {/* Close button: desktop only */}
-        {!isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 z-[80] w-10 h-10 rounded-full bg-background/20 hover:bg-background/30 backdrop-blur-sm pointer-events-auto"
-            onClick={onClose}
-            aria-label="Close player"
-          >
-            <X className="w-5 h-5" />
-          </Button>
-        )}
 
         {/* Compact switch player button */}
         {showSwitch && (
-          <div className={"absolute top-2 left-2 z-[80] pointer-events-auto transition-opacity " + switchVisibilityClass}>
+          <div className={"absolute bottom-3 left-3 md:bottom-4 md:left-4 z-[80] pointer-events-auto transition-opacity " + switchVisibilityClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -184,7 +172,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
                   <ArrowLeftRight className={"h-4 w-4 transition-transform " + (useAlternate ? "rotate-180" : "rotate-0")} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" align="start">
+              <TooltipContent side="top" align="start">
                 {useAlternate ? "Switch to MoviesAPI" : "Switch to Videasy"}
               </TooltipContent>
             </Tooltip>
