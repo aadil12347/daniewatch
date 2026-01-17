@@ -44,6 +44,8 @@ const MovieDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
+  const [isWatchlistAnimating, setIsWatchlistAnimating] = useState(false);
   const [revealOrigin, setRevealOrigin] = useState<{ x: number; y: number } | null>(null);
 
   const heroRef = useRef<HTMLDivElement | null>(null);
@@ -61,15 +63,17 @@ const MovieDetails = () => {
   }, [location.search]);
 
   // Set media context when movie loads
+
+  const displayedInWatchlist =
+    optimisticInWatchlist !== null ? optimisticInWatchlist : isInWatchlist(movie?.id ?? 0, "movie");
+
+  // Sync optimistic state when actual state catches up
   useEffect(() => {
-    if (movie) {
-      setCurrentMedia({
-        title: movie.title,
-        type: 'movie',
-      });
+    if (movie && optimisticInWatchlist !== null && optimisticInWatchlist === isInWatchlist(movie.id, "movie")) {
+      setOptimisticInWatchlist(null);
     }
-    return () => clearCurrentMedia();
-  }, [movie?.id, movie?.title, setCurrentMedia, clearCurrentMedia]);
+  }, [movie?.id, optimisticInWatchlist, isInWatchlist]);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -279,14 +283,25 @@ const MovieDetails = () => {
                     navigate({ search: params.toString() });
                   }}
                 />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className={`w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
-                    isInWatchlist(movie.id, "movie") ? "text-primary border-primary" : ""
-                  }`}
+                <button
+                  type="button"
+                  className={
+                    "relative w-11 h-11 md:w-10 md:h-10 rounded-full glass border border-border/60 backdrop-blur-sm transition-all duration-150 " +
+                    (displayedInWatchlist ? "bg-primary/40" : "hover:bg-primary/20") +
+                    " " +
+                    (isWatchlistAnimating ? "bookmark-burst" : "")
+                  }
                   onClick={async () => {
-                    if (isBookmarking) return;
+                    if (!movie || isBookmarking) return;
+
+                    const next = !displayedInWatchlist;
+                    setOptimisticInWatchlist(next);
+
+                    if (next) {
+                      setIsWatchlistAnimating(true);
+                      window.setTimeout(() => setIsWatchlistAnimating(false), 400);
+                    }
+
                     setIsBookmarking(true);
                     const movieData: Movie = {
                       id: movie.id,
@@ -302,14 +317,23 @@ const MovieDetails = () => {
                     await toggleWatchlist(movieData);
                     setIsBookmarking(false);
                   }}
-                  disabled={isBookmarking}
+                  aria-label={displayedInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+                  title={displayedInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
                 >
                   {isBookmarking ? (
                     <Loader2 className="w-5 h-5 md:w-4 md:h-4 animate-spin" />
                   ) : (
-                    <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(movie.id, "movie") ? "fill-current" : ""}`} />
+                    <Bookmark
+                      className={
+                        "w-5 h-5 md:w-4 md:h-4 transition-all duration-150 " +
+                        (isWatchlistAnimating ? "bookmark-pop " : "") +
+                        (displayedInWatchlist
+                          ? "text-primary fill-primary scale-110"
+                          : "text-foreground fill-transparent scale-100")
+                      }
+                    />
                   )}
-                </Button>
+                </button>
                 {mediaResult?.downloadUrl && (
                   <Button
                     size="icon"
