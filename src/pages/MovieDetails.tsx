@@ -154,38 +154,40 @@ const MovieDetails = () => {
 
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
-        <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
-          {/* Background Trailer (hide when playing) */}
-          {!isPlayerOpen ? (
-            <BackgroundTrailer 
-              videoKey={trailerKey} 
-              backdropUrl={backdropUrl} 
-              title={movie.title} 
-            />
-          ) : (
-            <VideoPlayer
-              tmdbId={Number(id)}
-              type="movie"
-              onClose={() => navigate(-1)}
-              inline
-              fill
-            />
-          )}
+        <div className="relative">
+          <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
+            {/* Background Trailer (hide when playing) */}
+            {!isPlayerOpen ? (
+              <BackgroundTrailer 
+                videoKey={trailerKey} 
+                backdropUrl={backdropUrl} 
+                title={movie.title} 
+              />
+            ) : (
+              <VideoPlayer
+                tmdbId={Number(id)}
+                type="movie"
+                onClose={() => navigate(-1)}
+                inline
+                fill
+              />
+            )}
 
-          {/* Readability overlays (keep text/buttons visible while playing) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
+            {/* Readability overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
+          </div>
 
-          {/* Content - Bottom left positioned, adjusted for mobile */}
+          {/* Details block (animates below player; overlays trailer when not playing) */}
           <div
             className={
-              "absolute bottom-6 md:bottom-0 left-0 right-0 px-4 md:px-0 md:left-0 md:right-auto md:p-8 lg:p-12 transform-gpu transition-all duration-500 ease-out " +
+              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu transition-all duration-500 ease-out " +
               (isPlayerOpen
-                ? "translate-y-28 md:translate-y-40 opacity-0 pointer-events-none"
-                : "translate-y-0 opacity-100")
+                ? "mt-4 md:mt-8 translate-y-0"
+                : "-mt-44 md:-mt-64 translate-y-0")
             }
           >
-            <div className="animate-slide-up max-w-xl lg:max-w-2xl">
+            <div className="animate-slide-up max-w-xl lg:max-w-2xl md:px-8 lg:px-12">
               {/* Logo */}
               {logoUrl ? (
                 <img 
