@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Star, Play, Bookmark, Ban } from "lucide-react";
+import { Star, Bookmark, Ban } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -83,13 +83,28 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               </div>
             )}
 
-            {/* Overlay - vignette effect */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" />
+            {/* Hover overlay (matches requested: dark fade + expanding gradient) */}
+            <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 bg-background/60" />
+              <div className="absolute inset-0 gradient-red opacity-40 transform-gpu scale-0 group-hover:scale-[2] transition-transform duration-500 ease-out" />
+            </div>
 
-            {/* Play Button */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="w-14 h-14 rounded-full gradient-red flex items-center justify-center shadow-glow transform scale-75 group-hover:scale-100 transition-transform duration-300">
-                <Play className="w-6 h-6 text-foreground fill-current ml-1" />
+            {/* Center Play button (appears on hover) */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div
+                className={cn(
+                  "pointer-events-none select-none",
+                  "font-semibold text-sm md:text-base",
+                  "px-5 py-2.5 rounded-full",
+                  "bg-background text-foreground",
+                  "shadow-[0_0_18px_hsl(var(--foreground)/0.12)]",
+                  "opacity-0 scale-0",
+                  "group-hover:opacity-100 group-hover:scale-100",
+                  "transition-[transform,opacity,box-shadow] duration-600",
+                  "[transition-timing-function:cubic-bezier(0.23,1,0.32,1)]"
+                )}
+              >
+                Play
               </div>
             </div>
 
