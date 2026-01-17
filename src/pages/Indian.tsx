@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
-import { Navbar } from "@/components/Navbar";
+
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -216,7 +216,7 @@ const Indian = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        
 
         <div className="container mx-auto px-4 pt-24 pb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-6 content-reveal">Indian</h1>

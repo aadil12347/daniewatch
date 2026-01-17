@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Navbar } from "@/components/Navbar";
+
 import { Footer } from "@/components/Footer";
 import { useRequests, Request } from "@/hooks/useRequests";
 import { useAuth } from "@/contexts/AuthContext";
@@ -155,7 +155,6 @@ const Requests = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container mx-auto px-4 pt-32 text-center">
           <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-4">Sign in to view your requests</h1>
@@ -177,7 +176,7 @@ const Requests = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        
 
         <div className="container mx-auto px-4 pt-24 pb-12">
           <div className="flex items-center justify-between mb-8">

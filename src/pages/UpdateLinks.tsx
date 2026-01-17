@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 
-import { Navbar } from "@/components/Navbar";
+
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -20,7 +20,6 @@ const UpdateLinks = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container mx-auto px-4 pt-32 text-center">
           <Shield className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-4">Admin Access Required</h1>
@@ -37,7 +36,6 @@ const UpdateLinks = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container mx-auto px-4 pt-24 pb-12">
           <Skeleton className="h-10 w-48 mb-8" />
           <div className="space-y-4">
@@ -54,7 +52,6 @@ const UpdateLinks = () => {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container mx-auto px-4 pt-32 text-center">
           <Shield className="w-16 h-16 mx-auto text-destructive mb-4" />
           <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
@@ -76,7 +73,7 @@ const UpdateLinks = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        
 
         <div className="container mx-auto px-4 pt-24 pb-12">
           <UpdateLinksPanel />
