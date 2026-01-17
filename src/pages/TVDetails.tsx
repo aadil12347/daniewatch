@@ -9,6 +9,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { EpisodeCard } from "@/components/EpisodeCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { AnimatedBackButton } from "@/components/AnimatedBackButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -264,6 +265,9 @@ const TVDetails = () => {
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
           <div className="relative">
+          <div className="absolute left-4 top-24 z-30 md:left-8">
+            <AnimatedBackButton />
+          </div>
           <div ref={heroRef} className="relative h-[70vh] md:h-screen md:min-h-[700px]">
             {/* Background Trailer (hide when playing) */}
             {!playerState.isOpen ? (

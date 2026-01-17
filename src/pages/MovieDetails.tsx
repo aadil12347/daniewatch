@@ -11,6 +11,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { AdminPostControls } from "@/components/AdminPostControls";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AnimatedBackButton } from "@/components/AnimatedBackButton";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
@@ -160,6 +161,9 @@ const MovieDetails = () => {
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
           <div className="relative">
+          <div className="absolute left-4 top-24 z-30 md:left-8">
+            <AnimatedBackButton />
+          </div>
           <div ref={heroRef} className="relative h-[70vh] md:h-screen md:min-h-[700px]">
             {/* Background Trailer (hide when playing) */}
             {!isPlayerOpen ? (
