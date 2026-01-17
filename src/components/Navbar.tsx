@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { applyHoverSwipe } from "@/lib/hoverSwipe";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -17,10 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 export const Navbar = () => {
   const setHoverSwipeVars = (e: ReactMouseEvent<HTMLElement>) => {
-    const el = e.currentTarget;
-    const rect = el.getBoundingClientRect();
-    el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
-    el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
+    applyHoverSwipe(e.currentTarget, e.clientX, e.clientY);
   };
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();

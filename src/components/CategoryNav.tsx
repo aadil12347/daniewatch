@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { applyHoverSwipe } from "@/lib/hoverSwipe";
 
 interface Genre {
   id: number;
@@ -43,6 +44,10 @@ export const CategoryNav = ({
   const yearDropdownRef = useRef<HTMLDivElement>(null);
   const genreTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const yearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const setHoverSwipeVars = (e: React.MouseEvent<HTMLElement>) => {
+    applyHoverSwipe(e.currentTarget, e.clientX, e.clientY);
+  };
 
   // Detect mobile
   useEffect(() => {
@@ -115,12 +120,7 @@ export const CategoryNav = ({
           onMouseLeave={handleGenreMouseLeave}
         >
           <button
-            onMouseMove={(e) => {
-              const el = e.currentTarget;
-              const rect = el.getBoundingClientRect();
-              el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
-              el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
-            }}
+            onMouseMove={setHoverSwipeVars}
             onClick={() => setIsGenreOpen(!isGenreOpen)}
             className={cn(
               "hover-swipe flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors duration-200",
@@ -160,12 +160,7 @@ export const CategoryNav = ({
                 {genres.map((genre) => (
                   <button
                     key={genre.id}
-                    onMouseMove={(e) => {
-                      const el = e.currentTarget;
-                      const rect = el.getBoundingClientRect();
-                      el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
-                      el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
-                    }}
+                    onMouseMove={setHoverSwipeVars}
                     onClick={() => onGenreToggle(genre.id)}
                     className={cn(
                       "hover-swipe px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-colors duration-200",
@@ -204,12 +199,7 @@ export const CategoryNav = ({
           onMouseLeave={handleYearMouseLeave}
         >
           <button
-            onMouseMove={(e) => {
-              const el = e.currentTarget;
-              const rect = el.getBoundingClientRect();
-              el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
-              el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
-            }}
+            onMouseMove={setHoverSwipeVars}
             onClick={() => setIsYearOpen(!isYearOpen)}
             className={cn(
               "hover-swipe flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors duration-200",
@@ -243,12 +233,7 @@ export const CategoryNav = ({
               {YEAR_OPTIONS.map((option) => (
                 <button
                   key={option.value ?? "all"}
-                  onMouseMove={(e) => {
-                    const el = e.currentTarget;
-                    const rect = el.getBoundingClientRect();
-                    el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
-                    el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
-                  }}
+                  onMouseMove={setHoverSwipeVars}
                   onClick={() => {
                     onYearChange(option.value);
                     setIsYearOpen(false);
