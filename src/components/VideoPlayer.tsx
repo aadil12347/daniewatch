@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { ArrowLeftRight, Loader2 } from "lucide-react";
+import { ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -51,6 +51,30 @@ function getMoviesApiEmbedUrl(tmdbId: number, type: "movie" | "tv", season: numb
   return `https://moviesapi.club/tv/${tmdbId}-${season}-${episode}`;
 }
 
+function PlayerLoader() {
+  return (
+    <div className="player-iframe-loader" aria-label="Loading video" role="status">
+      <div className="loader">
+        <svg viewBox="0 0 80 80" aria-hidden="true">
+          <circle r="32" cy="40" cx="40" />
+        </svg>
+      </div>
+
+      <div className="loader triangle" aria-hidden="true">
+        <svg viewBox="0 0 86 80">
+          <polygon points="43 8 79 72 7 72" />
+        </svg>
+      </div>
+
+      <div className="loader" aria-hidden="true">
+        <svg viewBox="0 0 80 80">
+          <rect height="64" width="64" y="8" x="8" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 export const VideoPlayer = ({
   tmdbId,
   type,
@@ -63,6 +87,7 @@ export const VideoPlayer = ({
   style,
 }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [useAlternate, setUseAlternate] = useState(false);
   const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
@@ -103,7 +128,7 @@ export const VideoPlayer = ({
     fetchMediaLinks();
   }, [tmdbId, type, season, episode, isSandboxed]);
 
-  const getEmbedUrl = () => {
+  const embedUrl = useMemo(() => {
     // Default to Videasy if we don't have a lookup result yet.
     if (!mediaResult) return videasyUrl;
 
@@ -120,7 +145,12 @@ export const VideoPlayer = ({
     if (mediaResult.watchUrl) return mediaResult.watchUrl;
 
     return videasyUrl;
-  };
+  }, [episode, mediaResult, moviesApiUrl, type, useAlternate, videasyUrl]);
+
+  // Whenever the iframe src changes, show the loader until the iframe finishes loading.
+  useEffect(() => {
+    setIsIframeLoading(true);
+  }, [embedUrl]);
 
   // Listen for player events
   useEffect(() => {
@@ -205,6 +235,8 @@ export const VideoPlayer = ({
     setConfirmSwitchOpen(false);
   };
 
+  const showLoaderOverlay = isLoading || isIframeLoading;
+
   return (
     <TooltipProvider>
       <div className={"group " + containerClasses + (className ? " " + className : "")} style={mergedStyle}>
@@ -213,9 +245,7 @@ export const VideoPlayer = ({
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Switch player?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will reload the video using the other source.
-              </AlertDialogDescription>
+              <AlertDialogDescription>This will reload the video using the other source.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -247,20 +277,23 @@ export const VideoPlayer = ({
           </div>
         )}
 
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        )}
-
+        {/* Iframe is always mounted once link lookup is done; we show loader until onLoad fires */}
         {!isLoading && (
           <iframe
-            src={getEmbedUrl()}
+            key={embedUrl}
+            src={embedUrl}
             title="Video player"
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            onLoad={() => setIsIframeLoading(false)}
           />
+        )}
+
+        {showLoaderOverlay && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background z-[70]">
+            <PlayerLoader />
+          </div>
         )}
       </div>
     </TooltipProvider>
