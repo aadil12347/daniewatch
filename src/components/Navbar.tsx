@@ -4,7 +4,6 @@ import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AnimatedBackButton } from "@/components/AnimatedBackButton";
@@ -18,10 +17,7 @@ import {
 export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
-  const isMobile = useIsMobile();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isHidden, setIsHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
@@ -92,27 +88,12 @@ export const Navbar = () => {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-
       setIsScrolled(currentScrollY > 50);
-
-      // Only hide/show header on scroll for desktop
-      // Mobile: header is ALWAYS visible
-      if (!isMobile) {
-        if (currentScrollY > lastScrollY && currentScrollY > 100) {
-          setIsHidden(true);
-        } else {
-          setIsHidden(false);
-        }
-      } else {
-        setIsHidden(false);
-      }
-
-      setLastScrollY(currentScrollY);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY, isMobile]);
+  }, []);
 
   // Close menu when route changes
   useEffect(() => {
@@ -233,9 +214,8 @@ export const Navbar = () => {
       <nav
         ref={navRef}
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-[background-color,padding,transform,opacity] duration-300 ease-out will-change-[transform,opacity]",
-          isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4",
-          isHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
+          "fixed top-0 left-0 right-0 z-50 transition-[background-color,padding] duration-300 ease-out",
+          isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4"
         )}
       >
         {/* Bottom glow effect */}
