@@ -480,6 +480,142 @@ html {
     justify-content: center;
   }
 
+  /* Switch-player overlay (3s) */
+  .player-switch-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 90;
+    display: grid;
+    place-items: center;
+    background: hsl(var(--background) / 0.65);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transform: translateY(6px) scale(0.995);
+    transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+  }
+
+  .player-switch-overlay--open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .player-switch-overlay--closing {
+    opacity: 0;
+    transform: translateY(6px) scale(0.995);
+    pointer-events: none;
+  }
+
+  .player-switch-overlay__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 18px;
+    border-radius: calc(var(--radius) + 6px);
+    background: hsl(var(--card) / 0.65);
+    border: 1px solid hsl(var(--border) / 0.7);
+    box-shadow: var(--shadow-card);
+  }
+
+  .player-switch-overlay__text {
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: hsl(var(--foreground) / 0.88);
+  }
+
+  .player-switch-loader {
+    --cloud-color: hsl(var(--primary));
+    --arrows-color: hsl(var(--primary-foreground));
+    --time-animation: 1s;
+    transform: scale(0.95);
+  }
+
+  .player-switch-loader #cloud {
+    width: 92px;
+    height: 92px;
+  }
+
+  .player-switch-loader #cloud rect {
+    fill: var(--cloud-color);
+  }
+
+  .player-switch-loader #cloud g:nth-child(3) {
+    transform-origin: 50% 72.8938%;
+    fill: var(--arrows-color);
+    filter: drop-shadow(0 0 10px hsl(var(--background) / 0.8));
+    animation: playerSwitchRotation var(--time-animation) linear infinite;
+  }
+
+  .player-switch-loader #shapes g g circle {
+    animation: playerSwitchCloud calc(var(--time-animation) * 2) linear infinite;
+  }
+
+  .player-switch-loader #shapes g g circle:nth-child(2) {
+    animation-delay: calc((var(--time-animation) * 2) / -3);
+  }
+
+  .player-switch-loader #shapes g g circle:nth-child(3) {
+    animation-delay: calc((var(--time-animation) * 2) / -1.5);
+  }
+
+  .player-switch-loader svg #lines g line {
+    stroke-width: 5;
+    transform-origin: 50% 50%;
+    rotate: -65deg;
+    animation: playerSwitchLines calc(var(--time-animation) / 1.33) linear infinite;
+  }
+
+  @keyframes playerSwitchRotation {
+    0% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(180deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes playerSwitchLines {
+    0% {
+      transform: translateY(-10px);
+    }
+    100% {
+      transform: translateY(8px);
+    }
+  }
+
+  @keyframes playerSwitchCloud {
+    0% {
+      cx: 20;
+      cy: 60;
+      r: 15;
+    }
+    50% {
+      cx: 50;
+      cy: 45;
+      r: 20;
+    }
+    100% {
+      cx: 80;
+      cy: 60;
+      r: 15;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .player-switch-overlay,
+    .player-switch-loader #cloud g:nth-child(3),
+    .player-switch-loader #shapes g g circle,
+    .player-switch-loader svg #lines g line {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .app-loader .circle,
     .app-loader .shadow {
