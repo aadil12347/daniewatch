@@ -227,15 +227,21 @@ const Indian = () => {
               <button
                 key={l.key}
                 type="button"
+                onMouseMove={(e) => {
+                  const el = e.currentTarget;
+                  const rect = el.getBoundingClientRect();
+                  el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
+                  el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
+                }}
                 onClick={() => setSelectedLang(l.key)}
                 className={cn(
-                  "rounded-full border px-4 py-2 text-sm transition-colors",
+                  "hover-swipe rounded-full border px-4 py-2 text-sm transition-colors",
                   l.key === selectedLang
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-secondary/30 text-foreground border-border hover:bg-secondary/50"
+                    : "bg-secondary/30 text-foreground border-border hover:text-primary-foreground"
                 )}
               >
-                {l.label}
+                <span>{l.label}</span>
               </button>
             ))}
           </div>

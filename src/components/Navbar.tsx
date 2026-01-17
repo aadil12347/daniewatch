@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 export const Navbar = () => {
+  const setHoverSwipeVars = (e: ReactMouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
+    el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
+  };
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const isMobile = useIsMobile();
@@ -283,22 +289,29 @@ export const Navbar = () => {
           </div>
 
           {/* Center: Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2" data-tutorial="navigation">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={cn(
-                  "nav-link-glow flex items-center gap-2 transition-all duration-300",
-                  location.pathname === link.to 
-                    ? "text-foreground" 
-                    : "text-foreground/70 hover:text-foreground"
-                )}
-              >
-                <link.icon className="w-4 h-4" />
-                {link.label}
-              </Link>
-            ))}
+          <div
+            className="hidden md:flex items-center gap-3 absolute left-1/2 -translate-x-1/2"
+            data-tutorial="navigation"
+          >
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.to;
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onMouseMove={setHoverSwipeVars}
+                  className={cn(
+                    "hover-swipe rounded-full px-3 py-2 flex items-center gap-2 transition-colors duration-300",
+                    isActive
+                      ? "bg-primary/15 text-foreground"
+                      : "text-foreground/70 hover:text-primary-foreground"
+                  )}
+                >
+                  <link.icon className="w-4 h-4" />
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
           </div>
 
           {/* Right side: Search + User */}

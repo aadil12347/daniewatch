@@ -115,17 +115,23 @@ export const CategoryNav = ({
           onMouseLeave={handleGenreMouseLeave}
         >
           <button
+            onMouseMove={(e) => {
+              const el = e.currentTarget;
+              const rect = el.getBoundingClientRect();
+              el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
+              el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
+            }}
             onClick={() => setIsGenreOpen(!isGenreOpen)}
             className={cn(
-              "flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200",
+              "hover-swipe flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors duration-200",
               selectedGenres.length > 0
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : isGenreOpen
                 ? "bg-secondary/70 text-foreground"
-                : "bg-secondary/30 hover:bg-secondary/50 text-foreground/70"
+                : "bg-secondary/30 text-foreground/70 hover:text-primary-foreground"
             )}
           >
-            Genre
+            <span>Genre</span>
             {selectedGenres.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-primary-foreground/20 rounded-full">
                 {selectedGenres.length}
@@ -154,15 +160,21 @@ export const CategoryNav = ({
                 {genres.map((genre) => (
                   <button
                     key={genre.id}
+                    onMouseMove={(e) => {
+                      const el = e.currentTarget;
+                      const rect = el.getBoundingClientRect();
+                      el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
+                      el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
+                    }}
                     onClick={() => onGenreToggle(genre.id)}
                     className={cn(
-                      "px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all duration-200",
+                      "hover-swipe px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-colors duration-200",
                       selectedGenres.includes(genre.id)
                         ? "bg-primary text-primary-foreground shadow-md"
-                        : "bg-secondary/50 hover:bg-secondary text-foreground/70 hover:text-foreground"
+                        : "bg-secondary/50 text-foreground/70 hover:text-primary-foreground"
                     )}
                   >
-                    {genre.name}
+                    <span>{genre.name}</span>
                   </button>
                 ))}
               </div>
@@ -192,17 +204,23 @@ export const CategoryNav = ({
           onMouseLeave={handleYearMouseLeave}
         >
           <button
+            onMouseMove={(e) => {
+              const el = e.currentTarget;
+              const rect = el.getBoundingClientRect();
+              el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
+              el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
+            }}
             onClick={() => setIsYearOpen(!isYearOpen)}
             className={cn(
-              "flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200",
+              "hover-swipe flex items-center gap-1 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors duration-200",
               selectedYear
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                 : isYearOpen
                 ? "bg-secondary/70 text-foreground"
-                : "bg-secondary/30 hover:bg-secondary/50 text-foreground/70"
+                : "bg-secondary/30 hover:text-primary-foreground text-foreground/70"
             )}
           >
-            {getYearLabel()}
+            <span>{getYearLabel()}</span>
             <ChevronDown
               className={cn(
                 "w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-200",
@@ -225,18 +243,24 @@ export const CategoryNav = ({
               {YEAR_OPTIONS.map((option) => (
                 <button
                   key={option.value ?? "all"}
+                  onMouseMove={(e) => {
+                    const el = e.currentTarget;
+                    const rect = el.getBoundingClientRect();
+                    el.style.setProperty("--hs-x", `${e.clientX - rect.left}px`);
+                    el.style.setProperty("--hs-y", `${e.clientY - rect.top}px`);
+                  }}
                   onClick={() => {
                     onYearChange(option.value);
                     setIsYearOpen(false);
                   }}
                   className={cn(
-                    "w-full px-3 py-2 text-left text-xs sm:text-sm rounded-md transition-colors",
+                    "hover-swipe w-full px-3 py-2 text-left text-xs sm:text-sm rounded-md transition-colors",
                     selectedYear === option.value
                       ? "bg-primary text-primary-foreground"
-                      : "hover:bg-secondary/50 text-foreground/70 hover:text-foreground"
+                      : "text-foreground/70 hover:text-primary-foreground"
                   )}
                 >
-                  {option.label}
+                  <span>{option.label}</span>
                 </button>
               ))}
             </div>
