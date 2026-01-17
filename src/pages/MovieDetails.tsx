@@ -337,7 +337,7 @@ const MovieDetails = () => {
                   <Button
                     size="icon"
                     variant="outline"
-                    className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border backdrop-blur-sm text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary active:bg-primary/90 transition-all"
+                    className="w-11 h-11 md:w-10 md:h-10 rounded-md md:rounded-lg bg-secondary/50 border-2 border-primary/80 text-primary backdrop-blur-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
                     onClick={() => {
                       window.open(mediaResult.downloadUrl, "_blank");
                     }}
