@@ -31,6 +31,16 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   const { setIsVideoPlaying } = useMedia();
   const isMobile = useIsMobile();
 
+  const isSandboxed = useMemo(() => {
+    // In Lovable preview, the app runs inside a sandboxed iframe.
+    // Some providers block embedding in sandboxed iframes.
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  }, []);
+
   const moviesApiUrl = useMemo(() => getMoviesApiEmbedUrl(tmdbId, type, season, episode), [tmdbId, type, season, episode]);
   const videasyUrl = useMemo(() => getVideasyEmbedUrl(tmdbId, type, season, episode), [tmdbId, type, season, episode]);
 
@@ -41,11 +51,18 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       setUseAlternate(false);
       const result = await getMediaLinks(tmdbId, type, season, episode);
       setMediaResult(result);
+
+      // Workaround: MoviesAPI blocks Lovable's sandboxed preview iframe.
+      // In preview only, switch to Videasy automatically.
+      if (isSandboxed && result.source === "moviesapi") {
+        setUseAlternate(true);
+      }
+
       setIsLoading(false);
     };
 
     fetchMediaLinks();
-  }, [tmdbId, type, season, episode]);
+  }, [tmdbId, type, season, episode, isSandboxed]);
 
   // Get the embed URL from media result
   const getEmbedUrl = () => {
@@ -154,14 +171,25 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
 
       {/* MoviesAPI -> Videasy manual fallback */}
       {!isLoading && mediaResult?.source === "moviesapi" && (
-        <Button
-          type="button"
-          variant="outline"
-          className="absolute top-20 md:top-24 left-4 z-[80] pointer-events-auto bg-background/20 hover:bg-background/30 backdrop-blur-sm"
-          onClick={() => setUseAlternate(v => !v)}
-        >
-          {useAlternate ? "Use MoviesAPI" : "Try alternate player"}
-        </Button>
+        <div className="absolute top-20 md:top-24 left-4 z-[80] flex items-center gap-2 pointer-events-auto">
+          <Button
+            type="button"
+            variant="outline"
+            className="bg-background/20 hover:bg-background/30 backdrop-blur-sm"
+            onClick={() => setUseAlternate(v => !v)}
+          >
+            {useAlternate ? "Use MoviesAPI" : "Try alternate player"}
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="bg-background/20 hover:bg-background/30 backdrop-blur-sm"
+            onClick={() => window.open(moviesApiUrl, "_blank", "noopener,noreferrer")}
+          >
+            Open MoviesAPI
+          </Button>
+        </div>
       )}
 
       {/* Simple loading spinner while checking for video source */}
