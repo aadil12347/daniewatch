@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { applyHoverSwipe } from "@/lib/hoverSwipe";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -17,9 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 export const Navbar = () => {
-  const setHoverSwipeVars = (e: ReactMouseEvent<HTMLElement>) => {
-    applyHoverSwipe(e.currentTarget, e.clientX, e.clientY);
-  };
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const isMobile = useIsMobile();
@@ -287,29 +283,22 @@ export const Navbar = () => {
           </div>
 
           {/* Center: Desktop Navigation */}
-          <div
-            className="hidden md:flex items-center gap-3 absolute left-1/2 -translate-x-1/2"
-            data-tutorial="navigation"
-          >
-            {navLinks.map((link) => {
-              const isActive = location.pathname === link.to;
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onMouseMove={setHoverSwipeVars}
-                  className={cn(
-                    "hover-swipe rounded-none px-4 py-3 tracking-tight flex items-center gap-2 transition-colors duration-300",
-                    isActive
-                      ? "bg-primary/15 text-foreground"
-                      : "text-foreground/70 hover:text-primary-foreground"
-                  )}
-                >
-                  <link.icon className="w-4 h-4" />
-                  <span>{link.label}</span>
-                </Link>
-              );
-            })}
+          <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2" data-tutorial="navigation">
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={cn(
+                  "nav-link-glow flex items-center gap-2 transition-all duration-300",
+                  location.pathname === link.to 
+                    ? "text-foreground" 
+                    : "text-foreground/70 hover:text-foreground"
+                )}
+              >
+                <link.icon className="w-4 h-4" />
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           {/* Right side: Search + User */}

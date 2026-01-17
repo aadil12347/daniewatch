@@ -13,53 +13,7 @@
   filter: drop-shadow(0 0 8px hsl(var(--primary)));
 }
 
-/* Nav link swipe (cursor-following ripple like the sample Codepen) */
-.hover-swipe {
-  --hs-x: 50%;
-  --hs-y: 50%;
-  --hs-size: 240px;
-  --hs-duration: 700ms;
-
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.hover-swipe::before {
-  content: "";
-  position: absolute;
-  left: var(--hs-x);
-  top: var(--hs-y);
-  width: 0px;
-  height: 0px;
-  border-radius: 9999px;
-  transform: translate(-50%, -50%);
-  background: hsl(var(--primary));
-  transition: width var(--hs-duration) cubic-bezier(0.16, 1, 0.3, 1),
-    height var(--hs-duration) cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 0;
-}
-
-.hover-swipe > * {
-  position: relative;
-  z-index: 1;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .hover-swipe:hover::before {
-    width: var(--hs-size);
-    height: var(--hs-size);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hover-swipe::before {
-    transition: none;
-  }
-}
-
-
-/* (legacy) Nav link glow underline effect */
+/* Nav link glow underline effect */
 .nav-link-glow {
   position: relative;
   padding-bottom: 4px;
