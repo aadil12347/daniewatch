@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,6 +92,11 @@ export const VideoPlayer = ({
   const [useAlternate, setUseAlternate] = useState(false);
   const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
 
+  // Keep loader visible for at least this long (even if the iframe loads instantly)
+  const MIN_IFRAME_LOADER_MS = 3000;
+  const iframeLoadStartedAtRef = useRef<number>(Date.now());
+  const iframeMinDelayTimerRef = useRef<number | null>(null);
+
   const { setIsVideoPlaying } = useMedia();
   const isMobile = useIsMobile();
 
@@ -149,8 +154,25 @@ export const VideoPlayer = ({
 
   // Whenever the iframe src changes, show the loader until the iframe finishes loading.
   useEffect(() => {
+    iframeLoadStartedAtRef.current = Date.now();
+
+    if (iframeMinDelayTimerRef.current) {
+      window.clearTimeout(iframeMinDelayTimerRef.current);
+      iframeMinDelayTimerRef.current = null;
+    }
+
     setIsIframeLoading(true);
   }, [embedUrl]);
+
+  // Cleanup any pending loader timers
+  useEffect(() => {
+    return () => {
+      if (iframeMinDelayTimerRef.current) {
+        window.clearTimeout(iframeMinDelayTimerRef.current);
+        iframeMinDelayTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Listen for player events
   useEffect(() => {
@@ -286,7 +308,20 @@ export const VideoPlayer = ({
             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
             allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            onLoad={() => setIsIframeLoading(false)}
+            onLoad={() => {
+              const elapsed = Date.now() - iframeLoadStartedAtRef.current;
+              const remaining = Math.max(0, MIN_IFRAME_LOADER_MS - elapsed);
+
+              if (remaining === 0) {
+                setIsIframeLoading(false);
+                return;
+              }
+
+              iframeMinDelayTimerRef.current = window.setTimeout(() => {
+                setIsIframeLoading(false);
+                iframeMinDelayTimerRef.current = null;
+              }, remaining);
+            }}
           />
         )}
 
