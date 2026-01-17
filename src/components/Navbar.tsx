@@ -14,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { HoveredLink, Menu as HoverMenu, MenuItem as HoverMenuItem, MenuSectionTitle } from "@/components/ui/navbar-menu";
 export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
@@ -22,7 +21,6 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
@@ -264,53 +262,23 @@ export const Navbar = () => {
             </Link>
           </div>
 
-          {/* Center: Desktop Navigation (hover mega-menu) */}
-          <div
-            className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2"
-            data-tutorial="navigation"
-          >
-            <HoverMenu setActive={setActiveMenu} className="bg-background/20">
-              <HoverMenuItem setActive={setActiveMenu} active={activeMenu} item="Browse">
-                <div className="min-w-56">
-                  <MenuSectionTitle>Watch</MenuSectionTitle>
-                  <div className="space-y-1">
-                    <HoveredLink to="/movies">Movies</HoveredLink>
-                    <HoveredLink to="/tv">TV Shows</HoveredLink>
-                    <HoveredLink to="/watchlist">Watch List</HoveredLink>
-                  </div>
-                </div>
-              </HoverMenuItem>
-
-              <HoverMenuItem setActive={setActiveMenu} active={activeMenu} item="Discover">
-                <div className="min-w-56">
-                  <MenuSectionTitle>Collections</MenuSectionTitle>
-                  <div className="space-y-1">
-                    <HoveredLink to="/indian">Indian</HoveredLink>
-                    <HoveredLink to="/anime">Anime</HoveredLink>
-                    <HoveredLink to="/korean">Korean</HoveredLink>
-                  </div>
-                </div>
-              </HoverMenuItem>
-
-              <HoverMenuItem setActive={setActiveMenu} active={activeMenu} item="Account">
-                <div className="min-w-56">
-                  <MenuSectionTitle>Shortcuts</MenuSectionTitle>
-                  <div className="space-y-1">
-                    {user ? (
-                      <>
-                        {!isAdmin && <HoveredLink to="/requests">My Requests</HoveredLink>}
-                        {isAdmin && <HoveredLink to="/admin">Admin Panel</HoveredLink>}
-                        <HoveredLink to="/auth">Profile</HoveredLink>
-                      </>
-                    ) : (
-                      <>
-                        <HoveredLink to="/auth">Sign In</HoveredLink>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </HoverMenuItem>
-            </HoverMenu>
+          {/* Center: Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2" data-tutorial="navigation">
+            {navLinks.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={cn(
+                  "nav-link-glow flex items-center gap-2 transition-all duration-300",
+                  location.pathname === link.to 
+                    ? "text-foreground" 
+                    : "text-foreground/70 hover:text-foreground"
+                )}
+              >
+                <link.icon className="w-4 h-4" />
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           {/* Right side: Search + User */}
