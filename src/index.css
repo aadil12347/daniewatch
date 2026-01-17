@@ -2,15 +2,15 @@
 
 /* Rank number styling */
 .rank-number {
-  -webkit-text-stroke: 2px white;
-  -webkit-text-fill-color: black;
+  -webkit-text-stroke: 2px hsl(var(--primary));
+  -webkit-text-fill-color: transparent;
   transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .group:hover .rank-number {
-  -webkit-text-stroke: 2px hsl(0, 84%, 60%);
-  -webkit-text-fill-color: hsl(0, 84%, 60%);
-  filter: drop-shadow(0 0 8px hsl(0, 84%, 60%));
+  -webkit-text-stroke: 2px hsl(var(--primary));
+  -webkit-text-fill-color: hsl(var(--primary));
+  filter: drop-shadow(0 0 8px hsl(var(--primary)));
 }
 
 /* Nav link glow underline effect */
