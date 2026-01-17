@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PlayerSwitchOverlay } from "@/components/PlayerSwitchOverlay";
 import { useMedia } from "@/contexts/MediaContext";
@@ -82,7 +72,6 @@ export const VideoPlayer = ({
   const [isIframeLoading, setIsIframeLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [useAlternate, setUseAlternate] = useState(false);
-  const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
   const [switchOverlayState, setSwitchOverlayState] = useState<"open" | "closing" | null>(null);
 
   const switchOverlayTimerRef = useRef<number | null>(null);
@@ -288,18 +277,8 @@ export const VideoPlayer = ({
   };
 
   const requestSwitch = () => {
-    if (!isMobile) {
-      startSwitchOverlay();
-      setUseAlternate((v) => !v);
-      return;
-    }
-    setConfirmSwitchOpen(true);
-  };
-
-  const confirmSwitch = () => {
     startSwitchOverlay();
     setUseAlternate((v) => !v);
-    setConfirmSwitchOpen(false);
   };
 
   const showLoaderOverlay = isLoading || isIframeLoading;
@@ -307,20 +286,6 @@ export const VideoPlayer = ({
   return (
     <TooltipProvider>
       <div className={"group " + containerClasses + (className ? " " + className : "")} style={mergedStyle}>
-        {/* Mobile-only confirm */}
-        <AlertDialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Switch player?</AlertDialogTitle>
-              <AlertDialogDescription>This will reload the video using the other source.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmSwitch}>Switch</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
         {/* Compact switch player button */}
         {showSwitch && (
           <div className={"absolute bottom-3 left-3 md:bottom-4 md:left-4 z-[80] pointer-events-auto transition-opacity " + switchVisibilityClass}>
