@@ -299,7 +299,7 @@ export const Navbar = () => {
                   to={link.to}
                   onMouseMove={setHoverSwipeVars}
                   className={cn(
-                    "hover-swipe rounded-none px-3 py-2 flex items-center gap-2 transition-colors duration-300",
+                    "hover-swipe rounded-none px-4 py-3 tracking-tight flex items-center gap-2 transition-colors duration-300",
                     isActive
                       ? "bg-primary/15 text-foreground"
                       : "text-foreground/70 hover:text-primary-foreground"
