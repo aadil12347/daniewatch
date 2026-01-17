@@ -214,15 +214,15 @@ export const Navbar = () => {
       <nav
         ref={navRef}
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-[background-color,padding] duration-300 ease-out",
-          isScrolled ? "glass py-3" : "bg-gradient-to-b from-background/80 to-transparent py-4"
+          "fixed top-0 left-0 right-0 z-50 h-16 transition-[background-color] duration-300 ease-out",
+          isScrolled ? "glass" : "bg-gradient-to-b from-background/80 to-transparent"
         )}
       >
         {/* Bottom glow effect */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
         <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
         
-        <div className="container mx-auto px-4 flex items-center justify-between relative">
+        <div className="container mx-auto h-16 px-4 flex items-center justify-between relative">
           {/* Left side: Menu toggle + Logo for mobile */}
           <div className="flex items-center gap-2 shrink-0">
             <button
