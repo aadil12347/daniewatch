@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { PlayerSwitchOverlay } from "@/components/PlayerSwitchOverlay";
 import { useMedia } from "@/contexts/MediaContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
@@ -82,6 +83,10 @@ export const VideoPlayer = ({
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [useAlternate, setUseAlternate] = useState(false);
   const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
+  const [switchOverlayState, setSwitchOverlayState] = useState<"open" | "closing" | null>(null);
+
+  const switchOverlayTimerRef = useRef<number | null>(null);
+  const switchOverlayCloseTimerRef = useRef<number | null>(null);
 
   // Keep loader visible for at least this long (even if the iframe loads instantly)
   const MIN_IFRAME_LOADER_MS = 3000;
@@ -194,6 +199,14 @@ export const VideoPlayer = ({
         window.clearTimeout(iframeHardTimeoutRef.current);
         iframeHardTimeoutRef.current = null;
       }
+      if (switchOverlayTimerRef.current) {
+        window.clearTimeout(switchOverlayTimerRef.current);
+        switchOverlayTimerRef.current = null;
+      }
+      if (switchOverlayCloseTimerRef.current) {
+        window.clearTimeout(switchOverlayCloseTimerRef.current);
+        switchOverlayCloseTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -256,19 +269,27 @@ export const VideoPlayer = ({
   // Mobile: always visible (no hover)
   const switchVisibilityClass = isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100";
 
-  const primaryIsVideasy = (mediaResult?.source ?? "videasy") === "videasy";
-  const isShowingAlternate = useAlternate;
+  // We intentionally keep the tooltip generic; we don't reveal provider names in the UI.
 
-  const nextLabel = primaryIsVideasy
-    ? isShowingAlternate
-      ? "Switch to Videasy"
-      : "Switch to MoviesAPI"
-    : isShowingAlternate
-      ? "Switch to MoviesAPI"
-      : "Switch to Videasy";
+
+  const startSwitchOverlay = () => {
+    // Show for ~3s, with a quick fade-out at the end.
+    setSwitchOverlayState("open");
+
+    if (switchOverlayTimerRef.current) window.clearTimeout(switchOverlayTimerRef.current);
+    if (switchOverlayCloseTimerRef.current) window.clearTimeout(switchOverlayCloseTimerRef.current);
+
+    switchOverlayTimerRef.current = window.setTimeout(() => {
+      setSwitchOverlayState("closing");
+      switchOverlayCloseTimerRef.current = window.setTimeout(() => {
+        setSwitchOverlayState(null);
+      }, 260);
+    }, 3000);
+  };
 
   const requestSwitch = () => {
     if (!isMobile) {
+      startSwitchOverlay();
       setUseAlternate((v) => !v);
       return;
     }
@@ -276,6 +297,7 @@ export const VideoPlayer = ({
   };
 
   const confirmSwitch = () => {
+    startSwitchOverlay();
     setUseAlternate((v) => !v);
     setConfirmSwitchOpen(false);
   };
@@ -315,9 +337,7 @@ export const VideoPlayer = ({
                   <ArrowLeftRight className={"h-4 w-4 transition-transform " + (useAlternate ? "rotate-180" : "rotate-0")} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top" align="start">
-                {nextLabel}
-              </TooltipContent>
+              <TooltipContent side="top" align="start">Switch player</TooltipContent>
             </Tooltip>
           </div>
         )}
@@ -352,6 +372,8 @@ export const VideoPlayer = ({
             <PlayerLoader />
           </div>
         )}
+
+        {switchOverlayState && <PlayerSwitchOverlay state={switchOverlayState} />}
       </div>
     </TooltipProvider>
   );
