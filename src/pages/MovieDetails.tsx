@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2, Ban, Pin } from "lucide-react";
+import { Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2, Ban, Pin } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -9,9 +9,9 @@ import { MovieCard } from "@/components/MovieCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { AdminPostControls } from "@/components/AdminPostControls";
+import { AnimatedPlayButton } from "@/components/AnimatedPlayButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AnimatedBackButton } from "@/components/AnimatedBackButton";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
@@ -248,10 +248,9 @@ const MovieDetails = () => {
 
               {/* Action buttons */}
               <div className="flex items-center gap-3 md:gap-3">
-                <Button
+                <AnimatedPlayButton
                   ref={playButtonRef}
-                  size="sm"
-                  className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
+                  className="h-11 md:h-10 px-6 md:px-8 shadow-glow"
                   onClick={() => {
                     // Compute splash origin BEFORE any scroll so it starts exactly at the Play button.
                     const heroRect = heroRef.current?.getBoundingClientRect();
@@ -279,10 +278,7 @@ const MovieDetails = () => {
                     params.set("watch", "1");
                     navigate({ search: params.toString() });
                   }}
-                >
-                  <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
-                  Play
-                </Button>
+                />
                 <Button
                   size="icon"
                   variant="outline"

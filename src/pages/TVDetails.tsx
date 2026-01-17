@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Play, Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
+import { Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -9,7 +9,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { EpisodeCard } from "@/components/EpisodeCard";
 import { BackgroundTrailer } from "@/components/BackgroundTrailer";
 import { VideoPlayer } from "@/components/VideoPlayer";
-import { AnimatedBackButton } from "@/components/AnimatedBackButton";
+import { AnimatedPlayButton } from "@/components/AnimatedPlayButton";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -340,10 +340,9 @@ const TVDetails = () => {
 
               {/* Action buttons */}
               <div className="flex items-center gap-3 md:gap-3">
-                <Button
+                <AnimatedPlayButton
                   ref={playButtonRef}
-                  size="sm"
-                  className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
+                  className="h-11 md:h-10 px-6 md:px-8 shadow-glow"
                   onClick={() => {
                     const heroRect = heroRef.current?.getBoundingClientRect();
                     const btnRect = playButtonRef.current?.getBoundingClientRect();
@@ -372,10 +371,7 @@ const TVDetails = () => {
                     params.set("e", "1");
                     navigate({ search: params.toString() });
                   }}
-                >
-                  <Play className="w-5 h-5 md:w-4 md:h-4 mr-2 fill-current" />
-                  Play
-                </Button>
+                />
                 <Button
                   size="icon"
                   variant="outline"
