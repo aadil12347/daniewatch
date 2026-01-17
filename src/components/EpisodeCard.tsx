@@ -75,7 +75,7 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
       {downloadLink && (
         <button
           onClick={handleDownload}
-          className="flex-shrink-0 self-center p-2 md:p-3 rounded-md md:rounded-lg border-2 border-foreground/80 text-foreground transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
+          className="flex-shrink-0 self-center p-2 md:p-3 rounded-md md:rounded-lg border-2 border-primary/80 text-primary transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
           title="Download episode"
         >
           <Download className="w-4 h-4 md:w-6 md:h-6" />
