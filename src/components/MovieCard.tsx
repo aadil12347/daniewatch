@@ -83,10 +83,10 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               </div>
             )}
 
-            {/* Hover overlay (matches requested: dark fade + expanding gradient) */}
+            {/* Hover overlay (dark fade + expanding GREY wash) */}
             <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <div className="absolute inset-0 bg-background/60" />
-              <div className="absolute inset-0 gradient-red opacity-40 transform-gpu scale-0 group-hover:scale-[2] transition-transform duration-500 ease-out" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-foreground/20 via-foreground/5 to-transparent opacity-70 transform-gpu scale-0 group-hover:scale-[2] transition-transform duration-500 ease-out" />
             </div>
 
             {/* Center Play button (appears on hover) */}
@@ -96,15 +96,16 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                   "pointer-events-none select-none",
                   "font-semibold text-sm md:text-base",
                   "px-5 py-2.5 rounded-full",
-                  "bg-background text-foreground",
+                  "bg-background/95 text-foreground",
                   "shadow-[0_0_18px_hsl(var(--foreground)/0.12)]",
-                  "opacity-0 scale-0",
-                  "group-hover:opacity-100 group-hover:scale-100",
+                  "opacity-0 scale-0 translate-y-3",
+                  "group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0",
+                  "group-hover:animate-enter",
                   "transition-[transform,opacity,box-shadow] duration-600",
                   "[transition-timing-function:cubic-bezier(0.23,1,0.32,1)]"
                 )}
               >
-                Play
+                <span className="inline-block transition-transform duration-500 group-hover:translate-x-0.5">Play</span>
               </div>
             </div>
 
