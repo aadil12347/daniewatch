@@ -356,7 +356,10 @@ html {
   /* Global / Player loading animation (bouncing dots) */
   .app-loader-overlay {
     position: fixed;
-    inset: 0;
+    top: var(--app-header-offset, 0px);
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
