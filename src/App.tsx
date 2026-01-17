@@ -13,6 +13,7 @@ import { GlobalRouteLoader } from "./components/GlobalRouteLoader";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Navbar } from "@/components/Navbar";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -96,6 +97,7 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <ErrorBoundary>
+                  <Navbar />
                   <GlobalRouteLoader />
                   <AppContent />
                   <FloatingRequestButton />

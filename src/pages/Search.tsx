@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
+
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -82,7 +82,7 @@ const Search = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        
 
         <div className="container mx-auto px-4 pt-24 pb-8">
           {query ? (

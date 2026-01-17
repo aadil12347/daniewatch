@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
+
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
 import { MovieCard } from "@/components/MovieCard";
@@ -219,7 +219,6 @@ const TVDetails = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="h-screen relative">
           <Skeleton className="absolute inset-0" />
         </div>
@@ -230,7 +229,6 @@ const TVDetails = () => {
   if (!show) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container mx-auto px-4 pt-32 text-center">
           <h1 className="text-2xl font-bold mb-4">TV Show not found</h1>
           <Button asChild>
@@ -262,7 +260,7 @@ const TVDetails = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        
 
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}

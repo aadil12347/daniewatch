@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Navbar } from "@/components/Navbar";
+
 import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
@@ -83,7 +83,7 @@ const Index = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <Navbar />
+        
         <HeroSection items={trending} isLoading={isLoading} />
 
         <div className="relative z-10 -mt-16">

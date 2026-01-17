@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
+
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -19,9 +19,6 @@ const Watchlist = () => {
         <title>Watch List - DanieWatch</title>
         <meta name="description" content="Your personal watchlist of movies and TV shows" />
       </Helmet>
-
-      <Navbar />
-
       <main className="min-h-screen pt-20 pb-12">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold mb-6">My Watch List</h1>
