@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Play, Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2, Ban, Pin } from "lucide-react";
@@ -43,6 +43,11 @@ const MovieDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [revealOrigin, setRevealOrigin] = useState<{ x: number; y: number } | null>(null);
+
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const playButtonRef = useRef<HTMLButtonElement | null>(null);
+
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
@@ -154,8 +159,8 @@ const MovieDetails = () => {
 
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
-        <div className="relative">
-          <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
+          <div className="relative">
+          <div ref={heroRef} className="relative h-[70vh] md:h-screen md:min-h-[700px]">
             {/* Background Trailer (hide when playing) */}
             {!isPlayerOpen ? (
               <BackgroundTrailer
@@ -170,7 +175,11 @@ const MovieDetails = () => {
                 onClose={() => navigate(-1)}
                 inline
                 fill
-                className="player-genie-in"
+                className="player-splash-in"
+                style={{
+                  ["--reveal-x" as any]: revealOrigin ? `${revealOrigin.x}px` : "18%",
+                  ["--reveal-y" as any]: revealOrigin ? `${revealOrigin.y}px` : "85%",
+                }}
               />
             )}
 
@@ -239,9 +248,22 @@ const MovieDetails = () => {
               {/* Action buttons */}
               <div className="flex items-center gap-3 md:gap-3">
                 <Button
+                  ref={playButtonRef}
                   size="sm"
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
+                    // Compute splash origin BEFORE any scroll so it starts exactly at the Play button.
+                    const heroRect = heroRef.current?.getBoundingClientRect();
+                    const btnRect = playButtonRef.current?.getBoundingClientRect();
+                    if (heroRect && btnRect) {
+                      setRevealOrigin({
+                        x: btnRect.left + btnRect.width / 2 - heroRect.left,
+                        y: btnRect.top + btnRect.height / 2 - heroRect.top,
+                      });
+                    } else {
+                      setRevealOrigin(null);
+                    }
+
                     window.scrollTo({ top: 0, behavior: "smooth" });
                     // Add watch param to URL - this creates a history entry
                     const params = new URLSearchParams(location.search);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ArrowLeftRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +35,10 @@ interface VideoPlayerProps {
    * Optional extra classes for the outer container.
    */
   className?: string;
+  /**
+   * Optional inline styles for the outer container (used for CSS variables like splash origin).
+   */
+  style?: CSSProperties;
 }
 
 function getVideasyEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number, episode: number) {
@@ -47,7 +51,17 @@ function getMoviesApiEmbedUrl(tmdbId: number, type: "movie" | "tv", season: numb
   return `https://moviesapi.club/tv/${tmdbId}-${season}-${episode}`;
 }
 
-export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, inline = false, fill = false, className }: VideoPlayerProps) => {
+export const VideoPlayer = ({
+  tmdbId,
+  type,
+  season = 1,
+  episode = 1,
+  onClose,
+  inline = false,
+  fill = false,
+  className,
+  style,
+}: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [useAlternate, setUseAlternate] = useState(false);
@@ -158,6 +172,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
     : "fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-background";
 
   const containerStyle = inline ? undefined : ({ position: "fixed" as const, width: "100vw", height: "100vh", top: 0, left: 0 } as const);
+  const mergedStyle = { ...(containerStyle ?? {}), ...(style ?? {}) } as CSSProperties;
 
   // Only offer switching when we're not using a Cloud DB embed (supabase).
   const showSwitch = !isLoading && !!mediaResult && mediaResult.source !== "supabase";
@@ -192,7 +207,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
 
   return (
     <TooltipProvider>
-      <div className={"group " + containerClasses + (className ? " " + className : "")} style={containerStyle}>
+      <div className={"group " + containerClasses + (className ? " " + className : "")} style={mergedStyle}>
         {/* Mobile-only confirm */}
         <AlertDialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
           <AlertDialogContent>
