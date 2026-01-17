@@ -262,11 +262,7 @@ const TVDetails = () => {
           <div className="relative h-[70vh] md:h-screen md:min-h-[700px]">
             {/* Background Trailer (hide when playing) */}
             {!playerState.isOpen ? (
-              <BackgroundTrailer 
-                videoKey={trailerKey} 
-                backdropUrl={backdropUrl} 
-                title={title} 
-              />
+              <BackgroundTrailer videoKey={trailerKey} backdropUrl={backdropUrl} title={title} />
             ) : (
               <VideoPlayer
                 tmdbId={Number(id)}
@@ -276,6 +272,7 @@ const TVDetails = () => {
                 onClose={() => navigate(-1)}
                 inline
                 fill
+                className="player-genie-in"
               />
             )}
 
@@ -291,24 +288,16 @@ const TVDetails = () => {
           {/* Details block (animates below player; overlays trailer when not playing) */}
           <div
             className={
-              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin,transform] duration-500 ease-out " +
-              (playerState.isOpen
-                ? "mt-4 md:mt-8 translate-y-6"
-                : "-mt-44 md:-mt-64 translate-y-0")
+              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin,transform] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] " +
+              (playerState.isOpen ? "mt-6 md:mt-10 translate-y-10" : "-mt-44 md:-mt-64 translate-y-0")
             }
           >
             <div className="animate-slide-up max-w-xl lg:max-w-2xl md:px-8 lg:px-12">
               {/* Logo */}
               {logoUrl ? (
-                <img 
-                  src={logoUrl} 
-                  alt={title} 
-                  className="h-16 md:h-20 lg:h-24 object-contain object-left mb-3 md:mb-4"
-                />
+                <img src={logoUrl} alt={title} className="h-16 md:h-20 lg:h-24 object-contain object-left mb-3 md:mb-4" />
               ) : (
-                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 leading-tight">
-                  {title}
-                </h1>
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 leading-tight">{title}</h1>
               )}
 
               {/* Meta info */}
@@ -337,9 +326,7 @@ const TVDetails = () => {
               </div>
 
               {/* Overview - hidden on mobile to save space */}
-              <p className="hidden md:block text-muted-foreground text-sm md:text-base mb-5 line-clamp-3">
-                {show.overview}
-              </p>
+              <p className="hidden md:block text-muted-foreground text-sm md:text-base mb-5 line-clamp-3">{show.overview}</p>
 
               {/* Action buttons */}
               <div className="flex items-center gap-3 md:gap-3">
@@ -347,7 +334,7 @@ const TVDetails = () => {
                   size="sm"
                   className="gradient-red text-foreground font-semibold px-6 md:px-8 text-sm hover:opacity-90 transition-opacity shadow-glow h-11 md:h-10"
                   onClick={() => {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                     // Add watch params to URL - this creates a history entry
                     const params = new URLSearchParams(location.search);
                     params.set("watch", "1");
@@ -363,22 +350,22 @@ const TVDetails = () => {
                   size="icon"
                   variant="outline"
                   className={`w-11 h-11 md:w-10 md:h-10 rounded-full bg-secondary/50 border-border hover:bg-secondary/80 backdrop-blur-sm ${
-                    isInWatchlist(show.id, 'tv') ? 'text-primary border-primary' : ''
+                    isInWatchlist(show.id, "tv") ? "text-primary border-primary" : ""
                   }`}
                   onClick={async () => {
                     if (isBookmarking) return;
                     setIsBookmarking(true);
                     const showData: Movie = {
                       id: show.id,
-                      title: show.name || '',
+                      title: show.name || "",
                       name: show.name,
                       overview: show.overview,
                       poster_path: show.poster_path,
                       backdrop_path: show.backdrop_path,
                       vote_average: show.vote_average,
                       first_air_date: show.first_air_date,
-                      genre_ids: show.genres?.map(g => g.id) || [],
-                      media_type: 'tv',
+                      genre_ids: show.genres?.map((g) => g.id) || [],
+                      media_type: "tv",
                     };
                     await toggleWatchlist(showData);
                     setIsBookmarking(false);
@@ -388,13 +375,14 @@ const TVDetails = () => {
                   {isBookmarking ? (
                     <Loader2 className="w-5 h-5 md:w-4 md:h-4 animate-spin" />
                   ) : (
-                    <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(show.id, 'tv') ? 'fill-current' : ''}`} />
+                    <Bookmark className={`w-5 h-5 md:w-4 md:h-4 ${isInWatchlist(show.id, "tv") ? "fill-current" : ""}`} />
                   )}
                 </Button>
               </div>
             </div>
           </div>
         </div>
+
 
         {/* Episodes / Similars Section - closer to hero on mobile */}
         <section className="py-3 md:py-10 mt-4 md:mt-0">

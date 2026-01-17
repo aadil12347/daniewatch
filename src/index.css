@@ -324,6 +324,24 @@ html {
     animation: scaleIn 0.4s ease-out forwards;
   }
 
+  /* Player "genie out of lamp" reveal */
+  .player-genie-in {
+    animation: playerGenieIn 950ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, clip-path, filter;
+  }
+
+  .player-genie-in::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    pointer-events: none;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.35) 0%, transparent 55%);
+    transform: translate3d(0, 0, 0) scale(0.2);
+    opacity: 0;
+    animation: playerRippleOut 950ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    mix-blend-mode: screen;
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -352,6 +370,39 @@ html {
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+
+  @keyframes playerGenieIn {
+    0% {
+      transform: translate3d(0, 42px, 0) scale(0.92);
+      filter: blur(10px);
+      clip-path: circle(0% at 18% 85%);
+    }
+    45% {
+      transform: translate3d(0, 18px, 0) scale(0.98);
+      filter: blur(4px);
+      clip-path: circle(60% at 18% 85%);
+    }
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+      filter: blur(0);
+      clip-path: circle(140% at 50% 50%);
+    }
+  }
+
+  @keyframes playerRippleOut {
+    0% {
+      opacity: 0;
+      transform: translate3d(-18%, 18%, 0) scale(0.15);
+    }
+    35% {
+      opacity: 0.9;
+      transform: translate3d(-8%, 10%, 0) scale(0.55);
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(0, 0, 0) scale(1.25);
     }
   }
 

@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMedia } from "@/contexts/MediaContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -41,6 +51,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   const [isLoading, setIsLoading] = useState(true);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
   const [useAlternate, setUseAlternate] = useState(false);
+  const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false);
 
   const { setIsVideoPlaying } = useMedia();
   const isMobile = useIsMobile();
@@ -66,8 +77,8 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
       const result = await getMediaLinks(tmdbId, type, season, episode);
       setMediaResult(result);
 
-      // Workaround: MoviesAPI blocks Lovable's sandboxed preview iframe.
-      // In preview only, switch to Videasy automatically.
+      // If the primary provider is blocked in preview, allow the user to switch.
+      // (We keep this lightweight; Videasy is now default, but user may switch.)
       if (isSandboxed && result.source === "moviesapi") {
         setUseAlternate(true);
       }
@@ -79,9 +90,11 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
   }, [tmdbId, type, season, episode, isSandboxed]);
 
   const getEmbedUrl = () => {
-    if (!mediaResult) return moviesApiUrl;
+    // Default to Videasy if we don't have a lookup result yet.
+    if (!mediaResult) return videasyUrl;
 
-    // Manual alternate player switch (MoviesAPI -> Videasy)
+    // Manual alternate player switch
+    if (mediaResult.source === "videasy" && useAlternate) return moviesApiUrl;
     if (mediaResult.source === "moviesapi" && useAlternate) return videasyUrl;
 
     // For TV shows, check seasonEpisodeLinks first (Cloud DB)
@@ -92,7 +105,7 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
 
     if (mediaResult.watchUrl) return mediaResult.watchUrl;
 
-    return moviesApiUrl;
+    return videasyUrl;
   };
 
   // Listen for player events
@@ -146,15 +159,55 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
 
   const containerStyle = inline ? undefined : ({ position: "fixed" as const, width: "100vw", height: "100vh", top: 0, left: 0 } as const);
 
-  const showSwitch = !isLoading && mediaResult?.source === "moviesapi";
+  // Only offer switching when we're not using a Cloud DB embed (supabase).
+  const showSwitch = !isLoading && !!mediaResult && mediaResult.source !== "supabase";
 
   // Desktop: keep it hidden until hover/focus (feels like video controls)
   // Mobile: always visible (no hover)
   const switchVisibilityClass = isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100";
 
+  const primaryIsVideasy = (mediaResult?.source ?? "videasy") === "videasy";
+  const isShowingAlternate = useAlternate;
+
+  const nextLabel = primaryIsVideasy
+    ? isShowingAlternate
+      ? "Switch to Videasy"
+      : "Switch to MoviesAPI"
+    : isShowingAlternate
+      ? "Switch to MoviesAPI"
+      : "Switch to Videasy";
+
+  const requestSwitch = () => {
+    if (!isMobile) {
+      setUseAlternate((v) => !v);
+      return;
+    }
+    setConfirmSwitchOpen(true);
+  };
+
+  const confirmSwitch = () => {
+    setUseAlternate((v) => !v);
+    setConfirmSwitchOpen(false);
+  };
+
   return (
     <TooltipProvider>
       <div className={"group " + containerClasses + (className ? " " + className : "")} style={containerStyle}>
+        {/* Mobile-only confirm */}
+        <AlertDialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Switch player?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will reload the video using the other source.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmSwitch}>Switch</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Compact switch player button */}
         {showSwitch && (
@@ -166,14 +219,14 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
                   variant="outline"
                   size="icon"
                   className="h-9 w-9 md:h-10 md:w-10 bg-background/20 hover:bg-background/30 backdrop-blur-sm"
-                  onClick={() => setUseAlternate((v) => !v)}
+                  onClick={requestSwitch}
                   aria-label="Switch player"
                 >
                   <ArrowLeftRight className={"h-4 w-4 transition-transform " + (useAlternate ? "rotate-180" : "rotate-0")} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" align="start">
-                {useAlternate ? "Switch to MoviesAPI" : "Switch to Videasy"}
+                {nextLabel}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -198,3 +251,4 @@ export const VideoPlayer = ({ tmdbId, type, season = 1, episode = 1, onClose, in
     </TooltipProvider>
   );
 };
+
