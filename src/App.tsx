@@ -9,6 +9,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
 import { PageTransition } from "./components/PageTransition";
+import { GlobalRouteLoader } from "./components/GlobalRouteLoader";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -95,6 +96,7 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <ErrorBoundary>
+                  <GlobalRouteLoader />
                   <AppContent />
                   <FloatingRequestButton />
                   <TutorialOverlay />
