@@ -231,7 +231,7 @@ const Indian = () => {
                 onMouseMove={(e) => applyHoverSwipe(e.currentTarget, e.clientX, e.clientY)}
                 onClick={() => setSelectedLang(l.key)}
                 className={cn(
-                  "hover-swipe rounded-full border px-4 py-2 text-sm transition-colors",
+                  "hover-swipe rounded-none border px-4 py-2 text-sm transition-colors",
                   l.key === selectedLang
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-secondary/30 text-foreground border-border hover:text-primary-foreground"
