@@ -407,7 +407,7 @@ export const Navbar = () => {
 
       {/* Sticky Back button on details pages - hidden on mobile */}
       {isDetailsPage && (
-        <div className="hidden md:block fixed left-4 top-20 z-[60]">
+        <div className="hidden md:block fixed right-4 top-20 z-[60]">
           <AnimatedBackButton label="Back" size="navbar" />
         </div>
       )}

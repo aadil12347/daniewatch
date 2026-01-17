@@ -288,7 +288,12 @@ export const VideoPlayer = ({
       <div className={"group " + containerClasses + (className ? " " + className : "")} style={mergedStyle}>
         {/* Compact switch player button */}
         {showSwitch && (
-          <div className={"absolute bottom-3 left-3 md:bottom-4 md:left-4 z-[80] pointer-events-auto transition-opacity " + switchVisibilityClass}>
+          <div
+            className={
+              "fixed top-3 right-3 md:top-20 md:right-[8.75rem] z-[80] pointer-events-auto transition-opacity " +
+              switchVisibilityClass
+            }
+          >
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -302,7 +307,7 @@ export const VideoPlayer = ({
                   <ArrowLeftRight className={"h-4 w-4 transition-transform " + (useAlternate ? "rotate-180" : "rotate-0")} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top" align="start">Switch player</TooltipContent>
+              <TooltipContent side="bottom" align="end">Switch player</TooltipContent>
             </Tooltip>
           </div>
         )}
