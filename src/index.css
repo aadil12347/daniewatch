@@ -354,10 +354,8 @@ html {
     filter: none;
   }
 
-  .poster-3d-wrapper::before,
   .poster-3d-wrapper::after {
     content: "";
-    opacity: 0;
     width: 100%;
     transition: opacity var(--transition-slow), height var(--transition-slow);
     position: absolute;
@@ -366,17 +364,7 @@ html {
     z-index: 3;
   }
 
-  .poster-3d-wrapper::before {
-    top: 0;
-    height: 100%;
-    background-image: linear-gradient(
-      to top,
-      transparent 46%,
-      hsl(var(--background) / 0.35) 68%,
-      hsl(var(--background) / 0.95) 97%
-    );
-  }
-
+  /* Bottom vignette only (removed top vignette) */
   .poster-3d-wrapper::after {
     bottom: 0;
     height: 80px;
@@ -400,7 +388,6 @@ html {
     opacity: 1;
   }
 
-  .group:hover .poster-3d-wrapper::before,
   .group:hover .poster-3d-wrapper::after {
     opacity: 1;
   }
