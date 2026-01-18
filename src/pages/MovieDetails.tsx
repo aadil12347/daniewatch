@@ -198,8 +198,9 @@ const MovieDetails = () => {
           {/* Details block (animates below player; overlays trailer when not playing) */}
           <div
             className={
-              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin,transform] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] " +
-              (isPlayerOpen ? "mt-6 md:mt-10 translate-y-10" : "-mt-44 md:-mt-64 translate-y-0")
+              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] " +
+              // IMPORTANT: avoid translateY when player is open (transforms don't take layout space and can overlap the Actors section)
+              (isPlayerOpen ? "mt-6 md:mt-10" : "-mt-44 md:-mt-64")
             }
           >
             <div className="animate-slide-up max-w-xl lg:max-w-2xl md:px-8 lg:px-12">
