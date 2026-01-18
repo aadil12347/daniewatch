@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { usePostModeration } from "@/hooks/usePostModeration";
 
 const Watchlist = () => {
-  const { filterBlockedPosts } = usePostModeration();
+  const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { user } = useAuth();
   const { getWatchlistAsMovies, loading } = useWatchlist();
   const watchlistMovies = getWatchlistAsMovies();
   const visibleWatchlist = filterBlockedPosts(watchlistMovies);
+
+  const pageIsLoading = loading || isModerationLoading;
 
   return (
     <>
@@ -40,7 +42,7 @@ const Watchlist = () => {
                 <Link to="/auth">Sign In</Link>
               </Button>
             </div>
-          ) : loading ? (
+          ) : pageIsLoading ? (
             // Loading state
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />

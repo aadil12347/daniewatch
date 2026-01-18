@@ -21,7 +21,7 @@ const INDIAN_LANGS: Array<{ key: IndianLang; label: string; tmdbLang?: string }>
 ];
 
 const Indian = () => {
-  const { filterBlockedPosts } = usePostModeration();
+  const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
 
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedLang, setSelectedLang] = useState<IndianLang>("all");
@@ -32,6 +32,7 @@ const Indian = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
 
+  const pageIsLoading = isLoading || isModerationLoading;
   const visibleItems = filterBlockedPosts(items);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -180,10 +181,10 @@ const Indian = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!isLoading && visibleItems.length > 0) {
+    if (!pageIsLoading && visibleItems.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [isLoading, visibleItems.length]);
+  }, [pageIsLoading, visibleItems.length]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -249,7 +250,7 @@ const Indian = () => {
 
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {isLoading
+            {pageIsLoading
               ? Array.from({ length: 18 }).map((_, i) => (
                   <div key={i}>
                     <Skeleton className="aspect-[2/3] rounded-xl" />
@@ -267,7 +268,7 @@ const Indian = () => {
           </div>
 
           {/* No results */}
-          {!isLoading && visibleItems.length === 0 && (
+          {!pageIsLoading && visibleItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No results found.</p>
             </div>
