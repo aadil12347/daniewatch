@@ -1024,6 +1024,11 @@ html {
     backface-visibility: hidden;
   }
 
+  /* Ensure hovered posters can pop above nearby sections (e.g., Home hero overlap) */
+  .card-reveal:hover,
+  .card-reveal:focus-within {
+    z-index: 80;
+  }
   @keyframes cardReveal {
     from {
       opacity: 0;
