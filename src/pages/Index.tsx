@@ -21,7 +21,7 @@ import {
   Movie,
 } from "@/lib/tmdb";
 
-const ABOVE_FOLD_PRELOAD_COUNT = 28; // ~Top 10 + first row-ish
+const ABOVE_FOLD_PRELOAD_COUNT = 20; // preload at least 20 hover images on initial load
 const SHOW_THRESHOLD = 0.5; // show when 50% of those hover images are ready
 
 const Index = () => {
@@ -37,7 +37,7 @@ const Index = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
-  const { getHoverImageUrl } = useEntryAvailability();
+  const { getHoverImageUrl, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   // Build an “above the fold” list of cards and preload their hover images first.
   const aboveFoldIds = useMemo(() => {
@@ -64,12 +64,12 @@ const Index = () => {
   );
 
   const { loaded: hoverLoaded, total: hoverTotal } = usePreloadImages(aboveFoldHoverUrls, {
-    enabled: !isLoading, // start once TMDB lists are in
+    enabled: !isLoading && !isAvailabilityLoading, // start once TMDB lists + entries map are ready
     concurrency: 8,
   });
 
   const aboveFoldReady = hoverTotal === 0 ? true : hoverLoaded / hoverTotal >= SHOW_THRESHOLD;
-  const pageIsLoading = isLoading || isModerationLoading || !aboveFoldReady;
+  const pageIsLoading = isLoading || isModerationLoading || isAvailabilityLoading || !aboveFoldReady;
 
   useEffect(() => {
     const fetchData = async () => {
