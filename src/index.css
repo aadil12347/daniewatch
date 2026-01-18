@@ -182,7 +182,7 @@
     @apply border-border;
   }
 
-  html {
+html {
     scroll-behavior: smooth;
   }
 
@@ -202,19 +202,6 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Custom cursor (fine pointers only) */
-  @media (pointer: fine) {
-    body,
-    a,
-    button,
-    [role="button"],
-    input,
-    textarea,
-    select {
-      cursor: none;
-    }
-  }
-
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
@@ -232,39 +219,6 @@
 
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
-  }
-}
-
-/* Cursor element */
-.app-cursor {
-  --cursor-x: -200px;
-  --cursor-y: -200px;
-  --cursor-scale-x: 1;
-  --cursor-scale-y: 1;
-  --cursor-rotate: 0deg;
-
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: hsl(var(--foreground));
-  mix-blend-mode: difference;
-  pointer-events: none;
-  z-index: 9999;
-  will-change: transform;
-
-  transform:
-    translate(calc(var(--cursor-x) - 50%), calc(var(--cursor-y) - 50%))
-    rotate(var(--cursor-rotate))
-    scaleX(var(--cursor-scale-x))
-    scaleY(var(--cursor-scale-y));
-}
-
-@media (pointer: coarse) {
-  .app-cursor {
-    display: none;
   }
 }
 
