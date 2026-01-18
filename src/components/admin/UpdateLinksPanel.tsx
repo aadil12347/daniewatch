@@ -87,6 +87,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [movieWatchLink, setMovieWatchLink] = useState("");
   const [movieDownloadLink, setMovieDownloadLink] = useState("");
 
+  // Hover character image (optional, per title)
+  const [hoverImageUrl, setHoverImageUrl] = useState("");
+
   // Series inputs
   const [seriesWatchLinks, setSeriesWatchLinks] = useState("");
   const [seriesDownloadLinks, setSeriesDownloadLinks] = useState("");
@@ -116,11 +119,14 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       setMovieDownloadLink("");
       setSeriesWatchLinks("");
       setSeriesDownloadLinks("");
+      setHoverImageUrl("");
       setEntryExists(false);
 
       const entry = await fetchEntry(String(result.id));
       if (entry && entry.type === result.type) {
         setEntryExists(true);
+        setHoverImageUrl(entry.hover_image_url || "");
+
         if (entry.type === "movie") {
           const content = entry.content as { watch_link?: string; download_link?: string };
           setMovieWatchLink(content.watch_link || "");
@@ -277,10 +283,21 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const handleSave = async () => {
     if (!tmdbResult) return;
 
+    const trimmedHover = hoverImageUrl.trim();
+    const isValidHover = !trimmedHover || /^https?:\/\//i.test(trimmedHover);
+    if (!isValidHover) {
+      toast({
+        title: "Invalid URL",
+        description: "Hover image URL must start with http:// or https://",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
 
     if (tmdbResult.type === "movie") {
-      const result = await saveMovieEntry(String(tmdbResult.id), movieWatchLink, movieDownloadLink);
+      const result = await saveMovieEntry(String(tmdbResult.id), movieWatchLink, movieDownloadLink, trimmedHover);
       if (result.success) {
         setEntryExists(true);
         toast({ title: "Saved", description: "Movie links saved successfully." });
@@ -289,7 +306,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
       const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
 
-      const result = await saveSeriesSeasonEntry(String(tmdbResult.id), selectedSeason, watchLinks, downloadLinks);
+      const result = await saveSeriesSeasonEntry(String(tmdbResult.id), selectedSeason, watchLinks, downloadLinks, trimmedHover);
       if (result.success) {
         setEntryExists(true);
         toast({ title: "Saved", description: `Season ${selectedSeason} links saved successfully.` });
@@ -501,6 +518,56 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           {/* Links Form - Always visible */}
           <Card>
             <CardContent className="pt-4 space-y-4">
+              {/* Hover character image */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Hover character image (optional)</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        setHoverImageUrl(text);
+                        toast({ title: "Pasted", description: "Hover image URL replaced from clipboard." });
+                      } catch {
+                        toast({ title: "Error", description: "Failed to read clipboard.", variant: "destructive" });
+                      }
+                    }}
+                    className="gap-1 h-7 px-2"
+                    disabled={!tmdbResult}
+                  >
+                    <ClipboardPaste className="w-3 h-3" />
+                    Paste
+                  </Button>
+                </div>
+
+                <div className="flex gap-3 items-start">
+                  <div className="flex-1">
+                    <Input
+                      value={hoverImageUrl}
+                      onChange={(e) => setHoverImageUrl(e.target.value)}
+                      className="font-mono text-sm"
+                      placeholder="https://... (PNG/WebP/JPG recommended)"
+                      disabled={!tmdbResult}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Shown to everyone on card hover.</p>
+                  </div>
+
+                  {/^https?:\/\//i.test(hoverImageUrl.trim()) && (
+                    <img
+                      src={hoverImageUrl.trim()}
+                      alt="Hover character preview"
+                      loading="lazy"
+                      className="w-12 h-12 rounded-md object-cover border"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
               {/* Watch Online */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

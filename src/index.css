@@ -421,10 +421,36 @@ html {
     filter: drop-shadow(0 10px 22px hsl(0 0% 0% / 0.55));
   }
 
+  .poster-3d-character {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -6%;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+
+    opacity: 0;
+    transform: translate3d(0%, 10px, 0);
+    transition: transform var(--transition-slow), opacity var(--transition-slow);
+    will-change: transform, opacity;
+    pointer-events: none;
+
+    /* Above logo, below UI (rating/buttons) */
+    z-index: 11;
+
+    filter: drop-shadow(0 18px 34px hsl(0 0% 0% / 0.6));
+  }
+
   .group:hover .poster-3d-logo {
     opacity: 1;
     /* Small lift on hover, but keep it visually low */
     transform: translate3d(0%, -8px, 80px);
+  }
+
+  .group:hover .poster-3d-character {
+    opacity: 1;
+    transform: translate3d(0%, -26%, 140px);
   }
 
   @media (prefers-reduced-motion: reduce) {

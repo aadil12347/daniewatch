@@ -23,7 +23,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
-  const { getAvailability } = useEntryAvailability();
+  const { getAvailability, getHoverImageUrl } = useEntryAvailability();
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as "movie" | "tv");
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
@@ -33,6 +33,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
 
   const blocked = isBlocked(movie.id, mediaType as "movie" | "tv");
   const { hasWatch, hasDownload } = getAvailability(movie.id);
+  const hoverImageUrl = getHoverImageUrl(movie.id);
 
   // Hard safety: never render blocked items to normal users.
   if (!isAdmin && blocked) return null;
@@ -133,6 +134,20 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               <div className="w-full h-full flex items-center justify-center bg-muted">
                 <span className="text-muted-foreground text-sm">{title}</span>
               </div>
+            )}
+
+            {/* Optional character layer (from DB) */}
+            {hoverImageUrl && (
+              <img
+                src={hoverImageUrl}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                className={cn(
+                  "poster-3d-character",
+                  isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                )}
+              />
             )}
 
             {/* Optional logo (TMDB) */}

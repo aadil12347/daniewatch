@@ -19,6 +19,7 @@ interface EntryData {
   id: string;
   type: "movie" | "series";
   content: MovieContent | SeriesContent;
+  hover_image_url?: string | null;
   created_at?: string;
 }
 
@@ -53,7 +54,8 @@ export const useEntries = () => {
   const saveMovieEntry = async (
     id: string,
     watchLink: string,
-    downloadLink: string
+    downloadLink: string,
+    hoverImageUrl?: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const content: MovieContent = {
@@ -61,13 +63,14 @@ export const useEntries = () => {
         download_link: downloadLink.trim(),
       };
 
-      const { error } = await supabase
-        .from("entries")
-        .upsert({
-          id,
-          type: "movie",
-          content,
-        });
+      const hover_image_url = hoverImageUrl?.trim() ? hoverImageUrl.trim() : null;
+
+      const { error } = await supabase.from("entries").upsert({
+        id,
+        type: "movie",
+        content,
+        hover_image_url,
+      });
 
       if (error) throw error;
 
@@ -93,20 +96,21 @@ export const useEntries = () => {
     id: string,
     season: number,
     watchLinks: string[],
-    downloadLinks: string[]
+    downloadLinks: string[],
+    hoverImageUrl?: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       // First, fetch existing entry to merge seasons
       const existing = await fetchEntry(id);
-      
+
       const seasonKey = `season_${season}`;
       const seasonData: SeriesSeasonContent = {
-        watch_links: watchLinks.map(l => l.trim()).filter(l => l),
-        download_links: downloadLinks.map(l => l.trim()).filter(l => l),
+        watch_links: watchLinks.map((l) => l.trim()).filter((l) => l),
+        download_links: downloadLinks.map((l) => l.trim()).filter((l) => l),
       };
 
       let content: SeriesContent;
-      
+
       if (existing && existing.type === "series") {
         // Merge with existing seasons
         content = {
@@ -120,13 +124,14 @@ export const useEntries = () => {
         };
       }
 
-      const { error } = await supabase
-        .from("entries")
-        .upsert({
-          id,
-          type: "series",
-          content,
-        });
+      const hover_image_url = hoverImageUrl?.trim() ? hoverImageUrl.trim() : null;
+
+      const { error } = await supabase.from("entries").upsert({
+        id,
+        type: "series",
+        content,
+        hover_image_url,
+      });
 
       if (error) throw error;
 
