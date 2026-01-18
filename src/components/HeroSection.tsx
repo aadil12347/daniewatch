@@ -91,6 +91,13 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     return () => clearInterval(interval);
   }, [featured.length]);
 
+  // Keep index in range whenever featured changes or after loading completes
+  useEffect(() => {
+    if (isLoading) return;
+    if (featured.length === 0) return;
+    if (currentIndex >= featured.length) setCurrentIndex(0);
+  }, [currentIndex, featured.length, isLoading]);
+
   if (isLoading) {
     return (
       <div className="relative h-[85vh] min-h-[600px]">
@@ -98,10 +105,6 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (currentIndex >= featured.length) setCurrentIndex(0);
-  }, [currentIndex, featured.length]);
 
   const current = featured[currentIndex];
 
