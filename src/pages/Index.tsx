@@ -29,7 +29,8 @@ const Index = () => {
   const [animePopular, setAnimePopular] = useState<Movie[]>([]);
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { filterBlockedPosts, sortWithPinnedFirst } = usePostModeration();
+  const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
+  const pageIsLoading = isLoading || isModerationLoading;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,13 +85,13 @@ const Index = () => {
 
       <div className="min-h-screen bg-background">
         
-        <HeroSection items={trending} isLoading={isLoading} />
+        <HeroSection items={trending} isLoading={pageIsLoading} />
 
         <div className="relative z-10 -mt-16">
           <ContentRow
             title="Top 10 Today"
             items={sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), 'home')}
-            isLoading={isLoading}
+            isLoading={pageIsLoading}
             showRank
             size="lg"
           />
@@ -99,14 +100,14 @@ const Index = () => {
             title="Trending Now"
             moviesItems={filterBlockedPosts(trending.filter(item => item.media_type === 'movie'), 'movie')}
             tvItems={filterBlockedPosts(trending.filter(item => item.media_type === 'tv'), 'tv')}
-            isLoading={isLoading}
+             isLoading={pageIsLoading}
           />
 
           <TabbedContentRow
             title="Popular"
             moviesItems={filterBlockedPosts(popularMovies, 'movie')}
             tvItems={filterBlockedPosts(popularTV, 'tv')}
-            isLoading={isLoading}
+             isLoading={pageIsLoading}
           />
 
           {/* Regional Popular Sections */}
@@ -114,14 +115,14 @@ const Index = () => {
             title="Indian Popular"
             moviesItems={filterBlockedPosts(indianPopular.filter(item => item.media_type === 'movie'), 'movie')}
             tvItems={filterBlockedPosts(indianPopular.filter(item => item.media_type === 'tv'), 'tv')}
-            isLoading={isLoading}
+             isLoading={pageIsLoading}
           />
 
           <TabbedContentRow
             title="Anime Popular"
             moviesItems={filterBlockedPosts(animePopular.filter(item => item.media_type === 'movie'), 'movie')}
             tvItems={filterBlockedPosts(animePopular.filter(item => item.media_type === 'tv'), 'tv')}
-            isLoading={isLoading}
+             isLoading={pageIsLoading}
             defaultTab="tv"
           />
 
@@ -129,7 +130,7 @@ const Index = () => {
             title="Korean Popular"
             moviesItems={filterBlockedPosts(koreanPopular.filter(item => item.media_type === 'movie'), 'movie')}
             tvItems={filterBlockedPosts(koreanPopular.filter(item => item.media_type === 'tv'), 'tv')}
-            isLoading={isLoading}
+             isLoading={pageIsLoading}
             defaultTab="tv"
           />
 
@@ -137,7 +138,7 @@ const Index = () => {
             title="Top Rated"
             moviesItems={filterBlockedPosts(topRatedMovies, 'movie')}
             tvItems={filterBlockedPosts(topRatedTV, 'tv')}
-            isLoading={isLoading}
+            isLoading={pageIsLoading}
           />
         </div>
 

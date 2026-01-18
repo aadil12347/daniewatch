@@ -18,7 +18,8 @@ const Search = () => {
   const [isLoading, setIsLoading] = useState(false);
   const requestIdRef = useRef(0);
 
-  const { filterBlockedPosts } = usePostModeration();
+  const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
+  const pageIsLoading = isLoading || isModerationLoading;
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";
@@ -57,10 +58,8 @@ const Search = () => {
           ? response.results
           : filterMinimal(response.results.filter((item) => item.media_type === "movie" || item.media_type === "tv"));
 
-        // Global blacklist filtering (admins still see results but dulled)
-        const filteredResults = filterBlockedPosts(baseResults);
-
-        setResults(filteredResults);
+        // Store base results; we filter in render so updates to the global blacklist take effect immediately.
+        setResults(baseResults);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);
@@ -93,7 +92,7 @@ const Search = () => {
                 <h1 className="text-2xl md:text-3xl font-bold">{category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}</h1>
               </div>
               {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
-              <p className="text-muted-foreground mb-8">{isLoading ? "Searching..." : `Found ${results.length} results`}</p>
+              <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${filterBlockedPosts(results).length} results`}</p>
             </>
           ) : (
             <div className="text-center py-20">
@@ -104,9 +103,9 @@ const Search = () => {
           )}
 
           {/* Results Grid */}
-          {(isLoading || results.length > 0) && (
+          {(pageIsLoading || filterBlockedPosts(results).length > 0) && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {isLoading
+              {pageIsLoading
                 ? Array.from({ length: 12 }).map((_, i) => (
                     <div key={i}>
                       <Skeleton className="aspect-[2/3] rounded-xl" />
@@ -114,12 +113,12 @@ const Search = () => {
                       <Skeleton className="h-3 w-1/2 mt-2" />
                     </div>
                   ))
-                : results.map((item) => <MovieCard key={item.id} movie={item} />)}
+                : filterBlockedPosts(results).map((item) => <MovieCard key={item.id} movie={item} />)}
             </div>
           )}
 
           {/* No Results */}
-          {!isLoading && query && results.length === 0 && (
+          {!pageIsLoading && query && filterBlockedPosts(results).length === 0 && (
             <div className="text-center py-20">
               <p className="text-xl text-muted-foreground">No results found for "{query}"</p>
               <p className="text-muted-foreground mt-2">Try searching for something else</p>
