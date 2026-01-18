@@ -1,9 +1,9 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Movie } from "@/lib/tmdb";
 import { MovieCard } from "./MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 interface ContentRowProps {
   title: string;
@@ -21,6 +21,9 @@ export const ContentRow = ({
   size = "md",
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { filterBlockedPosts } = usePostModeration();
+
+  const visibleItems = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -87,7 +90,7 @@ export const ContentRow = ({
                   <Skeleton className="h-3 w-1/2 mt-2" />
                 </div>
               ))
-            : items.map((movie, idx) => (
+            : visibleItems.map((movie, idx) => (
                 <MovieCard
                   key={movie.id}
                   movie={movie}

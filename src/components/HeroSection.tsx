@@ -16,6 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatedPlayButton } from "@/components/AnimatedPlayButton";
 import { useWatchlist } from "@/hooks/useWatchlist";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 interface HeroSectionProps {
   items: Movie[];
@@ -25,6 +26,9 @@ interface HeroSectionProps {
 export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   const navigate = useNavigate();
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
+  const { filterBlockedPosts } = usePostModeration();
+
+  const featured = useMemo(() => filterBlockedPosts(items).slice(0, 5), [filterBlockedPosts, items]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [genres, setGenres] = useState<Record<number, string>>({});
@@ -55,38 +59,37 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   // Fetch logos for featured items
   useEffect(() => {
     const fetchLogos = async () => {
-      const featured = items.slice(0, 5);
       const logoPromises = featured.map(async (item) => {
         const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
         try {
-          const images = mediaType === "tv" 
-            ? await getTVImages(item.id)
-            : await getMovieImages(item.id);
-          const logo = images.logos?.find(l => l.iso_639_1 === 'en') || images.logos?.[0];
+          const images = mediaType === "tv" ? await getTVImages(item.id) : await getMovieImages(item.id);
+          const logo = images.logos?.find((l) => l.iso_639_1 === "en") || images.logos?.[0];
           return { id: item.id, logoUrl: logo ? getImageUrl(logo.file_path, "w500") : null };
         } catch {
           return { id: item.id, logoUrl: null };
         }
       });
-      
+
       const results = await Promise.all(logoPromises);
       const logoMap: Record<number, string | null> = {};
-      results.forEach(r => { logoMap[r.id] = r.logoUrl; });
+      results.forEach((r) => {
+        logoMap[r.id] = r.logoUrl;
+      });
       setLogos(logoMap);
     };
 
-    if (items.length > 0) {
+    if (featured.length > 0) {
       fetchLogos();
     }
-  }, [items]);
+  }, [featured]);
 
   useEffect(() => {
-    if (items.length === 0) return;
+    if (featured.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % Math.min(items.length, 5));
+      setCurrentIndex((prev) => (prev + 1) % featured.length);
     }, 8000);
     return () => clearInterval(interval);
-  }, [items.length]);
+  }, [featured.length]);
 
   if (isLoading) {
     return (
@@ -96,7 +99,10 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     );
   }
 
-  const featured = items.slice(0, 5);
+  useEffect(() => {
+    if (currentIndex >= featured.length) setCurrentIndex(0);
+  }, [currentIndex, featured.length]);
+
   const current = featured[currentIndex];
 
   if (!current) return null;
