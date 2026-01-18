@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
@@ -8,6 +8,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { searchMulti, searchAnime, searchKorean, filterMinimal, Movie } from "@/lib/tmdb";
+import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -19,7 +20,11 @@ const Search = () => {
   const requestIdRef = useRef(0);
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
-  const pageIsLoading = isLoading || isModerationLoading;
+  const visibleResults = useMemo(() => filterBlockedPosts(results), [filterBlockedPosts, results]);
+
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleResults, { enabled: !isLoading });
+
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";
@@ -89,11 +94,11 @@ const Search = () => {
               <div className="flex items-center gap-3 mb-2">
                 {category === "anime" && <Sparkles className="w-6 h-6 text-primary" />}
                 {category === "korean" && <Heart className="w-6 h-6 text-primary" />}
-                <h1 className="text-2xl md:text-3xl font-bold">{category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}</h1>
-              </div>
-              {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
-              <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${filterBlockedPosts(results).length} results`}</p>
-            </>
+              <h1 className="text-2xl md:text-3xl font-bold">{category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}</h1>
+            </div>
+            {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
+            <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}</p>
+          </>
           ) : (
             <div className="text-center py-20">
               <SearchIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -103,7 +108,7 @@ const Search = () => {
           )}
 
           {/* Results Grid */}
-          {(pageIsLoading || filterBlockedPosts(results).length > 0) && (
+          {(pageIsLoading || visibleResults.length > 0) && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
               {pageIsLoading
                 ? Array.from({ length: 12 }).map((_, i) => (
@@ -113,12 +118,12 @@ const Search = () => {
                       <Skeleton className="h-3 w-1/2 mt-2" />
                     </div>
                   ))
-                : filterBlockedPosts(results).map((item) => <MovieCard key={item.id} movie={item} />)}
+                : visibleResults.map((item) => <MovieCard key={item.id} movie={item} />)}
             </div>
           )}
 
           {/* No Results */}
-          {!pageIsLoading && query && filterBlockedPosts(results).length === 0 && (
+          {!pageIsLoading && query && visibleResults.length === 0 && (
             <div className="text-center py-20">
               <p className="text-xl text-muted-foreground">No results found for "{query}"</p>
               <p className="text-muted-foreground mt-2">Try searching for something else</p>

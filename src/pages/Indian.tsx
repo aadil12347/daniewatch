@@ -10,6 +10,7 @@ import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 
 type IndianLang = "all" | "ta" | "te" | "hi";
 
@@ -32,7 +33,9 @@ const Indian = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
 
-  const pageIsLoading = isLoading || isModerationLoading;
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(items, { enabled: !isLoading });
+
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
   const visibleItems = filterBlockedPosts(items);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
