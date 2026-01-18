@@ -34,6 +34,10 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const blocked = isBlocked(movie.id, mediaType as "movie" | "tv");
   const { hasWatch, hasDownload } = getAvailability(movie.id);
 
+  // Hard safety: never render blocked items to normal users.
+  if (!isAdmin && blocked) return null;
+
+
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPosterActive, setIsPosterActive] = useState(false);

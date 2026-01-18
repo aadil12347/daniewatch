@@ -1,9 +1,10 @@
-import { useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Movie } from "@/lib/tmdb";
 import { MovieCard } from "./MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 interface TabbedContentRowProps {
   title: string;
@@ -23,6 +24,8 @@ export const TabbedContentRow = ({
   defaultTab = "movies",
 }: TabbedContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { filterBlockedPosts } = usePostModeration();
+
   const [activeTab, setActiveTab] = useState<"movies" | "tv">(defaultTab);
   const [animationKey, setAnimationKey] = useState(0);
 
@@ -39,12 +42,16 @@ export const TabbedContentRow = ({
   const handleTabChange = (tab: "movies" | "tv") => {
     if (tab !== activeTab) {
       setActiveTab(tab);
-      setAnimationKey(prev => prev + 1);
+      setAnimationKey((prev) => prev + 1);
       if (scrollRef.current) scrollRef.current.scrollLeft = 0;
     }
   };
 
   const items = activeTab === "movies" ? moviesItems : tvItems;
+  const visibleItems = useMemo(
+    () => filterBlockedPosts(items, activeTab === "movies" ? "movie" : "tv"),
+    [activeTab, filterBlockedPosts, items]
+  );
 
   return (
     <section className="py-6 group/section">
@@ -118,7 +125,7 @@ export const TabbedContentRow = ({
                   <Skeleton className="h-3 w-1/2 mt-2" />
                 </div>
               ))
-            : items.map((movie, idx) => (
+            : visibleItems.map((movie, idx) => (
                 <MovieCard
                   key={movie.id}
                   movie={{
