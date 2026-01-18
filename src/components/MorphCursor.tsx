@@ -33,25 +33,31 @@ export function MorphCursor() {
     };
 
     const createState = (e: MouseEvent) => {
-      const hoveredPoster = (e.target as Element | null)?.closest?.(
-        ".poster-3d-card"
-      ) as HTMLElement | null;
+      const target = e.target as Element | null;
+      const ignore =
+        !target ||
+        target === document.documentElement ||
+        target === document.body ||
+        target.closest?.(".cursor");
 
-      // When not on a poster, hide the glow completely.
+      // Default: glow follows the pointer (so it works everywhere)
       const defaultState = {
         x: e.clientX,
         y: e.clientY,
-        width: 48,
-        height: 48,
+        width: 42,
+        height: 42,
         radius: "999px",
-        scale: 0,
+        scale: 1,
       };
 
-      if (!hoveredPoster) return defaultState;
+      if (ignore) return defaultState;
 
-      const rect = hoveredPoster.getBoundingClientRect();
+      // When hovering any element (logos, text, filters, etc.), morph to it.
+      const rect = (target as HTMLElement).getBoundingClientRect?.();
+      if (!rect || rect.width < 2 || rect.height < 2) return defaultState;
+
       const radius =
-        window.getComputedStyle(hoveredPoster).borderTopLeftRadius || "999px";
+        window.getComputedStyle(target).borderTopLeftRadius || "999px";
 
       return {
         ...defaultState,
@@ -60,7 +66,6 @@ export function MorphCursor() {
         width: rect.width,
         height: rect.height,
         radius,
-        scale: 1,
       };
     };
 
