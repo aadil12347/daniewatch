@@ -154,8 +154,8 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             )}
 
 
-            {/* Optional logo (TMDB) - TOP layer */}
-            {logoUrl && (
+            {/* Logo (TMDB) - TOP layer; if missing, show the title instead */}
+            {logoUrl ? (
               <img
                 src={logoUrl}
                 alt={`${title} logo`}
@@ -165,6 +165,8 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                   isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                 )}
               />
+            ) : (
+              <div className={cn("poster-3d-title", isAdmin && blocked && "opacity-70")}>{title}</div>
             )}
 
             {/* Extra dull overlay for blocked (admin only) */}
