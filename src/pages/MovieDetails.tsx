@@ -203,7 +203,14 @@ const MovieDetails = () => {
               (isPlayerOpen ? "mt-6 md:mt-10" : "-mt-44 md:-mt-64")
             }
           >
-            <div className="animate-slide-up max-w-xl lg:max-w-2xl md:px-8 lg:px-12">
+            <div
+              className={
+                "animate-slide-up max-w-xl lg:max-w-2xl md:px-8 lg:px-12 " +
+                (isPlayerOpen
+                  ? "rounded-2xl bg-card/80 backdrop-blur-xl border border-border p-4 md:p-0 md:bg-transparent md:border-0 md:backdrop-blur-none"
+                  : "")
+              }
+            >
               {/* Logo */}
               {logoUrl ? (
                 <img
@@ -362,7 +369,7 @@ const MovieDetails = () => {
 
         {/* Cast Section - closer to hero on mobile */}
         {cast.length > 0 && (
-          <section className="py-3 md:py-10 mt-4 md:mt-0">
+          <section className="py-3 md:py-10 mt-6 md:mt-0">
             <div className="container mx-auto px-4 md:px-4">
               <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6">Actors</h2>
               <div className="flex gap-3 md:gap-6 overflow-x-auto hide-scrollbar pb-2 md:pb-4">
