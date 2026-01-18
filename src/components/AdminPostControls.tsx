@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,9 +58,9 @@ export const AdminPostControls = ({
     return () => window.removeEventListener('click', onWindowClickCapture, true);
   }, [quickMenuOpen]);
 
-  if (!isAdmin) return null;
+  const modalInitialId = String(tmdbId);
 
-  const modalInitialId = useMemo(() => String(tmdbId), [tmdbId]);
+  if (!isAdmin) return null;
 
   return (
     <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
@@ -84,7 +84,7 @@ export const AdminPostControls = ({
 
         <DropdownMenuContent ref={contentRef} className="z-50 touch-pan-y">
           {/* Quick Edit (in dropdown) */}
-          <QuickEditLinksDropdown tmdbId={modalInitialId} mediaType={mediaType} title={title} posterPath={posterPath} />
+          <QuickEditLinksDropdown tmdbId={modalInitialId} mediaType={mediaType} />
 
           <DropdownMenuSeparator />
 

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Ban, Loader2, Save, ShieldOff } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 
 import { useEntries } from "@/hooks/useEntries";
-import { usePostModeration } from "@/hooks/usePostModeration";
 import { getTVDetails } from "@/lib/tmdb";
 
 import { Button } from "@/components/ui/button";
@@ -16,21 +15,15 @@ import { toast } from "sonner";
 type Props = {
   tmdbId: string;
   mediaType: "movie" | "tv";
-  title?: string;
-  posterPath?: string;
 };
 
-export function QuickEditLinksDropdown({ tmdbId, mediaType, title, posterPath }: Props) {
+export function QuickEditLinksDropdown({ tmdbId, mediaType }: Props) {
   const { fetchEntry, saveMovieEntry, saveSeriesSeasonEntry } = useEntries();
-  const { isBlocked, blockPost, unblockPost } = usePostModeration();
 
   const isSeries = mediaType === "tv";
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [blocking, setBlocking] = useState(false);
-
-  const blocked = isBlocked(tmdbId, mediaType);
 
   const [movieWatch, setMovieWatch] = useState("");
   const [movieDownload, setMovieDownload] = useState("");
@@ -128,23 +121,6 @@ export function QuickEditLinksDropdown({ tmdbId, mediaType, title, posterPath }:
     }
   };
 
-  const handleBlockToggle = async () => {
-    setBlocking(true);
-    try {
-      if (blocked) {
-        await unblockPost(tmdbId, mediaType);
-        toast.success(`"${title || "Post"}" unblocked`);
-      } else {
-        await blockPost(tmdbId, mediaType, title, posterPath);
-        toast.success(`"${title || "Post"}" blocked`);
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Action failed. Please check your Supabase RLS policies.");
-    } finally {
-      setBlocking(false);
-    }
-  };
-
   return (
     <div
       className="w-[360px] p-3"
@@ -154,22 +130,7 @@ export function QuickEditLinksDropdown({ tmdbId, mediaType, title, posterPath }:
         <p className="text-sm font-medium">Quick Edit Links</p>
 
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant={blocked ? "secondary" : "destructive"}
-            onClick={handleBlockToggle}
-            disabled={blocking || saving || loading}
-            className="shrink-0"
-          >
-            {blocked ? (
-              <ShieldOff className="h-4 w-4" />
-            ) : (
-              <Ban className="h-4 w-4" />
-            )}
-            <span className="ml-2">{blocked ? "Unblock" : "Block"}</span>
-          </Button>
-
-          <Button size="sm" onClick={handleSave} disabled={saving || loading || blocking} className="shrink-0">
+          <Button size="sm" onClick={handleSave} disabled={saving || loading} className="shrink-0">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             <span className="ml-2">Save</span>
           </Button>
