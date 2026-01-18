@@ -28,7 +28,7 @@ const TV_ACTION_GENRE = 10759;
 const TV_FANTASY_GENRE = 10765;
 
 const Korean = () => {
-  const { filterBlockedPosts } = usePostModeration();
+  const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
 
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
@@ -42,6 +42,7 @@ const Korean = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  const pageIsLoading = isLoading || isModerationLoading;
   const visibleItems = filterBlockedPosts(items);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
@@ -193,10 +194,10 @@ const Korean = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!isLoading && visibleItems.length > 0) {
+    if (!pageIsLoading && visibleItems.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [isLoading, visibleItems.length]);
+  }, [pageIsLoading, visibleItems.length]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -273,7 +274,7 @@ const Korean = () => {
 
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {isLoading
+            {pageIsLoading
               ? Array.from({ length: 18 }).map((_, i) => (
                   <div key={i}>
                     <Skeleton className="aspect-[2/3] rounded-xl" />
@@ -291,7 +292,7 @@ const Korean = () => {
           </div>
 
           {/* No results message */}
-          {!isLoading && visibleItems.length === 0 && (
+          {!pageIsLoading && visibleItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No Korean content found with the selected filters.</p>
               <button
