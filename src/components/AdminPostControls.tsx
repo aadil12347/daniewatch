@@ -38,7 +38,8 @@ export const AdminPostControls = ({
 
   return (
     <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
-      <DropdownMenu>
+      {/* modal={false} keeps the page scrollable while the menu is open */}
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             size="icon"
@@ -54,10 +55,7 @@ export const AdminPostControls = ({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent
-          onPointerDownCapture={(e) => e.stopPropagation()}
-          className="z-50 max-h-[80vh] overflow-auto overscroll-contain touch-pan-y"
-        >
+        <DropdownMenuContent className="z-50 touch-pan-y">
           {/* Quick Edit (in dropdown) */}
           <QuickEditLinksDropdown tmdbId={modalInitialId} mediaType={mediaType} title={title} posterPath={posterPath} />
 

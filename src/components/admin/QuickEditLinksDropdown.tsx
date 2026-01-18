@@ -147,11 +147,7 @@ export function QuickEditLinksDropdown({ tmdbId, mediaType, title, posterPath }:
 
   return (
     <div
-      className="w-[360px] max-h-[72vh] overflow-y-auto overscroll-contain p-3 touch-pan-y"
-      onPointerDownCapture={(e) => {
-        // keep dropdown open while interacting (without breaking scroll)
-        e.stopPropagation();
-      }}
+      className="w-[360px] p-3"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between gap-2">
