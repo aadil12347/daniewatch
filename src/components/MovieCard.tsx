@@ -109,7 +109,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                   loading={isNearViewport ? "eager" : "lazy"}
                   className={cn(
                     "poster-3d-cover poster-3d-cover--base",
-                    isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                    isAdmin && blocked && "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                   )}
                 />
 
@@ -149,11 +149,33 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               <div className={cn("absolute inset-0 pointer-events-none", "bg-background/20", "animate-fade-in")} />
             )}
 
-            {/* Rating Badge */}
-            <div className="absolute top-2 right-2 z-30 flex items-center gap-1 px-2 py-1 rounded-md glass text-xs font-medium">
-              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-              {rating}
-            </div>
+            {/* Top-right: Rating (users) OR Block toggle (admin) */}
+            {isAdmin ? (
+              <button
+                onClick={handleBlockToggle}
+                disabled={isBlocking}
+                className={cn(
+                  "absolute top-2 right-2 z-30 p-2 rounded-lg glass transition-all duration-150",
+                  "opacity-100 md:opacity-0 md:group-hover:opacity-100",
+                  blocked
+                    ? "bg-muted/70 ring-1 ring-destructive/40"
+                    : "bg-secondary/60 hover:bg-destructive/15 ring-1 ring-border"
+                )}
+                title={blocked ? "Unblock" : "Block"}
+                aria-label={blocked ? "Unblock post" : "Block post"}
+              >
+                {blocked ? (
+                  <ShieldOff className={cn("w-5 h-5", "text-destructive")} />
+                ) : (
+                  <Ban className={cn("w-5 h-5", "text-destructive")} />
+                )}
+              </button>
+            ) : (
+              <div className="absolute top-2 right-2 z-30 flex items-center gap-1 px-2 py-1 rounded-md glass text-xs font-medium">
+                <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                {rating}
+              </div>
+            )}
           </div>
 
           {/* Info */}
@@ -166,26 +188,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           </div>
         </Link>
 
-        {/* Admin Block Toggle - icon only (on poster, opposite rating) */}
-        {isAdmin && (
-          <button
-            onClick={handleBlockToggle}
-            disabled={isBlocking}
-            className={cn(
-              "absolute top-2 left-2 z-30 p-2 rounded-lg glass transition-all duration-150",
-              "opacity-100 md:opacity-0 md:group-hover:opacity-100",
-              blocked ? "bg-destructive/40" : "hover:bg-destructive/20"
-            )}
-            title={blocked ? "Unblock" : "Block"}
-            aria-label={blocked ? "Unblock post" : "Block post"}
-          >
-            {blocked ? (
-              <ShieldOff className={cn("w-5 h-5", "text-destructive")} />
-            ) : (
-              <Ban className={cn("w-5 h-5", "text-destructive")} />
-            )}
-          </button>
-        )}
 
         {/* Save to Watchlist Button - positioned on poster, outside Link */}
         {!showRank && (

@@ -350,7 +350,7 @@ html {
   }
 
   /* Keep colors true on hover (no greyscale) */
-  .group:hover .poster-3d-cover--base {
+  .group:hover .poster-3d-cover--base:not(.keep-greyscale) {
     filter: none;
   }
 
