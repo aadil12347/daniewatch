@@ -47,6 +47,8 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const [canUseHoverPortal, setCanUseHoverPortal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
+  const [isPortalMounted, setIsPortalMounted] = useState(false);
+  const [isPortalActive, setIsPortalActive] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
@@ -91,6 +93,34 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
     };
   }, [canUseHoverPortal, isHovered]);
 
+  
+
+  // Smooth enter/exit for the portaled hover image
+  useEffect(() => {
+    const portalEnabled = canUseHoverPortal && Boolean(hoverImageUrl);
+
+    if (!portalEnabled) {
+      setIsPortalMounted(false);
+      setIsPortalActive(false);
+      return;
+    }
+
+    if (isHovered) {
+      setIsPortalMounted(true);
+      setIsPortalActive(false);
+      const raf = requestAnimationFrame(() => setIsPortalActive(true));
+      return () => cancelAnimationFrame(raf);
+    }
+
+    // Fade out before unmounting
+    setIsPortalActive(false);
+    const t = window.setTimeout(() => {
+      setIsPortalMounted(false);
+      setHoverRect(null);
+    }, 220);
+    return () => window.clearTimeout(t);
+  }, [isHovered, canUseHoverPortal, hoverImageUrl]);
+
   // Sync optimistic state when actual state catches up
   useEffect(() => {
     if (optimisticInWatchlist !== null && optimisticInWatchlist === inWatchlist) {
@@ -122,7 +152,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
     }
   };
 
-  const portalEnabled = canUseHoverPortal && Boolean(hoverImageUrl);
 
   return (
     <div
@@ -130,15 +159,9 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
       className={cn("group relative flex-shrink-0 card-reveal", showRank && "pl-6 sm:pl-10")}
       style={{ animationDelay: `${animationDelay}ms` }}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setHoverRect(null);
-      }}
+      onMouseLeave={() => setIsHovered(false)}
       onFocus={() => setIsHovered(true)}
-      onBlur={() => {
-        setIsHovered(false);
-        setHoverRect(null);
-      }}
+      onBlur={() => setIsHovered(false)}
     >
       {/* Rank Number - Default: behind poster, white outline, black fill */}
       {showRank && index !== undefined && (
@@ -194,7 +217,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             {/* Optional character layer (from DB)
                 - inline version works on grid pages
                 - portal version is used on hover to bypass carousel clipping */}
-            {hoverImageUrl && (!portalEnabled || !isHovered) && (
+            {hoverImageUrl && (!(canUseHoverPortal && Boolean(hoverImageUrl)) || !isPortalMounted) && (
               <img
                 src={hoverImageUrl}
                 alt=""
@@ -256,10 +279,10 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             )}
           </div>
 
-          {portalEnabled && isHovered && hoverRect &&
+          {(canUseHoverPortal && Boolean(hoverImageUrl)) && isPortalMounted && hoverRect &&
             createPortal(
               <div
-                className="poster-3d-hover-portal"
+                className={cn("poster-3d-hover-portal", isPortalActive && "is-active")}
                 style={{
                   left: hoverRect.left,
                   top: hoverRect.top,

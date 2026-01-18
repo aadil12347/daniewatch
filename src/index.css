@@ -472,7 +472,16 @@ html {
     z-index: 2000;
   }
 
+  /* Default portal state: hidden; transitions to active for smoothness */
   .poster-3d-character--portal {
+    opacity: 0;
+    transform-origin: 50% 100%;
+    transform: translate3d(0, 12px, 0) scale(1.01);
+    transition: transform var(--transition-slow), opacity var(--transition-slow);
+    will-change: transform, opacity;
+  }
+
+  .poster-3d-hover-portal.is-active .poster-3d-character--portal {
     opacity: 1;
     transform: translate3d(0, -12%, 160px) scale(1.02);
   }
