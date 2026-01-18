@@ -379,17 +379,19 @@ html {
     z-index: 3;
   }
 
-  /* Bottom vignette only (very subtle) */
+  /* Bottom vignette only (very subtle, no hard edge) */
   .poster-3d-wrapper::after {
     bottom: 0;
-    height: 56px;
-    opacity: 1;
+    height: 72px;
+    opacity: 0.95;
     background-image: linear-gradient(
       to bottom,
-      transparent 50%,
-      hsl(var(--background) / 0.08) 70%,
-      hsl(var(--background) / 0.18) 88%,
-      hsl(var(--background) / 0.28) 100%
+      transparent 0%,
+      transparent 52%,
+      hsl(var(--background) / 0.06) 68%,
+      hsl(var(--background) / 0.16) 82%,
+      hsl(var(--background) / 0.28) 92%,
+      hsl(var(--background) / 0.42) 100%
     );
   }
 
@@ -404,11 +406,11 @@ html {
 
   .group:hover .poster-3d-wrapper::after {
     opacity: 1;
-    height: 80px;
+    height: 86px;
   }
 
   /* Character comes OUT of the card (not clipped)
-     Goal: only pop out from the TOP (no side overflow), sit higher (not bottom-centered). */
+     Goal: only pop out from the TOP (no side overflow), sit a bit higher but not too high. */
   .poster-3d-character {
     position: absolute;
     left: 0;
@@ -419,15 +421,15 @@ html {
     max-width: 100%;
     height: auto;
 
-    /* Start a bit higher inside the poster instead of hugging the bottom */
-    bottom: 6%;
+    /* Start slightly above the bottom so the pop feels more "up" than "from below" */
+    bottom: 4%;
 
     object-fit: contain;
     object-position: center bottom;
 
     opacity: 0;
     transform-origin: 50% 100%;
-    transform: translate3d(0, 14px, 0) scale(1.02);
+    transform: translate3d(0, 12px, 0) scale(1.01);
     transition: transform var(--transition-slow), opacity var(--transition-slow);
     will-change: transform, opacity;
     pointer-events: none;
@@ -466,7 +468,7 @@ html {
   .group:hover .poster-3d-character {
     opacity: 1;
     /* Pop upward only (no side overshoot), no tilt/rotate */
-    transform: translate3d(0, -40%, 160px) scale(1.05);
+    transform: translate3d(0, -22%, 160px) scale(1.03);
   }
 
   .group:hover .poster-3d-logo {

@@ -194,7 +194,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                 )}
               </button>
             ) : (
-              <div className="absolute top-2 right-2 z-30 flex items-center gap-1 px-2 py-1 rounded-md glass text-xs font-medium">
+              <div className="absolute top-2 right-2 z-30 flex items-center gap-1 px-2 py-1 rounded-md glass text-xs font-medium transition-opacity duration-200 md:opacity-100 md:group-hover:opacity-0">
                 <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                 {rating}
               </div>
