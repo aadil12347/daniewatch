@@ -115,7 +115,7 @@ export const TabbedContentRow = ({
         <div
           key={animationKey}
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto hide-scrollbar px-4 tab-content-enter"
+          className="flex gap-4 overflow-x-auto overflow-y-visible hide-scrollbar px-4 pb-10 tab-content-enter"
         >
           {isLoading
             ? Array.from({ length: 8 }).map((_, i) => (

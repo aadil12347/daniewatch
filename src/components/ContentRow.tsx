@@ -80,7 +80,7 @@ export const ContentRow = ({
 
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto hide-scrollbar px-4 scroll-smooth"
+          className="flex gap-4 overflow-x-auto overflow-y-visible hide-scrollbar px-4 pb-10 scroll-smooth"
         >
           {isLoading
             ? Array.from({ length: 8 }).map((_, i) => (
