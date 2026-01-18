@@ -158,14 +158,14 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                   "absolute top-2 right-2 z-30 p-2 rounded-lg glass transition-all duration-150",
                   "opacity-100 md:opacity-0 md:group-hover:opacity-100",
                   blocked
-                    ? "bg-muted/70 ring-1 ring-destructive/40"
+                    ? "bg-success/25 ring-1 ring-success/50"
                     : "bg-secondary/60 hover:bg-destructive/15 ring-1 ring-border"
                 )}
                 title={blocked ? "Unblock" : "Block"}
                 aria-label={blocked ? "Unblock post" : "Block post"}
               >
                 {blocked ? (
-                  <ShieldOff className={cn("w-5 h-5", "text-destructive")} />
+                  <ShieldOff className={cn("w-5 h-5", "text-success")} />
                 ) : (
                   <Ban className={cn("w-5 h-5", "text-destructive")} />
                 )}
@@ -231,7 +231,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
         {/* Admin Controls - Always rendered, visibility controlled by opacity/pointer-events */}
         <div
           className={cn(
-            "absolute top-2 left-12 z-30 flex items-center gap-1 transition-opacity duration-0",
+            "absolute top-2 left-2 z-30 flex items-center gap-1 transition-opacity duration-0",
             isAdmin ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           )}
         >
