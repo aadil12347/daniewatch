@@ -105,38 +105,41 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           onBlur={() => setIsPosterActive(false)}
         >
           {/* Card */}
-          <div className="cinema-card poster-3d-card relative aspect-[2/3] rounded-xl overflow-hidden bg-card">
-            {posterUrl ? (
-              <div className="poster-3d-wrapper">
-                <img
-                  src={posterUrl}
-                  alt={title}
-                  loading={isNearViewport ? "eager" : "lazy"}
-                  className={cn(
-                    "poster-3d-cover poster-3d-cover--base",
-                    isAdmin && blocked && "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
-                  )}
-                />
+          <div className="cinema-card poster-3d-card relative aspect-[2/3] rounded-xl bg-card">
+            {/* Clip only the poster layers so the character can pop OUT of the card */}
+            <div className="poster-3d-clip absolute inset-0 rounded-xl overflow-hidden">
+              {posterUrl ? (
+                <div className="poster-3d-wrapper">
+                  <img
+                    src={posterUrl}
+                    alt={title}
+                    loading={isNearViewport ? "eager" : "lazy"}
+                    className={cn(
+                      "poster-3d-cover poster-3d-cover--base",
+                      isAdmin && blocked && "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                    )}
+                  />
 
-                {/* Bottom-only blur layer to make the logo more prominent */}
-                <img
-                  src={posterUrl}
-                  alt=""
-                  aria-hidden="true"
-                  loading={isNearViewport ? "eager" : "lazy"}
-                  className={cn(
-                    "poster-3d-cover poster-3d-cover--blur",
-                    isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
-                  )}
-                />
-              </div>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-muted">
-                <span className="text-muted-foreground text-sm">{title}</span>
-              </div>
-            )}
+                  {/* Mild poster blur layer (kept subtle) */}
+                  <img
+                    src={posterUrl}
+                    alt=""
+                    aria-hidden="true"
+                    loading={isNearViewport ? "eager" : "lazy"}
+                    className={cn(
+                      "poster-3d-cover poster-3d-cover--blur",
+                      isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                    )}
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <span className="text-muted-foreground text-sm">{title}</span>
+                </div>
+              )}
+            </div>
 
-            {/* Optional character layer (from DB) */}
+            {/* Optional character layer (from DB) - sits OUTSIDE the clip so it can come out of the card */}
             {hoverImageUrl && (
               <img
                 src={hoverImageUrl}
@@ -150,7 +153,21 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               />
             )}
 
-            {/* Optional logo (TMDB) */}
+            {/* Strong blur behind the logo (on hover) */}
+            {logoUrl && posterUrl && (
+              <img
+                src={posterUrl}
+                alt=""
+                aria-hidden="true"
+                loading={isNearViewport ? "eager" : "lazy"}
+                className={cn(
+                  "poster-3d-logo-blur",
+                  isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                )}
+              />
+            )}
+
+            {/* Optional logo (TMDB) - TOP layer */}
             {logoUrl && (
               <img
                 src={logoUrl}
