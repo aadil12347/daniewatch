@@ -260,10 +260,13 @@ export const VideoPlayer = ({
 
   // Switch button placement:
   // - Inline players: keep controls inside the player bounds
+  // - Inline+fill on mobile (hero player): push below the fixed header so it never sits under the user icon.
   // - Fullscreen players: keep controls inside the fullscreen container (which is already offset below the header)
   //   so it never overlaps the Navbar/user icon on mobile.
   const switchPlacementClass = inline
-    ? "absolute top-3 right-3"
+    ? fill && isMobile
+      ? "absolute right-3 top-[calc(var(--app-header-offset,0px)+0.75rem)]"
+      : "absolute top-3 right-3"
     : "absolute top-3 right-3 md:top-4 md:right-4";
 
   // We intentionally keep the tooltip generic; we don't reveal provider names in the UI.
