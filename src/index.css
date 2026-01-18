@@ -416,16 +416,35 @@ html {
     left: 0;
     right: 0;
 
-    /* Keep it inside card width; we only allow it to extend upward via translate */
+    /* Keep it inside poster/card width; only the TOP is allowed to extend out */
     width: 100%;
     max-width: 100%;
     height: auto;
 
-    /* Start slightly above the bottom so the pop feels more "up" than "from below" */
+    /* Start slightly above the bottom so the pop feels like it comes forward */
     bottom: 4%;
 
     object-fit: contain;
     object-position: center bottom;
+
+    /* Constrain left/right/bottom strictly to card, while allowing top overflow */
+    clip-path: inset(-60% 0 0 0);
+
+    /* Feather the bottom so it blends cleanly into the poster (no hard cut) */
+    -webkit-mask-image: linear-gradient(
+      to top,
+      transparent 0%,
+      rgba(0, 0, 0, 0.55) 14%,
+      rgba(0, 0, 0, 0.92) 26%,
+      black 44%
+    );
+    mask-image: linear-gradient(
+      to top,
+      transparent 0%,
+      rgba(0, 0, 0, 0.55) 14%,
+      rgba(0, 0, 0, 0.92) 26%,
+      black 44%
+    );
 
     opacity: 0;
     transform-origin: 50% 100%;
@@ -437,7 +456,13 @@ html {
     /* Above poster, below logo */
     z-index: 20;
 
-    filter: drop-shadow(0 26px 46px hsl(0 0% 0% / 0.7));
+    filter: drop-shadow(0 22px 38px hsl(0 0% 0% / 0.65));
+  }
+
+  .group:hover .poster-3d-character {
+    opacity: 1;
+    /* Pop upward only (no tilt/rotate). Side boundaries stay locked by clip-path. */
+    transform: translate3d(0, -20%, 160px) scale(1.03);
   }
 
   /* Logo: TOP layer */
@@ -463,12 +488,6 @@ html {
     z-index: 30;
 
     filter: drop-shadow(0 14px 34px hsl(0 0% 0% / 0.75));
-  }
-
-  .group:hover .poster-3d-character {
-    opacity: 1;
-    /* Pop upward only (no side overshoot), no tilt/rotate */
-    transform: translate3d(0, -22%, 160px) scale(1.03);
   }
 
   .group:hover .poster-3d-logo {
