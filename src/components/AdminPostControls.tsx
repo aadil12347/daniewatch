@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +31,32 @@ export const AdminPostControls = ({
   const { isAdmin } = useAdmin();
 
   const [linksOpen, setLinksOpen] = useState(false);
+  const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  // If quick menu is open and user clicks anywhere else, close the menu and
+  // swallow that click so it doesn't trigger the underlying post click.
+  useEffect(() => {
+    if (!quickMenuOpen) return;
+
+    const onWindowClickCapture = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+
+      if (triggerRef.current?.contains(target)) return;
+      if (contentRef.current?.contains(target)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      (e as unknown as { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
+      setQuickMenuOpen(false);
+    };
+
+    window.addEventListener('click', onWindowClickCapture, true);
+    return () => window.removeEventListener('click', onWindowClickCapture, true);
+  }, [quickMenuOpen]);
 
   if (!isAdmin) return null;
 
@@ -39,9 +65,10 @@ export const AdminPostControls = ({
   return (
     <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
       {/* modal={false} keeps the page scrollable while the menu is open */}
-      <DropdownMenu modal={false}>
+      <DropdownMenu modal={false} open={quickMenuOpen} onOpenChange={setQuickMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
+            ref={triggerRef}
             size="icon"
             variant="ghost"
             className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className}`}
@@ -55,7 +82,7 @@ export const AdminPostControls = ({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent className="z-50 touch-pan-y">
+        <DropdownMenuContent ref={contentRef} className="z-50 touch-pan-y">
           {/* Quick Edit (in dropdown) */}
           <QuickEditLinksDropdown tmdbId={modalInitialId} mediaType={mediaType} title={title} posterPath={posterPath} />
 
@@ -65,6 +92,7 @@ export const AdminPostControls = ({
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();
+              setQuickMenuOpen(false);
               setLinksOpen(true);
             }}
           >
