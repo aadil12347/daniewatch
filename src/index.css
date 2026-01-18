@@ -413,14 +413,14 @@ html {
     left: 0;
     right: 0;
 
-    /* Move logo further down (aiming ~3rd quarter) */
-    top: 64%;
-    bottom: 4%;
+    /* Move logo further down (aiming ~3/4 height for tall posters) */
+    top: 70%;
+    bottom: 3%;
 
     /* Fit edge-to-edge, but keep it inside the bottom half */
     height: auto;
     width: 100%;
-    max-height: 32%;
+    max-height: 28%;
     padding-inline: 8%;
 
     object-fit: contain;
@@ -435,7 +435,8 @@ html {
 
   .group:hover .poster-3d-logo {
     opacity: 1;
-    transform: translate3d(0%, -18px, 80px);
+    /* Small lift on hover, but keep it visually low */
+    transform: translate3d(0%, -8px, 80px);
   }
 
   @media (prefers-reduced-motion: reduce) {
