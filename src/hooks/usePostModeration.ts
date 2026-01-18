@@ -20,7 +20,7 @@ export interface PostModeration {
 type PinnedPost = Omit<PostModeration, 'is_blocked'> & { is_blocked?: boolean };
 
 type PostModerationRow = {
-  tmdb_id: string;
+  tmdb_id: string | number;
   media_type: 'movie' | 'tv';
   is_blocked: boolean;
   blocked_at: string | null;
@@ -86,7 +86,13 @@ export const usePostModeration = () => {
         .eq('is_blocked', true);
 
       if (error) throw error;
-      setBlockedRows((data as PostModerationRow[]) || []);
+
+      const normalized = ((data as PostModerationRow[]) || []).map((row) => ({
+        ...row,
+        tmdb_id: String(row.tmdb_id),
+      }));
+
+      setBlockedRows(normalized);
     } catch (e) {
       console.error('Error loading post moderation blocks:', e);
       // Fail closed would hide too much; fail open keeps content visible if moderation table is unreachable.
@@ -157,7 +163,9 @@ export const usePostModeration = () => {
   const isBlocked = useCallback(
     (tmdbId: number | string, mediaType: 'movie' | 'tv') => {
       const id = String(tmdbId);
-      return blockedRows.some((p) => p.tmdb_id === id && p.media_type === mediaType && p.is_blocked);
+      return blockedRows.some(
+        (p) => String(p.tmdb_id) === id && p.media_type === mediaType && p.is_blocked
+      );
     },
     [blockedRows]
   );
