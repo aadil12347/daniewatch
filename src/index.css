@@ -182,7 +182,7 @@
     @apply border-border;
   }
 
-html {
+  html {
     scroll-behavior: smooth;
   }
 
@@ -201,6 +201,31 @@ html {
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* Custom arrow cursor */
+  .cursor-arrow-enabled,
+  .cursor-arrow-enabled * {
+    cursor: none !important;
+  }
+
+  .curzr {
+    color: hsl(var(--foreground));
+  }
+
+  .curzr svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .curzr .inner {
+    fill: hsl(var(--background));
+  }
+
+  .curzr .outer {
+    fill: hsl(var(--foreground));
+  }
+
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
