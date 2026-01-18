@@ -219,7 +219,7 @@
   }
 
   .curzr .inner {
-    fill: hsl(var(--background));
+    fill: hsl(var(--foreground));
   }
 
   .curzr .outer {
