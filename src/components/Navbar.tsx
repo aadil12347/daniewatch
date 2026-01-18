@@ -4,6 +4,8 @@ import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminContentVisibility } from "@/contexts/AdminContentVisibilityContext";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AnimatedBackButton } from "@/components/AnimatedBackButton";
@@ -17,6 +19,7 @@ import {
 export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
+  const { showBlockedPosts, setShowBlockedPosts } = useAdminContentVisibility();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -322,6 +325,18 @@ export const Navbar = () => {
                 </button>
               )}
             </form>
+
+            {/* Admin toggle: show/hide blocked posts */}
+            {user && isAdmin && (
+              <div className="hidden md:flex items-center gap-2 mr-1 pl-2 pr-1 py-1 rounded-full border border-border bg-secondary/30">
+                <span className="text-xs text-muted-foreground select-none">Blocked</span>
+                <Switch
+                  checked={showBlockedPosts}
+                  onCheckedChange={(v) => setShowBlockedPosts(Boolean(v))}
+                  aria-label={showBlockedPosts ? "Show blocked posts" : "Hide blocked posts"}
+                />
+              </div>
+            )}
 
             {/* Notification Bell & User Menu */}
             {user && <NotificationBell />}

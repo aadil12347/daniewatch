@@ -8,6 +8,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
+import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
 import { PageTransition } from "./components/PageTransition";
 import { GlobalRouteLoader } from "./components/GlobalRouteLoader";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
@@ -93,20 +94,22 @@ const App = () => (
       <AuthProvider>
         <TutorialProvider>
           <MediaProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <MotionBlurCursor />
-              <BrowserRouter>
-                <ErrorBoundary>
-                  <Navbar />
-                  <GlobalRouteLoader />
-                  <AppContent />
-                  <FloatingRequestButton />
-                  <TutorialOverlay />
-                </ErrorBoundary>
-              </BrowserRouter>
-            </TooltipProvider>
+            <AdminContentVisibilityProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <MotionBlurCursor />
+                <BrowserRouter>
+                  <ErrorBoundary>
+                    <Navbar />
+                    <GlobalRouteLoader />
+                    <AppContent />
+                    <FloatingRequestButton />
+                    <TutorialOverlay />
+                  </ErrorBoundary>
+                </BrowserRouter>
+              </TooltipProvider>
+            </AdminContentVisibilityProvider>
           </MediaProvider>
         </TutorialProvider>
       </AuthProvider>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { useAdmin } from './useAdmin';
+import { useAdminContentVisibility } from '@/contexts/AdminContentVisibilityContext';
 
 const POST_MODERATION_STORAGE_KEY = 'post_moderation';
 
@@ -31,6 +32,7 @@ const keyOf = (tmdbId: string, mediaType: 'movie' | 'tv') => `${mediaType}:${tmd
 
 export const usePostModeration = () => {
   const { isAdmin } = useAdmin();
+  const { showBlockedPosts } = useAdminContentVisibility();
 
   // PINS: kept in localStorage (existing behavior)
   const [pinnedPosts, setPinnedPosts] = useState<PinnedPost[]>([]);
@@ -317,14 +319,15 @@ export const usePostModeration = () => {
 
   const filterBlockedPosts = useCallback(
     <T extends { id: number; media_type?: string; first_air_date?: string }>(items: T[], defaultMediaType?: 'movie' | 'tv'): T[] => {
-      if (isAdmin) return items; // Admins see everything (but cards will be dulled)
+      // Admins can choose to hide blocked posts from lists
+      if (isAdmin && showBlockedPosts) return items;
 
       return items.filter((item) => {
         const mediaType = (item.media_type || (item.first_air_date ? 'tv' : defaultMediaType || 'movie')) as 'movie' | 'tv';
         return !isBlocked(item.id, mediaType);
       });
     },
-    [isAdmin, isBlocked]
+    [isAdmin, isBlocked, showBlockedPosts]
   );
 
   const sortWithPinnedFirst = useCallback(
