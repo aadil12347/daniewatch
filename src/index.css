@@ -253,12 +253,6 @@ html {
     box-shadow: var(--shadow-card);
   }
 
-  .text-gradient {
-    background: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(0 0% 70%) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
 
   .cinema-card {
     @apply relative overflow-hidden rounded-lg;
@@ -284,6 +278,120 @@ html {
   .cinema-card:hover::after {
     @apply opacity-100;
   }
+
+  /* Poster 3D hover ("Mythrill"-style) */
+  .poster-3d-card {
+    perspective: 2500px;
+  }
+
+  .poster-3d-wrapper {
+    position: absolute;
+    inset: 0;
+    transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+    transform: translateZ(0);
+    will-change: transform;
+    z-index: 0;
+  }
+
+  .poster-3d-cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .poster-3d-wrapper::before,
+  .poster-3d-wrapper::after {
+    content: "";
+    opacity: 0;
+    width: 100%;
+    transition: opacity var(--transition-slow), height var(--transition-slow);
+    position: absolute;
+    left: 0;
+    pointer-events: none;
+  }
+
+  .poster-3d-wrapper::before {
+    top: 0;
+    height: 100%;
+    background-image: linear-gradient(
+      to top,
+      transparent 46%,
+      hsl(var(--background) / 0.35) 68%,
+      hsl(var(--background) / 0.95) 97%
+    );
+  }
+
+  .poster-3d-wrapper::after {
+    bottom: 0;
+    height: 80px;
+    opacity: 1;
+    background-image: linear-gradient(
+      to bottom,
+      transparent 46%,
+      hsl(var(--background) / 0.35) 68%,
+      hsl(var(--background) / 0.95) 97%
+    );
+  }
+
+  .group:hover .poster-3d-wrapper {
+    transform: perspective(900px) translateY(-5%) rotateX(25deg) translateZ(0);
+    box-shadow: 0 35px 32px -8px hsl(0 0% 0% / 0.75);
+  }
+
+  .group:hover .poster-3d-wrapper::before,
+  .group:hover .poster-3d-wrapper::after {
+    opacity: 1;
+  }
+
+  .group:hover .poster-3d-wrapper::after {
+    height: 120px;
+  }
+
+  .poster-3d-logo {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: 14%;
+    width: 80%;
+    height: 24%;
+    object-fit: contain;
+    opacity: 0;
+    transform: translate3d(0%, 6px, 0);
+    transition: transform var(--transition-slow), opacity var(--transition-slow);
+    will-change: transform, opacity;
+    pointer-events: none;
+    z-index: 10;
+    filter: drop-shadow(0 10px 22px hsl(0 0% 0% / 0.55));
+  }
+
+  .group:hover .poster-3d-logo {
+    opacity: 1;
+    transform: translate3d(0%, -18px, 100px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .poster-3d-wrapper,
+    .poster-3d-logo {
+      transition: none;
+      transform: none;
+    }
+
+    .group:hover .poster-3d-wrapper {
+      transform: none;
+      box-shadow: var(--shadow-card-hover);
+    }
+
+    .group:hover .poster-3d-logo {
+      opacity: 1;
+    }
+
+    .poster-3d-wrapper::before,
+    .poster-3d-wrapper::after {
+      transition: none;
+    }
+  }
+
 
   .hide-scrollbar {
     -ms-overflow-style: none;

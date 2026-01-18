@@ -8,6 +8,7 @@ import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 interface MovieCardProps {
   movie: Movie;
   index?: number;
@@ -33,8 +34,9 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  
-  // Use optimistic state if set, otherwise use actual state
+  const [isPosterActive, setIsPosterActive] = useState(false);
+
+  const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, isPosterActive);
   const displayedInWatchlist = optimisticInWatchlist !== null ? optimisticInWatchlist : inWatchlist;
   
   // Sync optimistic state when actual state catches up
@@ -50,7 +52,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
     lg: "w-48 sm:w-56",
   };
 
-  const rankSizeClasses = showRank ? "ml-10 sm:ml-14" : "";
+  
 
   return (
     <div 
@@ -67,46 +69,54 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
       )}
 
       <div className={cn("relative", sizeClasses[size])}>
-        <Link to={`/${mediaType}/${movie.id}`} className="block">
+        <Link
+          to={`/${mediaType}/${movie.id}`}
+          className="block"
+          onMouseEnter={() => setIsPosterActive(true)}
+          onMouseLeave={() => setIsPosterActive(false)}
+          onFocus={() => setIsPosterActive(true)}
+          onBlur={() => setIsPosterActive(false)}
+        >
           {/* Card */}
-          <div className="cinema-card relative aspect-[2/3] rounded-xl overflow-hidden bg-card">
+          <div className="cinema-card poster-3d-card relative aspect-[2/3] rounded-xl overflow-hidden bg-card">
             {posterUrl ? (
-              <img
-                src={posterUrl}
-                alt={title}
-                loading="lazy"
-                className={cn(
-                  "w-full h-full object-cover will-change-transform",
-                  "transition-[transform,filter,opacity] duration-300 ease-out",
-                  "group-hover:scale-105",
-                  isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
-                )}
-              />
+              <div className="poster-3d-wrapper">
+                <img
+                  src={posterUrl}
+                  alt={title}
+                  loading="lazy"
+                  className={cn(
+                    "poster-3d-cover",
+                    isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                  )}
+                />
+              </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-muted">
                 <span className="text-muted-foreground text-sm">{title}</span>
               </div>
             )}
 
-            {/* Extra dull overlay for blocked (admin only) */}
-            {isAdmin && blocked && (
-              <div
+            {/* Optional logo (TMDB) */}
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${title} logo`}
+                loading="lazy"
                 className={cn(
-                  "absolute inset-0 pointer-events-none",
-                  "bg-background/20",
-                  "animate-fade-in"
+                  "poster-3d-logo",
+                  isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                 )}
               />
             )}
 
-            {/* Hover overlay (dark fade + expanding GREY wash) */}
-            <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="absolute inset-0 bg-background/60" />
-              <div className="absolute inset-0 bg-gradient-to-tr from-foreground/20 via-foreground/5 to-transparent opacity-70 transform-gpu scale-0 group-hover:scale-[2] transition-transform duration-500 ease-out" />
-            </div>
+            {/* Extra dull overlay for blocked (admin only) */}
+            {isAdmin && blocked && (
+              <div className={cn("absolute inset-0 pointer-events-none", "bg-background/20", "animate-fade-in")} />
+            )}
 
             {/* Center Play button (appears on hover) */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
               <div
                 className={cn(
                   "pointer-events-none select-none",
@@ -126,14 +136,14 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             </div>
 
             {/* Rating Badge */}
-            <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md glass text-xs font-medium">
+            <div className="absolute top-2 right-2 z-30 flex items-center gap-1 px-2 py-1 rounded-md glass text-xs font-medium">
               <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
               {rating}
             </div>
 
             {/* Admin indicator for blocked */}
             {isAdmin && blocked && (
-              <div className="absolute top-2 left-2 flex items-center gap-1">
+              <div className="absolute top-2 left-2 z-30 flex items-center gap-1">
                 <div className="p-1 rounded-md bg-destructive/80 backdrop-blur-sm" title="Blocked">
                   <Ban className="w-3 h-3 text-destructive-foreground" />
                 </div>
@@ -143,9 +153,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
 
           {/* Info */}
           <div className="mt-3 px-1">
-            <h3 className="title-glow-underline font-medium text-sm truncate max-w-full">
-              {title}
-            </h3>
+            <h3 className="title-glow-underline font-medium text-sm truncate max-w-full">{title}</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-muted-foreground">{year}</span>
               <span className="text-xs text-muted-foreground capitalize">• {mediaType}</span>
