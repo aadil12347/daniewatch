@@ -323,8 +323,8 @@ html {
     will-change: opacity;
 
     /* Blur only (keep original poster colors) */
-    filter: blur(18px);
-    transform: scale(1.06);
+    filter: blur(26px);
+    transform: scale(1.08);
 
     /* Smooth gradient mask: clean top → progressively blurred bottom */
     -webkit-mask-image: linear-gradient(
