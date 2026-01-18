@@ -407,18 +407,27 @@ html {
     height: 80px;
   }
 
-  /* Character comes OUT of the card (not clipped) */
+  /* Character comes OUT of the card (not clipped)
+     Goal: only pop out from the TOP (no side overflow), sit higher (not bottom-centered). */
   .poster-3d-character {
     position: absolute;
-    left: -8%;
-    right: -8%;
-    bottom: 0;
-    width: 116%;
+    left: 0;
+    right: 0;
+
+    /* Keep it inside card width; we only allow it to extend upward via translate */
+    width: 100%;
+    max-width: 100%;
     height: auto;
+
+    /* Start a bit higher inside the poster instead of hugging the bottom */
+    bottom: 6%;
+
     object-fit: contain;
+    object-position: center bottom;
 
     opacity: 0;
-    transform: translate3d(0%, 12px, 0);
+    transform-origin: 50% 100%;
+    transform: translate3d(0, 14px, 0) scale(1.02);
     transition: transform var(--transition-slow), opacity var(--transition-slow);
     will-change: transform, opacity;
     pointer-events: none;
@@ -456,7 +465,8 @@ html {
 
   .group:hover .poster-3d-character {
     opacity: 1;
-    transform: translate3d(0%, -28%, 160px);
+    /* Pop upward only (no side overshoot), no tilt/rotate */
+    transform: translate3d(0, -40%, 160px) scale(1.05);
   }
 
   .group:hover .poster-3d-logo {
