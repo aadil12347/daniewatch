@@ -202,12 +202,7 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Morph cursor (glow + dot, themed via tokens) */
-  .cursor-morph-enabled,
-  .cursor-morph-enabled * {
-    cursor: none !important;
-  }
-
+  /* Poster-only glow cursor (keeps the native cursor visible) */
   .cursor {
     display: none;
     position: fixed;
@@ -233,48 +228,25 @@
     }
   }
 
-  /* The "normal cursor" (dot) */
-  .cursor::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 6px;
-    height: 6px;
-    transform: translate(-50%, -50%);
-    border-radius: 999px;
-    background: hsl(var(--foreground));
-    box-shadow:
-      0 0 10px hsl(var(--foreground) / 0.25),
-      0 0 24px hsl(var(--foreground) / 0.12);
-    opacity: 0.95;
-  }
-
-  /* The glow outline that morphs to hovered elements */
+  /* Pure glow (no visible outline); only appears over posters via --scale */
   .cursor::after {
     content: "";
     position: absolute;
-    inset: 0;
+    inset: -2px;
     border-radius: var(--radius);
-    border: 1px solid hsl(var(--primary) / 0.75);
-    opacity: calc(var(--scale) * 0.9);
+    opacity: var(--scale);
     transform: scale(var(--scale));
 
-    /* Glow (no hard outline look) */
+    background: hsl(var(--primary) / 0.06);
     box-shadow:
-      0 0 0 1px hsl(var(--primary) / 0.15) inset,
-      0 0 18px hsl(var(--primary) / 0.45),
-      0 0 48px hsl(var(--primary) / 0.18);
+      0 0 22px hsl(var(--primary) / 0.55),
+      0 0 70px hsl(var(--primary) / 0.22),
+      0 0 140px hsl(var(--primary) / 0.12);
 
     transition:
-      0.3s cubic-bezier(0.25, 0.25, 0.42, 1) opacity,
-      0.3s cubic-bezier(0.25, 0.25, 0.42, 1) transform,
-      0.1s cubic-bezier(0.25, 0.25, 0.42, 1) border-radius;
-  }
-
-  body:not(body:hover) .cursor::after {
-    opacity: 0;
-    transform: scale(0);
+      0.25s cubic-bezier(0.25, 0.25, 0.42, 1) opacity,
+      0.25s cubic-bezier(0.25, 0.25, 0.42, 1) transform,
+      0.12s cubic-bezier(0.25, 0.25, 0.42, 1) border-radius;
   }
 
 
