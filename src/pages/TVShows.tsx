@@ -26,7 +26,9 @@ const TVShows = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
-  const { filterBlockedPosts } = usePostModeration();
+  const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
+
+  const pageIsLoading = isLoading || isModerationLoading;
 
   // Fetch genres on mount
   useEffect(() => {
@@ -107,12 +109,12 @@ const TVShows = () => {
         const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
         const response = await res.json();
 
-        const filteredResults = filterBlockedPosts(filterAdultContent(response.results) as Movie[], 'tv');
+        const baseResults = filterAdultContent(response.results) as Movie[];
 
         if (reset) {
-          setShows(filteredResults);
+          setShows(baseResults);
         } else {
-          setShows((prev) => [...prev, ...filteredResults]);
+          setShows((prev) => [...prev, ...baseResults]);
         }
         setHasMore(response.page < response.total_pages);
       } catch (error) {
@@ -122,7 +124,7 @@ const TVShows = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedGenres, selectedYear, setIsLoadingMore, filterBlockedPosts]
+    [selectedGenres, selectedYear, setIsLoadingMore]
   );
 
   // Reset and fetch when filters change
@@ -140,10 +142,10 @@ const TVShows = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!isLoading && shows.length > 0) {
+    if (!pageIsLoading && shows.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [isLoading, shows.length]);
+  }, [pageIsLoading, shows.length]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -215,7 +217,7 @@ const TVShows = () => {
 
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {isLoading
+            {pageIsLoading
               ? Array.from({ length: 18 }).map((_, i) => (
                   <div key={i}>
                     <Skeleton className="aspect-[2/3] rounded-xl" />
@@ -223,7 +225,7 @@ const TVShows = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : shows.map((show, index) => (
+              : filterBlockedPosts(shows, "tv").map((show, index) => (
                   <MovieCard
                     key={`${show.id}-${index}`}
                     movie={{ ...show, media_type: "tv" }}
@@ -233,7 +235,7 @@ const TVShows = () => {
           </div>
 
           {/* No results message */}
-          {!isLoading && shows.length === 0 && (
+          {!pageIsLoading && shows.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No TV shows found with the selected filters.</p>
               <button

@@ -26,7 +26,9 @@ const Movies = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
-  const { filterBlockedPosts, sortWithPinnedFirst } = usePostModeration();
+  const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
+
+  const pageIsLoading = isLoading || isModerationLoading;
 
   // Fetch genres on mount
   useEffect(() => {
@@ -140,10 +142,10 @@ const Movies = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!isLoading && movies.length > 0) {
+    if (!pageIsLoading && movies.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [isLoading, movies.length]);
+  }, [pageIsLoading, movies.length]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -219,7 +221,7 @@ const Movies = () => {
 
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {isLoading
+            {pageIsLoading
               ? Array.from({ length: 18 }).map((_, i) => (
                   <div key={i}>
                     <Skeleton className="aspect-[2/3] rounded-xl" />
@@ -239,7 +241,7 @@ const Movies = () => {
           </div>
 
           {/* No results message */}
-          {!isLoading && movies.length === 0 && (
+          {!pageIsLoading && movies.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No movies found with the selected filters.</p>
               <button
