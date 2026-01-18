@@ -32,6 +32,8 @@ const Indian = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
 
+  const visibleItems = filterBlockedPosts(items);
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -178,10 +180,10 @@ const Indian = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!isLoading && items.length > 0) {
+    if (!isLoading && visibleItems.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [isLoading, items.length]);
+  }, [isLoading, visibleItems.length]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -255,7 +257,7 @@ const Indian = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : items.map((item, index) => (
+              : visibleItems.map((item, index) => (
                   <MovieCard
                     key={`${item.id}-${item.media_type}`}
                     movie={item}
@@ -265,7 +267,7 @@ const Indian = () => {
           </div>
 
           {/* No results */}
-          {!isLoading && items.length === 0 && (
+          {!isLoading && visibleItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No results found.</p>
             </div>
