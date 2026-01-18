@@ -79,6 +79,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
         <Link
           to={`/${mediaType}/${movie.id}`}
           className="block"
+          data-hover
           onMouseEnter={() => setIsPosterActive(true)}
           onMouseLeave={() => setIsPosterActive(false)}
           onFocus={() => setIsPosterActive(true)}
