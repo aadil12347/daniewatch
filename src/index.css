@@ -461,8 +461,8 @@ html {
 
   .group:hover .poster-3d-character {
     opacity: 1;
-    /* Pop upward only (no tilt/rotate). Side boundaries stay locked by clip-path. */
-    transform: translate3d(0, -20%, 160px) scale(1.03);
+    /* Pop upward only a LITTLE (subtle 3D) */
+    transform: translate3d(0, -12%, 160px) scale(1.02);
   }
 
   /* Logo: TOP layer */
