@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useWatchlist } from "@/hooks/useWatchlist";
+import { useAdmin } from "@/hooks/useAdmin";
+import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedia } from "@/contexts/MediaContext";
 import {
