@@ -76,7 +76,9 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                 alt={title}
                 loading="lazy"
                 className={cn(
-                  "w-full h-full object-cover transition-transform duration-300 ease-out will-change-transform group-hover:scale-105",
+                  "w-full h-full object-cover will-change-transform",
+                  "transition-[transform,filter,opacity] duration-300 ease-out",
+                  "group-hover:scale-105",
                   isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                 )}
               />
@@ -87,7 +89,15 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             )}
 
             {/* Extra dull overlay for blocked (admin only) */}
-            {isAdmin && blocked && <div className="absolute inset-0 bg-background/20 pointer-events-none" />}
+            {isAdmin && blocked && (
+              <div
+                className={cn(
+                  "absolute inset-0 pointer-events-none",
+                  "bg-background/20",
+                  "animate-fade-in"
+                )}
+              />
+            )}
 
             {/* Hover overlay (dark fade + expanding GREY wash) */}
             <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
