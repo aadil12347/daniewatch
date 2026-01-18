@@ -3,12 +3,13 @@ import { Star, Bookmark, Ban } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
+import { useInViewport } from "@/hooks/useInViewport";
 interface MovieCardProps {
   movie: Movie;
   index?: number;
@@ -36,7 +37,11 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPosterActive, setIsPosterActive] = useState(false);
 
-  const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, isPosterActive);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const isNearViewport = useInViewport(cardRef);
+
+  // Preload the hover logo as soon as the card is on/near screen.
+  const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, isPosterActive || isNearViewport);
   const displayedInWatchlist = optimisticInWatchlist !== null ? optimisticInWatchlist : inWatchlist;
   
   // Sync optimistic state when actual state catches up
@@ -45,6 +50,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
       setOptimisticInWatchlist(null);
     }
   }, [inWatchlist, optimisticInWatchlist]);
+
 
   const sizeClasses = {
     sm: "w-32 sm:w-36",
@@ -55,7 +61,8 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   
 
   return (
-    <div 
+    <div
+      ref={cardRef}
       className={cn("group relative flex-shrink-0 card-reveal", showRank && "pl-6 sm:pl-10")}
       style={{ animationDelay: `${animationDelay}ms` }}
     >
@@ -84,7 +91,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                 <img
                   src={posterUrl}
                   alt={title}
-                  loading="lazy"
+                  loading={isNearViewport ? "eager" : "lazy"}
                   className={cn(
                     "poster-3d-cover poster-3d-cover--base",
                     isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
@@ -96,7 +103,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                   src={posterUrl}
                   alt=""
                   aria-hidden="true"
-                  loading="lazy"
+                  loading={isNearViewport ? "eager" : "lazy"}
                   className={cn(
                     "poster-3d-cover poster-3d-cover--blur",
                     isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
@@ -114,7 +121,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               <img
                 src={logoUrl}
                 alt={`${title} logo`}
-                loading="lazy"
+                loading="eager"
                 className={cn(
                   "poster-3d-logo",
                   isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
