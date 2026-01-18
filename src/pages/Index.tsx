@@ -29,6 +29,8 @@ const Index = () => {
   const [animePopular, setAnimePopular] = useState<Movie[]>([]);
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
   const pageIsLoading = isLoading || isModerationLoading;
 
@@ -65,6 +67,7 @@ const Index = () => {
         setKoreanPopular(filterAdultContent(koreanRes.results));
       } catch (error) {
         console.error("Failed to fetch data:", error);
+        setFetchError("Failed to load homepage content. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -84,7 +87,21 @@ const Index = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
+        {fetchError && !pageIsLoading && (
+          <div className="container mx-auto px-4 pt-24">
+            <div className="rounded-lg border bg-card p-4">
+              <p className="text-sm text-muted-foreground">{fetchError}</p>
+              <button
+                type="button"
+                className="mt-3 text-sm font-medium story-link"
+                onClick={() => window.location.reload()}
+              >
+                Reload
+              </button>
+            </div>
+          </div>
+        )}
+
         <HeroSection items={trending} isLoading={pageIsLoading} />
 
         <div className="relative z-10 -mt-16">
