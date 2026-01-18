@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Ban, Link2, MoreVertical, ShieldOff } from 'lucide-react';
+import { Link2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,9 +11,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { QuickEditLinksDropdown } from '@/components/admin/QuickEditLinksDropdown';
 import { UpdateLinksPanel } from '@/components/admin/UpdateLinksPanel';
-import { usePostModeration } from '@/hooks/usePostModeration';
 import { useAdmin } from '@/hooks/useAdmin';
-import { toast } from 'sonner';
 
 interface AdminPostControlsProps {
   tmdbId: number | string;
@@ -31,30 +29,12 @@ export const AdminPostControls = ({
   className = '',
 }: AdminPostControlsProps) => {
   const { isAdmin } = useAdmin();
-  const { isBlocked, blockPost, unblockPost } = usePostModeration();
 
   const [linksOpen, setLinksOpen] = useState(false);
 
   if (!isAdmin) return null;
 
-  const blocked = isBlocked(tmdbId, mediaType);
-
   const modalInitialId = useMemo(() => String(tmdbId), [tmdbId]);
-
-  const handleBlock = async () => {
-    try {
-      if (blocked) {
-        await unblockPost(tmdbId, mediaType);
-        toast.success(`"${title || 'Post'}" unblocked`);
-      } else {
-        await blockPost(tmdbId, mediaType, title, posterPath);
-        toast.success(`"${title || 'Post'}" blocked`);
-      }
-    } catch (err: any) {
-      const message = err?.message || 'Action failed. Please check your Supabase RLS policies.';
-      toast.error(message);
-    }
-  };
 
   return (
     <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
@@ -74,9 +54,12 @@ export const AdminPostControls = ({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent onClick={(e) => e.stopPropagation()} className="z-50">
+        <DropdownMenuContent
+          onPointerDownCapture={(e) => e.stopPropagation()}
+          className="z-50 max-h-[80vh] overflow-auto overscroll-contain touch-pan-y"
+        >
           {/* Quick Edit (in dropdown) */}
-          <QuickEditLinksDropdown tmdbId={modalInitialId} mediaType={mediaType} />
+          <QuickEditLinksDropdown tmdbId={modalInitialId} mediaType={mediaType} title={title} posterPath={posterPath} />
 
           <DropdownMenuSeparator />
 
@@ -89,23 +72,6 @@ export const AdminPostControls = ({
           >
             <Link2 className="w-4 h-4 mr-2" />
             Update Links (Full)
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator />
-
-          {/* Block/Unblock */}
-          <DropdownMenuItem onClick={handleBlock} className={blocked ? 'text-green-500' : 'text-destructive'}>
-            {blocked ? (
-              <>
-                <ShieldOff className="w-4 h-4 mr-2" />
-                Unblock Post
-              </>
-            ) : (
-              <>
-                <Ban className="w-4 h-4 mr-2" />
-                Block Post
-              </>
-            )}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
