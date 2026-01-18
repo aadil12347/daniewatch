@@ -410,15 +410,15 @@ html {
   /* Character comes OUT of the card (not clipped) */
   .poster-3d-character {
     position: absolute;
-    left: -10%;
-    right: -10%;
-    bottom: -20%;
-    width: 120%;
+    left: -8%;
+    right: -8%;
+    bottom: 0;
+    width: 116%;
     height: auto;
     object-fit: contain;
 
     opacity: 0;
-    transform: translate3d(0%, 16px, 0);
+    transform: translate3d(0%, 12px, 0);
     transition: transform var(--transition-slow), opacity var(--transition-slow);
     will-change: transform, opacity;
     pointer-events: none;
@@ -427,46 +427,6 @@ html {
     z-index: 20;
 
     filter: drop-shadow(0 26px 46px hsl(0 0% 0% / 0.7));
-  }
-
-  /* Strong blur plate behind the logo so the background isn't readable */
-  .poster-3d-logo-blur {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 62%;
-    bottom: 0;
-
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-
-    opacity: 0;
-    transform: translate3d(0%, 6px, 60px) scale(1.12);
-    transition: transform var(--transition-slow), opacity var(--transition-slow);
-    will-change: transform, opacity;
-    pointer-events: none;
-
-    z-index: 29;
-
-    /* Very strong blur */
-    filter: blur(58px) saturate(1.1) contrast(1.05);
-
-    /* Constrain blur mostly to the logo zone */
-    -webkit-mask-image: radial-gradient(
-      circle at 50% 78%,
-      black 0%,
-      rgba(0, 0, 0, 0.92) 32%,
-      rgba(0, 0, 0, 0.45) 58%,
-      transparent 74%
-    );
-    mask-image: radial-gradient(
-      circle at 50% 78%,
-      black 0%,
-      rgba(0, 0, 0, 0.92) 32%,
-      rgba(0, 0, 0, 0.45) 58%,
-      transparent 74%
-    );
   }
 
   /* Logo: TOP layer */
@@ -496,12 +456,7 @@ html {
 
   .group:hover .poster-3d-character {
     opacity: 1;
-    transform: translate3d(0%, -32%, 160px);
-  }
-
-  .group:hover .poster-3d-logo-blur {
-    opacity: 1;
-    transform: translate3d(0%, -10px, 140px) scale(1.14);
+    transform: translate3d(0%, -28%, 160px);
   }
 
   .group:hover .poster-3d-logo {

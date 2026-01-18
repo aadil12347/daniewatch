@@ -153,19 +153,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               />
             )}
 
-            {/* Strong blur behind the logo (on hover) */}
-            {logoUrl && posterUrl && (
-              <img
-                src={posterUrl}
-                alt=""
-                aria-hidden="true"
-                loading={isNearViewport ? "eager" : "lazy"}
-                className={cn(
-                  "poster-3d-logo-blur",
-                  isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
-                )}
-              />
-            )}
 
             {/* Optional logo (TMDB) - TOP layer */}
             {logoUrl && (
