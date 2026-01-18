@@ -29,7 +29,11 @@ interface EntryData {
 }
 
 export const useEntryAvailability = () => {
-  const { data: availabilityMap = new Map<string, EntryAvailability>() } = useQuery({
+  const {
+    data: availabilityMap = new Map<string, EntryAvailability>(),
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: ["entry-availability"],
     queryFn: async () => {
       const { data, error } = await supabase.from("entries").select("id, type, content, hover_image_url");
@@ -83,8 +87,14 @@ export const useEntryAvailability = () => {
   };
 
   const getHoverImageUrl = (tmdbId: number): string | null => {
-    return availabilityMap.get(String(tmdbId))?.hoverImageUrl?.trim?.() ? availabilityMap.get(String(tmdbId))!.hoverImageUrl! : null;
+    const val = availabilityMap.get(String(tmdbId))?.hoverImageUrl;
+    return val?.trim?.() ? val : null;
   };
 
-  return { getAvailability, getHoverImageUrl, availabilityMap };
+  return {
+    getAvailability,
+    getHoverImageUrl,
+    availabilityMap,
+    isLoading: isLoading || isFetching,
+  };
 };
