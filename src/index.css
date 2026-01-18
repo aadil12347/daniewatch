@@ -412,13 +412,15 @@ html {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 6%;
 
-    /* Fit edge-to-edge, but keep it inside the bottom half (closer to the 3rd quarter) */
-    top: 58%;
+    /* Move logo further down (aiming ~3rd quarter) */
+    top: 64%;
+    bottom: 4%;
+
+    /* Fit edge-to-edge, but keep it inside the bottom half */
     height: auto;
     width: 100%;
-    max-height: 36%;
+    max-height: 32%;
     padding-inline: 8%;
 
     object-fit: contain;
