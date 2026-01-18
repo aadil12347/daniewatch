@@ -322,36 +322,36 @@ html {
     transition: opacity var(--transition-slow);
     will-change: opacity;
 
-    /* Stronger blur near the bottom, but keep the image readable overall */
-    filter: blur(22px) grayscale(0.95) saturate(0.9) brightness(0.82);
-    transform: scale(1.08);
+    /* Blur only (keep original poster colors) */
+    filter: blur(18px);
+    transform: scale(1.06);
 
     /* Smooth gradient mask: clean top → progressively blurred bottom */
     -webkit-mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      transparent 38%,
-      rgba(0, 0, 0, 0.12) 52%,
-      rgba(0, 0, 0, 0.55) 68%,
-      rgba(0, 0, 0, 0.88) 82%,
+      transparent 40%,
+      rgba(0, 0, 0, 0.12) 56%,
+      rgba(0, 0, 0, 0.55) 72%,
+      rgba(0, 0, 0, 0.9) 88%,
       black 100%
     );
     mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      transparent 38%,
-      rgba(0, 0, 0, 0.12) 52%,
-      rgba(0, 0, 0, 0.55) 68%,
-      rgba(0, 0, 0, 0.88) 82%,
+      transparent 40%,
+      rgba(0, 0, 0, 0.12) 56%,
+      rgba(0, 0, 0, 0.55) 72%,
+      rgba(0, 0, 0, 0.9) 88%,
       black 100%
     );
 
     pointer-events: none;
   }
 
-  /* Grey the whole poster slightly on hover (keeps detail, avoids over-blur) */
+  /* Keep colors true on hover (no greyscale) */
   .group:hover .poster-3d-cover--base {
-    filter: grayscale(0.4) saturate(0.9) brightness(0.9);
+    filter: none;
   }
 
   .poster-3d-wrapper::before,
@@ -383,9 +383,10 @@ html {
     opacity: 1;
     background-image: linear-gradient(
       to bottom,
-      transparent 46%,
-      hsl(var(--background) / 0.35) 68%,
-      hsl(var(--background) / 0.95) 97%
+      transparent 42%,
+      hsl(var(--background) / 0.22) 62%,
+      hsl(var(--background) / 0.72) 86%,
+      hsl(var(--background) / 0.92) 100%
     );
   }
 
