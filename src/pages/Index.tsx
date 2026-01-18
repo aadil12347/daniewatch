@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { HeroSection } from "@/components/HeroSection";
@@ -6,6 +6,8 @@ import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
 import { Footer } from "@/components/Footer";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { usePreloadImages } from "@/hooks/usePreloadImages";
 import {
   getTrending,
   getPopularMovies,
@@ -18,6 +20,9 @@ import {
   filterAdultContent,
   Movie,
 } from "@/lib/tmdb";
+
+const ABOVE_FOLD_PRELOAD_COUNT = 28; // ~Top 10 + first row-ish
+const SHOW_THRESHOLD = 0.5; // show when 50% of those hover images are ready
 
 const Index = () => {
   const [trending, setTrending] = useState<Movie[]>([]);
@@ -32,7 +37,39 @@ const Index = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
-  const pageIsLoading = isLoading || isModerationLoading;
+  const { getHoverImageUrl } = useEntryAvailability();
+
+  // Build an “above the fold” list of cards and preload their hover images first.
+  const aboveFoldIds = useMemo(() => {
+    const ids: number[] = [];
+    const pushMany = (arr: Movie[]) => {
+      for (const m of arr) {
+        if (ids.length >= ABOVE_FOLD_PRELOAD_COUNT) break;
+        ids.push(m.id);
+      }
+    };
+
+    // Rough “what users see first” order
+    pushMany(trending.slice(0, 10));
+    pushMany(trending);
+    pushMany(popularMovies);
+    pushMany(popularTV);
+
+    return ids;
+  }, [popularMovies, popularTV, trending]);
+
+  const aboveFoldHoverUrls = useMemo(
+    () => aboveFoldIds.map((id) => getHoverImageUrl(id)).filter(Boolean),
+    [aboveFoldIds, getHoverImageUrl]
+  );
+
+  const { loaded: hoverLoaded, total: hoverTotal } = usePreloadImages(aboveFoldHoverUrls, {
+    enabled: !isLoading, // start once TMDB lists are in
+    concurrency: 8,
+  });
+
+  const aboveFoldReady = hoverTotal === 0 ? true : hoverLoaded / hoverTotal >= SHOW_THRESHOLD;
+  const pageIsLoading = isLoading || isModerationLoading || !aboveFoldReady;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,7 +144,7 @@ const Index = () => {
         <div className="relative z-10 -mt-16">
           <ContentRow
             title="Top 10 Today"
-            items={sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), 'home')}
+            items={sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
             isLoading={pageIsLoading}
             showRank
             size="lg"
@@ -115,46 +152,70 @@ const Index = () => {
 
           <TabbedContentRow
             title="Trending Now"
-            moviesItems={filterBlockedPosts(trending.filter(item => item.media_type === 'movie'), 'movie')}
-            tvItems={filterBlockedPosts(trending.filter(item => item.media_type === 'tv'), 'tv')}
-             isLoading={pageIsLoading}
+            moviesItems={filterBlockedPosts(
+              trending.filter((item) => item.media_type === "movie"),
+              "movie"
+            )}
+            tvItems={filterBlockedPosts(
+              trending.filter((item) => item.media_type === "tv"),
+              "tv"
+            )}
+            isLoading={pageIsLoading}
           />
 
           <TabbedContentRow
             title="Popular"
-            moviesItems={filterBlockedPosts(popularMovies, 'movie')}
-            tvItems={filterBlockedPosts(popularTV, 'tv')}
-             isLoading={pageIsLoading}
+            moviesItems={filterBlockedPosts(popularMovies, "movie")}
+            tvItems={filterBlockedPosts(popularTV, "tv")}
+            isLoading={pageIsLoading}
           />
 
           {/* Regional Popular Sections */}
           <TabbedContentRow
             title="Indian Popular"
-            moviesItems={filterBlockedPosts(indianPopular.filter(item => item.media_type === 'movie'), 'movie')}
-            tvItems={filterBlockedPosts(indianPopular.filter(item => item.media_type === 'tv'), 'tv')}
-             isLoading={pageIsLoading}
+            moviesItems={filterBlockedPosts(
+              indianPopular.filter((item) => item.media_type === "movie"),
+              "movie"
+            )}
+            tvItems={filterBlockedPosts(
+              indianPopular.filter((item) => item.media_type === "tv"),
+              "tv"
+            )}
+            isLoading={pageIsLoading}
           />
 
           <TabbedContentRow
             title="Anime Popular"
-            moviesItems={filterBlockedPosts(animePopular.filter(item => item.media_type === 'movie'), 'movie')}
-            tvItems={filterBlockedPosts(animePopular.filter(item => item.media_type === 'tv'), 'tv')}
-             isLoading={pageIsLoading}
+            moviesItems={filterBlockedPosts(
+              animePopular.filter((item) => item.media_type === "movie"),
+              "movie"
+            )}
+            tvItems={filterBlockedPosts(
+              animePopular.filter((item) => item.media_type === "tv"),
+              "tv"
+            )}
+            isLoading={pageIsLoading}
             defaultTab="tv"
           />
 
           <TabbedContentRow
             title="Korean Popular"
-            moviesItems={filterBlockedPosts(koreanPopular.filter(item => item.media_type === 'movie'), 'movie')}
-            tvItems={filterBlockedPosts(koreanPopular.filter(item => item.media_type === 'tv'), 'tv')}
-             isLoading={pageIsLoading}
+            moviesItems={filterBlockedPosts(
+              koreanPopular.filter((item) => item.media_type === "movie"),
+              "movie"
+            )}
+            tvItems={filterBlockedPosts(
+              koreanPopular.filter((item) => item.media_type === "tv"),
+              "tv"
+            )}
+            isLoading={pageIsLoading}
             defaultTab="tv"
           />
 
           <TabbedContentRow
             title="Top Rated"
-            moviesItems={filterBlockedPosts(topRatedMovies, 'movie')}
-            tvItems={filterBlockedPosts(topRatedTV, 'tv')}
+            moviesItems={filterBlockedPosts(topRatedMovies, "movie")}
+            tvItems={filterBlockedPosts(topRatedTV, "tv")}
             isLoading={pageIsLoading}
           />
         </div>
