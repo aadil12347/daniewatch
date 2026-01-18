@@ -6,7 +6,8 @@ import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMulti, searchAnime, searchKorean, filterAdultContent, filterMinimal, Movie } from "@/lib/tmdb";
+import { usePostModeration } from "@/hooks/usePostModeration";
+import { searchMulti, searchAnime, searchKorean, filterMinimal, Movie } from "@/lib/tmdb";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -16,6 +17,8 @@ const Search = () => {
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const requestIdRef = useRef(0);
+
+  const { filterBlockedPosts } = usePostModeration();
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";
@@ -49,15 +52,14 @@ const Search = () => {
         if (requestId !== requestIdRef.current) return;
 
         // For anime/korean categories, strict filtering is already applied in searchAnime/searchKorean
-        // For general search, only apply minimal filtering (admin-blocked + explicit adult flag)
-        const filteredResults = category
+        // For general search, only apply minimal filtering (no people, no junk)
+        const baseResults = category
           ? response.results
-          : filterMinimal(
-              response.results.filter(
-                (item) => item.media_type === "movie" || item.media_type === "tv",
-              )
-            );
-        
+          : filterMinimal(response.results.filter((item) => item.media_type === "movie" || item.media_type === "tv"));
+
+        // Global blacklist filtering (admins still see results but dulled)
+        const filteredResults = filterBlockedPosts(baseResults);
+
         setResults(filteredResults);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
@@ -65,14 +67,14 @@ const Search = () => {
         setResults([]);
       } finally {
         if (requestId === requestIdRef.current) {
-          console.log("[search] done", { query, category, refreshKey, requestId, results: (category ? "category" : "multi") });
+          console.log("[search] done", { query, category, refreshKey, requestId });
           setIsLoading(false);
         }
       }
     };
 
     fetchResults();
-  }, [query, category, refreshKey]);
+  }, [query, category, refreshKey, filterBlockedPosts]);
 
   return (
     <>
@@ -82,34 +84,22 @@ const Search = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
-
         <div className="container mx-auto px-4 pt-24 pb-8">
           {query ? (
             <>
               <div className="flex items-center gap-3 mb-2">
                 {category === "anime" && <Sparkles className="w-6 h-6 text-primary" />}
                 {category === "korean" && <Heart className="w-6 h-6 text-primary" />}
-                <h1 className="text-2xl md:text-3xl font-bold">
-                  {category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}
-                </h1>
+                <h1 className="text-2xl md:text-3xl font-bold">{category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}</h1>
               </div>
-              {category && (
-                <p className="text-sm text-primary/80 mb-2">
-                  Showing only {getCategoryLabel()} content
-                </p>
-              )}
-              <p className="text-muted-foreground mb-8">
-                {isLoading ? "Searching..." : `Found ${results.length} results`}
-              </p>
+              {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
+              <p className="text-muted-foreground mb-8">{isLoading ? "Searching..." : `Found ${results.length} results`}</p>
             </>
           ) : (
             <div className="text-center py-20">
               <SearchIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
               <h1 className="text-2xl font-bold mb-2">Search Movies & TV Shows</h1>
-              <p className="text-muted-foreground">
-                Use the search bar above to find your favorite content
-              </p>
+              <p className="text-muted-foreground">Use the search bar above to find your favorite content</p>
             </div>
           )}
 
@@ -131,12 +121,8 @@ const Search = () => {
           {/* No Results */}
           {!isLoading && query && results.length === 0 && (
             <div className="text-center py-20">
-              <p className="text-xl text-muted-foreground">
-                No results found for "{query}"
-              </p>
-              <p className="text-muted-foreground mt-2">
-                Try searching for something else
-              </p>
+              <p className="text-xl text-muted-foreground">No results found for "{query}"</p>
+              <p className="text-muted-foreground mt-2">Try searching for something else</p>
             </div>
           )}
         </div>
@@ -148,3 +134,4 @@ const Search = () => {
 };
 
 export default Search;
+

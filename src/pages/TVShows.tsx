@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
@@ -9,6 +9,7 @@ import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 const TVShows = () => {
   const [shows, setShows] = useState<Movie[]>([]);
@@ -25,6 +26,7 @@ const TVShows = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
+  const { filterBlockedPosts } = usePostModeration();
 
   // Fetch genres on mount
   useEffect(() => {
@@ -105,7 +107,7 @@ const TVShows = () => {
         const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
         const response = await res.json();
 
-        const filteredResults = filterAdultContent(response.results) as Movie[];
+        const filteredResults = filterBlockedPosts(filterAdultContent(response.results) as Movie[], 'tv');
 
         if (reset) {
           setShows(filteredResults);
@@ -120,7 +122,7 @@ const TVShows = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedGenres, selectedYear, setIsLoadingMore]
+    [selectedGenres, selectedYear, setIsLoadingMore, filterBlockedPosts]
   );
 
   // Reset and fetch when filters change
@@ -134,7 +136,7 @@ const TVShows = () => {
     setShows([]);
     setHasMore(true);
     fetchShows(1, true);
-  }, [selectedGenres, selectedYear, isInitialized]);
+  }, [selectedGenres, selectedYear, isInitialized, fetchShows, isRestoredFromCache]);
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
@@ -186,7 +188,7 @@ const TVShows = () => {
   };
 
   // Convert genres to CategoryNav format
-  const genresForNav = genres.map((g) => ({ id: g.id, name: g.name }));
+  const genresForNav = useMemo(() => genres.map((g) => ({ id: g.id, name: g.name })), [genres]);
 
   return (
     <>
@@ -196,8 +198,6 @@ const TVShows = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
-
         <div className="container mx-auto px-4 pt-24 pb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">TV Shows</h1>
 
@@ -259,4 +259,5 @@ const TVShows = () => {
 };
 
 export default TVShows;
+
 

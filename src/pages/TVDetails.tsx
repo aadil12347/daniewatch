@@ -70,7 +70,11 @@ const TVDetails = () => {
 
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
+  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
+  const { isLoading: isModerationLoading, isBlocked } = usePostModeration();
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
+
+  const [blockedForUser, setBlockedForUser] = useState(false);
 
   // URL-driven player state
   const playerState = useMemo(() => {
@@ -92,10 +96,29 @@ const TVDetails = () => {
     }
   }, [show?.id, optimisticInWatchlist, isInWatchlist]);
 
+  useEffect(() => {
+    if (!id) return;
+    if (isAdminLoading || isModerationLoading) return;
+
+    const blocked = isBlocked(Number(id), 'tv');
+    if (blocked && !isAdmin) {
+      setBlockedForUser(true);
+      setShow(null);
+      setCast([]);
+      setSimilar([]);
+      setEpisodes([]);
+      setLogoUrl(null);
+      setMediaResult(null);
+      setIsLoading(false);
+    } else {
+      setBlockedForUser(false);
+    }
+  }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
+      if (blockedForUser) return;
       setIsLoading(true);
 
       try {
@@ -108,16 +131,16 @@ const TVDetails = () => {
 
         setShow(showRes);
         setCast(creditsRes.cast.slice(0, 12));
-        
+
         // Filter similar shows with strict certification check
         const filteredSimilar = await filterAdultContentStrict(
-          similarRes.results.map(s => ({ ...s, media_type: "tv" as const })),
+          similarRes.results.map((s) => ({ ...s, media_type: "tv" as const })),
           "tv"
         );
         setSimilar(filteredSimilar.slice(0, 14));
 
         // Get the first English logo or any available logo
-        const logo = imagesRes.logos?.find(l => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
+        const logo = imagesRes.logos?.find((l) => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
         if (logo) {
           setLogoUrl(getImageUrl(logo.file_path, "w500"));
         }
@@ -130,17 +153,19 @@ const TVDetails = () => {
           const groupDetails = await getTVEpisodeGroupDetails(episodeGroupId);
           setEpisodeGroups(groupDetails.groups);
           setUseEpisodeGroups(true);
-          
+
           // Set first group's episodes
           const firstGroup = groupDetails.groups[0];
           if (firstGroup) {
             setSelectedSeason(1); // Use 1-based index for Parts
             // Map episode group episodes to standard Episode format
-            setEpisodes(firstGroup.episodes.map((ep, index) => ({
-              ...ep,
-              episode_number: index + 1, // Use order as episode number
-            })));
-            
+            setEpisodes(
+              firstGroup.episodes.map((ep, index) => ({
+                ...ep,
+                episode_number: index + 1, // Use order as episode number
+              }))
+            );
+
             // Check for media links (Supabase -> Blogger -> fallback)
             const mediaRes = await getMediaLinks(Number(id), "tv", 1);
             setMediaResult(mediaRes);
@@ -149,9 +174,9 @@ const TVDetails = () => {
           // Use standard seasons (existing logic)
           setUseEpisodeGroups(false);
           setEpisodeGroups(null);
-          
+
           // Find first valid season (skip season 0 which is usually specials)
-          const firstSeason = showRes.seasons?.find(s => s.season_number > 0)?.season_number || 1;
+          const firstSeason = showRes.seasons?.find((s) => s.season_number > 0)?.season_number || 1;
           setSelectedSeason(firstSeason);
 
           // Fetch first season episodes
@@ -171,7 +196,7 @@ const TVDetails = () => {
 
     fetchData();
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, blockedForUser]);
 
   const handleSeasonChange = async (partOrSeasonNumber: number) => {
     if (!id || partOrSeasonNumber === selectedSeason) return;
@@ -227,6 +252,23 @@ const TVDetails = () => {
   }
 
   if (!show) {
+    if (blockedForUser) {
+      return (
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto px-4 pt-32 text-center">
+            <h1 className="text-2xl font-bold mb-2">Not available</h1>
+            <p className="text-muted-foreground mb-6">This content has been blocked by the administrator.</p>
+            <Button asChild>
+              <Link to="/">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 pt-32 text-center">
