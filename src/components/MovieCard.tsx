@@ -4,6 +4,7 @@ import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useRef, useState, useEffect, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -37,19 +38,58 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
 
   // Hard safety: never render blocked items to normal users.
   if (!isAdmin && blocked) return null;
-
-
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPosterActive, setIsPosterActive] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
 
+  // Hover portal (fixes carousel clipping on Home rows)
+  const [canUseHoverPortal, setCanUseHoverPortal] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
+
   const cardRef = useRef<HTMLDivElement>(null);
+  const posterRef = useRef<HTMLDivElement>(null);
   const isNearViewport = useInViewport(cardRef);
 
   // Preload the hover logo as soon as the card is on/near screen.
   const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, isPosterActive || isNearViewport);
   const displayedInWatchlist = optimisticInWatchlist !== null ? optimisticInWatchlist : inWatchlist;
+
+  // Determine whether to use the portal (avoid on touch devices)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia?.("(hover: hover) and (pointer: fine)");
+    const update = () => setCanUseHoverPortal(Boolean(mql?.matches));
+    update();
+    mql?.addEventListener?.("change", update);
+    return () => mql?.removeEventListener?.("change", update);
+  }, []);
+
+  // Keep portal positioned correctly while hovering (scroll/resize)
+  useEffect(() => {
+    if (!canUseHoverPortal || !isHovered) return;
+
+    let raf = 0;
+    const update = () => {
+      if (!posterRef.current) return;
+      setHoverRect(posterRef.current.getBoundingClientRect());
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [canUseHoverPortal, isHovered]);
 
   // Sync optimistic state when actual state catches up
   useEffect(() => {
@@ -82,11 +122,23 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
     }
   };
 
+  const portalEnabled = canUseHoverPortal && Boolean(hoverImageUrl);
+
   return (
     <div
       ref={cardRef}
       className={cn("group relative flex-shrink-0 card-reveal", showRank && "pl-6 sm:pl-10")}
       style={{ animationDelay: `${animationDelay}ms` }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setHoverRect(null);
+      }}
+      onFocus={() => setIsHovered(true)}
+      onBlur={() => {
+        setIsHovered(false);
+        setHoverRect(null);
+      }}
     >
       {/* Rank Number - Default: behind poster, white outline, black fill */}
       {showRank && index !== undefined && (
@@ -105,7 +157,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
           onBlur={() => setIsPosterActive(false)}
         >
           {/* Card */}
-          <div className="cinema-card poster-3d-card relative aspect-[2/3] rounded-xl bg-card">
+          <div ref={posterRef} className="cinema-card poster-3d-card relative aspect-[2/3] rounded-xl bg-card">
             {/* Clip only the poster layers so the character can pop OUT of the card */}
             <div className="poster-3d-clip absolute inset-0 rounded-xl overflow-hidden">
               {posterUrl ? (
@@ -139,8 +191,10 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               )}
             </div>
 
-            {/* Optional character layer (from DB) - sits OUTSIDE the clip so it can come out of the card */}
-            {hoverImageUrl && (
+            {/* Optional character layer (from DB)
+                - inline version works on grid pages
+                - portal version is used on hover to bypass carousel clipping */}
+            {hoverImageUrl && (!portalEnabled || !isHovered) && (
               <img
                 src={hoverImageUrl}
                 alt=""
@@ -152,7 +206,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                 )}
               />
             )}
-
 
             {/* Logo (TMDB) - TOP layer; if missing, show the title instead */}
             {logoUrl ? (
@@ -202,6 +255,31 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
               </div>
             )}
           </div>
+
+          {portalEnabled && isHovered && hoverRect &&
+            createPortal(
+              <div
+                className="poster-3d-hover-portal"
+                style={{
+                  left: hoverRect.left,
+                  top: hoverRect.top,
+                  width: hoverRect.width,
+                  height: hoverRect.height,
+                }}
+              >
+                <img
+                  src={hoverImageUrl!}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className={cn(
+                    "poster-3d-character poster-3d-character--portal",
+                    isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                  )}
+                />
+              </div>,
+              document.body
+            )}
 
           {/* Info */}
           <div className="mt-3 px-1">
