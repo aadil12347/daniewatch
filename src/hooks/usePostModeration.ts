@@ -177,14 +177,14 @@ export const usePostModeration = () => {
     [pinnedPosts]
   );
 
-  // ---------- Mutations (blocks => Supabase) ----------
   const blockPost = useCallback(
     async (tmdbId: number | string, mediaType: 'movie' | 'tv', title?: string, posterPath?: string) => {
       const id = String(tmdbId);
 
       if (!isSupabaseConfigured) {
-        console.warn('Supabase not configured: cannot block globally');
-        return;
+        const err = new Error('Supabase not configured: cannot block globally');
+        console.warn(err.message);
+        throw err;
       }
 
       // Optimistic UI (admin sees it dulled instantly)
@@ -219,6 +219,7 @@ export const usePostModeration = () => {
         console.error('Failed to block post:', error);
         // Recover from optimistic update
         await refetchBlocked();
+        throw error;
       }
     },
     [refetchBlocked]
@@ -229,8 +230,9 @@ export const usePostModeration = () => {
       const id = String(tmdbId);
 
       if (!isSupabaseConfigured) {
-        console.warn('Supabase not configured: cannot unblock globally');
-        return;
+        const err = new Error('Supabase not configured: cannot unblock globally');
+        console.warn(err.message);
+        throw err;
       }
 
       // Optimistic UI
@@ -241,6 +243,7 @@ export const usePostModeration = () => {
       if (error) {
         console.error('Failed to unblock post:', error);
         await refetchBlocked();
+        throw error;
       }
     },
     [refetchBlocked]

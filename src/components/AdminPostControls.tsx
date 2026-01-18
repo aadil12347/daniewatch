@@ -41,13 +41,18 @@ export const AdminPostControls = ({
 
   const modalInitialId = useMemo(() => String(tmdbId), [tmdbId]);
 
-  const handleBlock = () => {
-    if (blocked) {
-      unblockPost(tmdbId, mediaType);
-      toast.success(`"${title || 'Post'}" unblocked`);
-    } else {
-      blockPost(tmdbId, mediaType, title, posterPath);
-      toast.success(`"${title || 'Post'}" blocked`);
+  const handleBlock = async () => {
+    try {
+      if (blocked) {
+        await unblockPost(tmdbId, mediaType);
+        toast.success(`"${title || 'Post'}" unblocked`);
+      } else {
+        await blockPost(tmdbId, mediaType, title, posterPath);
+        toast.success(`"${title || 'Post'}" blocked`);
+      }
+    } catch (err: any) {
+      const message = err?.message || 'Action failed. Please check your Supabase RLS policies.';
+      toast.error(message);
     }
   };
 
