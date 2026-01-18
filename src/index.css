@@ -313,7 +313,7 @@ html {
     z-index: 0;
   }
 
-  /* Bottom-only blur (stronger near the bottom, none at the top) */
+  /* Bottom-only blur (smooth falloff; no hard "box" behind the logo) */
   .poster-3d-cover--blur {
     position: absolute;
     inset: 0;
@@ -322,13 +322,29 @@ html {
     transition: opacity var(--transition-slow);
     will-change: opacity;
 
-    /* Strong blur + slightly greyed; mask makes the bottom half fully blurred */
-    filter: blur(28px) grayscale(1) saturate(0.85) brightness(0.8);
-    transform: scale(1.1);
+    /* Stronger blur near the bottom, but keep the image readable overall */
+    filter: blur(22px) grayscale(0.95) saturate(0.9) brightness(0.82);
+    transform: scale(1.08);
 
-    /* Top stays clean, bottom half becomes fully blurred */
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 49%, black 50%, black 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, transparent 49%, black 50%, black 100%);
+    /* Smooth gradient mask: clean top → progressively blurred bottom */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 38%,
+      rgba(0, 0, 0, 0.12) 52%,
+      rgba(0, 0, 0, 0.55) 68%,
+      rgba(0, 0, 0, 0.88) 82%,
+      black 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 38%,
+      rgba(0, 0, 0, 0.12) 52%,
+      rgba(0, 0, 0, 0.55) 68%,
+      rgba(0, 0, 0, 0.88) 82%,
+      black 100%
+    );
 
     pointer-events: none;
   }
@@ -394,11 +410,17 @@ html {
 
   .poster-3d-logo {
     position: absolute;
-    left: 10%;
-    right: 10%;
-    bottom: 14%;
-    width: 80%;
-    height: 24%;
+    left: 0;
+    right: 0;
+    bottom: 10%;
+
+    /* Fit edge-to-edge, but keep it inside the bottom half */
+    top: 52%;
+    height: auto;
+    width: 100%;
+    max-height: 42%;
+    padding-inline: 8%;
+
     object-fit: contain;
     opacity: 0;
     transform: translate3d(0%, 6px, 0);
