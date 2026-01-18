@@ -14,7 +14,6 @@ import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Navbar } from "@/components/Navbar";
-import { MorphCursor } from "@/components/MorphCursor";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -96,7 +95,6 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <MorphCursor />
               <BrowserRouter>
                 <ErrorBoundary>
                   <Navbar />
