@@ -106,6 +106,28 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     );
   }
 
+  // If the fetch failed / returned empty, avoid rendering a blank hero.
+  if (featured.length === 0) {
+    return (
+      <div className="relative h-[85vh] min-h-[600px] overflow-hidden">
+        <div className="absolute inset-0 bg-background" />
+        <div className="relative container mx-auto h-full flex items-end pb-24 px-4">
+          <div className="max-w-xl">
+            <h1 className="text-3xl md:text-4xl font-bold">Nothing to show yet</h1>
+            <p className="mt-2 text-sm text-muted-foreground">We couldn’t load trending titles. Please reload.</p>
+            <button
+              type="button"
+              className="mt-4 text-sm font-medium story-link"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const current = featured[currentIndex];
 
   if (!current) return null;
