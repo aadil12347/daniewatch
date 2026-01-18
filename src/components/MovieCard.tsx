@@ -86,7 +86,19 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
                   alt={title}
                   loading="lazy"
                   className={cn(
-                    "poster-3d-cover",
+                    "poster-3d-cover poster-3d-cover--base",
+                    isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                  )}
+                />
+
+                {/* Bottom-only blur layer to make the logo more prominent */}
+                <img
+                  src={posterUrl}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className={cn(
+                    "poster-3d-cover poster-3d-cover--blur",
                     isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                   )}
                 />
@@ -114,26 +126,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
             {isAdmin && blocked && (
               <div className={cn("absolute inset-0 pointer-events-none", "bg-background/20", "animate-fade-in")} />
             )}
-
-            {/* Center Play button (appears on hover) */}
-            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-              <div
-                className={cn(
-                  "pointer-events-none select-none",
-                  "font-semibold text-sm md:text-base",
-                  "px-5 py-2.5 rounded-full",
-                  "bg-background/95 text-foreground",
-                  "shadow-[0_0_18px_hsl(var(--foreground)/0.12)]",
-                  "opacity-0 scale-0 translate-y-3",
-                  "group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0",
-                  "group-hover:animate-enter",
-                  "transition-[transform,opacity,box-shadow] duration-600",
-                  "[transition-timing-function:cubic-bezier(0.23,1,0.32,1)]"
-                )}
-              >
-                <span className="inline-block transition-transform duration-500 group-hover:translate-x-0.5">Play</span>
-              </div>
-            </div>
 
             {/* Rating Badge */}
             <div className="absolute top-2 right-2 z-30 flex items-center gap-1 px-2 py-1 rounded-md glass text-xs font-medium">

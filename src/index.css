@@ -287,6 +287,7 @@ html {
   .poster-3d-wrapper {
     position: absolute;
     inset: 0;
+    overflow: hidden;
     transition: transform var(--transition-slow), box-shadow var(--transition-slow);
     transform: translateZ(0);
     will-change: transform;
@@ -300,6 +301,31 @@ html {
     display: block;
   }
 
+  .poster-3d-cover--base {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  /* Bottom-only blur (stronger near the bottom, none at the top) */
+  .poster-3d-cover--blur {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity var(--transition-slow);
+    will-change: opacity;
+
+    /* Blur but keep it subtle overall; the mask makes the bottom feel stronger */
+    filter: blur(16px) saturate(1.05);
+    transform: scale(1.06);
+
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 45%, black 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 45%, black 100%);
+
+    pointer-events: none;
+  }
+
   .poster-3d-wrapper::before,
   .poster-3d-wrapper::after {
     content: "";
@@ -309,6 +335,7 @@ html {
     position: absolute;
     left: 0;
     pointer-events: none;
+    z-index: 3;
   }
 
   .poster-3d-wrapper::before {
@@ -335,8 +362,13 @@ html {
   }
 
   .group:hover .poster-3d-wrapper {
-    transform: perspective(900px) translateY(-5%) rotateX(25deg) translateZ(0);
-    box-shadow: 0 35px 32px -8px hsl(0 0% 0% / 0.75);
+    /* Reduced tilt (less aggressive than the demo) */
+    transform: perspective(1000px) translateY(-3%) rotateX(12deg) translateZ(0);
+    box-shadow: 0 28px 28px -10px hsl(0 0% 0% / 0.7);
+  }
+
+  .group:hover .poster-3d-cover--blur {
+    opacity: 1;
   }
 
   .group:hover .poster-3d-wrapper::before,
@@ -367,7 +399,7 @@ html {
 
   .group:hover .poster-3d-logo {
     opacity: 1;
-    transform: translate3d(0%, -18px, 100px);
+    transform: translate3d(0%, -18px, 80px);
   }
 
   @media (prefers-reduced-motion: reduce) {
