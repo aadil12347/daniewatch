@@ -364,17 +364,17 @@ html {
     z-index: 3;
   }
 
-  /* Bottom vignette only (removed top vignette) */
+  /* Bottom vignette only (very subtle) */
   .poster-3d-wrapper::after {
     bottom: 0;
-    height: 80px;
+    height: 56px;
     opacity: 1;
     background-image: linear-gradient(
       to bottom,
-      transparent 42%,
-      hsl(var(--background) / 0.22) 62%,
-      hsl(var(--background) / 0.72) 86%,
-      hsl(var(--background) / 0.92) 100%
+      transparent 50%,
+      hsl(var(--background) / 0.08) 70%,
+      hsl(var(--background) / 0.18) 88%,
+      hsl(var(--background) / 0.28) 100%
     );
   }
 
@@ -390,10 +390,7 @@ html {
 
   .group:hover .poster-3d-wrapper::after {
     opacity: 1;
-  }
-
-  .group:hover .poster-3d-wrapper::after {
-    height: 120px;
+    height: 80px;
   }
 
   .poster-3d-logo {
