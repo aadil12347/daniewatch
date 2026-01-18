@@ -246,10 +246,10 @@ export const VideoPlayer = ({
     ? fill
       ? "absolute inset-0 w-full h-full bg-background overflow-hidden"
       : "relative w-full aspect-video bg-background overflow-hidden"
-    : "fixed top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-background";
-
-  const containerStyle = inline ? undefined : ({ position: "fixed" as const, width: "100vw", height: "100vh", top: 0, left: 0 } as const);
-  const mergedStyle = { ...(containerStyle ?? {}), ...(style ?? {}) } as CSSProperties;
+    : "fixed left-0 right-0 bottom-0 top-[var(--app-header-offset,0px)] w-screen h-[calc(100vh-var(--app-header-offset,0px))] z-[9999] bg-background";
+  // For fullscreen mode we offset the whole player below the fixed header via CSS classes.
+  // Keep `style` merging so callers can pass CSS variables (e.g. splash origin).
+  const mergedStyle = { ...(style ?? {}) } as CSSProperties;
 
   // Only offer switching when we're not using a Cloud DB embed (supabase).
   const showSwitch = !isLoading && !!mediaResult && mediaResult.source !== "supabase";
@@ -258,8 +258,14 @@ export const VideoPlayer = ({
   // Mobile: always visible (no hover)
   const switchVisibilityClass = isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100";
 
-  // We intentionally keep the tooltip generic; we don't reveal provider names in the UI.
+  // Switch button placement:
+  // - Inline players: keep controls inside the player bounds
+  // - Fullscreen players: keep controls below the fixed header
+  const switchPlacementClass = inline
+    ? "absolute top-3 right-3"
+    : "fixed right-3 md:right-4 top-[calc(var(--app-header-offset,0px)+0.75rem)] md:top-20";
 
+  // We intentionally keep the tooltip generic; we don't reveal provider names in the UI.
 
   const startSwitchOverlay = () => {
     // Show for ~3s, with a quick fade-out at the end.
@@ -290,7 +296,8 @@ export const VideoPlayer = ({
         {showSwitch && (
           <div
             className={
-              "fixed top-3 right-3 md:top-20 md:right-4 z-[80] pointer-events-auto transition-opacity " +
+              switchPlacementClass +
+              " z-[80] pointer-events-auto transition-opacity " +
               switchVisibilityClass
             }
           >
