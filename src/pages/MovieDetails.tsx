@@ -53,9 +53,11 @@ const MovieDetails = () => {
 
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { user } = useAuth();
-  const { isAdmin } = useAdmin();
-  const { isBlocked, isPinned, filterBlockedPosts } = usePostModeration();
+  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
+  const { isLoading: isModerationLoading, isBlocked, isPinned, filterBlockedPosts } = usePostModeration();
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
+
+  const [blockedForUser, setBlockedForUser] = useState(false);
 
   // URL-driven player state
   const isPlayerOpen = useMemo(() => {
@@ -74,10 +76,28 @@ const MovieDetails = () => {
     }
   }, [movie?.id, optimisticInWatchlist, isInWatchlist]);
 
+  useEffect(() => {
+    if (!id) return;
+    if (isAdminLoading || isModerationLoading) return;
+
+    const blocked = isBlocked(Number(id), 'movie');
+    if (blocked && !isAdmin) {
+      setBlockedForUser(true);
+      setMovie(null);
+      setCast([]);
+      setSimilar([]);
+      setLogoUrl(null);
+      setMediaResult(null);
+      setIsLoading(false);
+    } else {
+      setBlockedForUser(false);
+    }
+  }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
+      if (blockedForUser) return;
       setIsLoading(true);
 
       try {
@@ -90,16 +110,16 @@ const MovieDetails = () => {
 
         setMovie(movieRes);
         setCast(creditsRes.cast.slice(0, 12));
-        
+
         // Filter similar movies with strict certification check
         const filteredSimilar = await filterAdultContentStrict(
-          similarRes.results.map(m => ({ ...m, media_type: "movie" as const })),
+          similarRes.results.map((m) => ({ ...m, media_type: "movie" as const })),
           "movie"
         );
         setSimilar(filteredSimilar.slice(0, 14));
-        
+
         // Get the first English logo or any available logo
-        const logo = imagesRes.logos?.find(l => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
+        const logo = imagesRes.logos?.find((l) => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
         if (logo) {
           setLogoUrl(getImageUrl(logo.file_path, "w500"));
         }
@@ -116,7 +136,7 @@ const MovieDetails = () => {
 
     fetchData();
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, blockedForUser]);
 
   if (isLoading) {
     return (
@@ -129,6 +149,23 @@ const MovieDetails = () => {
   }
 
   if (!movie) {
+    if (blockedForUser) {
+      return (
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto px-4 pt-32 text-center">
+            <h1 className="text-2xl font-bold mb-2">Not available</h1>
+            <p className="text-muted-foreground mb-6">This content has been blocked by the administrator.</p>
+            <Button asChild>
+              <Link to="/">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 pt-32 text-center">
