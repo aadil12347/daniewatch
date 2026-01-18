@@ -9,6 +9,7 @@ import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -27,6 +28,8 @@ const TV_ACTION_GENRE = 10759;
 const TV_FANTASY_GENRE = 10765;
 
 const Korean = () => {
+  const { filterBlockedPosts } = usePostModeration();
+
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
@@ -151,10 +154,13 @@ const Korean = () => {
           return dateB.localeCompare(dateA);
         });
 
+        // Hide blocked posts for normal users; admins can toggle show/hide
+        const visibleResults = filterBlockedPosts(sortedResults);
+
         if (reset) {
-          setItems(sortedResults);
+          setItems(visibleResults);
         } else {
-          setItems((prev) => [...prev, ...sortedResults]);
+          setItems((prev) => [...prev, ...visibleResults]);
         }
 
         // Has more if either endpoint has more pages
@@ -167,7 +173,7 @@ const Korean = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedTags, selectedYear, setIsLoadingMore]
+    [selectedTags, selectedYear, setIsLoadingMore, filterBlockedPosts]
   );
 
   // Reset and fetch when filters change
