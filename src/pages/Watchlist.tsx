@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 
@@ -8,15 +9,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Bookmark, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 
 const Watchlist = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { user } = useAuth();
   const { getWatchlistAsMovies, loading } = useWatchlist();
   const watchlistMovies = getWatchlistAsMovies();
-  const visibleWatchlist = filterBlockedPosts(watchlistMovies);
+  const visibleWatchlist = useMemo(() => filterBlockedPosts(watchlistMovies), [filterBlockedPosts, watchlistMovies]);
 
-  const pageIsLoading = loading || isModerationLoading;
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleWatchlist, { enabled: !loading });
+
+  const pageIsLoading = loading || isModerationLoading || isHoverPreloadLoading;
 
   return (
     <>

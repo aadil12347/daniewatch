@@ -10,6 +10,7 @@ import { useListStateCache } from "@/hooks/useListStateCache";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
+import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -28,7 +29,9 @@ const Movies = () => {
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
 
-  const pageIsLoading = isLoading || isModerationLoading;
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(movies, { enabled: !isLoading });
+
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
 
   // Fetch genres on mount
   useEffect(() => {

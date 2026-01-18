@@ -10,6 +10,7 @@ import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -40,7 +41,9 @@ const Anime = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const pageIsLoading = isLoading || isModerationLoading;
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(items, { enabled: !isLoading });
+
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
   const visibleItems = filterBlockedPosts(items, "tv");
 
   const { saveCache, getCache } = useListStateCache<Movie>();
