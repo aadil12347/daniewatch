@@ -13,9 +13,6 @@ export function MorphCursor() {
     const cursor = cursorRef.current;
     if (!cursor) return;
 
-    document.documentElement.classList.add("cursor-morph-enabled");
-
-    let onElement: Element | undefined;
     let raf = 0;
     let lastEvent: MouseEvent | null = null;
 
@@ -36,21 +33,25 @@ export function MorphCursor() {
     };
 
     const createState = (e: MouseEvent) => {
+      const hoveredPoster = (e.target as Element | null)?.closest?.(
+        ".poster-3d-card"
+      ) as HTMLElement | null;
+
+      // When not on a poster, hide the glow completely.
       const defaultState = {
         x: e.clientX,
         y: e.clientY,
-        width: 42,
-        height: 42,
+        width: 48,
+        height: 48,
         radius: "999px",
-        scale: 1,
+        scale: 0,
       };
 
-      if (!onElement) return defaultState;
+      if (!hoveredPoster) return defaultState;
 
-      const rect = (onElement as HTMLElement).getBoundingClientRect();
-      const radius = window
-        .getComputedStyle(onElement)
-        .borderTopLeftRadius || "999px";
+      const rect = hoveredPoster.getBoundingClientRect();
+      const radius =
+        window.getComputedStyle(hoveredPoster).borderTopLeftRadius || "999px";
 
       return {
         ...defaultState,
@@ -72,36 +73,11 @@ export function MorphCursor() {
       });
     };
 
-    const onEnterInteractive = (e: Event) => {
-      onElement = e.currentTarget as Element;
-      // Slightly stronger presence when locked on an element.
-      cursor.style.setProperty("--scale", "1");
-    };
-
-    const onLeaveInteractive = () => {
-      onElement = undefined;
-    };
-
-    const interactiveSelector = "a, button, [role='button'], input, select, textarea";
-    const interactive = Array.from(
-      document.querySelectorAll(interactiveSelector)
-    );
-
-    interactive.forEach((el) => {
-      el.addEventListener("mouseenter", onEnterInteractive);
-      el.addEventListener("mouseleave", onLeaveInteractive);
-    });
-
     document.addEventListener("mousemove", onMove, { passive: true });
 
     return () => {
       cancelAnimationFrame(raf);
       document.removeEventListener("mousemove", onMove);
-      interactive.forEach((el) => {
-        el.removeEventListener("mouseenter", onEnterInteractive);
-        el.removeEventListener("mouseleave", onLeaveInteractive);
-      });
-      document.documentElement.classList.remove("cursor-morph-enabled");
     };
   }, []);
 
