@@ -465,6 +465,18 @@ html {
     transform: translate3d(0, -12%, 160px) scale(1.02);
   }
 
+  /* Hover portal (renders above carousel overflow so it never gets clipped) */
+  .poster-3d-hover-portal {
+    position: fixed;
+    pointer-events: none;
+    z-index: 2000;
+  }
+
+  .poster-3d-character--portal {
+    opacity: 1;
+    transform: translate3d(0, -12%, 160px) scale(1.02);
+  }
+
   /* Logo: TOP layer */
   .poster-3d-logo {
     position: absolute;
