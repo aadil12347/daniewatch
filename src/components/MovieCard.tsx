@@ -50,9 +50,22 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   const [isPortalMounted, setIsPortalMounted] = useState(false);
   const [isPortalActive, setIsPortalActive] = useState(false);
 
+  const portalEnabled = canUseHoverPortal && Boolean(hoverImageUrl);
+
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
   const isNearViewport = useInViewport(cardRef);
+
+  // Preload hover character image as the card gets near the viewport (so hover feels instant while scrolling)
+  useEffect(() => {
+    if (!hoverImageUrl) return;
+    if (!isNearViewport && !isHovered) return;
+
+    const img = new Image();
+    img.decoding = "async";
+    img.loading = "eager";
+    img.src = hoverImageUrl;
+  }, [hoverImageUrl, isNearViewport, isHovered]);
 
   // Preload the hover logo as soon as the card is on/near screen.
   const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, isPosterActive || isNearViewport);
@@ -97,8 +110,6 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
 
   // Smooth enter/exit for the portaled hover image
   useEffect(() => {
-    const portalEnabled = canUseHoverPortal && Boolean(hoverImageUrl);
-
     if (!portalEnabled) {
       setIsPortalMounted(false);
       setIsPortalActive(false);
@@ -119,7 +130,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
       setHoverRect(null);
     }, 220);
     return () => window.clearTimeout(t);
-  }, [isHovered, canUseHoverPortal, hoverImageUrl]);
+  }, [isHovered, portalEnabled]);
 
   // Sync optimistic state when actual state catches up
   useEffect(() => {
