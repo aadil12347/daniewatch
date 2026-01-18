@@ -9,6 +9,7 @@ import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 type IndianLang = "all" | "ta" | "te" | "hi";
 
@@ -20,6 +21,8 @@ const INDIAN_LANGS: Array<{ key: IndianLang; label: string; tmdbLang?: string }>
 ];
 
 const Indian = () => {
+  const { filterBlockedPosts } = usePostModeration();
+
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedLang, setSelectedLang] = useState<IndianLang>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -133,12 +136,14 @@ const Indian = () => {
           return dateB.localeCompare(dateA);
         });
 
+        const visibleResults = filterBlockedPosts(sortedResults);
+
         if (reset) {
-          setItems(sortedResults);
+          setItems(visibleResults);
         } else {
           setItems((prev) => {
             const existingKeys = new Set(prev.map((item) => `${item.id}-${item.media_type}`));
-            const newItems = sortedResults.filter((item) => !existingKeys.has(`${item.id}-${item.media_type}`));
+            const newItems = visibleResults.filter((item) => !existingKeys.has(`${item.id}-${item.media_type}`));
             return [...prev, ...newItems];
           });
         }
@@ -154,7 +159,7 @@ const Indian = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedLang, setIsLoadingMore]
+    [selectedLang, setIsLoadingMore, filterBlockedPosts]
   );
 
   // Reset and fetch when language changes

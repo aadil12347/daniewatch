@@ -9,6 +9,7 @@ import { Movie, filterAdultContent } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
+import { usePostModeration } from "@/hooks/usePostModeration";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -25,6 +26,8 @@ const ANIME_TAGS = [
 ];
 
 const Anime = () => {
+  const { filterBlockedPosts } = usePostModeration();
+
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
@@ -104,10 +107,15 @@ const Anime = () => {
         const response = await res.json();
 
         const filteredResults = filterAdultContent(response.results) as Movie[];
+        const visibleResults = filterBlockedPosts(
+          filteredResults.map((m) => ({ ...m, media_type: "tv" as const })),
+          "tv"
+        );
+
         if (reset) {
-          setItems(filteredResults);
+          setItems(visibleResults);
         } else {
-          setItems((prev) => [...prev, ...filteredResults]);
+          setItems((prev) => [...prev, ...visibleResults]);
         }
         setHasMore(response.page < response.total_pages);
       } catch (error) {
@@ -117,7 +125,7 @@ const Anime = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedTags, selectedYear, setIsLoadingMore]
+    [selectedTags, selectedYear, setIsLoadingMore, filterBlockedPosts]
   );
 
   // Reset and fetch when filters change
