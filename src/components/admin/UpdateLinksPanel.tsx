@@ -109,7 +109,6 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [isBackfillChecking, setIsBackfillChecking] = useState(false);
   const [backfillMissingCount, setBackfillMissingCount] = useState<number | null>(null);
   const [backfillLastCheckedAt, setBackfillLastCheckedAt] = useState<number | null>(null);
-  const [backfillDialogOpen, setBackfillDialogOpen] = useState(false);
 
   const loadSeasonData = useCallback(async (content: any, season: number) => {
     const seasonKey = `season_${season}`;
@@ -661,62 +660,45 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <AlertDialog open={backfillDialogOpen} onOpenChange={(open) => {
-              setBackfillDialogOpen(open);
-              if (open) void checkMissingMetadata();
-            }}>
-              <AlertDialogTrigger asChild>
-                <Button variant="secondary" disabled={isBackfilling} className="shrink-0">
-                  {isBackfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                  <span className="ml-2">Update genres</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Update genres & year for existing entries?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    First we check how many entries are missing genres/year. Then you can run the update to fill only missing data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
+            <Button
+              variant="secondary"
+              disabled={isBackfilling || isBackfillChecking}
+              className="shrink-0"
+              onClick={() => {
+                // First click: check. Second click (after check): run update.
+                if (backfillMissingCount === null) {
+                  void checkMissingMetadata();
+                  return;
+                }
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Missing entries:</span>
-                    <span className="font-medium">
-                      {isBackfillChecking ? "Checking…" : backfillMissingCount === null ? "Not checked" : backfillMissingCount}
-                    </span>
-                  </div>
-                  {backfillLastCheckedAt && (
-                    <div className="text-xs text-muted-foreground text-right">
-                      Checked {formatDistanceToNow(backfillLastCheckedAt, { addSuffix: true })}
-                    </div>
-                  )}
-                </div>
+                if (backfillMissingCount === 0) {
+                  toast({ title: "Nothing to update", description: "All entries already have genres/year." });
+                  return;
+                }
 
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isBackfilling || isBackfillChecking}>Close</AlertDialogCancel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isBackfilling || isBackfillChecking}
-                    onClick={() => void checkMissingMetadata()}
-                  >
-                    Check
-                  </Button>
-                  <AlertDialogAction
-                    disabled={
-                      isBackfilling ||
-                      isBackfillChecking ||
-                      backfillMissingCount === null ||
-                      backfillMissingCount === 0
-                    }
-                    onClick={() => void runMetadataBackfill()}
-                  >
-                    Run update
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                void runMetadataBackfill();
+              }}
+            >
+              {isBackfilling || isBackfillChecking ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RotateCcw className="w-4 h-4" />
+              )}
+              <span className="ml-2">
+                {backfillMissingCount === null
+                  ? "Check missing genres"
+                  : backfillMissingCount === 0
+                  ? "All genres updated"
+                  : `Update genres (${backfillMissingCount})`}
+              </span>
+            </Button>
+
+            <div className="text-xs text-muted-foreground text-right">
+              {backfillMissingCount === null
+                ? "Click to scan database for missing metadata"
+                : `Missing: ${backfillMissingCount}`}
+              {backfillLastCheckedAt ? ` • Checked ${formatDistanceToNow(backfillLastCheckedAt, { addSuffix: true })}` : ""}
+            </div>
 
             {isBackfilling && backfillProgress && (
               <div className="text-xs text-muted-foreground text-right">
