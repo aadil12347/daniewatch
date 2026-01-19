@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
+import { Movie, filterAdultContentStrict, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
@@ -14,7 +14,8 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { groupDbLinkedFirst } from "@/lib/sortContent";
+import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
+import { isIndianScope } from "@/lib/contentScope";
 
 type IndianLang = "all" | "ta" | "te" | "hi";
 
@@ -27,13 +28,28 @@ const INDIAN_LANGS: Array<{ key: IndianLang; label: string; tmdbLang?: string }>
 
 const BATCH_SIZE = 18;
 
+type DbEntry = {
+  id: string;
+  type: "movie" | "series";
+  genre_ids?: number[] | null;
+  release_year?: number | null;
+  title?: string | null;
+};
+
 const Indian = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
+  const {
+    getAvailability,
+    getDbMetaByKey,
+    entries: dbEntries,
+    metaByKey,
+    isLoading: isAvailabilityLoading,
+  } = useEntryAvailability();
 
   const [items, setItems] = useState<Movie[]>([]);
+  const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
   const [displayCount, setDisplayCount] = useState(0);
   const [animateFromIndex, setAnimateFromIndex] = useState<number | null>(null);
   const [pendingLoadMore, setPendingLoadMore] = useState(false);
@@ -48,20 +64,110 @@ const Indian = () => {
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const restoreScrollYRef = useRef<number | null>(null);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
+  const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
+    const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
+    return `${m.id}-${media}`;
+  }, []);
+
+  const normalizedDbEntries = useMemo(
+    () => (dbEntries as unknown as DbEntry[]) ?? [],
+    [dbEntries]
+  );
+
+  // Filter DB entries by Indian scope using DB metadata
+  const dbEntriesMatchingLanguage = useMemo(() => {
+    return normalizedDbEntries.filter((e) => {
+      // Check if entry has Indian language in DB metadata
+      const meta = metaByKey.get(`${e.id}-${e.type === "series" ? "tv" : "movie"}`);
+      if (meta?.originalLanguage) {
+        return ["hi", "ta", "te"].includes(meta.originalLanguage);
+      }
+      return false; // If no metadata, skip (will be in TMDB results if relevant)
+    });
+  }, [normalizedDbEntries, metaByKey]);
+
+  const hydrateDbOnly = useCallback(
+    async (tmdbKeys: Set<string>, limit: number) => {
+      if (metaByKey.size === 0) return;
+
+      const candidates = dbEntriesMatchingLanguage
+        .map((e) => ({
+          id: Number(e.id),
+          mediaType: e.type === "series" ? ("tv" as const) : ("movie" as const),
+        }))
+        .filter((e) => Number.isFinite(e.id))
+        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
+        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`));
+
+      const hydratedKeys = new Set(dbOnlyHydrated.map((m) => getKey(m)));
+      const toHydrate = candidates
+        .filter((c) => !hydratedKeys.has(`${c.id}-${c.mediaType}`))
+        .slice(0, limit);
+
+      if (toHydrate.length === 0) return;
+
+      const BATCH = 5;
+      const results: Movie[] = [];
+
+      for (let i = 0; i < toHydrate.length; i += BATCH) {
+        const batch = toHydrate.slice(i, i + BATCH);
+        const hydrated = await Promise.all(
+          batch.map(async ({ id, mediaType }) => {
+            try {
+              if (mediaType === "movie") {
+                const d = await getMovieDetails(id);
+                return { ...d, media_type: "movie" as const } as Movie;
+              }
+              const d = await getTVDetails(id);
+              return { ...d, media_type: "tv" as const } as Movie;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const cleaned = (hydrated.filter(Boolean) as Movie[]).filter(isIndianScope);
+        results.push(...(await filterAdultContentStrict(cleaned)));
+      }
+
+      if (results.length > 0) {
+        setDbOnlyHydrated((prev) => {
+          const seen = new Set(prev.map((m) => getKey(m)));
+          const next = [...prev];
+          for (const m of results) {
+            const k = getKey(m);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            next.push(m);
+          }
+          return next;
+        });
+      }
+    },
+    [dbEntriesMatchingLanguage, dbOnlyHydrated, getKey, metaByKey]
+  );
+
+  const mergedBase = useMemo(() => {
+    return mergeDbAndTmdb({
+      tmdbItems: items,
+      dbOnlyHydratedItems: dbOnlyHydrated,
+      isDbItem: (key) => metaByKey.has(key),
+      getDbMeta: getDbMetaByKey,
+    });
+  }, [dbOnlyHydrated, getDbMetaByKey, items, metaByKey]);
+
+  const baseVisible = useMemo(
+    () => filterBlockedPosts(mergedBase),
+    [filterBlockedPosts, mergedBase]
+  );
 
   const visibleItems = useMemo(() => {
-    const sorted = groupDbLinkedFirst(baseVisible, (it) => {
-      const a = getAvailability(it.id);
-      return a.hasWatch || a.hasDownload;
-    });
-
     return isAdmin && showOnlyDbLinked
-      ? sorted.filter((it) => {
+      ? baseVisible.filter((it) => {
           const a = getAvailability(it.id);
           return a.hasWatch || a.hasDownload;
         })
-      : sorted;
+      : baseVisible;
   }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
@@ -127,6 +233,7 @@ const Indian = () => {
     async (pageNum: number, reset: boolean = false) => {
       if (reset) {
         setIsLoading(true);
+        setDbOnlyHydrated([]);
       } else {
         setIsLoadingMore(true);
       }
@@ -195,6 +302,14 @@ const Indian = () => {
 
         const visibleResults = filterBlockedPosts(sortedResults);
 
+        // Hydrate DB-only items BEFORE first reveal (prevents reorder jumps)
+        if (reset && metaByKey.size > 0) {
+          const tmdbKeys = new Set(
+            visibleResults.map((m) => getKey(m))
+          );
+          await hydrateDbOnly(tmdbKeys, 36);
+        }
+
         if (reset) {
           setItems(visibleResults);
           setDisplayCount(BATCH_SIZE);
@@ -222,7 +337,7 @@ const Indian = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedLang, setIsLoadingMore, filterBlockedPosts]
+    [selectedLang, setIsLoadingMore, filterBlockedPosts, getKey, hydrateDbOnly, metaByKey.size]
   );
 
   // Reset and fetch when language changes

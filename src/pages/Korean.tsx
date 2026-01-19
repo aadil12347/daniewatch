@@ -15,7 +15,7 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
-import { isKoreanScope, KOREAN_LANGS } from "@/lib/contentScope";
+import { isKoreanScope, isAnimeScope, KOREAN_LANGS } from "@/lib/contentScope";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -152,7 +152,7 @@ const Korean = () => {
 
         const cleaned = hydrated.filter(Boolean) as Movie[];
         const strict = await filterAdultContentStrict(cleaned);
-        results.push(...strict.filter(isKoreanScope));
+        results.push(...strict.filter(m => isKoreanScope(m) && !isAnimeScope(m)));
       }
 
       if (results.length > 0) {
@@ -346,7 +346,8 @@ const Korean = () => {
           ...tvJson.flatMap((d: any) => (d?.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))),
         ];
 
-        const combinedResults = (await filterAdultContentStrict(combined)).filter(isKoreanScope);
+        const combinedResults = (await filterAdultContentStrict(combined))
+          .filter(m => isKoreanScope(m) && !isAnimeScope(m));
 
         // Sort by release date descending (TMDB fallback ordering only)
         const sortedResults = combinedResults.sort((a, b) => {
