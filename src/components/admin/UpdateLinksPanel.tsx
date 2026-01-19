@@ -47,6 +47,8 @@ interface TMDBResult {
   posterUrl: string | null;
   year: string;
   type: "movie" | "series";
+  genreIds?: number[];
+  releaseYear?: number | null;
   seasons?: number;
   seasonDetails?: { season_number: number; episode_count: number }[];
 }
@@ -161,19 +163,24 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         // Process Movie
         if (movieResult.status === "fulfilled" && movieResult.value.title) {
           const movie = movieResult.value;
+          const releaseYear = movie.release_date ? Number(movie.release_date.split("-")[0]) : null;
+
           movieCandidate = {
             id: movie.id,
             title: movie.title,
             posterUrl: getImageUrl(movie.poster_path, "w342"),
             year: movie.release_date?.split("-")[0] || "N/A",
             type: "movie",
+            genreIds: movie.genres?.map((g: any) => g.id).filter(Boolean) ?? [],
+            releaseYear: Number.isFinite(releaseYear as number) ? releaseYear : null,
           };
         }
 
         // Process Series
         if (tvResult.status === "fulfilled" && tvResult.value.name) {
           const show = tvResult.value;
-          const validSeasons = show.seasons?.filter((s) => s.season_number > 0) || [];
+          const validSeasons = show.seasons?.filter((s: any) => s.season_number > 0) || [];
+          const releaseYear = show.first_air_date ? Number(show.first_air_date.split("-")[0]) : null;
 
           seriesCandidate = {
             id: show.id,
@@ -181,8 +188,10 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
             posterUrl: getImageUrl(show.poster_path, "w342"),
             year: show.first_air_date?.split("-")[0] || "N/A",
             type: "series",
+            genreIds: show.genres?.map((g: any) => g.id).filter(Boolean) ?? [],
+            releaseYear: Number.isFinite(releaseYear as number) ? releaseYear : null,
             seasons: show.number_of_seasons,
-            seasonDetails: validSeasons.map((s) => ({
+            seasonDetails: validSeasons.map((s: any) => ({
               season_number: s.season_number,
               episode_count: s.episode_count,
             })),
@@ -254,6 +263,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   );
 
   const didAutoSearchRef = useRef(false);
+  const didBackfillRef = useRef(false);
 
   // Auto-search on mount (page via URL param OR modal via prop)
   useEffect(() => {
@@ -264,6 +274,89 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
     handleSearch(idParam);
   }, [handleSearch, initialTmdbId, searchParams]);
+
+  /**
+   * One-time manual backfill for existing DB rows that are missing genre_ids/release_year.
+   * Trigger: open Update Links page with ?backfill=1 while logged in as admin.
+   */
+  useEffect(() => {
+    const shouldBackfill = (searchParams.get("backfill") ?? "").trim() === "1";
+    if (!shouldBackfill) return;
+    if (didBackfillRef.current) return;
+    didBackfillRef.current = true;
+
+    void (async () => {
+      try {
+        toast({
+          title: "Backfill started",
+          description: "Filling missing genres/year for existing entries...",
+        });
+
+        const { data, error } = await supabase
+          .from("entries")
+          .select("id,type")
+          .or("genre_ids.is.null,release_year.is.null");
+
+        if (error) throw error;
+
+        const rows = (data ?? []) as Array<{ id: string; type: "movie" | "series" }>;
+        let updated = 0;
+        let failed = 0;
+
+        // Small batches to avoid TMDB rate limits.
+        const BATCH = 10;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const slice = rows.slice(i, i + BATCH);
+
+          await Promise.all(
+            slice.map(async (row) => {
+              try {
+                const tmdbIdNum = Number(row.id);
+                if (!Number.isFinite(tmdbIdNum)) throw new Error("Invalid TMDB id");
+
+                // Try movie details first; fallback to TV.
+                const movie = await getMovieDetails(tmdbIdNum).catch(() => null);
+                const show = movie ? null : await getTVDetails(tmdbIdNum).catch(() => null);
+
+                const genreIds = (movie?.genres ?? show?.genres ?? [])
+                  .map((g: any) => g?.id)
+                  .filter((n: any) => typeof n === "number");
+
+                const yearStr = (movie?.release_date ?? show?.first_air_date ?? "").split("-")[0];
+                const releaseYear = yearStr ? Number(yearStr) : null;
+
+                const { error: updateErr } = await supabase
+                  .from("entries")
+                  .update({
+                    genre_ids: genreIds.length ? genreIds : null,
+                    release_year: Number.isFinite(releaseYear as number) ? releaseYear : null,
+                  })
+                  .eq("id", row.id);
+
+                if (updateErr) throw updateErr;
+                updated++;
+              } catch (e) {
+                console.error("[backfill] failed", row, e);
+                failed++;
+              }
+            })
+          );
+        }
+
+        toast({
+          title: "Backfill finished",
+          description: `Updated ${updated} entries${failed ? `, failed ${failed}` : ""}.`,
+        });
+      } catch (e: any) {
+        console.error("[backfill] error", e);
+        toast({
+          title: "Backfill error",
+          description: e?.message || "Failed to backfill entries.",
+          variant: "destructive",
+        });
+      }
+    })();
+  }, [searchParams, toast]);
 
   const handleSeasonChange = async (season: string) => {
     const seasonNum = parseInt(season, 10);
@@ -297,7 +390,14 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     setIsSaving(true);
 
     if (tmdbResult.type === "movie") {
-      const result = await saveMovieEntry(String(tmdbResult.id), movieWatchLink, movieDownloadLink, trimmedHover);
+      const result = await saveMovieEntry(
+        String(tmdbResult.id),
+        movieWatchLink,
+        movieDownloadLink,
+        trimmedHover,
+        tmdbResult.genreIds,
+        tmdbResult.releaseYear ?? null
+      );
       if (result.success) {
         setEntryExists(true);
         toast({ title: "Saved", description: "Movie links saved successfully." });
@@ -306,7 +406,15 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
       const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
 
-      const result = await saveSeriesSeasonEntry(String(tmdbResult.id), selectedSeason, watchLinks, downloadLinks, trimmedHover);
+      const result = await saveSeriesSeasonEntry(
+        String(tmdbResult.id),
+        selectedSeason,
+        watchLinks,
+        downloadLinks,
+        trimmedHover,
+        tmdbResult.genreIds,
+        tmdbResult.releaseYear ?? null
+      );
       if (result.success) {
         setEntryExists(true);
         toast({ title: "Saved", description: `Season ${selectedSeason} links saved successfully.` });
