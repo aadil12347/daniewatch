@@ -44,8 +44,9 @@ export const MovieCard = ({
   animationDelay = 0,
   className,
   enableReveal = true,
-  enableHoverPortal = true,
-  hoverCharacterMode = "popout",
+  // Homepage-style defaults everywhere: contained character + no portal
+  enableHoverPortal = false,
+  hoverCharacterMode = "contained",
 }: MovieCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
