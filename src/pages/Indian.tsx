@@ -39,6 +39,7 @@ const Indian = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const restoreScrollYRef = useRef<number | null>(null);
 
   const baseVisible = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
 
@@ -69,6 +70,7 @@ const Indian = () => {
   useEffect(() => {
     const cached = getCache(selectedLang, []);
     if (cached && cached.items.length > 0) {
+      restoreScrollYRef.current = cached.scrollY ?? 0;
       setItems(cached.items);
       setPage(cached.page);
       setHasMore(cached.hasMore);
@@ -78,6 +80,22 @@ const Indian = () => {
     setIsInitialized(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Restore scroll position after cache is applied
+  useEffect(() => {
+    if (!isRestoredFromCache) return;
+    if (items.length === 0) return;
+
+    const y = restoreScrollYRef.current;
+    if (y === null) return;
+    restoreScrollYRef.current = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, left: 0, behavior: "auto" });
+      });
+    });
+  }, [isRestoredFromCache, items.length]);
 
   // Save cache before unmount / route change
   useEffect(() => {

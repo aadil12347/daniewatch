@@ -47,14 +47,17 @@ const Anime = () => {
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const restoreScrollYRef = useRef<number | null>(null);
 
   const baseVisible = useMemo(() => filterBlockedPosts(items, "tv"), [filterBlockedPosts, items]);
 
   const visibleItems = useMemo(() => {
-    const sorted = groupDbLinkedFirst(baseVisible, (it) => {
-      const a = getAvailability(it.id);
-      return a.hasWatch || a.hasDownload;
-    });
+    const sorted = isAvailabilityLoading
+      ? baseVisible
+      : groupDbLinkedFirst(baseVisible, (it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        });
 
     return isAdmin && showOnlyDbLinked
       ? sorted.filter((it) => {
@@ -62,7 +65,7 @@ const Anime = () => {
           return a.hasWatch || a.hasDownload;
         })
       : sorted;
-  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
+  }, [baseVisible, getAvailability, isAdmin, isAvailabilityLoading, showOnlyDbLinked]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleItems, { enabled: !isLoading });
 
@@ -74,6 +77,7 @@ const Anime = () => {
   useEffect(() => {
     const cached = getCache("default", selectedTags);
     if (cached && cached.items.length > 0) {
+      restoreScrollYRef.current = cached.scrollY ?? 0;
       setItems(cached.items);
       setPage(cached.page);
       setHasMore(cached.hasMore);
@@ -82,6 +86,22 @@ const Anime = () => {
     }
     setIsInitialized(true);
   }, []);
+
+  // Restore scroll position after cache is applied
+  useEffect(() => {
+    if (!isRestoredFromCache) return;
+    if (items.length === 0) return;
+
+    const y = restoreScrollYRef.current;
+    if (y === null) return;
+    restoreScrollYRef.current = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, left: 0, behavior: "auto" });
+      });
+    });
+  }, [isRestoredFromCache, items.length]);
 
   // Save cache before unmount
   useEffect(() => {
@@ -258,7 +278,7 @@ const Anime = () => {
                 ))
               : visibleItems.map((item, index) => (
                   <MovieCard
-                    key={`${item.id}-${index}`}
+                    key={`${item.id}-${item.media_type ?? "tv"}`}
                     movie={{ ...item, media_type: item.media_type ?? "tv" }}
                     animationDelay={Math.min(index * 30, 300)}
                   />

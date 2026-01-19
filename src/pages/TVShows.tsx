@@ -29,6 +29,7 @@ const TVShows = () => {
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const restoreScrollYRef = useRef<number | null>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
@@ -39,10 +40,12 @@ const TVShows = () => {
   const baseVisible = useMemo(() => filterBlockedPosts(shows, "tv"), [filterBlockedPosts, shows]);
 
   const visibleShows = useMemo(() => {
-    const sorted = groupDbLinkedFirst(baseVisible, (s) => {
-      const a = getAvailability(s.id);
-      return a.hasWatch || a.hasDownload;
-    });
+    const sorted = isAvailabilityLoading
+      ? baseVisible
+      : groupDbLinkedFirst(baseVisible, (s) => {
+          const a = getAvailability(s.id);
+          return a.hasWatch || a.hasDownload;
+        });
 
     return isAdmin && showOnlyDbLinked
       ? sorted.filter((s) => {
@@ -50,7 +53,7 @@ const TVShows = () => {
           return a.hasWatch || a.hasDownload;
         })
       : sorted;
-  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
+  }, [baseVisible, getAvailability, isAdmin, isAvailabilityLoading, showOnlyDbLinked]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleShows, { enabled: !isLoading });
 
@@ -73,6 +76,7 @@ const TVShows = () => {
   useEffect(() => {
     const cached = getCache("default", selectedGenres);
     if (cached && cached.items.length > 0) {
+      restoreScrollYRef.current = cached.scrollY ?? 0;
       setShows(cached.items);
       setPage(cached.page);
       setHasMore(cached.hasMore);
@@ -81,6 +85,22 @@ const TVShows = () => {
     }
     setIsInitialized(true);
   }, []);
+
+  // Restore scroll position after cache is applied
+  useEffect(() => {
+    if (!isRestoredFromCache) return;
+    if (shows.length === 0) return;
+
+    const y = restoreScrollYRef.current;
+    if (y === null) return;
+    restoreScrollYRef.current = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, left: 0, behavior: "auto" });
+      });
+    });
+  }, [isRestoredFromCache, shows.length]);
 
   // Save cache before unmount
   useEffect(() => {
@@ -253,7 +273,7 @@ const TVShows = () => {
                 ))
               : visibleShows.map((show, index) => (
                   <MovieCard
-                    key={`${show.id}-${index}`}
+                    key={`${show.id}-tv`}
                     movie={{ ...show, media_type: "tv" }}
                     animationDelay={Math.min(index * 30, 300)}
                   />

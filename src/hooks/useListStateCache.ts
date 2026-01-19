@@ -10,6 +10,7 @@ interface CacheData<T> {
   hasMore: boolean;
   activeTab: string;
   selectedFilters: number[];
+  scrollY: number;
   timestamp: number;
 }
 
@@ -18,9 +19,10 @@ export const useListStateCache = <T>() => {
   const storageKey = `${CACHE_KEY_PREFIX}${location.pathname}`;
 
   const saveCache = useCallback(
-    (data: Omit<CacheData<T>, "timestamp">) => {
+    (data: Omit<CacheData<T>, "timestamp" | "scrollY">) => {
       const cacheData: CacheData<T> = {
         ...data,
+        scrollY: typeof window !== "undefined" ? window.scrollY : 0,
         timestamp: Date.now(),
       };
       try {
