@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Movie, filterAdultContentStrict } from "@/lib/tmdb";
+import { Movie, filterAdultContentStrict, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
@@ -14,7 +14,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { groupDbLinkedFirst } from "@/lib/sortContent";
+import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -34,13 +34,29 @@ const TV_FANTASY_GENRE = 10765;
 
 const BATCH_SIZE = 18;
 
+type DbEntry = {
+  id: string;
+  type: "movie" | "series";
+  genre_ids?: number[] | null;
+  release_year?: number | null;
+  title?: string | null;
+};
+
 const Korean = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
+  const {
+    getAvailability,
+    getDbMetaByKey,
+    entries: dbEntries,
+    metaByKey,
+    isLoading: isAvailabilityLoading,
+  } = useEntryAvailability();
 
   const [items, setItems] = useState<Movie[]>([]);
+  const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
+
   const [displayCount, setDisplayCount] = useState(0);
   const [animateFromIndex, setAnimateFromIndex] = useState<number | null>(null);
   const [pendingLoadMore, setPendingLoadMore] = useState(false);
@@ -58,23 +74,122 @@ const Korean = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
+  const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
+    const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
+    return `${m.id}-${media}`;
+  }, []);
+
+  const normalizedDbGenreSet = useMemo(() => {
+    // For DB metadata filtering, allow TV equivalents for Action/Fantasy tags.
+    const s = new Set<number>(selectedTags);
+    if (selectedTags.includes(28)) s.add(TV_ACTION_GENRE);
+    if (selectedTags.includes(14)) s.add(TV_FANTASY_GENRE);
+    return s;
+  }, [selectedTags]);
+
+  const dbEntriesMatchingFilters = useMemo(() => {
+    const entries = (dbEntries as unknown as DbEntry[]) ?? [];
+
+    return entries.filter((e) => {
+      const genreIds = e.genre_ids ?? [];
+      const year = e.release_year ?? null;
+
+      // Genre filter (overlap)
+      if (normalizedDbGenreSet.size > 0) {
+        const hasOverlap = genreIds.some((g) => normalizedDbGenreSet.has(g));
+        if (!hasOverlap) return false;
+      }
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          if (typeof year !== "number" || year > 2019) return false;
+        } else {
+          if (typeof year !== "number" || String(year) !== selectedYear) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [dbEntries, normalizedDbGenreSet, selectedYear]);
+
+  const hydrateDbOnly = useCallback(
+    async (tmdbKeys: Set<string>, limit: number) => {
+      const candidates = dbEntriesMatchingFilters
+        .map((e) => {
+          const mediaType = e.type === "series" ? ("tv" as const) : ("movie" as const);
+          return { id: Number(e.id), mediaType };
+        })
+        .filter((e) => Number.isFinite(e.id))
+        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
+        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`));
+
+      // Remove ones we already hydrated
+      const hydratedKeys = new Set(dbOnlyHydrated.map((m) => getKey(m)));
+      const toHydrate = candidates.filter((c) => !hydratedKeys.has(`${c.id}-${c.mediaType}`)).slice(0, limit);
+      if (toHydrate.length === 0) return;
+
+      const BATCH = 5;
+      const results: Movie[] = [];
+
+      for (let i = 0; i < toHydrate.length; i += BATCH) {
+        const batch = toHydrate.slice(i, i + BATCH);
+        const hydrated = await Promise.all(
+          batch.map(async ({ id, mediaType }) => {
+            try {
+              if (mediaType === "movie") {
+                const d = await getMovieDetails(id);
+                return { ...d, media_type: "movie" as const } as Movie;
+              }
+              const d = await getTVDetails(id);
+              return { ...d, media_type: "tv" as const } as Movie;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const cleaned = hydrated.filter(Boolean) as Movie[];
+        const strict = await filterAdultContentStrict(cleaned);
+        results.push(...strict);
+      }
+
+      if (results.length > 0) {
+        setDbOnlyHydrated((prev) => {
+          const seen = new Set(prev.map((m) => getKey(m)));
+          const next = [...prev];
+          for (const m of results) {
+            const k = getKey(m);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            next.push(m);
+          }
+          return next;
+        });
+      }
+    },
+    [dbEntriesMatchingFilters, dbOnlyHydrated, getKey, metaByKey]
+  );
+
+  const mergedBase = useMemo(() => {
+    return mergeDbAndTmdb({
+      tmdbItems: items,
+      dbOnlyHydratedItems: dbOnlyHydrated,
+      isDbItem: (key) => metaByKey.has(key),
+      getDbMeta: getDbMetaByKey,
+    });
+  }, [dbOnlyHydrated, getDbMetaByKey, items, metaByKey]);
+
+  const baseVisible = useMemo(() => filterBlockedPosts(mergedBase), [filterBlockedPosts, mergedBase]);
 
   const visibleItems = useMemo(() => {
-    const sorted = isAvailabilityLoading
-      ? baseVisible
-      : groupDbLinkedFirst(baseVisible, (it) => {
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        });
-
     return isAdmin && showOnlyDbLinked
-      ? sorted.filter((it) => {
+      ? baseVisible.filter((it) => {
           const a = getAvailability(it.id);
           return a.hasWatch || a.hasDownload;
         })
-      : sorted;
-  }, [baseVisible, getAvailability, isAdmin, isAvailabilityLoading, showOnlyDbLinked]);
+      : baseVisible;
+  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleItems, { enabled: !isLoading });
@@ -135,6 +250,7 @@ const Korean = () => {
     async (pageNum: number, reset: boolean = false) => {
       if (reset) {
         setIsLoading(true);
+        setDbOnlyHydrated([]);
       } else {
         setIsLoadingMore(true);
       }
@@ -142,7 +258,7 @@ const Korean = () => {
       const dedupe = (arr: Movie[]) => {
         const seen = new Set<string>();
         return arr.filter((it) => {
-          const key = `${it.id}-${it.media_type ?? (it.first_air_date ? "tv" : "movie")}`;
+          const key = getKey(it);
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
@@ -216,7 +332,7 @@ const Korean = () => {
         ];
         const combinedResults = await filterAdultContentStrict(combined);
 
-        // Sort by release date descending
+        // Sort by release date descending (TMDB fallback ordering only)
         const sortedResults = combinedResults.sort((a, b) => {
           const dateA = a.release_date || a.first_air_date || "";
           const dateB = b.release_date || b.first_air_date || "";
@@ -227,6 +343,12 @@ const Korean = () => {
         const visibleResults = filterBlockedPosts(sortedResults);
 
         const uniqueVisible = dedupe(visibleResults);
+
+        // Hydrate DB-only items *before* we reveal the first batch (prevents reorder-jumps)
+        if (reset && metaByKey.size > 0) {
+          const tmdbKeys = new Set(uniqueVisible.map((m) => getKey(m)));
+          await hydrateDbOnly(tmdbKeys, 36);
+        }
 
         if (reset) {
           setItems(uniqueVisible);
@@ -249,7 +371,7 @@ const Korean = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedTags, selectedYear, setIsLoadingMore, filterBlockedPosts]
+    [filterBlockedPosts, getKey, hydrateDbOnly, metaByKey.size, selectedTags, selectedYear, setIsLoadingMore]
   );
 
   // Reset and fetch when filters change
@@ -261,6 +383,7 @@ const Korean = () => {
     }
     setPage(1);
     setItems([]);
+    setDbOnlyHydrated([]);
     setDisplayCount(0);
     setAnimateFromIndex(null);
     setHasMore(true);
@@ -356,8 +479,6 @@ const Korean = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
-
         <div className="container mx-auto px-4 pt-24 pb-8">
           <h1 className="sr-only">Korean</h1>
 
@@ -388,10 +509,7 @@ const Korean = () => {
                     animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
                   return (
-                    <div
-                      key={`${item.id}-${item.media_type ?? "movie"}`}
-                      className={shouldAnimate ? "animate-fly-in" : undefined}
-                    >
+                    <div key={getKey(item)} className={shouldAnimate ? "animate-fly-in" : undefined}>
                       <MovieCard
                         movie={item}
                         animationDelay={Math.min(index * 30, 300)}
@@ -401,7 +519,7 @@ const Korean = () => {
                     </div>
                   );
                 })}
-           </div>
+          </div>
 
           {/* No results message */}
           {!pageIsLoading && visibleItems.length === 0 && (
