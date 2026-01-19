@@ -52,25 +52,43 @@ const Movies = () => {
 
   const baseVisible = useMemo(() => filterBlockedPosts(movies, "movie"), [filterBlockedPosts, movies]);
 
-  const visibleMovies = useMemo(() => {
-    if (isAvailabilityLoading) {
-      return sortWithPinnedFirst(baseVisible, "movies", "movie");
+  const canFinalizeVisibility = !isModerationLoading && !isAvailabilityLoading;
+
+  const { linkedSlice, unlinkedSlice, orderedLength } = useMemo(() => {
+    if (!canFinalizeVisibility) {
+      return { linkedSlice: [] as Movie[], unlinkedSlice: [] as Movie[], orderedLength: 0 };
     }
 
-    const linked = baseVisible.filter((m) => isDbLinked(m.id));
-    const unlinked = baseVisible.filter((m) => !isDbLinked(m.id));
+    const linkedAll: Movie[] = [];
+    const unlinkedAll: Movie[] = [];
 
-    const linkedSorted = sortWithPinnedFirst(linked, "movies", "movie");
-    const unlinkedSorted = sortWithPinnedFirst(unlinked, "movies", "movie");
+    for (const m of baseVisible) {
+      (isDbLinked(m.id) ? linkedAll : unlinkedAll).push(m);
+    }
 
-    return isAdmin && showOnlyDbLinked ? linkedSorted : [...linkedSorted, ...unlinkedSorted];
-  }, [baseVisible, isAdmin, isAvailabilityLoading, isDbLinked, showOnlyDbLinked, sortWithPinnedFirst]);
+    const linkedSorted = sortWithPinnedFirst(linkedAll, "movies", "movie");
+    const unlinkedSorted = sortWithPinnedFirst(unlinkedAll, "movies", "movie");
+
+    const orderedAll = isAdmin && showOnlyDbLinked ? linkedSorted : [...linkedSorted, ...unlinkedSorted];
+    const slice = orderedAll.slice(0, displayCount);
+
+    const sliceLinked: Movie[] = [];
+    const sliceUnlinked: Movie[] = [];
+
+    for (const m of slice) {
+      (isDbLinked(m.id) ? sliceLinked : sliceUnlinked).push(m);
+    }
+
+    return { linkedSlice: sliceLinked, unlinkedSlice: sliceUnlinked, orderedLength: orderedAll.length };
+  }, [baseVisible, canFinalizeVisibility, displayCount, isAdmin, isDbLinked, showOnlyDbLinked, sortWithPinnedFirst]);
+
+  const orderedItems = useMemo(() => [...linkedSlice, ...unlinkedSlice], [linkedSlice, unlinkedSlice]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
-  usePageHoverPreload(visibleMovies, { enabled: !isLoading });
+  usePageHoverPreload(orderedItems, { enabled: !isLoading });
 
   // Only show skeletons before we have any real items to render.
-  const pageIsLoading = displayCount === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
+  const pageIsLoading = displayCount === 0 && (isLoading || !canFinalizeVisibility);
 
   // Fetch genres on mount
   useEffect(() => {
@@ -218,6 +236,8 @@ const Movies = () => {
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
   useEffect(() => {
+    if (!canFinalizeVisibility) return;
+
     observerRef.current?.disconnect();
 
     observerRef.current = new IntersectionObserver(
@@ -225,7 +245,7 @@ const Movies = () => {
         if (!entries[0].isIntersecting) return;
         if (isLoading || isLoadingMore || pendingLoadMore) return;
 
-        const hasBuffered = displayCount < visibleMovies.length;
+        const hasBuffered = displayCount < orderedLength;
         if (!hasBuffered && !hasMore) return;
 
         setPendingLoadMore(true);
@@ -238,16 +258,16 @@ const Movies = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleMovies.length]);
+  }, [canFinalizeVisibility, displayCount, hasMore, isLoading, isLoadingMore, orderedLength, pendingLoadMore]);
 
   // Resolve pending "load more": reveal from buffer first, otherwise fetch next TMDB page.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
-    const hasBuffered = displayCount < visibleMovies.length;
+    const hasBuffered = displayCount < orderedLength;
     if (hasBuffered) {
       setAnimateFromIndex(displayCount);
-      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleMovies.length));
+      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, orderedLength));
       setPendingLoadMore(false);
       return;
     }
@@ -262,7 +282,7 @@ const Movies = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, visibleMovies.length, hasMore, setIsLoadingMore]);
+  }, [pendingLoadMore, displayCount, orderedLength, hasMore, setIsLoadingMore]);
 
   // Fetch more when page changes
   useEffect(() => {
@@ -324,25 +344,43 @@ const Movies = () => {
                     <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                   </div>
                 ))
-              : visibleMovies.slice(0, displayCount).map((movie, index) => {
-                  const shouldAnimate =
-                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+              : (() => {
+                  const renderItem = (movie: Movie, globalIndex: number) => {
+                    const shouldAnimate =
+                      animateFromIndex !== null &&
+                      globalIndex >= animateFromIndex &&
+                      globalIndex < animateFromIndex + BATCH_SIZE;
+
+                    return (
+                      <div key={`${movie.id}-movie`} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                        <MovieCard
+                          movie={movie}
+                          animationDelay={Math.min(globalIndex * 30, 300)}
+                          enableReveal={false}
+                          enableHoverPortal={false}
+                        />
+                      </div>
+                    );
+                  };
+
+                  const linkedCount = linkedSlice.length;
 
                   return (
-                    <div key={`${movie.id}-movie`} className={shouldAnimate ? "animate-fly-in" : undefined}>
-                      <MovieCard
-                        movie={movie}
-                        animationDelay={Math.min(index * 30, 300)}
-                        enableReveal={false}
-                        enableHoverPortal={false}
-                      />
-                    </div>
+                    <>
+                      {linkedSlice.map((movie, idx) => renderItem(movie, idx))}
+
+                      {!showOnlyDbLinked && unlinkedSlice.length > 0 && (
+                        <div className="col-span-full h-6" aria-hidden="true" />
+                      )}
+
+                      {!showOnlyDbLinked && unlinkedSlice.map((movie, idx) => renderItem(movie, linkedCount + idx))}
+                    </>
                   );
-                })}
-           </div>
+                })()}
+          </div>
 
           {/* No results message */}
-          {!pageIsLoading && visibleMovies.length === 0 && (
+          {!pageIsLoading && orderedLength === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No movies found with the selected filters.</p>
               <button
@@ -357,7 +395,7 @@ const Movies = () => {
           {/* Loading More Indicator */}
           <div ref={loadMoreRef} className="flex justify-center py-6">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!hasMore && displayCount >= visibleMovies.length && visibleMovies.length > 0 && (
+            {!hasMore && displayCount >= orderedLength && orderedLength > 0 && (
               <p className="text-muted-foreground">You've reached the end</p>
             )}
           </div>
