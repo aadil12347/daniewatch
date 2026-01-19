@@ -209,6 +209,7 @@ const Search = () => {
                       movie={item}
                       enableReveal={false}
                       enableHoverPortal={false}
+                      enablePosterHoverBlur={false}
                     />
                   ))}
             </div>
