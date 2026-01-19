@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Movie, filterAdultContent } from "@/lib/tmdb";
+import { Movie, filterAdultContent, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
@@ -14,7 +14,8 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { groupDbLinkedFirst } from "@/lib/sortContent";
+import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
+import { isAnimeScope } from "@/lib/contentScope";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -32,13 +33,29 @@ const ANIME_TAGS = [
 
 const BATCH_SIZE = 18;
 
+type DbEntry = {
+  id: string;
+  type: "movie" | "series";
+  genre_ids?: number[] | null;
+  release_year?: number | null;
+  title?: string | null;
+};
+
 const Anime = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
+  const {
+    entries: dbEntries,
+    metaByKey,
+    getDbMetaByKey,
+    getAvailability,
+    isLoading: isAvailabilityLoading,
+  } = useEntryAvailability();
 
   const [items, setItems] = useState<Movie[]>([]);
+  const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
+
   const [displayCount, setDisplayCount] = useState(0);
   const [animateFromIndex, setAnimateFromIndex] = useState<number | null>(null);
   const [pendingLoadMore, setPendingLoadMore] = useState(false);
@@ -56,23 +73,117 @@ const Anime = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(items, "tv"), [filterBlockedPosts, items]);
+  const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
+    const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
+    return `${m.id}-${media}`;
+  }, []);
+
+  const normalizedDbEntries = useMemo(() => (dbEntries as unknown as DbEntry[]) ?? [], [dbEntries]);
+
+  const normalizedDbGenreSet = useMemo(() => new Set<number>([ANIME_GENRE_ID, ...selectedTags]), [selectedTags]);
+
+  const dbEntriesMatchingFilters = useMemo(() => {
+    return normalizedDbEntries.filter((e) => {
+      if (e.type !== "series") return false;
+
+      const genreIds = e.genre_ids ?? [];
+      const year = e.release_year ?? null;
+
+      // Must be anime in DB metadata
+      if (!genreIds.includes(ANIME_GENRE_ID)) return false;
+
+      // Tag filter (overlap)
+      if (normalizedDbGenreSet.size > 0) {
+        const hasOverlap = genreIds.some((g) => normalizedDbGenreSet.has(g));
+        if (!hasOverlap) return false;
+      }
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          if (typeof year !== "number" || year > 2019) return false;
+        } else {
+          if (typeof year !== "number" || String(year) !== selectedYear) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [normalizedDbEntries, normalizedDbGenreSet, selectedYear]);
+
+  const hydrateDbOnly = useCallback(
+    async (tmdbKeys: Set<string>, limit: number) => {
+      if (metaByKey.size === 0) return;
+
+      const candidates = dbEntriesMatchingFilters
+        .map((e) => ({ id: Number(e.id), mediaType: "tv" as const }))
+        .filter((e) => Number.isFinite(e.id))
+        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
+        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`));
+
+      const hydratedKeys = new Set(dbOnlyHydrated.map((m) => getKey(m)));
+      const toHydrate = candidates.filter((c) => !hydratedKeys.has(`${c.id}-${c.mediaType}`)).slice(0, limit);
+      if (toHydrate.length === 0) return;
+
+      const BATCH = 5;
+      const results: Movie[] = [];
+
+      for (let i = 0; i < toHydrate.length; i += BATCH) {
+        const batch = toHydrate.slice(i, i + BATCH);
+        const hydrated = await Promise.all(
+          batch.map(async ({ id }) => {
+            try {
+              const d = await getTVDetails(id);
+              return { ...d, media_type: "tv" as const } as Movie;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const cleaned = hydrated.filter(Boolean) as Movie[];
+        const filtered = (filterAdultContent(cleaned) as Movie[]).filter(isAnimeScope);
+        results.push(...filtered);
+      }
+
+      if (results.length > 0) {
+        setDbOnlyHydrated((prev) => {
+          const seen = new Set(prev.map((m) => getKey(m)));
+          const next = [...prev];
+          for (const m of results) {
+            const k = getKey(m);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            next.push(m);
+          }
+          return next;
+        });
+      }
+    },
+    [dbEntriesMatchingFilters, dbOnlyHydrated, getKey, metaByKey]
+  );
+
+  const mergedBase = useMemo(() => {
+    return mergeDbAndTmdb({
+      tmdbItems: items,
+      dbOnlyHydratedItems: dbOnlyHydrated,
+      isDbItem: (key) => metaByKey.has(key),
+      getDbMeta: getDbMetaByKey,
+    });
+  }, [dbOnlyHydrated, getDbMetaByKey, items, metaByKey]);
+
+  const baseVisible = useMemo(() => filterBlockedPosts(mergedBase, "tv"), [filterBlockedPosts, mergedBase]);
 
   const visibleItems = useMemo(() => {
-    const sorted = isAvailabilityLoading
-      ? baseVisible
-      : groupDbLinkedFirst(baseVisible, (it) => {
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        });
+    const list = baseVisible;
 
     return isAdmin && showOnlyDbLinked
-      ? sorted.filter((it) => {
+      ? list.filter((it) => {
           const a = getAvailability(it.id);
           return a.hasWatch || a.hasDownload;
         })
-      : sorted;
-  }, [baseVisible, getAvailability, isAdmin, isAvailabilityLoading, showOnlyDbLinked]);
+      : list;
+  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleItems, { enabled: !isLoading });
@@ -133,9 +244,20 @@ const Anime = () => {
     async (pageNum: number, reset: boolean = false) => {
       if (reset) {
         setIsLoading(true);
+        setDbOnlyHydrated([]);
       } else {
         setIsLoadingMore(true);
       }
+
+      const dedupe = (arr: Movie[]) => {
+        const seen = new Set<string>();
+        return arr.filter((it) => {
+          const key = getKey(it);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
 
       try {
         const today = new Date().toISOString().split("T")[0];
@@ -165,17 +287,24 @@ const Anime = () => {
         const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
         const response = await res.json();
 
-        const filteredResults = filterAdultContent(response.results) as Movie[];
-        const visibleResults = filterBlockedPosts(
-          filteredResults.map((m) => ({ ...m, media_type: "tv" as const })),
-          "tv"
-        );
+        const filteredResults = (filterAdultContent(response.results) as Movie[])
+          .map((m) => ({ ...m, media_type: "tv" as const }))
+          .filter(isAnimeScope);
+
+        const unique = dedupe(filteredResults);
+
+        if (reset && metaByKey.size > 0) {
+          const tmdbKeys = new Set(unique.map((m) => getKey(m)));
+          await hydrateDbOnly(tmdbKeys, 60);
+        }
+
+        const visibleResults = filterBlockedPosts(unique, "tv");
 
         if (reset) {
           setItems(visibleResults);
           setDisplayCount(BATCH_SIZE);
         } else {
-          setItems((prev) => [...prev, ...visibleResults]);
+          setItems((prev) => dedupe([...prev, ...visibleResults]));
           if (loadMoreFetchRequestedRef.current) {
             loadMoreFetchRequestedRef.current = false;
             setDisplayCount((prev) => prev + BATCH_SIZE);
@@ -189,7 +318,7 @@ const Anime = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedTags, selectedYear, setIsLoadingMore, filterBlockedPosts]
+    [filterBlockedPosts, getKey, hydrateDbOnly, metaByKey.size, selectedTags, selectedYear, setIsLoadingMore]
   );
 
   // Reset and fetch when filters change
@@ -201,6 +330,7 @@ const Anime = () => {
     }
     setPage(1);
     setItems([]);
+    setDbOnlyHydrated([]);
     setDisplayCount(0);
     setAnimateFromIndex(null);
     setHasMore(true);
@@ -293,8 +423,6 @@ const Anime = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
-
         <div className="container mx-auto px-4 pt-24 pb-8">
           <h1 className="sr-only">Anime</h1>
 
@@ -325,10 +453,7 @@ const Anime = () => {
                     animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
                   return (
-                    <div
-                      key={`${item.id}-${item.media_type ?? "tv"}`}
-                      className={shouldAnimate ? "animate-fly-in" : undefined}
-                    >
+                    <div key={`${item.id}-${item.media_type ?? "tv"}`} className={shouldAnimate ? "animate-fly-in" : undefined}>
                       <MovieCard
                         movie={item}
                         animationDelay={Math.min(index * 30, 300)}
@@ -338,7 +463,7 @@ const Anime = () => {
                     </div>
                   );
                 })}
-           </div>
+          </div>
 
           {/* No results message */}
           {!pageIsLoading && visibleItems.length === 0 && (
@@ -367,4 +492,3 @@ const Anime = () => {
 };
 
 export default Anime;
-

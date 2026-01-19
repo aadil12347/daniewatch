@@ -1,27 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
+import { Search as SearchIcon } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePostModeration } from "@/hooks/usePostModeration";
-import { searchMulti, searchAnime, searchKorean, filterMinimal, Movie } from "@/lib/tmdb";
+import { searchMulti, filterMinimal, getMovieDetails, getTVDetails, Movie } from "@/lib/tmdb";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { groupDbLinkedFirst } from "@/lib/sortContent";
 import { useListStateCache } from "@/hooks/useListStateCache";
+import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
+
+type DbEntry = {
+  id: string;
+  type: "movie" | "series";
+  genre_ids?: number[] | null;
+  release_year?: number | null;
+  title?: string | null;
+};
 
 const Search = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
-  const category = searchParams.get("category") || "";
   const refreshKey = searchParams.get("t") || "";
+
   const [results, setResults] = useState<Movie[]>([]);
+  const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const requestIdRef = useRef(0);
   const restoredKeyRef = useRef<string | null>(null);
   const restoreScrollYRef = useRef<number | null>(null);
@@ -31,51 +41,43 @@ const Search = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
+  const {
+    entries: dbEntries,
+    metaByKey,
+    getDbMetaByKey,
+    getAvailability,
+    isLoading: isAvailabilityLoading,
+  } = useEntryAvailability();
+
+  const mergedBase = useMemo(() => {
+    return mergeDbAndTmdb({
+      tmdbItems: results,
+      dbOnlyHydratedItems: dbOnlyHydrated,
+      isDbItem: (key) => metaByKey.has(key),
+      getDbMeta: getDbMetaByKey,
+    });
+  }, [dbOnlyHydrated, getDbMetaByKey, metaByKey, results]);
 
   const visibleResults = useMemo(() => {
-    const base = filterBlockedPosts(results);
-
-    // Remove duplicates (TMDB multi search can occasionally return overlapping items)
-    const uniqueBase = (() => {
-      const seen = new Set<string>();
-      return base.filter((it) => {
-        const key = `${it.id}-${it.media_type ?? "multi"}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    })();
-
-    const sorted = groupDbLinkedFirst(uniqueBase, (it) => {
-      const a = getAvailability(it.id);
-      return a.hasWatch || a.hasDownload;
-    });
+    const base = filterBlockedPosts(mergedBase);
 
     return isAdmin && showOnlyDbLinked
-      ? sorted.filter((it) => {
+      ? base.filter((it) => {
           const a = getAvailability(it.id);
           return a.hasWatch || a.hasDownload;
         })
-      : sorted;
-  }, [filterBlockedPosts, results, getAvailability, isAdmin, showOnlyDbLinked]);
+      : base;
+  }, [filterBlockedPosts, getAvailability, isAdmin, mergedBase, showOnlyDbLinked]);
 
   // Preload hover images in the background ONLY (never gate the search grid on this).
   usePageHoverPreload(visibleResults, { enabled: !isLoading });
 
   // Only show skeletons before we have any real results to render.
-  const pageIsLoading =
-    visibleResults.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
+  const pageIsLoading = visibleResults.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
 
-  const getCategoryLabel = () => {
-    if (category === "anime") return "Anime";
-    if (category === "korean") return "Korean";
-    return "";
-  };
-
-  // Restore cached results+scroll for this exact query/category on mount.
+  // Restore cached results+scroll for this exact query on mount.
   useEffect(() => {
-    const key = `${query}|${category}`;
+    const key = query;
 
     if (!query.trim()) {
       restoredKeyRef.current = null;
@@ -83,14 +85,14 @@ const Search = () => {
       return;
     }
 
-    const cached = getCache(category || "all", []);
+    const cached = getCache("all", []);
     if (!cached) return;
 
     restoredKeyRef.current = key;
     restoreScrollYRef.current = cached.scrollY ?? 0;
     setResults(cached.items);
     setIsLoading(false);
-  }, [getCache, query, category]);
+  }, [getCache, query]);
 
   // Restore scroll AFTER results render.
   useEffect(() => {
@@ -116,14 +118,14 @@ const Search = () => {
         items: results,
         page: 1,
         hasMore: false,
-        activeTab: category || "all",
+        activeTab: "all",
         selectedFilters: [],
       });
     };
-  }, [saveCache, results, query, category]);
+  }, [saveCache, results, query]);
 
   useEffect(() => {
-    const key = `${query}|${category}`;
+    const key = query;
 
     // If we just restored this exact state and no explicit refresh was requested, keep it.
     if (restoredKeyRef.current === key && !refreshKey) {
@@ -133,10 +135,10 @@ const Search = () => {
 
     // Increment request id so late responses from older searches can't overwrite new results
     const requestId = ++requestIdRef.current;
-    console.log("[search] start", { query, category, refreshKey, requestId });
 
     // Always clear results and show loading state for a fresh search
     setResults([]);
+    setDbOnlyHydrated([]);
     setIsLoading(true);
 
     const fetchResults = async () => {
@@ -146,43 +148,72 @@ const Search = () => {
       }
 
       try {
-        const response =
-          category === "anime"
-            ? await searchAnime(query)
-            : category === "korean"
-              ? await searchKorean(query)
-              : await searchMulti(query);
+        // Requirement: no category restrictions; always use multi search
+        const response = await searchMulti(query);
 
         if (requestId !== requestIdRef.current) return;
 
-        // For anime/korean categories, strict filtering is already applied in searchAnime/searchKorean
-        // For general search, only apply minimal filtering (no people, no junk)
-        const baseResults = category
-          ? response.results
-          : filterMinimal(response.results.filter((item) => item.media_type === "movie" || item.media_type === "tv"));
+        const baseResults = filterMinimal(
+          response.results.filter((item) => item.media_type === "movie" || item.media_type === "tv")
+        );
 
-        // Store base results; we filter in render so updates to the global blacklist take effect immediately.
         setResults(baseResults);
+
+        // DB title matches (DB-first), hydrate a small set for card display
+        const entries = (dbEntries as unknown as DbEntry[]) ?? [];
+        const q = query.trim().toLowerCase();
+        const matches = entries
+          .filter((e) => (e.title || "").toLowerCase().includes(q))
+          .slice(0, 30)
+          .map((e) => ({ id: Number(e.id), mediaType: e.type === "series" ? ("tv" as const) : ("movie" as const) }))
+          .filter((m) => Number.isFinite(m.id));
+
+        const tmdbKeys = new Set(baseResults.map((m) => `${m.id}-${m.media_type}`));
+        const toHydrate = matches.filter((m) => !tmdbKeys.has(`${m.id}-${m.mediaType}`)).slice(0, 25);
+
+        const BATCH = 5;
+        const hydrated: Movie[] = [];
+        for (let i = 0; i < toHydrate.length; i += BATCH) {
+          const batch = toHydrate.slice(i, i + BATCH);
+          const part = await Promise.all(
+            batch.map(async ({ id, mediaType }) => {
+              try {
+                if (mediaType === "movie") {
+                  const d = await getMovieDetails(id);
+                  return { ...d, media_type: "movie" as const } as Movie;
+                }
+                const d = await getTVDetails(id);
+                return { ...d, media_type: "tv" as const } as Movie;
+              } catch {
+                return null;
+              }
+            })
+          );
+          hydrated.push(...(part.filter(Boolean) as Movie[]));
+        }
+
+        if (requestId !== requestIdRef.current) return;
+        setDbOnlyHydrated(hydrated);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);
         setResults([]);
+        setDbOnlyHydrated([]);
       } finally {
         if (requestId === requestIdRef.current) {
-          console.log("[search] done", { query, category, refreshKey, requestId });
           setIsLoading(false);
         }
       }
     };
 
     fetchResults();
-  }, [query, category, refreshKey, getCache]);
+  }, [query, refreshKey, getCache, dbEntries]);
 
   return (
     <>
       <Helmet>
-        <title>{query ? `Search: ${query}${category ? ` in ${getCategoryLabel()}` : ""}` : "Search"} - DanieWatch</title>
-        <meta name="description" content={`Search results for ${query}${category ? ` in ${getCategoryLabel()}` : ""}`} />
+        <title>{query ? `Search: ${query}` : "Search"} - DanieWatch</title>
+        <meta name="description" content={`Search results for ${query}`} />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -190,13 +221,12 @@ const Search = () => {
           {query ? (
             <>
               <div className="flex items-center gap-3 mb-2">
-                {category === "anime" && <Sparkles className="w-6 h-6 text-primary" />}
-                {category === "korean" && <Heart className="w-6 h-6 text-primary" />}
-              <h1 className="text-2xl md:text-3xl font-bold">{category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}</h1>
-            </div>
-            {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
-            <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}</p>
-          </>
+                <h1 className="text-2xl md:text-3xl font-bold">Search Results for "{query}"</h1>
+              </div>
+              <p className="text-muted-foreground mb-8">
+                {pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}
+              </p>
+            </>
           ) : (
             <div className="text-center py-20">
               <SearchIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -243,4 +273,3 @@ const Search = () => {
 };
 
 export default Search;
-
