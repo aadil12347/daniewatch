@@ -292,11 +292,13 @@ const Anime = () => {
         <meta name="description" content="Watch the best anime series sorted by latest release. Filter by genre and year." />
       </Helmet>
 
-        <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
+        
 
-          <div className="container mx-auto px-4 pt-24 pb-8">
-            <h1 className="sr-only">Anime</h1>
+        <div className="container mx-auto px-4 pt-24 pb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">Anime</h1>
 
+          {/* Category Navigation */}
           <div className="mb-8">
             <CategoryNav
               genres={genresForNav}

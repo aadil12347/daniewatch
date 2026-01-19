@@ -326,12 +326,12 @@ const TVShows = () => {
         <meta name="description" content="Browse TV shows sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
-       <div className="min-h-screen bg-background">
-         <div className="container mx-auto px-4 pt-24 pb-8">
-           <h1 className="sr-only">TV Shows</h1>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 pt-24 pb-8">
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">TV Shows</h1>
 
-           {/* Category Navigation */}
-           <div className="mb-8">
+          {/* Category Navigation */}
+          <div className="mb-8">
             <CategoryNav
               genres={genresForNav}
               selectedGenres={selectedGenres}
