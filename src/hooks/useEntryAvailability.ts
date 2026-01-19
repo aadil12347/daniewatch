@@ -7,6 +7,13 @@ export interface EntryAvailability {
   hoverImageUrl?: string | null;
 }
 
+export interface EntryDbMeta {
+  genreIds?: number[] | null;
+  releaseYear?: number | null;
+  title?: string | null;
+  type: "movie" | "series";
+}
+
 interface MovieContent {
   watch_link?: string;
   download_link?: string;
@@ -26,26 +33,43 @@ interface EntryData {
   type: "movie" | "series";
   content: MovieContent | SeriesContent;
   hover_image_url?: string | null;
+  genre_ids?: number[] | null;
+  release_year?: number | null;
+  title?: string | null;
 }
+
+const getEntryKey = (id: string, type: "movie" | "series") => `${id}-${type === "series" ? "tv" : "movie"}`;
 
 export const useEntryAvailability = () => {
   const {
-    data: availabilityMap = new Map<string, EntryAvailability>(),
+    data = {
+      availabilityById: new Map<string, EntryAvailability>(),
+      metaByKey: new Map<string, EntryDbMeta>(),
+      entries: [] as EntryData[],
+    },
     isLoading,
     isFetching,
   } = useQuery({
     queryKey: ["entry-availability"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("entries").select("id, type, content, hover_image_url");
+      const { data, error } = await supabase
+        .from("entries")
+        .select("id, type, content, hover_image_url, genre_ids, release_year, title");
 
       if (error) {
         console.error("[useEntryAvailability] Error fetching entries:", error);
-        return new Map<string, EntryAvailability>();
+        return {
+          availabilityById: new Map<string, EntryAvailability>(),
+          metaByKey: new Map<string, EntryDbMeta>(),
+          entries: [] as EntryData[],
+        };
       }
 
-      const map = new Map<string, EntryAvailability>();
+      const availabilityById = new Map<string, EntryAvailability>();
+      const metaByKey = new Map<string, EntryDbMeta>();
+      const entries = (data as EntryData[] | null | undefined) ?? [];
 
-      (data as EntryData[] | null | undefined)?.forEach((entry) => {
+      entries.forEach((entry) => {
         let hasWatch = false;
         let hasDownload = false;
 
@@ -56,26 +80,28 @@ export const useEntryAvailability = () => {
         } else if (entry.type === "series") {
           const content = entry.content as SeriesContent;
           Object.keys(content).forEach((key) => {
-            if (key.startsWith("season_")) {
-              const season = content[key];
-              if (season.watch_links?.some((link) => link && link.trim())) {
-                hasWatch = true;
-              }
-              if (season.download_links?.some((link) => link && link.trim())) {
-                hasDownload = true;
-              }
-            }
+            if (!key.startsWith("season_")) return;
+            const season = content[key];
+            if (season.watch_links?.some((link) => link && link.trim())) hasWatch = true;
+            if (season.download_links?.some((link) => link && link.trim())) hasDownload = true;
           });
         }
 
-        map.set(entry.id, {
+        availabilityById.set(entry.id, {
           hasWatch,
           hasDownload,
           hoverImageUrl: entry.hover_image_url ?? null,
         });
+
+        metaByKey.set(getEntryKey(entry.id, entry.type), {
+          type: entry.type,
+          genreIds: entry.genre_ids ?? null,
+          releaseYear: entry.release_year ?? null,
+          title: entry.title ?? null,
+        });
       });
 
-      return map;
+      return { availabilityById, metaByKey, entries };
     },
     enabled: true,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -83,18 +109,48 @@ export const useEntryAvailability = () => {
   });
 
   const getAvailability = (tmdbId: number): EntryAvailability => {
-    return availabilityMap.get(String(tmdbId)) || { hasWatch: false, hasDownload: false, hoverImageUrl: null };
+    return data.availabilityById.get(String(tmdbId)) || { hasWatch: false, hasDownload: false, hoverImageUrl: null };
   };
 
   const getHoverImageUrl = (tmdbId: number): string | null => {
-    const val = availabilityMap.get(String(tmdbId))?.hoverImageUrl;
+    const val = data.availabilityById.get(String(tmdbId))?.hoverImageUrl;
     return val?.trim?.() ? val : null;
   };
 
+  const isInDb = (tmdbId: number, mediaType: "movie" | "tv") => {
+    return data.metaByKey.has(`${tmdbId}-${mediaType}`);
+  };
+
+  const getDbMeta = (tmdbId: number, mediaType: "movie" | "tv") => {
+    const meta = data.metaByKey.get(`${tmdbId}-${mediaType}`);
+    return meta
+      ? {
+          genreIds: meta.genreIds ?? null,
+          releaseYear: meta.releaseYear ?? null,
+          title: meta.title ?? null,
+          type: meta.type,
+        }
+      : null;
+  };
+
+  const getDbMetaByKey = (key: string) => {
+    const meta = data.metaByKey.get(key);
+    return meta ? { release_year: meta.releaseYear ?? null } : null;
+  };
+
   return {
+    // existing API
     getAvailability,
     getHoverImageUrl,
-    availabilityMap,
+    availabilityMap: data.availabilityById,
+
+    // new API (non-breaking add-ons)
+    entries: data.entries,
+    metaByKey: data.metaByKey,
+    isInDb,
+    getDbMeta,
+    getDbMetaByKey,
+
     isLoading: isLoading || isFetching,
   };
 };
