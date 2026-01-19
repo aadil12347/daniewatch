@@ -107,7 +107,18 @@ export const MovieCard = ({
     setCanUseHoverPortal(true);
   }, [enableHoverPortal]);
 
-  // Keep portal positioned correctly while hovering (scroll/resize)
+  // Close the hover portal immediately when any scrolling occurs.
+  // This prevents scroll-induced flicker/jitter from frequent rect recalculations.
+  useEffect(() => {
+    if (!portalEnabled) return;
+    if (!isHovered) return;
+
+    const onScroll = () => setIsHovered(false);
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, [isHovered, portalEnabled]);
+
+  // Keep portal positioned correctly while hovering (resize only)
   useEffect(() => {
     if (!enableHoverPortal) return;
     if (!canUseHoverPortal || !isHovered) return;
@@ -124,18 +135,12 @@ export const MovieCard = ({
     };
 
     update();
-    window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
     };
   }, [enableHoverPortal, canUseHoverPortal, isHovered]);
-
-  
-
-  // Smooth enter/exit for the portaled hover image
   useEffect(() => {
     if (!enableHoverPortal) {
       setIsPortalMounted(false);

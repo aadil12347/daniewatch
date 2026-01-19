@@ -135,7 +135,6 @@ export const TabbedContentRow = ({
                   index={idx}
                   size={size}
                   enableReveal={false}
-                  enableHoverPortal={false}
                 />
               ))}
         </div>

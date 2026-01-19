@@ -98,7 +98,6 @@ export const ContentRow = ({
                   showRank={showRank}
                   size={size}
                   enableReveal={false}
-                  enableHoverPortal={false}
                 />
               ))}
         </div>
