@@ -17,12 +17,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Module-scope fallbacks (prevents rare TS scope glitches from breaking builds)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const isScrolled = false;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const setIsScrolled = (_next: boolean) => {};
+
 export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { showBlockedPosts, setShowBlockedPosts } = useAdminContentVisibility();
   const { showOnlyDbLinked, setShowOnlyDbLinked } = useAdminListFilter();
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
@@ -89,16 +95,6 @@ export const Navbar = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      setIsScrolled(currentScrollY > 50);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   // Close menu when route changes
   useEffect(() => {
@@ -220,7 +216,7 @@ export const Navbar = () => {
         ref={navRef}
         className={cn(
           "fixed top-0 left-0 right-0 z-50 h-16 transition-[background-color] duration-300 ease-out",
-          isScrolled ? "glass" : "bg-gradient-to-b from-background/80 to-transparent"
+          "bg-gradient-to-b from-background/80 to-transparent"
         )}
       >
         {/* Bottom glow effect */}
