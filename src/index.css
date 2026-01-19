@@ -331,7 +331,7 @@ html {
   }
 
   /* Mild, whole-poster blur on hover (not too strong) */
-  .group:hover .poster-3d-cover--base:not(.keep-greyscale):not(.no-hover-blur) {
+  .group:hover .poster-3d-cover--base:not(.keep-greyscale) {
     filter: blur(2px) saturate(1.05);
   }
 
@@ -468,11 +468,6 @@ html {
   /* CONTAINED variant (Home): keep the character fully inside the poster bounds */
   .poster-3d-card--contained {
     overflow: hidden !important;
-  }
-
-  /* Disable the cinematic poster blur on hover (used on grid pages) */
-  .poster-3d-card--no-hover-blur .poster-3d-cover--blur {
-    display: none;
   }
 
   .poster-3d-card--contained .poster-3d-character,

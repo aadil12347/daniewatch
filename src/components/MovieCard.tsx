@@ -29,18 +29,12 @@ interface MovieCardProps {
    */
   enableHoverPortal?: boolean;
   /**
-   * Adds the cinematic blur-depth effect to the poster on hover.
-   * Turn off on grid pages if it feels "soft" or blurry.
-   */
-  enablePosterHoverBlur?: boolean;
-  /**
    * Hover character rendering style.
    * - popout: character can extend outside the poster and may use a portal.
    * - contained: character stays fully inside the poster bounds.
    */
   hoverCharacterMode?: "popout" | "contained";
 }
-
 
 export const MovieCard = ({
   movie,
@@ -51,7 +45,6 @@ export const MovieCard = ({
   className,
   enableReveal = true,
   enableHoverPortal = true,
-  enablePosterHoverBlur = true,
   hoverCharacterMode = "popout",
 }: MovieCardProps) => {
   const location = useLocation();
@@ -281,8 +274,7 @@ export const MovieCard = ({
             ref={posterRef}
             className={cn(
               "cinema-card poster-3d-card relative aspect-[2/3] rounded-xl bg-card",
-              hoverCharacterMode === "contained" && "poster-3d-card--contained",
-              !enablePosterHoverBlur && "poster-3d-card--no-hover-blur"
+              hoverCharacterMode === "contained" && "poster-3d-card--contained"
             )}
           >
             {/* Clip only the poster layers so the character can pop OUT of the card */}
@@ -295,25 +287,21 @@ export const MovieCard = ({
                     loading={isNearViewport ? "eager" : "lazy"}
                     className={cn(
                       "poster-3d-cover poster-3d-cover--base",
-                      !enablePosterHoverBlur && "no-hover-blur",
                       isAdmin && blocked && "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                     )}
                   />
 
-                   {/* Mild poster blur layer (kept subtle) */}
-                   {enablePosterHoverBlur && (
-                     <img
-                       src={posterUrl}
-                       alt=""
-                       aria-hidden="true"
-                       loading={isNearViewport ? "eager" : "lazy"}
-                       className={cn(
-                         "poster-3d-cover poster-3d-cover--blur",
-                         isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
-                       )}
-                     />
-                   )}
-
+                  {/* Mild poster blur layer (kept subtle) */}
+                  <img
+                    src={posterUrl}
+                    alt=""
+                    aria-hidden="true"
+                    loading={isNearViewport ? "eager" : "lazy"}
+                    className={cn(
+                      "poster-3d-cover poster-3d-cover--blur",
+                      isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                    )}
+                  />
                 </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-muted">

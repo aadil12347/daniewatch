@@ -332,7 +332,6 @@ const Anime = () => {
                         animationDelay={Math.min(index * 30, 300)}
                         enableReveal={false}
                         enableHoverPortal={false}
-                        enablePosterHoverBlur={false}
                       />
                     </div>
                   );
