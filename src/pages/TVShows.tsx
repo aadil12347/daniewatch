@@ -25,6 +25,7 @@ const TVShows = () => {
   const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(600);
   const [hasMore, setHasMore] = useState(true);
   const [endReached, setEndReached] = useState(false);
+  const [pendingLoadMore, setPendingLoadMore] = useState(false);
   const [justAddedIds, setJustAddedIds] = useState<Set<number>>(() => new Set());
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -41,18 +42,21 @@ const TVShows = () => {
   const { showOnlyDbLinked } = useAdminListFilter();
   const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
+  const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
+  const canFinalizeVisibility = !isModerationLoading && (!needsDbLinkedFilter || !isAvailabilityLoading);
+
   const baseVisible = useMemo(() => filterBlockedPosts(shows, "tv"), [filterBlockedPosts, shows]);
 
   // IMPORTANT: Keep order stable to avoid “flashing/jumping”.
   // Only filter (admin) without re-sorting.
   const visibleShows = useMemo(() => {
-    return isAdmin && showOnlyDbLinked
+    return needsDbLinkedFilter
       ? baseVisible.filter((s) => {
           const a = getAvailability(s.id);
           return a.hasWatch || a.hasDownload;
         })
       : baseVisible;
-  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
+  }, [baseVisible, getAvailability, needsDbLinkedFilter]);
 
   const visibleIdSet = useMemo(() => new Set(visibleShows.map((s) => s.id)), [visibleShows]);
 
@@ -160,55 +164,84 @@ const TVShows = () => {
     if (isFetchingNextBatchRef.current) return;
     if (!hasMore) return;
     if (isLoading) return;
+    if (!canFinalizeVisibility) return;
 
     isFetchingNextBatchRef.current = true;
     setIsLoadingMore(true);
 
     try {
-      const batch: Movie[] = [];
+      const candidates: Movie[] = [];
       let latestTotalPages: number | null = null;
 
-      while (batch.length < BATCH_SIZE) {
-        if (bufferRef.current.length > 0) {
+      const filterCandidatesToVisible = (arr: Movie[]) => {
+        const moderationFiltered = filterBlockedPosts(arr, "tv");
+        if (!needsDbLinkedFilter) return moderationFiltered;
+        return moderationFiltered.filter((m) => {
+          const a = getAvailability(m.id);
+          return a.hasWatch || a.hasDownload;
+        });
+      };
+
+      let visibleBatch: Movie[] = [];
+
+      // Keep gathering until we have 10 *visible* items (blocked/unavailable are not counted)
+      while (hasMore && visibleBatch.length < BATCH_SIZE) {
+        // Pull from buffer first
+        while (bufferRef.current.length > 0 && candidates.length < BATCH_SIZE * 6) {
           const next = bufferRef.current.shift();
-          if (next) batch.push(next);
-          continue;
+          if (next) candidates.push(next);
+          visibleBatch = filterCandidatesToVisible(candidates).slice(0, BATCH_SIZE);
+          if (visibleBatch.length >= BATCH_SIZE) break;
         }
 
-        const nextPage = tmdbPageRef.current;
-        const { results, totalPages } = await requestTmdbPage(nextPage);
-        latestTotalPages = totalPages;
+        if (visibleBatch.length >= BATCH_SIZE) break;
 
-        // Move cursor forward immediately to avoid double-fetching the same page.
-        tmdbPageRef.current = nextPage + 1;
+        // If buffer is empty, fetch a new TMDB page
+        if (bufferRef.current.length === 0) {
+          const nextPage = tmdbPageRef.current;
+          const { results, totalPages } = await requestTmdbPage(nextPage);
+          latestTotalPages = totalPages;
 
-        const unique = results.filter((m) => {
-          if (!m?.id) return false;
-          if (loadedIdsRef.current.has(m.id)) return false;
-          loadedIdsRef.current.add(m.id);
-          return true;
-        });
+          tmdbPageRef.current = nextPage + 1;
 
-        bufferRef.current.push(...unique);
+          const unique = results.filter((m) => {
+            if (!m?.id) return false;
+            if (loadedIdsRef.current.has(m.id)) return false;
+            loadedIdsRef.current.add(m.id);
+            return true;
+          });
 
-        const noMorePages = nextPage >= totalPages;
-        if (noMorePages && bufferRef.current.length === 0) break;
+          bufferRef.current.push(...unique);
+
+          const noMorePages = nextPage >= totalPages;
+          setHasMore(!noMorePages || bufferRef.current.length > 0);
+          if (noMorePages && bufferRef.current.length === 0) break;
+        } else {
+          // Buffer has items but we couldn't reach 10 visible due to filtering; loop will continue
+          visibleBatch = filterCandidatesToVisible(candidates).slice(0, BATCH_SIZE);
+          if (visibleBatch.length >= BATCH_SIZE) break;
+        }
+
+        // Stop if we’re clearly out of content
+        const noMorePagesNow = latestTotalPages !== null && tmdbPageRef.current > latestTotalPages;
+        if (noMorePagesNow && bufferRef.current.length === 0) break;
       }
 
-      if (batch.length > 0) {
-        setShows((prev) => [...prev, ...batch]);
+      if (visibleBatch.length > 0) {
+        setShows((prev) => [...prev, ...visibleBatch]);
 
-        // New-item scale-in animation (only for appended batch)
-        const ids = new Set(batch.map((b) => b.id));
+        // Smooth append animation for the new batch (no card-reveal flash)
+        const ids = new Set(visibleBatch.map((b) => b.id));
         setJustAddedIds(ids);
         if (justAddedTimerRef.current) window.clearTimeout(justAddedTimerRef.current);
         justAddedTimerRef.current = window.setTimeout(() => setJustAddedIds(new Set()), 520);
       }
 
-      const noMorePagesNow = latestTotalPages !== null && tmdbPageRef.current > latestTotalPages;
-      setHasMore(!(noMorePagesNow && bufferRef.current.length === 0 && batch.length < BATCH_SIZE));
+      // If we couldn't produce a full visible batch and there’s nothing left buffered, we’re done.
+      if (visibleBatch.length < BATCH_SIZE && bufferRef.current.length === 0 && latestTotalPages !== null && tmdbPageRef.current > latestTotalPages) {
+        setHasMore(false);
+      }
 
-      // After loading, hide the button until user reaches the new end again.
       setEndReached(false);
     } catch (error) {
       console.error("Failed to fetch more TV shows:", error);
@@ -216,10 +249,11 @@ const TVShows = () => {
       setIsLoadingMore(false);
       isFetchingNextBatchRef.current = false;
     }
-  }, [BATCH_SIZE, hasMore, isLoading, requestTmdbPage, setIsLoadingMore]);
+  }, [BATCH_SIZE, canFinalizeVisibility, filterBlockedPosts, getAvailability, hasMore, isLoading, needsDbLinkedFilter, requestTmdbPage, setIsLoadingMore]);
 
   // Fetch when filters change (NO restoration/cache behavior on this page)
   useEffect(() => {
+    setPendingLoadMore(false);
     resetAndLoadFirstBatch();
   }, [selectedGenres, selectedYear, resetAndLoadFirstBatch]);
 
@@ -239,7 +273,7 @@ const TVShows = () => {
         const entry = entries[0];
         if (!entry?.isIntersecting) return;
         if (!hasMore) return;
-        if (isLoading || isLoadingMore) return;
+        if (isLoading || isLoadingMore || pendingLoadMore) return;
 
         const el = loadMoreRef.current;
         if (!el) return;
@@ -259,20 +293,32 @@ const TVShows = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [hasMore, isLoading, isLoadingMore]);
+  }, [hasMore, isLoading, isLoadingMore, pendingLoadMore]);
 
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMore = useCallback(() => {
     if (!hasMore) return;
     if (isLoadingMore) return;
 
-    await loadNextBatch();
+    // Don't append anything until moderation/availability filters are ready.
+    // We keep the loader visible while waiting so there are no "add then remove" flashes.
+    setPendingLoadMore(true);
+    setIsLoadingMore(true);
+  }, [hasMore, isLoadingMore, setIsLoadingMore]);
 
-    // Re-observe after DOM updates so the *new* end must be reached again.
-    requestAnimationFrame(() => {
-      const el = loadMoreRef.current;
-      if (el && observerRef.current && hasMore) observerRef.current.observe(el);
+  useEffect(() => {
+    if (!pendingLoadMore) return;
+    if (!canFinalizeVisibility) return;
+
+    void loadNextBatch().finally(() => {
+      setPendingLoadMore(false);
+
+      // Re-observe after DOM updates so the *new* end must be reached again.
+      requestAnimationFrame(() => {
+        const el = loadMoreRef.current;
+        if (el && observerRef.current && hasMore) observerRef.current.observe(el);
+      });
     });
-  }, [hasMore, isLoadingMore, loadNextBatch]);
+  }, [pendingLoadMore, canFinalizeVisibility, loadNextBatch, hasMore]);
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
@@ -325,18 +371,14 @@ const TVShows = () => {
               ))
             ) : (
               <>
-                {shows.map((show, index) => {
-                  if (!visibleIdSet.has(show.id)) return null;
-
-                  return (
-                    <MovieCard
-                      key={`tv-${show.id}`}
-                      movie={{ ...show, media_type: "tv" }}
-                      animationDelay={Math.min(index * 30, 300)}
-                      className={justAddedIds.has(show.id) ? "tv-element-in" : undefined}
-                    />
-                  );
-                })}
+                {visibleShows.map((show, index) => (
+                  <MovieCard
+                    key={`tv-${show.id}`}
+                    movie={{ ...show, media_type: "tv" }}
+                    animationDelay={Math.min(index * 30, 300)}
+                    className={justAddedIds.has(show.id) ? "tv-element-in" : undefined}
+                  />
+                ))}
               </>
             )}
           </div>
