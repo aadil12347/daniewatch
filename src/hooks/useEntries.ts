@@ -19,6 +19,7 @@ interface EntryData {
   id: string;
   type: "movie" | "series";
   content: MovieContent | SeriesContent;
+  title?: string | null;
   hover_image_url?: string | null;
   genre_ids?: number[] | null;
   release_year?: number | null;
@@ -59,7 +60,8 @@ export const useEntries = () => {
     downloadLink: string,
     hoverImageUrl?: string,
     genreIds?: number[],
-    releaseYear?: number | null
+    releaseYear?: number | null,
+    title?: string | null
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const content: MovieContent = {
@@ -68,11 +70,13 @@ export const useEntries = () => {
       };
 
       const hover_image_url = hoverImageUrl?.trim() ? hoverImageUrl.trim() : null;
+      const normalizedTitle = title?.trim() ? title.trim() : null;
 
       const { error } = await supabase.from("entries").upsert({
         id,
         type: "movie",
         content,
+        title: normalizedTitle,
         hover_image_url,
         genre_ids: genreIds?.length ? genreIds : null,
         release_year: typeof releaseYear === "number" ? releaseYear : null,
@@ -105,7 +109,8 @@ export const useEntries = () => {
     downloadLinks: string[],
     hoverImageUrl?: string,
     genreIds?: number[],
-    releaseYear?: number | null
+    releaseYear?: number | null,
+    title?: string | null
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       // First, fetch existing entry to merge seasons
@@ -133,11 +138,13 @@ export const useEntries = () => {
       }
 
       const hover_image_url = hoverImageUrl?.trim() ? hoverImageUrl.trim() : null;
+      const normalizedTitle = title?.trim() ? title.trim() : null;
 
       const { error } = await supabase.from("entries").upsert({
         id,
         type: "series",
         content,
+        title: normalizedTitle,
         hover_image_url,
         genre_ids: genreIds?.length ? genreIds : null,
         release_year: typeof releaseYear === "number" ? releaseYear : null,

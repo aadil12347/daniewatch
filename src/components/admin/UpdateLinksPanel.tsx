@@ -107,6 +107,12 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     null
   );
 
+  // Manual backfill (titles) state
+  const [isTitleBackfilling, setIsTitleBackfilling] = useState(false);
+  const [titleBackfillProgress, setTitleBackfillProgress] = useState<
+    { total: number; updated: number; failed: number } | null
+  >(null);
+
   const loadSeasonData = useCallback(async (content: any, season: number) => {
     const seasonKey = `season_${season}`;
     const seasonData = content?.[seasonKey];
@@ -414,6 +420,79 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     [fetchTmdbDetailsWithRetry, isBackfilling, toast]
   );
 
+  const runTitleBackfill = useCallback(
+    async (mode: "missing" | "all" = "missing") => {
+      if (isTitleBackfilling) return;
+
+      setIsTitleBackfilling(true);
+      setTitleBackfillProgress({ total: 0, updated: 0, failed: 0 });
+
+      try {
+        toast({
+          title: mode === "all" ? "Refresh started" : "Backfill started",
+          description:
+            mode === "all" ? "Refreshing titles for ALL existing entries..." : "Filling missing titles for existing entries...",
+        });
+
+        const baseQuery = supabase.from("entries").select("id,type");
+        const { data, error } = mode === "all" ? await baseQuery : await baseQuery.is("title", null);
+
+        if (error) throw error;
+
+        const rows = (data ?? []) as Array<{ id: string; type: "movie" | "series" }>;
+        let updated = 0;
+        let failed = 0;
+
+        setTitleBackfillProgress({ total: rows.length, updated: 0, failed: 0 });
+
+        const BATCH = 5;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const slice = rows.slice(i, i + BATCH);
+
+          await Promise.all(
+            slice.map(async (row) => {
+              try {
+                const tmdbIdNum = Number(row.id);
+                if (!Number.isFinite(tmdbIdNum)) throw new Error("Invalid TMDB id");
+
+                const { details } = await fetchTmdbDetailsWithRetry(tmdbIdNum, row.type);
+                const title = String(details?.title ?? details?.name ?? "").trim() || null;
+
+                const { error: updateErr } = await supabase.from("entries").update({ title }).eq("id", row.id);
+                if (updateErr) throw updateErr;
+
+                updated++;
+                setTitleBackfillProgress((p) => (p ? { ...p, updated } : p));
+              } catch (e) {
+                console.error("[title-backfill] failed", row, e);
+                failed++;
+                setTitleBackfillProgress((p) => (p ? { ...p, failed } : p));
+              }
+            })
+          );
+
+          if (i + BATCH < rows.length) await sleep(250);
+        }
+
+        toast({
+          title: mode === "all" ? "Refresh finished" : "Backfill finished",
+          description: `Updated ${updated} entries${failed ? `, failed ${failed}` : ""}.`,
+        });
+      } catch (e: any) {
+        console.error("[title-backfill] error", e);
+        toast({
+          title: "Update error",
+          description: e?.message || "Failed to update titles.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsTitleBackfilling(false);
+        setTimeout(() => setTitleBackfillProgress(null), 2500);
+      }
+    },
+    [fetchTmdbDetailsWithRetry, isTitleBackfilling, toast]
+  );
+
   /**
    * One-time manual backfill for existing DB rows that are missing genre_ids/release_year.
    * Trigger: open Update Links page with ?backfill=1 while logged in as admin.
@@ -465,7 +544,8 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         movieDownloadLink,
         trimmedHover,
         tmdbResult.genreIds,
-        tmdbResult.releaseYear ?? null
+        tmdbResult.releaseYear ?? null,
+        tmdbResult.title
       );
       if (result.success) {
         setEntryExists(true);
@@ -482,7 +562,8 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         downloadLinks,
         trimmedHover,
         tmdbResult.genreIds,
-        tmdbResult.releaseYear ?? null
+        tmdbResult.releaseYear ?? null,
+        tmdbResult.title
       );
       if (result.success) {
         setEntryExists(true);
@@ -548,6 +629,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     const { error } = await supabase.from("entries").upsert({
       id: entry.id,
       type: entry.type,
+      title: entry.title || null,
       content: entry.content,
     });
 
@@ -653,38 +735,75 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="secondary" disabled={isBackfilling} className="shrink-0">
-                  {isBackfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                  <span className="ml-2">Update genres</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Update genres & year for existing entries?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Update TMDB genres/year in your database.
-                    <br />
-                    Use <b>Update missing</b> for unfinished entries, or <b>Refresh all</b> to force-update everything (slower).
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isBackfilling}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction disabled={isBackfilling} onClick={() => void runMetadataBackfill("missing")}>
-                    Update missing
-                  </AlertDialogAction>
-                  <AlertDialogAction disabled={isBackfilling} onClick={() => void runMetadataBackfill("all")}>
-                    Refresh all
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="secondary" disabled={isBackfilling} className="shrink-0">
+                    {isBackfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                    <span className="ml-2">Update genres</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Update genres & year for existing entries?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Update TMDB genres/year in your database.
+                      <br />
+                      Use <b>Update missing</b> for unfinished entries, or <b>Refresh all</b> to force-update everything (slower).
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isBackfilling}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction disabled={isBackfilling} onClick={() => void runMetadataBackfill("missing")}>
+                      Update missing
+                    </AlertDialogAction>
+                    <AlertDialogAction disabled={isBackfilling} onClick={() => void runMetadataBackfill("all")}>
+                      Refresh all
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="secondary" disabled={isTitleBackfilling} className="shrink-0">
+                    {isTitleBackfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                    <span className="ml-2">Update titles</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Update titles for existing entries?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Update TMDB title/name in your database.
+                      <br />
+                      Use <b>Update missing</b> for unfinished entries, or <b>Refresh all</b> to force-update everything (slower).
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isTitleBackfilling}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction disabled={isTitleBackfilling} onClick={() => void runTitleBackfill("missing")}>
+                      Update missing
+                    </AlertDialogAction>
+                    <AlertDialogAction disabled={isTitleBackfilling} onClick={() => void runTitleBackfill("all")}>
+                      Refresh all
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
 
             {isBackfilling && backfillProgress && (
               <div className="text-xs text-muted-foreground text-right">
                 {backfillProgress.updated + backfillProgress.failed}/{backfillProgress.total} • Updated {backfillProgress.updated}
                 {backfillProgress.failed ? ` • Failed ${backfillProgress.failed}` : ""}
+              </div>
+            )}
+
+            {isTitleBackfilling && titleBackfillProgress && (
+              <div className="text-xs text-muted-foreground text-right">
+                {titleBackfillProgress.updated + titleBackfillProgress.failed}/{titleBackfillProgress.total} • Updated {titleBackfillProgress.updated}
+                {titleBackfillProgress.failed ? ` • Failed ${titleBackfillProgress.failed}` : ""}
               </div>
             )}
           </div>
