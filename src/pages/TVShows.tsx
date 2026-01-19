@@ -34,7 +34,7 @@ const TVShows = () => {
   const pageRef = useRef(1);
 
   const restoreScrollYRef = useRef<number | null>(null);
-  const anchorRef = useRef<{ scrollY: number; docHeight: number } | null>(null);
+  const anchorRef = useRef<{ scrollY: number; docHeight: number; wasNearBottom: boolean } | null>(null);
   const userMovedDuringLoadRef = useRef(false);
   const prevLenRef = useRef(0);
 
@@ -172,6 +172,8 @@ const TVShows = () => {
 
         if (reset) {
           setShows(results);
+          // avoid re-triggering fly-in on initial/reset renders (prevents "flashing")
+          setAnimateFromIndex(results.length);
         } else {
           setShows((prev) => [...prev, ...results]);
         }
@@ -196,10 +198,13 @@ const TVShows = () => {
     // single-flight lock
     isFetchingMoreRef.current = true;
 
-    // anchor scroll position to prevent "snap" while waiting at the bottom
+    const distanceToBottom =
+      document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+
     anchorRef.current = {
       scrollY: window.scrollY,
       docHeight: document.documentElement.scrollHeight,
+      wasNearBottom: distanceToBottom < 140,
     };
     userMovedDuringLoadRef.current = false;
 
@@ -305,13 +310,23 @@ const TVShows = () => {
 
     if (len <= prev) return;
     if (!anchorRef.current) return;
+
+    // Only stabilize when the user was actually "waiting at the bottom".
+    if (!anchorRef.current.wasNearBottom) {
+      anchorRef.current = null;
+      return;
+    }
+
+    // If the user scrolled intentionally during the request, don't fight them.
     if (userMovedDuringLoadRef.current) {
       anchorRef.current = null;
       return;
     }
 
-    // restore to the exact scrollY we had when the request started
-    window.scrollTo({ top: anchorRef.current.scrollY, left: 0, behavior: "auto" });
+    // Only correct if we're still basically at the same scroll position.
+    if (Math.abs(window.scrollY - anchorRef.current.scrollY) < 6) {
+      window.scrollTo({ top: anchorRef.current.scrollY, left: 0, behavior: "auto" });
+    }
     anchorRef.current = null;
   }, [shows.length]);
 
