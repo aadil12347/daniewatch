@@ -36,7 +36,18 @@ const Search = () => {
   const visibleResults = useMemo(() => {
     const base = filterBlockedPosts(results);
 
-    const sorted = groupDbLinkedFirst(base, (it) => {
+    // Remove duplicates (TMDB multi search can occasionally return overlapping items)
+    const uniqueBase = (() => {
+      const seen = new Set<string>();
+      return base.filter((it) => {
+        const key = `${it.id}-${it.media_type ?? "multi"}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    })();
+
+    const sorted = groupDbLinkedFirst(uniqueBase, (it) => {
       const a = getAvailability(it.id);
       return a.hasWatch || a.hasDownload;
     });

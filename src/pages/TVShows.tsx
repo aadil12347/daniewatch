@@ -13,6 +13,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 const INITIAL_BATCH_SIZE = 18;
 const LOAD_MORE_BATCH_SIZE = 18;
@@ -47,16 +48,32 @@ const TVShows = () => {
   const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
-  const canFinalizeVisibility = !isModerationLoading && (!needsDbLinkedFilter || !isAvailabilityLoading);
+
+  const visibleShows = useMemo(() => {
+    const base = filterBlockedPosts(displayShows, "tv");
+
+    const sorted = isAvailabilityLoading
+      ? base
+      : groupDbLinkedFirst(base, (it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        });
+
+    return needsDbLinkedFilter
+      ? sorted.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
+  }, [displayShows, filterBlockedPosts, getAvailability, isAvailabilityLoading, needsDbLinkedFilter]);
+
+  const canFinalizeVisibility = !isModerationLoading && !isAvailabilityLoading;
 
   // Preload hover images in the background ONLY (never gate the TV grid render on this).
-  usePageHoverPreload(displayShows, { enabled: !isLoading });
+  usePageHoverPreload(visibleShows, { enabled: !isLoading });
 
-  // IMPORTANT: Only wait for availability when we actually filter by it.
-  // Also: only show skeletons before we have any real items to render.
-  const pageIsLoading =
-    displayShows.length === 0 &&
-    (isLoading || isModerationLoading || (needsDbLinkedFilter ? isAvailabilityLoading : false));
+  // Only show skeletons before we have any real items to render.
+  const pageIsLoading = visibleShows.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
 
   // Fetch genres on mount
   useEffect(() => {
@@ -219,10 +236,10 @@ const TVShows = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!pageIsLoading && displayShows.length > 0) {
+    if (!pageIsLoading && visibleShows.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [pageIsLoading, displayShows.length]);
+  }, [pageIsLoading, visibleShows.length]);
 
   // Reach-end detector: when user hits the end, show a "Load more" button (no auto-fetch)
   useEffect(() => {
@@ -354,7 +371,7 @@ const TVShows = () => {
               ))
             ) : (
               <>
-                {displayShows.map((show, index) => (
+                {visibleShows.map((show, index) => (
                   <div key={`tv-${show.id}`} className={justAddedIds.has(show.id) ? "animate-fly-in" : undefined}>
                     <MovieCard
                       movie={show}
