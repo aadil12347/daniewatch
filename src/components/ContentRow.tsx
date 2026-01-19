@@ -97,6 +97,8 @@ export const ContentRow = ({
                   index={idx}
                   showRank={showRank}
                   size={size}
+                  enableReveal={false}
+                  enableHoverPortal={false}
                 />
               ))}
         </div>
