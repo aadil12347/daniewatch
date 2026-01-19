@@ -474,13 +474,14 @@ html {
     transform: translate3d(0, -12%, 160px) scale(1.02);
   }
 
-  /* CONTAINED variant (Home): keep the character fully inside the poster bounds */
+  /* CONTAINED variant: keep the character fully inside the poster bounds */
   .poster-3d-card--contained {
     overflow: hidden !important;
   }
 
+  /* HOME contained style (existing homepage look) */
   .poster-3d-card--contained .poster-3d-character,
-  .poster-3d-character--contained {
+  .poster-3d-character--contained-home {
     top: 0;
     bottom: 0;
     height: 100%;
@@ -498,9 +499,31 @@ html {
   }
 
   .group:hover .poster-3d-card--contained .poster-3d-character,
-  .group:hover .poster-3d-character--contained {
+  .group:hover .poster-3d-character--contained-home {
     opacity: 1;
     transform: translate3d(0, 6%, 120px) scale(1.02);
+  }
+
+  /* NON-HOME contained style: push character as high as possible (top touches poster) */
+  .poster-3d-character--contained-top {
+    top: 0;
+    bottom: 0;
+    height: 100%;
+
+    clip-path: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+
+    object-fit: contain;
+    object-position: center top;
+
+    /* Start slightly lower; hover moves UP until it "hits" the top edge */
+    transform: translate3d(0, 6%, 0) scale(1.01);
+  }
+
+  .group:hover .poster-3d-character--contained-top {
+    opacity: 1;
+    transform: translate3d(0, 0%, 120px) scale(1.02);
   }
 
   /* Hover portal (renders above carousel overflow so it never gets clipped) */

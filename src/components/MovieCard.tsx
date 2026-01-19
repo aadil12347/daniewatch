@@ -44,8 +44,9 @@ export const MovieCard = ({
   animationDelay = 0,
   className,
   enableReveal = true,
-  // Homepage-style defaults everywhere: contained character + no portal
+  // Defaults: no portal + contained mode everywhere.
   enableHoverPortal = false,
+  // Non-home pages: push character as high as possible inside the poster.
   hoverCharacterMode = "contained",
 }: MovieCardProps) => {
   const location = useLocation();
@@ -322,7 +323,10 @@ export const MovieCard = ({
                 loading="lazy"
                 className={cn(
                   "poster-3d-character",
-                  hoverCharacterMode === "contained" && "poster-3d-character--contained",
+                  hoverCharacterMode === "contained" &&
+                    (location.pathname === "/"
+                      ? "poster-3d-character--contained-home"
+                      : "poster-3d-character--contained-top"),
                   isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                 )}
               />
