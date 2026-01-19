@@ -689,7 +689,14 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
                 {similar.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 md:gap-4 justify-items-center">
                     {similar.map((item) => (
-                      <MovieCard key={item.id} movie={{ ...item, media_type: "tv" }} size="sm" />
+                      <MovieCard
+                        key={item.id}
+                        movie={{ ...item, media_type: "tv" }}
+                        size="sm"
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                        hoverCharacterMode="contained"
+                      />
                     ))}
                   </div>
                 ) : (

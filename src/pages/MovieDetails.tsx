@@ -431,7 +431,14 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
               <h2 className="text-lg md:text-2xl font-bold mb-3 md:mb-6">You may like</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 md:gap-4 justify-items-center">
                 {similar.map((item) => (
-                  <MovieCard key={item.id} movie={{ ...item, media_type: "movie" }} size="sm" />
+                  <MovieCard
+                    key={item.id}
+                    movie={{ ...item, media_type: "movie" }}
+                    size="sm"
+                    enableReveal={false}
+                    enableHoverPortal={false}
+                    hoverCharacterMode="contained"
+                  />
                 ))}
               </div>
             </div>
