@@ -1,20 +1,11 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import TVDetails from "@/pages/TVDetails";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AnimatedBackButton } from "@/components/AnimatedBackButton";
-import { finishPosterExpandTransition } from "@/lib/posterExpandTransition";
 
 export default function TVDetailsModal() {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(() => finishPosterExpandTransition());
-    });
-    return () => cancelAnimationFrame(raf);
-  }, []);
 
   return (
     <Dialog

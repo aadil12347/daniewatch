@@ -11,8 +11,6 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
-import { startPosterExpandTransition } from "@/lib/posterExpandTransition";
-
 interface MovieCardProps {
   movie: Movie;
   index?: number;
@@ -234,19 +232,28 @@ export const MovieCard = ({
           className="block"
           onClick={(e) => {
             if (shouldLetBrowserHandleLink(e)) return;
-            if (!posterRef.current || !posterUrl) return;
+            if (!posterRef.current) return;
 
             e.preventDefault();
 
-            startPosterExpandTransition({
-              sourceEl: posterRef.current,
-              imageSrc: posterUrl,
-              startRadiusPx: 12,
-              endRadiusPx: 0,
-              onNavigate: () => {
-                navigate(`/${mediaType}/${movie.id}`, { state: { backgroundLocation } });
-              },
-            });
+            // Simple, reliable open: a quick "pop" on the poster, then navigate.
+            // (No stretching overlay layer.)
+            try {
+              posterRef.current.animate(
+                [
+                  { transform: "translateZ(0) scale(1)", offset: 0 },
+                  { transform: "translateZ(0) scale(1.04)", offset: 0.6 },
+                  { transform: "translateZ(0) scale(1.02)", offset: 1 },
+                ],
+                { duration: 160, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
+              );
+            } catch {
+              // ignore
+            }
+
+            window.setTimeout(() => {
+              navigate(`/${mediaType}/${movie.id}`, { state: { backgroundLocation } });
+            }, 90);
           }}
           onMouseEnter={() => setIsPosterActive(true)}
           onMouseLeave={() => setIsPosterActive(false)}
