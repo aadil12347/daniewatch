@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import MovieDetails from "@/pages/MovieDetails";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AnimatedBackButton } from "@/components/AnimatedBackButton";
 
 export default function MovieDetailsModal() {
   const navigate = useNavigate();
@@ -15,10 +16,17 @@ export default function MovieDetailsModal() {
     >
       <DialogContent
         hideClose
-        className="w-screen h-[100dvh] max-w-none p-0 sm:rounded-none overflow-hidden gap-0 border-0 grid-rows-[1fr]"
+        contentVariant="fullscreenBelowHeader"
+        className="p-0 sm:rounded-none overflow-hidden gap-0 border-0 grid-rows-[1fr]"
       >
-        <div className="h-full overflow-y-auto overscroll-contain bg-background">
-          <MovieDetails modal />
+        <div className="h-full flex flex-col bg-background">
+          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-3">
+            <AnimatedBackButton label="Back" size="navbar" />
+          </div>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <MovieDetails modal />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
