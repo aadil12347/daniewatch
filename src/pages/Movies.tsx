@@ -300,7 +300,7 @@ const Movies = () => {
         
 
         <div className="container mx-auto px-4 pt-24 pb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 content-reveal">Movies</h1>
+          <h1 className="sr-only">Movies</h1>
 
           {/* Category Navigation */}
           <div className="mb-8">

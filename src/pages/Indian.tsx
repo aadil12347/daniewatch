@@ -317,7 +317,7 @@ const Indian = () => {
         
 
         <div className="container mx-auto px-4 pt-24 pb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-6 content-reveal">Indian</h1>
+          <h1 className="sr-only">Indian</h1>
 
           {/* Language chips */}
           <div className="mb-8 flex flex-wrap gap-2">

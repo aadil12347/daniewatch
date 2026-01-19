@@ -82,10 +82,14 @@ export const Navbar = () => {
   const backgroundLocation = (location.state as any)?.backgroundLocation;
   const isModalDetails = isDetailsPage && Boolean(backgroundLocation);
 
+  // Hide active-page glow while a details modal is open.
+  const allowActiveGlow = !isModalDetails;
+
   const getUrlParam = (key: string) => {
     const sp = new URLSearchParams(location.search);
     return sp.get(key) || "";
   };
+
 
   // Sync search query from URL when navigating to search page
   useEffect(() => {
@@ -267,21 +271,23 @@ export const Navbar = () => {
 
           {/* Center: Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2" data-tutorial="navigation">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={cn(
-                  "nav-link-glow flex items-center gap-2 transition-all duration-300",
-                  location.pathname === link.to 
-                    ? "text-foreground" 
-                    : "text-foreground/70 hover:text-foreground"
-                )}
-              >
-                <link.icon className="w-4 h-4" />
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = allowActiveGlow && location.pathname === link.to;
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={cn(
+                    "nav-link-glow flex items-center gap-2 transition-all duration-300",
+                    isActive && "nav-link-glow-active",
+                    isActive ? "text-foreground" : "text-foreground/70 hover:text-foreground"
+                  )}
+                >
+                  <link.icon className="w-4 h-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Right side: Search + User */}
