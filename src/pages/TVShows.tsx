@@ -30,11 +30,11 @@ const TVShows = () => {
 
   const [hasMore, setHasMore] = useState(true);
   const [endReached, setEndReached] = useState(false);
+  // Keep IDs that have already received the append animation (never clear to avoid full-grid "blink")
   const [justAddedIds, setJustAddedIds] = useState<Set<number>>(() => new Set());
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const justAddedTimerRef = useRef<number | null>(null);
 
   const tmdbPageRef = useRef(1);
   const bufferRef = useRef<Movie[]>([]);
@@ -49,10 +49,14 @@ const TVShows = () => {
   const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
   const canFinalizeVisibility = !isModerationLoading && (!needsDbLinkedFilter || !isAvailabilityLoading);
 
-  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(displayShows, { enabled: !isLoading });
+  // Preload hover images in the background ONLY (never gate the TV grid render on this).
+  usePageHoverPreload(displayShows, { enabled: !isLoading });
 
   // IMPORTANT: Only wait for availability when we actually filter by it.
-  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading || (needsDbLinkedFilter ? isAvailabilityLoading : false);
+  // Also: only show skeletons before we have any real items to render.
+  const pageIsLoading =
+    displayShows.length === 0 &&
+    (isLoading || isModerationLoading || (needsDbLinkedFilter ? isAvailabilityLoading : false));
 
   // Fetch genres on mount
   useEffect(() => {
@@ -67,11 +71,6 @@ const TVShows = () => {
     fetchGenres();
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (justAddedTimerRef.current) window.clearTimeout(justAddedTimerRef.current);
-    };
-  }, []);
 
   const requestTmdbPage = useCallback(
     async (pageNum: number) => {
@@ -202,7 +201,8 @@ const TVShows = () => {
     void (async () => {
       try {
         const first = await gatherNextVisibleItems(INITIAL_BATCH_SIZE);
-        setDisplayShows(first);
+        const withType = first.map((m) => ({ ...m, media_type: "tv" as const }));
+        setDisplayShows(withType);
 
         // Initial batch shouldn't use the “just added” animation
         setJustAddedIds(new Set());
@@ -276,12 +276,12 @@ const TVShows = () => {
         const nextBatch = await gatherNextVisibleItems(LOAD_MORE_BATCH_SIZE);
 
         if (nextBatch.length > 0) {
-          setDisplayShows((prev) => [...prev, ...nextBatch]);
+          const withType = nextBatch.map((m) => ({ ...m, media_type: "tv" as const }));
 
-          const ids = new Set(nextBatch.map((b) => b.id));
-          setJustAddedIds(ids);
-          if (justAddedTimerRef.current) window.clearTimeout(justAddedTimerRef.current);
-          justAddedTimerRef.current = window.setTimeout(() => setJustAddedIds(new Set()), 520);
+          setDisplayShows((prev) => [...prev, ...withType]);
+
+          const ids = new Set(withType.map((b) => b.id));
+          setJustAddedIds((prev) => new Set([...prev, ...ids]));
         } else {
           setHasMore(false);
         }
@@ -357,10 +357,11 @@ const TVShows = () => {
                 {displayShows.map((show, index) => (
                   <MovieCard
                     key={`tv-${show.id}`}
-                    movie={{ ...show, media_type: "tv" }}
+                    movie={show}
                     animationDelay={Math.min(index * 30, 300)}
                     className={justAddedIds.has(show.id) ? "tv-element-in" : undefined}
                     enableReveal={false}
+                    enableHoverPortal={false}
                   />
                 ))}
               </>
