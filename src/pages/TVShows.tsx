@@ -355,14 +355,14 @@ const TVShows = () => {
             ) : (
               <>
                 {displayShows.map((show, index) => (
-                  <MovieCard
-                    key={`tv-${show.id}`}
-                    movie={show}
-                    animationDelay={Math.min(index * 30, 300)}
-                    className={justAddedIds.has(show.id) ? "tv-element-in" : undefined}
-                    enableReveal={false}
-                    enableHoverPortal={false}
-                  />
+                  <div key={`tv-${show.id}`} className={justAddedIds.has(show.id) ? "animate-fly-in" : undefined}>
+                    <MovieCard
+                      movie={show}
+                      animationDelay={Math.min(index * 30, 300)}
+                      enableReveal={false}
+                      enableHoverPortal={false}
+                    />
+                  </div>
                 ))}
               </>
             )}

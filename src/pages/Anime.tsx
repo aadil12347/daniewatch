@@ -40,6 +40,7 @@ const Anime = () => {
 
   const [items, setItems] = useState<Movie[]>([]);
   const [displayCount, setDisplayCount] = useState(0);
+  const [animateFromIndex, setAnimateFromIndex] = useState<number | null>(null);
   const [pendingLoadMore, setPendingLoadMore] = useState(false);
   const loadMoreFetchRequestedRef = useRef(false);
 
@@ -88,6 +89,7 @@ const Anime = () => {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setItems(cached.items);
       setDisplayCount(cached.items.length);
+      setAnimateFromIndex(null);
       setPage(cached.page);
       setHasMore(cached.hasMore);
       setIsLoading(false);
@@ -200,6 +202,7 @@ const Anime = () => {
     setPage(1);
     setItems([]);
     setDisplayCount(0);
+    setAnimateFromIndex(null);
     setHasMore(true);
     fetchAnime(1, true);
   }, [selectedTags, selectedYear, isInitialized]);
@@ -241,6 +244,7 @@ const Anime = () => {
 
     const hasBuffered = displayCount < visibleItems.length;
     if (hasBuffered) {
+      setAnimateFromIndex(displayCount);
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleItems.length));
       setPendingLoadMore(false);
       return;
@@ -251,6 +255,7 @@ const Anime = () => {
       return;
     }
 
+    setAnimateFromIndex(displayCount);
     loadMoreFetchRequestedRef.current = true;
     setIsLoadingMore(true);
     setPendingLoadMore(false);
@@ -315,16 +320,25 @@ const Anime = () => {
                     <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                   </div>
                 ))
-              : visibleItems.slice(0, displayCount).map((item, index) => (
-                  <MovieCard
-                    key={`${item.id}-${item.media_type ?? "tv"}`}
-                    movie={item}
-                    animationDelay={Math.min(index * 30, 300)}
-                    enableReveal={false}
-                    enableHoverPortal={false}
-                  />
-                ))}
-          </div>
+              : visibleItems.slice(0, displayCount).map((item, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
+                  return (
+                    <div
+                      key={`${item.id}-${item.media_type ?? "tv"}`}
+                      className={shouldAnimate ? "animate-fly-in" : undefined}
+                    >
+                      <MovieCard
+                        movie={item}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
+                    </div>
+                  );
+                })}
+           </div>
 
           {/* No results message */}
           {!pageIsLoading && visibleItems.length === 0 && (
