@@ -12,6 +12,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 import { useListStateCache } from "@/hooks/useListStateCache";
 
 const Search = () => {
@@ -33,8 +34,6 @@ const Search = () => {
   const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const visibleResults = useMemo(() => {
-    if (isAvailabilityLoading) return [] as Movie[];
-
     const base = filterBlockedPosts(results);
 
     // Remove duplicates (TMDB multi search can occasionally return overlapping items)
@@ -48,23 +47,25 @@ const Search = () => {
       });
     })();
 
-    const linked: Movie[] = [];
-    const unlinked: Movie[] = [];
-
-    for (const it of uniqueBase) {
+    const sorted = groupDbLinkedFirst(uniqueBase, (it) => {
       const a = getAvailability(it.id);
-      const isLinked = a.hasWatch || a.hasDownload;
-      (isLinked ? linked : unlinked).push(it);
-    }
+      return a.hasWatch || a.hasDownload;
+    });
 
-    return isAdmin && showOnlyDbLinked ? linked : [...linked, ...unlinked];
-  }, [filterBlockedPosts, getAvailability, isAdmin, isAvailabilityLoading, results, showOnlyDbLinked]);
+    return isAdmin && showOnlyDbLinked
+      ? sorted.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
+  }, [filterBlockedPosts, results, getAvailability, isAdmin, showOnlyDbLinked]);
 
   // Preload hover images in the background ONLY (never gate the search grid on this).
   usePageHoverPreload(visibleResults, { enabled: !isLoading });
 
   // Only show skeletons before we have any real results to render.
-  const pageIsLoading = visibleResults.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
+  const pageIsLoading =
+    visibleResults.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";
@@ -206,59 +207,24 @@ const Search = () => {
 
           {/* Results Grid */}
           {(pageIsLoading || visibleResults.length > 0) && (
-            <>
-              {!pageIsLoading && visibleResults.length > 0 && (
-                <h2 className="sr-only">Database linked</h2>
-              )}
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                {pageIsLoading
-                  ? Array.from({ length: 12 }).map((_, i) => (
-                      <div key={i}>
-                        <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                        <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                        <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                      </div>
-                    ))
-                  : (() => {
-                      const linked: Movie[] = [];
-                      const unlinked: Movie[] = [];
-
-                      for (const it of visibleResults) {
-                        const a = getAvailability(it.id);
-                        const isLinked = a.hasWatch || a.hasDownload;
-                        (isLinked ? linked : unlinked).push(it);
-                      }
-
-                      return (
-                        <>
-                          {linked.map((item) => (
-                            <MovieCard
-                              key={`${item.id}-${item.media_type ?? "multi"}`}
-                              movie={item}
-                              enableReveal={false}
-                              enableHoverPortal={false}
-                            />
-                          ))}
-
-                          {!showOnlyDbLinked && unlinked.length > 0 && (
-                            <div className="col-span-full h-6" aria-hidden="true" />
-                          )}
-
-                          {!showOnlyDbLinked &&
-                            unlinked.map((item) => (
-                              <MovieCard
-                                key={`${item.id}-${item.media_type ?? "multi"}`}
-                                movie={item}
-                                enableReveal={false}
-                                enableHoverPortal={false}
-                              />
-                            ))}
-                        </>
-                      );
-                    })()}
-              </div>
-            </>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+              {pageIsLoading
+                ? Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                      <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                      <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                    </div>
+                  ))
+                : visibleResults.map((item) => (
+                    <MovieCard
+                      key={`${item.id}-${item.media_type ?? "multi"}`}
+                      movie={item}
+                      enableReveal={false}
+                      enableHoverPortal={false}
+                    />
+                  ))}
+            </div>
           )}
 
           {/* No Results */}

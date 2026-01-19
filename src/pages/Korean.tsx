@@ -14,6 +14,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -73,31 +74,27 @@ const Korean = () => {
     return dedupeItems(moderated);
   }, [dedupeItems, filterBlockedPosts, items]);
 
-  const canFinalizeVisibility = !isModerationLoading && !isAvailabilityLoading;
+  const visibleItems = useMemo(() => {
+    const sorted = isAvailabilityLoading
+      ? baseVisible
+      : groupDbLinkedFirst(baseVisible, (it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        });
 
-  const { linkedItems, unlinkedItems, orderedItems } = useMemo(() => {
-    if (!canFinalizeVisibility) {
-      return { linkedItems: [] as Movie[], unlinkedItems: [] as Movie[], orderedItems: [] as Movie[] };
-    }
-
-    const linked: Movie[] = [];
-    const unlinked: Movie[] = [];
-
-    for (const it of baseVisible) {
-      const a = getAvailability(it.id);
-      const isLinked = a.hasWatch || a.hasDownload;
-      (isLinked ? linked : unlinked).push(it);
-    }
-
-    const ordered = isAdmin && showOnlyDbLinked ? linked : [...linked, ...unlinked];
-    return { linkedItems: linked, unlinkedItems: unlinked, orderedItems: ordered };
-  }, [baseVisible, canFinalizeVisibility, getAvailability, isAdmin, showOnlyDbLinked]);
+    return isAdmin && showOnlyDbLinked
+      ? sorted.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
+  }, [baseVisible, getAvailability, isAdmin, isAvailabilityLoading, showOnlyDbLinked]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
-  usePageHoverPreload(orderedItems, { enabled: !isLoading });
+  usePageHoverPreload(visibleItems, { enabled: !isLoading });
 
   // Only show skeletons before we have any real items to render.
-  const pageIsLoading = displayCount === 0 && (isLoading || !canFinalizeVisibility);
+  const pageIsLoading = visibleItems.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
 
@@ -286,15 +283,13 @@ const Korean = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!pageIsLoading && orderedItems.length > 0) {
+    if (!pageIsLoading && visibleItems.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [pageIsLoading, orderedItems.length]);
+  }, [pageIsLoading, visibleItems.length]);
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
   useEffect(() => {
-    if (!canFinalizeVisibility) return;
-
     observerRef.current?.disconnect();
 
     observerRef.current = new IntersectionObserver(
@@ -302,7 +297,7 @@ const Korean = () => {
         if (!entries[0].isIntersecting) return;
         if (isLoading || isLoadingMore || pendingLoadMore) return;
 
-        const hasBuffered = displayCount < orderedItems.length;
+        const hasBuffered = displayCount < visibleItems.length;
         if (!hasBuffered && !hasMore) return;
 
         setPendingLoadMore(true);
@@ -315,16 +310,16 @@ const Korean = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [canFinalizeVisibility, displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, orderedItems.length]);
+  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleItems.length]);
 
   // Resolve pending "load more": reveal from buffer first, otherwise fetch next TMDB page.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
-    const hasBuffered = displayCount < orderedItems.length;
+    const hasBuffered = displayCount < visibleItems.length;
     if (hasBuffered) {
       setAnimateFromIndex(displayCount);
-      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, orderedItems.length));
+      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleItems.length));
       setPendingLoadMore(false);
       return;
     }
@@ -339,7 +334,7 @@ const Korean = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, orderedItems.length, hasMore, setIsLoadingMore]);
+  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore]);
 
   // Fetch more when page changes
   useEffect(() => {
@@ -393,10 +388,6 @@ const Korean = () => {
           </div>
 
           {/* Grid */}
-          {!pageIsLoading && orderedItems.length > 0 && (
-            <h2 className="sr-only">Database linked</h2>
-          )}
-
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
               ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
@@ -406,57 +397,28 @@ const Korean = () => {
                     <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                   </div>
                 ))
-              : (() => {
-                  const slice = orderedItems.slice(0, displayCount);
-
-                  const linkedSlice: Movie[] = [];
-                  const unlinkedSlice: Movie[] = [];
-
-                  for (const it of slice) {
-                    const a = getAvailability(it.id);
-                    const isLinked = a.hasWatch || a.hasDownload;
-                    (isLinked ? linkedSlice : unlinkedSlice).push(it);
-                  }
-
-                  const renderItem = (item: Movie, globalIndex: number) => {
-                    const shouldAnimate =
-                      animateFromIndex !== null &&
-                      globalIndex >= animateFromIndex &&
-                      globalIndex < animateFromIndex + BATCH_SIZE;
-
-                    return (
-                      <div
-                        key={`${item.id}-${item.media_type ?? "movie"}`}
-                        className={shouldAnimate ? "animate-fly-in" : undefined}
-                      >
-                        <MovieCard
-                          movie={item}
-                          animationDelay={Math.min(globalIndex * 30, 300)}
-                          enableReveal={false}
-                          enableHoverPortal={false}
-                        />
-                      </div>
-                    );
-                  };
-
-                  const linkedCount = linkedSlice.length;
+              : visibleItems.slice(0, displayCount).map((item, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
                   return (
-                    <>
-                      {linkedSlice.map((item, idx) => renderItem(item, idx))}
-
-                      {!showOnlyDbLinked && unlinkedSlice.length > 0 && (
-                        <div className="col-span-full h-6" aria-hidden="true" />
-                      )}
-
-                      {!showOnlyDbLinked && unlinkedSlice.map((item, idx) => renderItem(item, linkedCount + idx))}
-                    </>
+                    <div
+                      key={`${item.id}-${item.media_type ?? "movie"}`}
+                      className={shouldAnimate ? "animate-fly-in" : undefined}
+                    >
+                      <MovieCard
+                        movie={item}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
+                    </div>
                   );
-                })()}
-          </div>
+                })}
+           </div>
 
           {/* No results message */}
-          {!pageIsLoading && orderedItems.length === 0 && (
+          {!pageIsLoading && visibleItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No Korean content found with the selected filters.</p>
               <button
@@ -471,7 +433,7 @@ const Korean = () => {
           {/* Loading More Indicator */}
           <div ref={loadMoreRef} className="flex justify-center py-6">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!hasMore && orderedItems.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+            {!hasMore && visibleItems.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 

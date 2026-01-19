@@ -13,6 +13,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 const INITIAL_BATCH_SIZE = 18;
 const LOAD_MORE_BATCH_SIZE = 18;
@@ -48,33 +49,31 @@ const TVShows = () => {
 
   const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
 
-  const { linkedShows, unlinkedShows, orderedShows } = useMemo(() => {
+  const visibleShows = useMemo(() => {
     const base = filterBlockedPosts(displayShows, "tv");
 
-    if (isAvailabilityLoading) {
-      return { linkedShows: [] as Movie[], unlinkedShows: [] as Movie[], orderedShows: base };
-    }
+    const sorted = isAvailabilityLoading
+      ? base
+      : groupDbLinkedFirst(base, (it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        });
 
-    const linked: Movie[] = [];
-    const unlinked: Movie[] = [];
-
-    for (const it of base) {
-      const a = getAvailability(it.id);
-      const isLinked = a.hasWatch || a.hasDownload;
-      (isLinked ? linked : unlinked).push(it);
-    }
-
-    const ordered = needsDbLinkedFilter ? linked : [...linked, ...unlinked];
-    return { linkedShows: linked, unlinkedShows: unlinked, orderedShows: ordered };
+    return needsDbLinkedFilter
+      ? sorted.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
   }, [displayShows, filterBlockedPosts, getAvailability, isAvailabilityLoading, needsDbLinkedFilter]);
 
   const canFinalizeVisibility = !isModerationLoading && !isAvailabilityLoading;
 
   // Preload hover images in the background ONLY (never gate the TV grid render on this).
-  usePageHoverPreload(orderedShows, { enabled: !isLoading });
+  usePageHoverPreload(visibleShows, { enabled: !isLoading });
 
   // Only show skeletons before we have any real items to render.
-  const pageIsLoading = orderedShows.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
+  const pageIsLoading = visibleShows.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
 
   // Fetch genres on mount
   useEffect(() => {
@@ -237,10 +236,10 @@ const TVShows = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!pageIsLoading && orderedShows.length > 0) {
+    if (!pageIsLoading && visibleShows.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [pageIsLoading, orderedShows.length]);
+  }, [pageIsLoading, visibleShows.length]);
 
   // Reach-end detector: when user hits the end, show a "Load more" button (no auto-fetch)
   useEffect(() => {
@@ -372,8 +371,8 @@ const TVShows = () => {
               ))
             ) : (
               <>
-                {linkedShows.map((show, index) => (
-                  <div key={`tv-linked-${show.id}`} className={justAddedIds.has(show.id) ? "animate-fly-in" : undefined}>
+                {visibleShows.map((show, index) => (
+                  <div key={`tv-${show.id}`} className={justAddedIds.has(show.id) ? "animate-fly-in" : undefined}>
                     <MovieCard
                       movie={show}
                       animationDelay={Math.min(index * 30, 300)}
@@ -382,32 +381,12 @@ const TVShows = () => {
                     />
                   </div>
                 ))}
-
-                {!needsDbLinkedFilter && unlinkedShows.length > 0 && <div className="col-span-full h-6" aria-hidden="true" />}
-
-                {!needsDbLinkedFilter &&
-                  unlinkedShows.map((show, index) => {
-                    const globalIndex = linkedShows.length + index;
-                    return (
-                      <div
-                        key={`tv-unlinked-${show.id}`}
-                        className={justAddedIds.has(show.id) ? "animate-fly-in" : undefined}
-                      >
-                        <MovieCard
-                          movie={show}
-                          animationDelay={Math.min(globalIndex * 30, 300)}
-                          enableReveal={false}
-                          enableHoverPortal={false}
-                        />
-                      </div>
-                    );
-                  })}
               </>
             )}
           </div>
 
           {/* No results message */}
-          {!pageIsLoading && orderedShows.length === 0 && (
+          {!pageIsLoading && displayShows.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No TV shows found with the selected filters.</p>
               <button
@@ -423,7 +402,7 @@ const TVShows = () => {
           <div ref={loadMoreRef} className="flex justify-center py-6 min-h-[56px]">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
 
-            {!isLoadingMore && !hasMore && orderedShows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+            {!isLoadingMore && !hasMore && displayShows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
 
             {!isLoadingMore && hasMore && endReached && (
               <button
