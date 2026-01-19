@@ -106,13 +106,6 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [backfillProgress, setBackfillProgress] = useState<{ total: number; updated: number; failed: number } | null>(
     null
   );
-  const [isBackfillChecking, setIsBackfillChecking] = useState(false);
-  const [backfillMissingCount, setBackfillMissingCount] = useState<number | null>(null);
-  const [backfillLastCheckedAt, setBackfillLastCheckedAt] = useState<number | null>(null);
-
-  // Auto mode: keep checking + updating until nothing remains or user stops
-  const [isAutoBackfilling, setIsAutoBackfilling] = useState(false);
-  const autoStopRequestedRef = useRef(false);
 
   const loadSeasonData = useCallback(async (content: any, season: number) => {
     const seasonKey = `season_${season}`;
@@ -288,193 +281,89 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     handleSearch(idParam);
   }, [handleSearch, initialTmdbId, searchParams]);
 
-  const checkMissingMetadata = useCallback(async () => {
-    if (isBackfillChecking || isBackfilling) return;
+  const runMetadataBackfill = useCallback(async () => {
+    if (isBackfilling) return;
 
-    setIsBackfillChecking(true);
+    setIsBackfilling(true);
+    setBackfillProgress({ total: 0, updated: 0, failed: 0 });
+
     try {
-      const { count, error } = await supabase
+      toast({
+        title: "Backfill started",
+        description: "Filling missing genres/year for existing entries...",
+      });
+
+      const { data, error } = await supabase
         .from("entries")
-        // head:true avoids pulling all rows; count gives exact count
-        .select("id", { count: "exact", head: true })
+        .select("id,type")
         .or("genre_ids.is.null,release_year.is.null");
 
       if (error) throw error;
 
-      setBackfillMissingCount(typeof count === "number" ? count : 0);
-      setBackfillLastCheckedAt(Date.now());
-    } catch (e: any) {
-      console.error("[backfill-check] error", e);
+      const rows = (data ?? []) as Array<{ id: string; type: "movie" | "series" }>;
+      let updated = 0;
+      let failed = 0;
+
+      setBackfillProgress({ total: rows.length, updated: 0, failed: 0 });
+
+      // Small batches to avoid TMDB rate limits.
+      const BATCH = 10;
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const slice = rows.slice(i, i + BATCH);
+
+        await Promise.all(
+          slice.map(async (row) => {
+            try {
+              const tmdbIdNum = Number(row.id);
+              if (!Number.isFinite(tmdbIdNum)) throw new Error("Invalid TMDB id");
+
+              // Try movie details first; fallback to TV.
+              const movie = await getMovieDetails(tmdbIdNum).catch(() => null);
+              const show = movie ? null : await getTVDetails(tmdbIdNum).catch(() => null);
+
+              const genreIds = (movie?.genres ?? show?.genres ?? [])
+                .map((g: any) => g?.id)
+                .filter((n: any) => typeof n === "number");
+
+              const yearStr = (movie?.release_date ?? show?.first_air_date ?? "").split("-")[0];
+              const releaseYear = yearStr ? Number(yearStr) : null;
+
+              const { error: updateErr } = await supabase
+                .from("entries")
+                .update({
+                  genre_ids: genreIds.length ? genreIds : null,
+                  release_year: Number.isFinite(releaseYear as number) ? releaseYear : null,
+                })
+                .eq("id", row.id);
+
+              if (updateErr) throw updateErr;
+              updated++;
+              setBackfillProgress((p) => (p ? { ...p, updated } : p));
+            } catch (e) {
+              console.error("[backfill] failed", row, e);
+              failed++;
+              setBackfillProgress((p) => (p ? { ...p, failed } : p));
+            }
+          })
+        );
+      }
+
       toast({
-        title: "Check failed",
-        description: e?.message || "Couldn't check missing genres/year.",
-        variant: "destructive",
+        title: "Backfill finished",
+        description: `Updated ${updated} entries${failed ? `, failed ${failed}` : ""}.`,
       });
-      setBackfillMissingCount(null);
-      setBackfillLastCheckedAt(null);
-    } finally {
-      setIsBackfillChecking(false);
-    }
-  }, [isBackfillChecking, isBackfilling, toast]);
-
-
-
-  const runMetadataBackfill = useCallback(
-    async (rowsOverride?: Array<{ id: string; type: "movie" | "series" }>) => {
-      if (isBackfilling) return;
-
-      setIsBackfilling(true);
-      setBackfillProgress({ total: 0, updated: 0, failed: 0 });
-
-      try {
-        toast({
-          title: "Update started",
-          description: "Filling missing genres/year for existing entries...",
-        });
-
-        let rowsToProcess: Array<{ id: string; type: "movie" | "series" }>;
-
-        if (rowsOverride) {
-          rowsToProcess = rowsOverride;
-        } else {
-          const { data, error } = await supabase
-            .from("entries")
-            .select("id,type")
-            .or("genre_ids.is.null,release_year.is.null");
-
-          if (error) throw error;
-          rowsToProcess = (data ?? []) as Array<{ id: string; type: "movie" | "series" }>;
-        }
-
-        let updated = 0;
-        let failed = 0;
-
-        setBackfillProgress({ total: rowsToProcess.length, updated: 0, failed: 0 });
-
-        // Small batches to avoid TMDB rate limits.
-        const BATCH = 10;
-        for (let i = 0; i < rowsToProcess.length; i += BATCH) {
-          if (autoStopRequestedRef.current) break;
-
-          const slice = rowsToProcess.slice(i, i + BATCH);
-
-          await Promise.all(
-            slice.map(async (row) => {
-              try {
-                if (autoStopRequestedRef.current) return;
-
-                const tmdbIdNum = Number(row.id);
-                if (!Number.isFinite(tmdbIdNum)) throw new Error("Invalid TMDB id");
-
-                // Try movie details first; fallback to TV.
-                const movie = await getMovieDetails(tmdbIdNum).catch(() => null);
-                const show = movie ? null : await getTVDetails(tmdbIdNum).catch(() => null);
-
-                const genreIds = (movie?.genres ?? show?.genres ?? [])
-                  .map((g: any) => g?.id)
-                  .filter((n: any) => typeof n === "number");
-
-                const yearStr = (movie?.release_date ?? show?.first_air_date ?? "").split("-")[0];
-                const releaseYear = yearStr ? Number(yearStr) : null;
-
-                // Only fill missing values; don't overwrite existing metadata.
-                const { data: existing, error: existingErr } = await supabase
-                  .from("entries")
-                  .select("genre_ids,release_year")
-                  .eq("id", row.id)
-                  .maybeSingle();
-
-                if (existingErr) throw existingErr;
-
-                const nextGenreIds = (existing?.genre_ids?.length ?? 0) > 0 ? existing?.genre_ids : genreIds;
-                const nextReleaseYear =
-                  existing?.release_year ?? (Number.isFinite(releaseYear as number) ? releaseYear : null);
-
-                const { error: updateErr } = await supabase
-                  .from("entries")
-                  .update({
-                    genre_ids: nextGenreIds?.length ? nextGenreIds : null,
-                    release_year: nextReleaseYear,
-                  })
-                  .eq("id", row.id);
-
-                if (updateErr) throw updateErr;
-                updated++;
-                setBackfillProgress((p) => (p ? { ...p, updated } : p));
-              } catch (e) {
-                console.error("[backfill] failed", row, e);
-                failed++;
-                setBackfillProgress((p) => (p ? { ...p, failed } : p));
-              }
-            })
-          );
-        }
-
-        toast({
-          title: "Update finished",
-          description: `Updated ${updated} entries${failed ? `, failed ${failed}` : ""}.`,
-        });
-
-        // Refresh the counter after finishing.
-        void checkMissingMetadata();
-      } catch (e: any) {
-        console.error("[backfill] error", e);
-        toast({
-          title: "Update error",
-          description: e?.message || "Failed to update entries.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsBackfilling(false);
-        setTimeout(() => setBackfillProgress(null), 2500);
-      }
-    },
-    [checkMissingMetadata, isBackfilling, toast]
-  );
-
-  const startAutoMetadataUpdate = useCallback(async () => {
-    if (isAutoBackfilling) return;
-
-    autoStopRequestedRef.current = false;
-    setIsAutoBackfilling(true);
-
-    try {
-      toast({
-        title: "Auto update started",
-        description: "Will keep checking and updating until nothing remains (or you stop).",
-      });
-
-      while (!autoStopRequestedRef.current) {
-        await checkMissingMetadata();
-
-        if (backfillMissingCount === null) throw new Error("Couldn't read missing count");
-        if (backfillMissingCount === 0) break;
-
-        await runMetadataBackfill();
-        await new Promise((r) => setTimeout(r, 400));
-      }
-
-      if (autoStopRequestedRef.current) {
-        toast({ title: "Auto update stopped" });
-      } else {
-        toast({ title: "Auto update finished", description: "No missing genres/year remain." });
-      }
     } catch (e: any) {
-      console.error("[auto-backfill] error", e);
+      console.error("[backfill] error", e);
       toast({
-        title: "Auto update error",
-        description: e?.message || "Auto update failed.",
+        title: "Backfill error",
+        description: e?.message || "Failed to backfill entries.",
         variant: "destructive",
       });
     } finally {
-      setIsAutoBackfilling(false);
-      autoStopRequestedRef.current = false;
+      setIsBackfilling(false);
+      setTimeout(() => setBackfillProgress(null), 2500);
     }
-  }, [backfillMissingCount, checkMissingMetadata, isAutoBackfilling, runMetadataBackfill, toast]);
-
-  const stopAutoMetadataUpdate = useCallback(() => {
-    autoStopRequestedRef.current = true;
-  }, []);
+  }, [isBackfilling, toast]);
 
   /**
    * One-time manual backfill for existing DB rows that are missing genre_ids/release_year.
@@ -715,32 +604,29 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <Button
-              variant={isAutoBackfilling ? "destructive" : "secondary"}
-              disabled={isBackfilling || isBackfillChecking}
-              className="shrink-0"
-              onClick={() => {
-                if (isAutoBackfilling) {
-                  stopAutoMetadataUpdate();
-                } else {
-                  void startAutoMetadataUpdate();
-                }
-              }}
-            >
-              {isBackfilling || isBackfillChecking || isAutoBackfilling ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RotateCcw className="w-4 h-4" />
-              )}
-              <span className="ml-2">{isAutoBackfilling ? "Stop auto update" : "Start auto update"}</span>
-            </Button>
-
-            <div className="text-xs text-muted-foreground text-right">
-              {backfillMissingCount === null
-                ? "Auto update will scan + fill missing genres/year"
-                : `Missing: ${backfillMissingCount}`}
-              {backfillLastCheckedAt ? ` • Checked ${formatDistanceToNow(backfillLastCheckedAt, { addSuffix: true })}` : ""}
-            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="secondary" disabled={isBackfilling} className="shrink-0">
+                  {isBackfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                  <span className="ml-2">Update genres</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Update genres & year for existing entries?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will scan your database for entries missing genres/year and fetch metadata from TMDB. It may take a few
+                    minutes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isBackfilling}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction disabled={isBackfilling} onClick={() => void runMetadataBackfill()}>
+                    Run update
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {isBackfilling && backfillProgress && (
               <div className="text-xs text-muted-foreground text-right">
