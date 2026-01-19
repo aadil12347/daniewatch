@@ -20,6 +20,7 @@ const BATCH_SIZE = 18;
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [displayCount, setDisplayCount] = useState(0);
+  const [animateFromIndex, setAnimateFromIndex] = useState<number | null>(null);
   const [pendingLoadMore, setPendingLoadMore] = useState(false);
   const loadMoreFetchRequestedRef = useRef(false);
 
@@ -91,6 +92,7 @@ const Movies = () => {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setMovies(cached.items);
       setDisplayCount(cached.items.length);
+      setAnimateFromIndex(null);
       setPage(cached.page);
       setHasMore(cached.hasMore);
       setIsLoading(false);
@@ -202,6 +204,7 @@ const Movies = () => {
     setPage(1);
     setMovies([]);
     setDisplayCount(0);
+    setAnimateFromIndex(null);
     setHasMore(true);
     fetchMovies(1, true);
   }, [selectedGenres, selectedYear, isInitialized]);
@@ -243,6 +246,7 @@ const Movies = () => {
 
     const hasBuffered = displayCount < visibleMovies.length;
     if (hasBuffered) {
+      setAnimateFromIndex(displayCount);
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleMovies.length));
       setPendingLoadMore(false);
       return;
@@ -253,6 +257,7 @@ const Movies = () => {
       return;
     }
 
+    setAnimateFromIndex(displayCount);
     loadMoreFetchRequestedRef.current = true;
     setIsLoadingMore(true);
     setPendingLoadMore(false);
@@ -319,16 +324,22 @@ const Movies = () => {
                     <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                   </div>
                 ))
-              : visibleMovies.slice(0, displayCount).map((movie, index) => (
-                  <MovieCard
-                    key={`${movie.id}-movie`}
-                    movie={movie}
-                    animationDelay={Math.min(index * 30, 300)}
-                    enableReveal={false}
-                    enableHoverPortal={false}
-                  />
-                ))}
-          </div>
+              : visibleMovies.slice(0, displayCount).map((movie, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
+                  return (
+                    <div key={`${movie.id}-movie`} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                      <MovieCard
+                        movie={movie}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
+                    </div>
+                  );
+                })}
+           </div>
 
           {/* No results message */}
           {!pageIsLoading && visibleMovies.length === 0 && (

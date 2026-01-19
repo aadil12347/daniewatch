@@ -42,6 +42,7 @@ const Korean = () => {
 
   const [items, setItems] = useState<Movie[]>([]);
   const [displayCount, setDisplayCount] = useState(0);
+  const [animateFromIndex, setAnimateFromIndex] = useState<number | null>(null);
   const [pendingLoadMore, setPendingLoadMore] = useState(false);
   const loadMoreFetchRequestedRef = useRef(false);
 
@@ -90,6 +91,7 @@ const Korean = () => {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setItems(cached.items);
       setDisplayCount(cached.items.length);
+      setAnimateFromIndex(null);
       setPage(cached.page);
       setHasMore(cached.hasMore);
       setIsLoading(false);
@@ -248,6 +250,7 @@ const Korean = () => {
     setPage(1);
     setItems([]);
     setDisplayCount(0);
+    setAnimateFromIndex(null);
     setHasMore(true);
     fetchKorean(1, true);
   }, [selectedTags, selectedYear, isInitialized]);
@@ -289,6 +292,7 @@ const Korean = () => {
 
     const hasBuffered = displayCount < visibleItems.length;
     if (hasBuffered) {
+      setAnimateFromIndex(displayCount);
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleItems.length));
       setPendingLoadMore(false);
       return;
@@ -299,6 +303,7 @@ const Korean = () => {
       return;
     }
 
+    setAnimateFromIndex(displayCount);
     loadMoreFetchRequestedRef.current = true;
     setIsLoadingMore(true);
     setPendingLoadMore(false);
@@ -366,16 +371,25 @@ const Korean = () => {
                     <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                   </div>
                 ))
-              : visibleItems.slice(0, displayCount).map((item, index) => (
-                  <MovieCard
-                    key={`${item.id}-${item.media_type ?? "movie"}`}
-                    movie={item}
-                    animationDelay={Math.min(index * 30, 300)}
-                    enableReveal={false}
-                    enableHoverPortal={false}
-                  />
-                ))}
-          </div>
+              : visibleItems.slice(0, displayCount).map((item, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
+                  return (
+                    <div
+                      key={`${item.id}-${item.media_type ?? "movie"}`}
+                      className={shouldAnimate ? "animate-fly-in" : undefined}
+                    >
+                      <MovieCard
+                        movie={item}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
+                    </div>
+                  );
+                })}
+           </div>
 
           {/* No results message */}
           {!pageIsLoading && visibleItems.length === 0 && (
