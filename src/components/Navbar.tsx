@@ -79,6 +79,9 @@ export const Navbar = () => {
   const isDetailsPage =
     location.pathname.startsWith("/movie/") || location.pathname.startsWith("/tv/");
 
+  const backgroundLocation = (location.state as any)?.backgroundLocation;
+  const isModalDetails = isDetailsPage && Boolean(backgroundLocation);
+
   const getUrlParam = (key: string) => {
     const sp = new URLSearchParams(location.search);
     return sp.get(key) || "";
@@ -419,10 +422,14 @@ export const Navbar = () => {
 
       </nav>
 
-      {/* Sticky Back button on details pages - hidden on mobile */}
+      {/* Sticky Back button on details pages */}
       {isDetailsPage && (
-        <div className="hidden md:block fixed left-4 top-20 z-[60]">
-          <AnimatedBackButton label="Back" size="navbar" />
+        <div className={cn("fixed left-4 top-20 z-[60]", isModalDetails ? "block" : "hidden md:block")}>
+          <AnimatedBackButton
+            label="Back"
+            size="navbar"
+            to={isModalDetails ? `${backgroundLocation.pathname}${backgroundLocation.search ?? ""}` : undefined}
+          />
         </div>
       )}
 

@@ -15,9 +15,9 @@ export default function MovieDetailsModal() {
     >
       <DialogContent
         hideClose
-        className="w-screen h-[100dvh] max-w-none p-0 sm:rounded-none overflow-hidden"
+        className="w-screen h-[100dvh] max-w-none p-0 sm:rounded-none overflow-hidden gap-0 border-0 grid-rows-[1fr]"
       >
-        <div className="h-full overflow-y-auto bg-background">
+        <div className="h-full overflow-y-auto overscroll-contain bg-background">
           <MovieDetails modal />
         </div>
       </DialogContent>
