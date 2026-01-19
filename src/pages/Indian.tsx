@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
@@ -11,6 +11,10 @@ import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
+import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 type IndianLang = "all" | "ta" | "te" | "hi";
 
@@ -23,6 +27,9 @@ const INDIAN_LANGS: Array<{ key: IndianLang; label: string; tmdbLang?: string }>
 
 const Indian = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
+  const { isAdmin } = useAdmin();
+  const { showOnlyDbLinked } = useAdminListFilter();
+  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const [items, setItems] = useState<Movie[]>([]);
   const [selectedLang, setSelectedLang] = useState<IndianLang>("all");
@@ -33,10 +40,25 @@ const Indian = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
 
-  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(items, { enabled: !isLoading });
+  const baseVisible = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
 
-  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
-  const visibleItems = filterBlockedPosts(items);
+  const visibleItems = useMemo(() => {
+    const sorted = groupDbLinkedFirst(baseVisible, (it) => {
+      const a = getAvailability(it.id);
+      return a.hasWatch || a.hasDownload;
+    });
+
+    return isAdmin && showOnlyDbLinked
+      ? sorted.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
+  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
+
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleItems, { enabled: !isLoading });
+
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);

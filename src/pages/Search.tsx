@@ -9,6 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { searchMulti, searchAnime, searchKorean, filterMinimal, Movie } from "@/lib/tmdb";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
+import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -20,11 +24,29 @@ const Search = () => {
   const requestIdRef = useRef(0);
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
-  const visibleResults = useMemo(() => filterBlockedPosts(results), [filterBlockedPosts, results]);
+  const { isAdmin } = useAdmin();
+  const { showOnlyDbLinked } = useAdminListFilter();
+  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
+
+  const visibleResults = useMemo(() => {
+    const base = filterBlockedPosts(results);
+
+    const sorted = groupDbLinkedFirst(base, (it) => {
+      const a = getAvailability(it.id);
+      return a.hasWatch || a.hasDownload;
+    });
+
+    return isAdmin && showOnlyDbLinked
+      ? sorted.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
+  }, [filterBlockedPosts, results, getAvailability, isAdmin, showOnlyDbLinked]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleResults, { enabled: !isLoading });
 
-  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";

@@ -11,6 +11,10 @@ import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
+import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 const TVShows = () => {
   const [shows, setShows] = useState<Movie[]>([]);
@@ -28,10 +32,29 @@ const TVShows = () => {
 
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
+  const { isAdmin } = useAdmin();
+  const { showOnlyDbLinked } = useAdminListFilter();
+  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
-  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(shows, { enabled: !isLoading });
+  const baseVisible = useMemo(() => filterBlockedPosts(shows, "tv"), [filterBlockedPosts, shows]);
 
-  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
+  const visibleShows = useMemo(() => {
+    const sorted = groupDbLinkedFirst(baseVisible, (s) => {
+      const a = getAvailability(s.id);
+      return a.hasWatch || a.hasDownload;
+    });
+
+    return isAdmin && showOnlyDbLinked
+      ? sorted.filter((s) => {
+          const a = getAvailability(s.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
+  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
+
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleShows, { enabled: !isLoading });
+
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
 
   // Fetch genres on mount
   useEffect(() => {
@@ -228,7 +251,7 @@ const TVShows = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : filterBlockedPosts(shows, "tv").map((show, index) => (
+              : visibleShows.map((show, index) => (
                   <MovieCard
                     key={`${show.id}-${index}`}
                     movie={{ ...show, media_type: "tv" }}

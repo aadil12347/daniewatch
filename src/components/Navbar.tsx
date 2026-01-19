@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminContentVisibility } from "@/contexts/AdminContentVisibilityContext";
+import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -20,6 +21,7 @@ export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { showBlockedPosts, setShowBlockedPosts } = useAdminContentVisibility();
+  const { showOnlyDbLinked, setShowOnlyDbLinked } = useAdminListFilter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -326,18 +328,6 @@ export const Navbar = () => {
               )}
             </form>
 
-            {/* Admin toggle: show/hide blocked posts */}
-            {user && isAdmin && (
-              <div className="hidden md:flex items-center gap-2 mr-1 pl-2 pr-1 py-1 rounded-full border border-border bg-secondary/30">
-                <span className="text-xs text-muted-foreground select-none">Blocked</span>
-                <Switch
-                  checked={showBlockedPosts}
-                  onCheckedChange={(v) => setShowBlockedPosts(Boolean(v))}
-                  aria-label={showBlockedPosts ? "Show blocked posts" : "Hide blocked posts"}
-                />
-              </div>
-            )}
-
             {/* Notification Bell & User Menu */}
             {user && <NotificationBell />}
             
@@ -352,17 +342,17 @@ export const Navbar = () => {
                     </Avatar>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">
-                    {user.email}
-                  </div>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">{user.email}</div>
                   <DropdownMenuSeparator />
+
                   <DropdownMenuItem asChild>
                     <Link to="/watchlist" className="cursor-pointer">
                       <Bookmark className="w-4 h-4 mr-2" />
                       My Watchlist
                     </Link>
                   </DropdownMenuItem>
+
                   {!isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/requests" className="cursor-pointer">
@@ -371,6 +361,7 @@ export const Navbar = () => {
                       </Link>
                     </DropdownMenuItem>
                   )}
+
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin" className="cursor-pointer">
@@ -379,6 +370,38 @@ export const Navbar = () => {
                       </Link>
                     </DropdownMenuItem>
                   )}
+
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Admin filters</div>
+
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="cursor-default flex items-center justify-between gap-3"
+                      >
+                        <span className="text-sm">Show blocked posts</span>
+                        <Switch
+                          checked={showBlockedPosts}
+                          onCheckedChange={(v) => setShowBlockedPosts(Boolean(v))}
+                          aria-label={showBlockedPosts ? "Show blocked posts" : "Hide blocked posts"}
+                        />
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="cursor-default flex items-center justify-between gap-3"
+                      >
+                        <span className="text-sm">DB links only</span>
+                        <Switch
+                          checked={showOnlyDbLinked}
+                          onCheckedChange={(v) => setShowOnlyDbLinked(Boolean(v))}
+                          aria-label={showOnlyDbLinked ? "Show only DB-linked posts" : "Show all posts"}
+                        />
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
