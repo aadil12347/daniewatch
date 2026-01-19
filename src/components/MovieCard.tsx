@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Star, Bookmark, Ban, ShieldOff } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
+import { startPosterExpandTransition } from "@/lib/posterExpandTransition";
 
 interface MovieCardProps {
   movie: Movie;
@@ -42,6 +43,7 @@ export const MovieCard = ({
   enableHoverPortal = true,
 }: MovieCardProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const backgroundLocation = (location.state as any)?.backgroundLocation ?? location;
 
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
@@ -196,6 +198,12 @@ export const MovieCard = ({
     }
   };
 
+  const shouldLetBrowserHandleLink = (e: React.MouseEvent) => {
+    // allow new-tab, copy link, etc.
+    if (e.button !== 0) return true;
+    if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return true;
+    return false;
+  };
 
   return (
     <div
@@ -224,6 +232,22 @@ export const MovieCard = ({
           to={`/${mediaType}/${movie.id}`}
           state={{ backgroundLocation }}
           className="block"
+          onClick={(e) => {
+            if (shouldLetBrowserHandleLink(e)) return;
+            if (!posterRef.current || !posterUrl) return;
+
+            e.preventDefault();
+
+            startPosterExpandTransition({
+              sourceEl: posterRef.current,
+              imageSrc: posterUrl,
+              startRadiusPx: 12,
+              endRadiusPx: 0,
+              onNavigate: () => {
+                navigate(`/${mediaType}/${movie.id}`, { state: { backgroundLocation } });
+              },
+            });
+          }}
           onMouseEnter={() => setIsPosterActive(true)}
           onMouseLeave={() => setIsPosterActive(false)}
           onFocus={() => setIsPosterActive(true)}
