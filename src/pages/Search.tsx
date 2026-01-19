@@ -13,6 +13,7 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { groupDbLinkedFirst } from "@/lib/sortContent";
+import { useListStateCache } from "@/hooks/useListStateCache";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -22,6 +23,10 @@ const Search = () => {
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const requestIdRef = useRef(0);
+  const restoredKeyRef = useRef<string | null>(null);
+  const restoreScrollYRef = useRef<number | null>(null);
+
+  const { saveCache, getCache } = useListStateCache<Movie>({ includeSearch: true });
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
@@ -57,7 +62,64 @@ const Search = () => {
     return "";
   };
 
+  // Restore cached results+scroll for this exact query/category on mount.
   useEffect(() => {
+    const key = `${query}|${category}`;
+
+    if (!query.trim()) {
+      restoredKeyRef.current = null;
+      restoreScrollYRef.current = null;
+      return;
+    }
+
+    const cached = getCache(category || "all", []);
+    if (!cached) return;
+
+    restoredKeyRef.current = key;
+    restoreScrollYRef.current = cached.scrollY ?? 0;
+    setResults(cached.items);
+    setIsLoading(false);
+  }, [getCache, query, category]);
+
+  // Restore scroll AFTER results render.
+  useEffect(() => {
+    if (restoreScrollYRef.current === null) return;
+    if (results.length === 0) return;
+
+    const y = restoreScrollYRef.current;
+    restoreScrollYRef.current = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, y);
+      });
+    });
+  }, [results.length]);
+
+  // Save results+scroll so the list state survives full refresh.
+  useEffect(() => {
+    if (!query.trim()) return;
+
+    return () => {
+      saveCache({
+        items: results,
+        page: 1,
+        hasMore: false,
+        activeTab: category || "all",
+        selectedFilters: [],
+      });
+    };
+  }, [saveCache, results, query, category]);
+
+  useEffect(() => {
+    const key = `${query}|${category}`;
+
+    // If we just restored this exact state and no explicit refresh was requested, keep it.
+    if (restoredKeyRef.current === key && !refreshKey) {
+      restoredKeyRef.current = null;
+      return;
+    }
+
     // Increment request id so late responses from older searches can't overwrite new results
     const requestId = ++requestIdRef.current;
     console.log("[search] start", { query, category, refreshKey, requestId });
@@ -103,7 +165,7 @@ const Search = () => {
     };
 
     fetchResults();
-  }, [query, category, refreshKey]);
+  }, [query, category, refreshKey, getCache]);
 
   return (
     <>

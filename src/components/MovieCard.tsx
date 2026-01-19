@@ -219,6 +219,8 @@ export const MovieCard = ({
       <div className={cn("relative", sizeClasses[size])}>
         <Link
           to={`/${mediaType}/${movie.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="block"
           onMouseEnter={() => setIsPosterActive(true)}
           onMouseLeave={() => setIsPosterActive(false)}

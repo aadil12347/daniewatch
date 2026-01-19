@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useLocation } from "react-router-dom";
 
 const CACHE_KEY_PREFIX = "listCache_";
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface CacheData<T> {
   items: T[];
@@ -14,9 +14,15 @@ interface CacheData<T> {
   timestamp: number;
 }
 
-export const useListStateCache = <T>() => {
+type UseListStateCacheOptions = {
+  /** Include location.search (querystring) in the cache key (needed for Search results). */
+  includeSearch?: boolean;
+};
+
+export const useListStateCache = <T>(options: UseListStateCacheOptions = {}) => {
   const location = useLocation();
-  const storageKey = `${CACHE_KEY_PREFIX}${location.pathname}`;
+  const includeSearch = Boolean(options.includeSearch);
+  const storageKey = `${CACHE_KEY_PREFIX}${location.pathname}${includeSearch ? location.search : ""}`;
 
   const saveCache = useCallback(
     (data: Omit<CacheData<T>, "timestamp" | "scrollY">) => {
@@ -41,7 +47,7 @@ export const useListStateCache = <T>() => {
         if (!cached) return null;
 
         const data: CacheData<T> = JSON.parse(cached);
-        
+
         // Check if cache is expired
         if (Date.now() - data.timestamp > CACHE_EXPIRATION_MS) {
           sessionStorage.removeItem(storageKey);
@@ -49,9 +55,9 @@ export const useListStateCache = <T>() => {
         }
 
         // Check if filters/tab match
-        const filtersMatch = 
+        const filtersMatch =
           data.activeTab === currentTab &&
-          JSON.stringify(data.selectedFilters.sort()) === JSON.stringify(currentFilters.sort());
+          JSON.stringify([...data.selectedFilters].sort()) === JSON.stringify([...currentFilters].sort());
 
         if (!filtersMatch) {
           sessionStorage.removeItem(storageKey);
