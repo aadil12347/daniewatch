@@ -17,20 +17,29 @@ import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 const TVShows = () => {
+  const BATCH_SIZE = 10;
+
   const [shows, setShows] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
+  // NOTE: `page` now tracks the next TMDB "discover" page to request (for cache restore).
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const [pendingPlaceholders, setPendingPlaceholders] = useState(0);
+
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
+  const tmdbPageRef = useRef(1);
+  const bufferRef = useRef<Movie[]>([]);
+  const loadedIdsRef = useRef<Set<number>>(new Set());
+  const isFetchingNextBatchRef = useRef(false);
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
@@ -72,19 +81,23 @@ const TVShows = () => {
     fetchGenres();
   }, []);
 
-  // Try to restore from cache on mount
+  // Try to restore from cache on mount.
+  // If there is no cache, the filter-change effect will load the first batch.
   useEffect(() => {
     const cached = getCache("default", selectedGenres);
     if (cached && cached.items.length > 0) {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setShows(cached.items);
       setPage(cached.page);
+      tmdbPageRef.current = cached.page;
+      bufferRef.current = [];
+      loadedIdsRef.current = new Set(cached.items.map((s) => s.id));
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
     }
     setIsInitialized(true);
-  }, []);
+  }, [getCache, selectedGenres]);
 
   // Restore scroll position after cache is applied
   useEffect(() => {
@@ -117,61 +130,139 @@ const TVShows = () => {
     };
   }, [shows, page, hasMore, selectedGenres, saveCache]);
 
-  const fetchShows = useCallback(
-    async (pageNum: number, reset: boolean = false) => {
-      if (reset) {
-        setIsLoading(true);
-      } else {
-        setIsLoadingMore(true);
+  const requestTmdbPage = useCallback(
+    async (pageNum: number) => {
+      const today = new Date().toISOString().split("T")[0];
+
+      const params = new URLSearchParams({
+        api_key: "fc6d85b3839330e3458701b975195487",
+        include_adult: "false",
+        page: pageNum.toString(),
+        sort_by: "first_air_date.desc",
+        "vote_count.gte": "20",
+        "first_air_date.lte": today,
+      });
+
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          params.set("first_air_date.lte", "2019-12-31");
+        } else {
+          params.set("first_air_date_year", selectedYear);
+        }
       }
 
-      try {
-        const today = new Date().toISOString().split("T")[0];
+      if (selectedGenres.length > 0) {
+        params.set("with_genres", selectedGenres.join(","));
+      }
 
-        // Build params for discover endpoint - sorted by first air date desc
-        const params = new URLSearchParams({
-          api_key: "fc6d85b3839330e3458701b975195487",
-          include_adult: "false",
-          page: pageNum.toString(),
-          sort_by: "first_air_date.desc",
-          "vote_count.gte": "20",
-          "first_air_date.lte": today,
+      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+      const response = await res.json();
+
+      return {
+        page: response.page as number,
+        totalPages: response.total_pages as number,
+        results: filterAdultContent(response.results) as Movie[],
+      };
+    },
+    [selectedGenres, selectedYear]
+  );
+
+  const resetAndLoadFirstBatch = useCallback(async () => {
+    setIsLoading(true);
+    setShows([]);
+    setHasMore(true);
+    setPendingPlaceholders(0);
+
+    bufferRef.current = [];
+    loadedIdsRef.current = new Set();
+    tmdbPageRef.current = 1;
+    setPage(1);
+
+    try {
+      const { results, totalPages } = await requestTmdbPage(1);
+
+      // Fill the first 10 items; keep the rest buffered so future loads are exactly +10.
+      const unique = results.filter((m) => {
+        if (!m?.id) return false;
+        if (loadedIdsRef.current.has(m.id)) return false;
+        loadedIdsRef.current.add(m.id);
+        return true;
+      });
+
+      setShows(unique.slice(0, BATCH_SIZE));
+      bufferRef.current = unique.slice(BATCH_SIZE);
+
+      tmdbPageRef.current = 2;
+      setPage(2);
+
+      // Has more if TMDB has more pages OR we still have buffered items.
+      setHasMore(1 < totalPages || bufferRef.current.length > 0);
+    } catch (error) {
+      console.error("Failed to fetch TV shows:", error);
+      setHasMore(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [BATCH_SIZE, requestTmdbPage]);
+
+  const loadNextBatch = useCallback(async () => {
+    if (isFetchingNextBatchRef.current) return;
+    if (!hasMore) return;
+    if (isLoading) return;
+
+    isFetchingNextBatchRef.current = true;
+    setPendingPlaceholders(BATCH_SIZE);
+    setIsLoadingMore(true);
+
+    try {
+      const batch: Movie[] = [];
+
+      while (batch.length < BATCH_SIZE) {
+        if (bufferRef.current.length > 0) {
+          const next = bufferRef.current.shift();
+          if (next) batch.push(next);
+          continue;
+        }
+
+        const nextPage = tmdbPageRef.current;
+        const { results, totalPages } = await requestTmdbPage(nextPage);
+
+        // Move cursor forward immediately to avoid double-fetching the same page.
+        tmdbPageRef.current = nextPage + 1;
+        setPage(tmdbPageRef.current);
+
+        const unique = results.filter((m) => {
+          if (!m?.id) return false;
+          if (loadedIdsRef.current.has(m.id)) return false;
+          loadedIdsRef.current.add(m.id);
+          return true;
         });
 
-        // Year filter
-        if (selectedYear) {
-          if (selectedYear === "older") {
-            params.set("first_air_date.lte", "2019-12-31");
-          } else {
-            params.set("first_air_date_year", selectedYear);
-          }
-        }
+        bufferRef.current.push(...unique);
 
-        // Genre filter
-        if (selectedGenres.length > 0) {
-          params.set("with_genres", selectedGenres.join(","));
-        }
+        // If there are no more pages and the buffer is empty, we’re done.
+        const noMorePages = nextPage >= totalPages;
+        if (noMorePages && bufferRef.current.length === 0) break;
 
-        const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
-        const response = await res.json();
-
-        const baseResults = filterAdultContent(response.results) as Movie[];
-
-        if (reset) {
-          setShows(baseResults);
-        } else {
-          setShows((prev) => [...prev, ...baseResults]);
-        }
-        setHasMore(response.page < response.total_pages);
-      } catch (error) {
-        console.error("Failed to fetch TV shows:", error);
-      } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        setHasMore(!noMorePages || bufferRef.current.length > 0);
       }
-    },
-    [selectedGenres, selectedYear, setIsLoadingMore]
-  );
+
+      if (batch.length > 0) {
+        setShows((prev) => [...prev, ...batch]);
+      }
+
+      if (batch.length < BATCH_SIZE && bufferRef.current.length === 0) {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error("Failed to fetch more TV shows:", error);
+      // Keep hasMore as-is; user can scroll again to retry.
+    } finally {
+      setPendingPlaceholders(0);
+      setIsLoadingMore(false);
+      isFetchingNextBatchRef.current = false;
+    }
+  }, [BATCH_SIZE, hasMore, isLoading, requestTmdbPage, setIsLoadingMore]);
 
   // Reset and fetch when filters change
   useEffect(() => {
@@ -180,11 +271,8 @@ const TVShows = () => {
       setIsRestoredFromCache(false);
       return;
     }
-    setPage(1);
-    setShows([]);
-    setHasMore(true);
-    fetchShows(1, true);
-  }, [selectedGenres, selectedYear, isInitialized, fetchShows, isRestoredFromCache]);
+    resetAndLoadFirstBatch();
+  }, [selectedGenres, selectedYear, isInitialized, isRestoredFromCache, resetAndLoadFirstBatch]);
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
@@ -193,19 +281,19 @@ const TVShows = () => {
     }
   }, [pageIsLoading, shows.length]);
 
-  // Infinite scroll observer
+  // Infinite scroll observer (loads exactly 10 placeholders, then fills them)
   useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
+    observerRef.current?.disconnect();
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage((prev) => prev + 1);
-        }
+        if (!entries[0]?.isIntersecting) return;
+        loadNextBatch();
       },
-      { threshold: 0.1 }
+      {
+        threshold: 0.1,
+        rootMargin: "800px 0px 800px 0px",
+      }
     );
 
     if (loadMoreRef.current) {
@@ -213,14 +301,7 @@ const TVShows = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [hasMore, isLoading, isLoadingMore]);
-
-  // Fetch more when page changes
-  useEffect(() => {
-    if (page > 1 && !isRestoredFromCache) {
-      fetchShows(page);
-    }
-  }, [page, fetchShows, isRestoredFromCache]);
+  }, [loadNextBatch]);
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
@@ -263,21 +344,38 @@ const TVShows = () => {
 
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {pageIsLoading
-              ? Array.from({ length: 18 }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl" />
-                    <Skeleton className="h-4 w-3/4 mt-3" />
-                    <Skeleton className="h-3 w-1/2 mt-2" />
-                  </div>
-                ))
-              : visibleShows.map((show, index) => (
+            {pageIsLoading ? (
+              Array.from({ length: 18 }).map((_, i) => (
+                <div key={i}>
+                  <Skeleton className="aspect-[2/3] rounded-xl" />
+                  <Skeleton className="h-4 w-3/4 mt-3" />
+                  <Skeleton className="h-3 w-1/2 mt-2" />
+                </div>
+              ))
+            ) : (
+              <>
+                {visibleShows.map((show, index) => (
                   <MovieCard
                     key={`${show.id}-tv`}
                     movie={{ ...show, media_type: "tv" }}
                     animationDelay={Math.min(index * 30, 300)}
                   />
                 ))}
+
+                {/* While fetching the next batch, render 10 mock cards (then fill them) */}
+                {Array.from({ length: pendingPlaceholders }).map((_, i) => (
+                  <div
+                    key={`tv-ph-${shows.length}-${i}`}
+                    className="card-reveal"
+                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+                  >
+                    <Skeleton className="aspect-[2/3] rounded-xl" />
+                    <Skeleton className="h-4 w-3/4 mt-3" />
+                    <Skeleton className="h-3 w-1/2 mt-2" />
+                  </div>
+                ))}
+              </>
+            )}
           </div>
 
           {/* No results message */}
@@ -294,9 +392,9 @@ const TVShows = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-6">
+          <div ref={loadMoreRef} className="flex justify-center py-6 min-h-[56px]">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!hasMore && shows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+            {!isLoadingMore && !hasMore && shows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 
