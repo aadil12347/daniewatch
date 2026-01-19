@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Star, Bookmark, Ban, ShieldOff } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,9 @@ export const MovieCard = ({
   enableReveal = true,
   enableHoverPortal = true,
 }: MovieCardProps) => {
+  const location = useLocation();
+  const backgroundLocation = (location.state as any)?.backgroundLocation ?? location;
+
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
@@ -219,8 +222,7 @@ export const MovieCard = ({
       <div className={cn("relative", sizeClasses[size])}>
         <Link
           to={`/${mediaType}/${movie.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
+          state={{ backgroundLocation }}
           className="block"
           onMouseEnter={() => setIsPosterActive(true)}
           onMouseLeave={() => setIsPosterActive(false)}

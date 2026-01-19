@@ -45,7 +45,11 @@ import {
   getYear,
 } from "@/lib/tmdb";
 
-const TVDetails = () => {
+type TVDetailsProps = {
+  modal?: boolean;
+};
+
+const TVDetails = ({ modal = false }: TVDetailsProps) => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -197,8 +201,8 @@ const TVDetails = () => {
     };
 
     fetchData();
-    window.scrollTo(0, 0);
-  }, [id, blockedForUser]);
+    if (!modal) window.scrollTo(0, 0);
+  }, [id, blockedForUser, modal]);
 
   const handleSeasonChange = async (partOrSeasonNumber: number) => {
     if (!id || partOrSeasonNumber === selectedSeason) return;

@@ -33,7 +33,11 @@ import {
   getYear,
 } from "@/lib/tmdb";
 
-const MovieDetails = () => {
+type MovieDetailsProps = {
+  modal?: boolean;
+};
+
+const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -135,8 +139,8 @@ const MovieDetails = () => {
     };
 
     fetchData();
-    window.scrollTo(0, 0);
-  }, [id, blockedForUser]);
+    if (!modal) window.scrollTo(0, 0);
+  }, [id, blockedForUser, modal]);
 
   if (isLoading) {
     return (
