@@ -330,9 +330,9 @@ html {
     will-change: filter;
   }
 
-  /* Mild, whole-poster blur on hover (not too strong) */
+  /* Keep base poster SHARP on hover; depth comes from the separate blur layer */
   .group:hover .poster-3d-cover--base:not(.keep-greyscale) {
-    filter: blur(2px) saturate(1.05);
+    filter: saturate(1.06) contrast(1.02);
   }
 
   /* Mild bottom blur (kept subtle; supports depth) */
