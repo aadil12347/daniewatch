@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, useLayoutEffect } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
@@ -7,7 +7,6 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
-import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
@@ -27,9 +26,17 @@ const TVShows = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const [animateFromIndex, setAnimateFromIndex] = useState(0);
+
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const observedElRef = useRef<Element | null>(null);
+  const isFetchingMoreRef = useRef(false);
+  const pageRef = useRef(1);
+
   const restoreScrollYRef = useRef<number | null>(null);
+  const anchorRef = useRef<{ scrollY: number; docHeight: number } | null>(null);
+  const userMovedDuringLoadRef = useRef(false);
+  const prevLenRef = useRef(0);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
@@ -79,6 +86,7 @@ const TVShows = () => {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setShows(cached.items);
       setPage(cached.page);
+      pageRef.current = cached.page;
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
@@ -117,52 +125,58 @@ const TVShows = () => {
     };
   }, [shows, page, hasMore, selectedGenres, saveCache]);
 
+  const requestShows = useCallback(async (pageNum: number) => {
+    const today = new Date().toISOString().split("T")[0];
+
+    const params = new URLSearchParams({
+      api_key: "fc6d85b3839330e3458701b975195487",
+      include_adult: "false",
+      page: pageNum.toString(),
+      sort_by: "first_air_date.desc",
+      "vote_count.gte": "20",
+      "first_air_date.lte": today,
+    });
+
+    if (selectedYear) {
+      if (selectedYear === "older") {
+        params.set("first_air_date.lte", "2019-12-31");
+      } else {
+        params.set("first_air_date_year", selectedYear);
+      }
+    }
+
+    if (selectedGenres.length > 0) {
+      params.set("with_genres", selectedGenres.join(","));
+    }
+
+    const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+    const response = await res.json();
+
+    const results = filterAdultContent(response.results) as Movie[];
+    const more = response.page < response.total_pages;
+
+    return { results, hasMore: more };
+  }, [selectedGenres, selectedYear]);
+
   const fetchShows = useCallback(
     async (pageNum: number, reset: boolean = false) => {
       if (reset) {
         setIsLoading(true);
+        setAnimateFromIndex(0);
       } else {
         setIsLoadingMore(true);
       }
 
       try {
-        const today = new Date().toISOString().split("T")[0];
-
-        // Build params for discover endpoint - sorted by first air date desc
-        const params = new URLSearchParams({
-          api_key: "fc6d85b3839330e3458701b975195487",
-          include_adult: "false",
-          page: pageNum.toString(),
-          sort_by: "first_air_date.desc",
-          "vote_count.gte": "20",
-          "first_air_date.lte": today,
-        });
-
-        // Year filter
-        if (selectedYear) {
-          if (selectedYear === "older") {
-            params.set("first_air_date.lte", "2019-12-31");
-          } else {
-            params.set("first_air_date_year", selectedYear);
-          }
-        }
-
-        // Genre filter
-        if (selectedGenres.length > 0) {
-          params.set("with_genres", selectedGenres.join(","));
-        }
-
-        const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
-        const response = await res.json();
-
-        const baseResults = filterAdultContent(response.results) as Movie[];
+        const { results, hasMore: more } = await requestShows(pageNum);
 
         if (reset) {
-          setShows(baseResults);
+          setShows(results);
         } else {
-          setShows((prev) => [...prev, ...baseResults]);
+          setShows((prev) => [...prev, ...results]);
         }
-        setHasMore(response.page < response.total_pages);
+
+        setHasMore(more);
       } catch (error) {
         console.error("Failed to fetch TV shows:", error);
       } finally {
@@ -170,21 +184,95 @@ const TVShows = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedGenres, selectedYear, setIsLoadingMore]
+    [requestShows, setIsLoadingMore]
   );
 
-  // Reset and fetch when filters change
-  useEffect(() => {
-    if (!isInitialized) return;
-    if (isRestoredFromCache) {
-      setIsRestoredFromCache(false);
-      return;
+  const loadMore = useCallback(async () => {
+    if (!hasMore) return;
+    if (isLoading) return;
+    if (isLoadingMore) return;
+    if (isFetchingMoreRef.current) return;
+
+    // single-flight lock
+    isFetchingMoreRef.current = true;
+
+    // anchor scroll position to prevent "snap" while waiting at the bottom
+    anchorRef.current = {
+      scrollY: window.scrollY,
+      docHeight: document.documentElement.scrollHeight,
+    };
+    userMovedDuringLoadRef.current = false;
+
+    const onUserScroll = () => {
+      userMovedDuringLoadRef.current = true;
+    };
+
+    window.addEventListener("scroll", onUserScroll, { passive: true });
+
+    // animate only newly appended items
+    setAnimateFromIndex(shows.length);
+
+    try {
+      setIsLoadingMore(true);
+      const nextPage = pageRef.current + 1;
+      const { results, hasMore: more } = await requestShows(nextPage);
+
+      setShows((prev) => [...prev, ...results]);
+      setHasMore(more);
+
+      pageRef.current = nextPage;
+      setPage(nextPage);
+    } catch (error) {
+      console.error("Failed to fetch TV shows:", error);
+    } finally {
+      window.removeEventListener("scroll", onUserScroll);
+      setIsLoadingMore(false);
+      isFetchingMoreRef.current = false;
     }
-    setPage(1);
-    setShows([]);
-    setHasMore(true);
-    fetchShows(1, true);
-  }, [selectedGenres, selectedYear, isInitialized, fetchShows, isRestoredFromCache]);
+  }, [hasMore, isLoading, isLoadingMore, requestShows, setIsLoadingMore, shows.length]);
+
+  const ensureObserver = useCallback(() => {
+    if (observerRef.current) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries, self) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+
+          // baton passing: only the last card should be observed
+          self.unobserve(entry.target);
+          observedElRef.current = null;
+
+          void loadMore();
+        });
+      },
+      {
+        root: null,
+        rootMargin: "0px 0px 0px 0px",
+        threshold: 0.99,
+      }
+    );
+  }, [loadMore]);
+
+  const setLastCardNode = useCallback(
+    (node: HTMLElement | null) => {
+      ensureObserver();
+      if (!observerRef.current) return;
+
+      if (observedElRef.current) {
+        observerRef.current.unobserve(observedElRef.current);
+        observedElRef.current = null;
+      }
+
+      if (node) {
+        observedElRef.current = node;
+        observerRef.current.observe(node);
+      }
+    },
+    [ensureObserver]
+  );
+
+  // Fetch more when page changes (handled by observer + loadMore) — intentionally removed
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
@@ -193,34 +281,48 @@ const TVShows = () => {
     }
   }, [pageIsLoading, shows.length]);
 
-  // Infinite scroll observer
+  // Reset and fetch when filters change
   useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
+    if (!isInitialized) return;
+    if (isRestoredFromCache) {
+      setIsRestoredFromCache(false);
+      return;
     }
 
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage((prev) => prev + 1);
-        }
-      },
-      { threshold: 0.1 }
-    );
+    pageRef.current = 1;
+    setPage(1);
+    setShows([]);
+    setHasMore(true);
 
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
+    fetchShows(1, true);
+  }, [selectedGenres, selectedYear, isInitialized, fetchShows, isRestoredFromCache]);
+
+  // Keep visual scroll position stable after appending cards
+  useLayoutEffect(() => {
+    const len = shows.length;
+    const prev = prevLenRef.current;
+    prevLenRef.current = len;
+
+    if (len <= prev) return;
+    if (!anchorRef.current) return;
+    if (userMovedDuringLoadRef.current) {
+      anchorRef.current = null;
+      return;
     }
 
-    return () => observerRef.current?.disconnect();
-  }, [hasMore, isLoading, isLoadingMore]);
+    // restore to the exact scrollY we had when the request started
+    window.scrollTo({ top: anchorRef.current.scrollY, left: 0, behavior: "auto" });
+    anchorRef.current = null;
+  }, [shows.length]);
 
-  // Fetch more when page changes
+  // Cleanup observer on unmount
   useEffect(() => {
-    if (page > 1 && !isRestoredFromCache) {
-      fetchShows(page);
-    }
-  }, [page, fetchShows, isRestoredFromCache]);
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+      observedElRef.current = null;
+    };
+  }, []);
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
@@ -262,22 +364,29 @@ const TVShows = () => {
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+          <div id="one" className="image-grid">
             {pageIsLoading
               ? Array.from({ length: 18 }).map((_, i) => (
-                  <div key={i}>
+                  <div key={i} className="image-grid__card image-grid__card--flyin">
                     <Skeleton className="aspect-[2/3] rounded-xl" />
                     <Skeleton className="h-4 w-3/4 mt-3" />
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : visibleShows.map((show, index) => (
-                  <MovieCard
-                    key={`${show.id}-tv`}
-                    movie={{ ...show, media_type: "tv" }}
-                    animationDelay={Math.min(index * 30, 300)}
-                  />
-                ))}
+              : visibleShows.map((show, index) => {
+                  const isLast = index === visibleShows.length - 1;
+                  const shouldFlyIn = index >= animateFromIndex;
+
+                  return (
+                    <div
+                      key={`${show.id}-tv`}
+                      ref={isLast ? setLastCardNode : undefined}
+                      className={shouldFlyIn ? "image-grid__card image-grid__card--flyin" : "image-grid__card"}
+                    >
+                      <MovieCard movie={{ ...show, media_type: "tv" }} animationDelay={0} />
+                    </div>
+                  );
+                })}
           </div>
 
           {/* No results message */}
@@ -294,9 +403,24 @@ const TVShows = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-6">
-            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!hasMore && shows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+          <div className="image-grid__footer">
+            {isLoadingMore && (
+              <div className="image-grid__status">
+                <div className="pl pl-fade" aria-hidden="true" />
+                <p className="text-muted-foreground">Loading…</p>
+              </div>
+            )}
+
+            {!isLoadingMore && !hasMore && shows.length > 0 && (
+              <div className="image-grid__status">
+                <p className="text-muted-foreground">You've reached the end</p>
+              </div>
+            )}
+
+            {/* Keep existing loader as a fallback for accessibility */}
+            <span className="sr-only">
+              {isLoadingMore ? "Loading more" : !hasMore && shows.length > 0 ? "End of list" : ""}
+            </span>
           </div>
         </div>
 
