@@ -82,8 +82,8 @@ export const Navbar = () => {
   const backgroundLocation = (location.state as any)?.backgroundLocation;
   const isModalDetails = isDetailsPage && Boolean(backgroundLocation);
 
-  // Hide active-page glow while a details modal is open.
-  const allowActiveGlow = !isModalDetails;
+  // Keep active-page glow always visible (even when modals are open).
+  const allowActiveGlow = true;
 
   const getUrlParam = (key: string) => {
     const sp = new URLSearchParams(location.search);
@@ -272,7 +272,7 @@ export const Navbar = () => {
           {/* Center: Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2" data-tutorial="navigation">
             {navLinks.map((link) => {
-              const isActive = allowActiveGlow && location.pathname === link.to;
+              const isActive = location.pathname === link.to;
               return (
                 <Link
                   key={link.to}
