@@ -315,17 +315,32 @@ const TVShows = () => {
   }, [pageIsLoading, slots]);
 
   // Infinite scroll observer (loads exactly 10 placeholders, then fills them)
+  // IMPORTANT: prevent “auto-chaining” loads by unobserving while a batch is loading.
   useEffect(() => {
     observerRef.current?.disconnect();
 
     observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0]?.isIntersecting) return;
-        loadNextBatch();
+      (entries, observer) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        const el = loadMoreRef.current;
+        if (!el) return;
+
+        // Stop observing immediately so we only trigger once per “reach the end”.
+        observer.unobserve(el);
+
+        void loadNextBatch().finally(() => {
+          // Re-observe after the DOM has updated so the new end must be reached again.
+          requestAnimationFrame(() => {
+            const nextEl = loadMoreRef.current;
+            if (nextEl) observer.observe(nextEl);
+          });
+        });
       },
       {
-        threshold: 0.1,
-        rootMargin: "800px 0px 800px 0px",
+        // Trigger closer to the actual end (less prefetch → less accidental re-trigger).
+        threshold: 0.8,
+        rootMargin: "0px 0px 200px 0px",
       }
     );
 
@@ -403,14 +418,11 @@ const TVShows = () => {
                   }
 
                   return (
-                    <div
-                      key={slot.key}
-                      className="card-reveal"
-                      style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
-                    >
-                      <Skeleton className="aspect-[2/3] rounded-xl" />
-                      <Skeleton className="h-4 w-3/4 mt-3" />
-                      <Skeleton className="h-3 w-1/2 mt-2" />
+                    <div key={slot.key}>
+                      {/* Stable placeholders: no card-reveal and no pulse */}
+                      <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                      <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                      <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                     </div>
                   );
                 })}
