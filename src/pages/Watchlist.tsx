@@ -53,7 +53,7 @@ const Watchlist = () => {
       </Helmet>
       <main className="min-h-screen pt-20 pb-12">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl md:text-4xl font-bold mb-6">My Watch List</h1>
+          <h1 className="sr-only">My Watch List</h1>
 
           {!user ? (
             // Not logged in state

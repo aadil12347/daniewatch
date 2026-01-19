@@ -181,7 +181,7 @@ const Requests = () => {
         <div className="container mx-auto px-4 pt-24 pb-12">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold mb-2">My Requests</h1>
+              <h1 className="sr-only">My Requests</h1>
               <p className="text-muted-foreground">
                 Track the status of your movie and TV show requests
               </p>
