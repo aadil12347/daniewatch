@@ -1050,6 +1050,7 @@ html {
   .card-reveal:focus-within {
     z-index: 80;
   }
+
   @keyframes cardReveal {
     from {
       opacity: 0;
@@ -1058,6 +1059,22 @@ html {
     to {
       opacity: 1;
       transform: translateY(0) translateZ(0);
+    }
+  }
+
+  /* TV list "append" animation (scale in) */
+  .tv-element-in {
+    opacity: 1;
+    animation: tvListIn 0.4s ease both;
+    transform: scale(1);
+  }
+
+  @keyframes tvListIn {
+    from {
+      transform: scale(0.1);
+    }
+    to {
+      transform: scale(1);
     }
   }
 
