@@ -28,6 +28,7 @@ const Movies = () => {
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const restoreScrollYRef = useRef<number | null>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
@@ -45,6 +46,10 @@ const Movies = () => {
   const baseVisible = useMemo(() => filterBlockedPosts(movies, "movie"), [filterBlockedPosts, movies]);
 
   const visibleMovies = useMemo(() => {
+    if (isAvailabilityLoading) {
+      return sortWithPinnedFirst(baseVisible, "movies", "movie");
+    }
+
     const linked = baseVisible.filter((m) => isDbLinked(m.id));
     const unlinked = baseVisible.filter((m) => !isDbLinked(m.id));
 
@@ -52,7 +57,7 @@ const Movies = () => {
     const unlinkedSorted = sortWithPinnedFirst(unlinked, "movies", "movie");
 
     return isAdmin && showOnlyDbLinked ? linkedSorted : [...linkedSorted, ...unlinkedSorted];
-  }, [baseVisible, isAdmin, isDbLinked, showOnlyDbLinked, sortWithPinnedFirst]);
+  }, [baseVisible, isAdmin, isAvailabilityLoading, isDbLinked, showOnlyDbLinked, sortWithPinnedFirst]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleMovies, { enabled: !isLoading });
 
@@ -75,6 +80,7 @@ const Movies = () => {
   useEffect(() => {
     const cached = getCache("default", selectedGenres);
     if (cached && cached.items.length > 0) {
+      restoreScrollYRef.current = cached.scrollY ?? 0;
       setMovies(cached.items);
       setPage(cached.page);
       setHasMore(cached.hasMore);
@@ -83,6 +89,22 @@ const Movies = () => {
     }
     setIsInitialized(true);
   }, []);
+
+  // Restore scroll position after cache is applied
+  useEffect(() => {
+    if (!isRestoredFromCache) return;
+    if (movies.length === 0) return;
+
+    const y = restoreScrollYRef.current;
+    if (y === null) return;
+    restoreScrollYRef.current = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, left: 0, behavior: "auto" });
+      });
+    });
+  }, [isRestoredFromCache, movies.length]);
 
   // Save cache before unmount
   useEffect(() => {
@@ -259,7 +281,7 @@ const Movies = () => {
                 ))
               : visibleMovies.map((movie, index) => (
                   <MovieCard
-                    key={`${movie.id}-${index}`}
+                    key={`${movie.id}-movie`}
                     movie={{ ...movie, media_type: "movie" }}
                     animationDelay={Math.min(index * 30, 300)}
                   />
