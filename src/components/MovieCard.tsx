@@ -91,15 +91,17 @@ export const MovieCard = ({
   const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, isPosterActive || isNearViewport);
   const displayedInWatchlist = optimisticInWatchlist !== null ? optimisticInWatchlist : inWatchlist;
 
-  // Determine whether to use the portal (avoid on touch devices)
+  // Determine whether to use the portal.
+  // We use it on both desktop and mobile because Home rows can clip overflow.
+  // On touch devices, the portal is driven by focus/blur (tap) rather than hover.
   useEffect(() => {
-    if (!enableHoverPortal) return;
+    if (!enableHoverPortal) {
+      setCanUseHoverPortal(false);
+      return;
+    }
     if (typeof window === "undefined") return;
-    const mql = window.matchMedia?.("(hover: hover) and (pointer: fine)");
-    const update = () => setCanUseHoverPortal(Boolean(mql?.matches));
-    update();
-    mql?.addEventListener?.("change", update);
-    return () => mql?.removeEventListener?.("change", update);
+
+    setCanUseHoverPortal(true);
   }, [enableHoverPortal]);
 
   // Keep portal positioned correctly while hovering (scroll/resize)
