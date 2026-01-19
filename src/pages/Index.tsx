@@ -148,6 +148,8 @@ const Index = () => {
             isLoading={pageIsLoading}
             showRank
             size="lg"
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
           />
 
           <TabbedContentRow
@@ -161,6 +163,8 @@ const Index = () => {
               "tv"
             )}
             isLoading={pageIsLoading}
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
           />
 
           <TabbedContentRow
@@ -168,6 +172,8 @@ const Index = () => {
             moviesItems={filterBlockedPosts(popularMovies, "movie")}
             tvItems={filterBlockedPosts(popularTV, "tv")}
             isLoading={pageIsLoading}
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
           />
 
           {/* Regional Popular Sections */}
@@ -182,6 +188,8 @@ const Index = () => {
               "tv"
             )}
             isLoading={pageIsLoading}
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
           />
 
           <TabbedContentRow
@@ -196,6 +204,8 @@ const Index = () => {
             )}
             isLoading={pageIsLoading}
             defaultTab="tv"
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
           />
 
           <TabbedContentRow
@@ -210,6 +220,8 @@ const Index = () => {
             )}
             isLoading={pageIsLoading}
             defaultTab="tv"
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
           />
 
           <TabbedContentRow
@@ -217,6 +229,8 @@ const Index = () => {
             moviesItems={filterBlockedPosts(topRatedMovies, "movie")}
             tvItems={filterBlockedPosts(topRatedTV, "tv")}
             isLoading={pageIsLoading}
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
           />
         </div>
 

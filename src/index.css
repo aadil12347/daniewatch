@@ -465,6 +465,35 @@ html {
     transform: translate3d(0, -12%, 160px) scale(1.02);
   }
 
+  /* CONTAINED variant (Home): keep the character fully inside the poster bounds */
+  .poster-3d-card--contained {
+    overflow: hidden !important;
+  }
+
+  .poster-3d-card--contained .poster-3d-character,
+  .poster-3d-character--contained {
+    top: 0;
+    bottom: 0;
+    height: 100%;
+
+    /* Full image, no top crop */
+    clip-path: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+
+    object-fit: contain;
+    object-position: center bottom;
+
+    /* Smooth, inside-poster motion (slightly DOWN on hover) */
+    transform: translate3d(0, 14px, 0) scale(1.01);
+  }
+
+  .group:hover .poster-3d-card--contained .poster-3d-character,
+  .group:hover .poster-3d-character--contained {
+    opacity: 1;
+    transform: translate3d(0, 6%, 120px) scale(1.02);
+  }
+
   /* Hover portal (renders above carousel overflow so it never gets clipped) */
   .poster-3d-hover-portal {
     position: fixed;

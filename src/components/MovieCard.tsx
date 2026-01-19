@@ -28,6 +28,12 @@ interface MovieCardProps {
    * Disable on large grid pages (e.g. /tv) to reduce scroll/resize paint churn.
    */
   enableHoverPortal?: boolean;
+  /**
+   * Hover character rendering style.
+   * - popout: character can extend outside the poster and may use a portal.
+   * - contained: character stays fully inside the poster bounds.
+   */
+  hoverCharacterMode?: "popout" | "contained";
 }
 
 export const MovieCard = ({
@@ -39,6 +45,7 @@ export const MovieCard = ({
   className,
   enableReveal = true,
   enableHoverPortal = true,
+  hoverCharacterMode = "popout",
 }: MovieCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -67,13 +74,15 @@ export const MovieCard = ({
   const [isBlocking, setIsBlocking] = useState(false);
 
   // Hover portal (fixes carousel clipping on Home rows)
+  const effectiveHoverPortalSetting = enableHoverPortal && hoverCharacterMode === "popout";
+
   const [canUseHoverPortal, setCanUseHoverPortal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
   const [isPortalMounted, setIsPortalMounted] = useState(false);
   const [isPortalActive, setIsPortalActive] = useState(false);
 
-  const portalEnabled = enableHoverPortal && canUseHoverPortal && Boolean(hoverImageUrl);
+  const portalEnabled = effectiveHoverPortalSetting && canUseHoverPortal && Boolean(hoverImageUrl);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
@@ -98,18 +107,18 @@ export const MovieCard = ({
   // We use it on both desktop and mobile because Home rows can clip overflow.
   // On touch devices, the portal is driven by focus/blur (tap) rather than hover.
   useEffect(() => {
-    if (!enableHoverPortal) {
+    if (!effectiveHoverPortalSetting) {
       setCanUseHoverPortal(false);
       return;
     }
     if (typeof window === "undefined") return;
 
     setCanUseHoverPortal(true);
-  }, [enableHoverPortal]);
+  }, [effectiveHoverPortalSetting]);
 
   // Keep portal positioned correctly while hovering (scroll/resize)
   useEffect(() => {
-    if (!enableHoverPortal) return;
+    if (!effectiveHoverPortalSetting) return;
     if (!canUseHoverPortal || !isHovered) return;
 
     let raf = 0;
@@ -131,13 +140,13 @@ export const MovieCard = ({
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
     };
-  }, [enableHoverPortal, canUseHoverPortal, isHovered]);
+  }, [effectiveHoverPortalSetting, canUseHoverPortal, isHovered]);
 
   
 
   // Smooth enter/exit for the portaled hover image
   useEffect(() => {
-    if (!enableHoverPortal) {
+    if (!effectiveHoverPortalSetting) {
       setIsPortalMounted(false);
       setIsPortalActive(false);
       return;
@@ -163,7 +172,7 @@ export const MovieCard = ({
       setHoverRect(null);
     }, 220);
     return () => window.clearTimeout(t);
-  }, [enableHoverPortal, isHovered, portalEnabled]);
+  }, [effectiveHoverPortalSetting, isHovered, portalEnabled]);
 
   // Sync optimistic state when actual state catches up
   useEffect(() => {
@@ -261,7 +270,13 @@ export const MovieCard = ({
           onBlur={() => setIsPosterActive(false)}
         >
           {/* Card */}
-          <div ref={posterRef} className="cinema-card poster-3d-card relative aspect-[2/3] rounded-xl bg-card">
+          <div
+            ref={posterRef}
+            className={cn(
+              "cinema-card poster-3d-card relative aspect-[2/3] rounded-xl bg-card",
+              hoverCharacterMode === "contained" && "poster-3d-card--contained"
+            )}
+          >
             {/* Clip only the poster layers so the character can pop OUT of the card */}
             <div className="poster-3d-clip absolute inset-0 rounded-xl overflow-hidden">
               {posterUrl ? (
@@ -298,7 +313,7 @@ export const MovieCard = ({
             {/* Optional character layer (from DB)
                 - inline version works on grid pages
                 - portal version is used on hover to bypass carousel clipping */}
-            {hoverImageUrl && (!(canUseHoverPortal && Boolean(hoverImageUrl)) || !isPortalMounted) && (
+            {hoverImageUrl && (!portalEnabled || !isPortalMounted) && (
               <img
                 src={hoverImageUrl}
                 alt=""
@@ -306,6 +321,7 @@ export const MovieCard = ({
                 loading="lazy"
                 className={cn(
                   "poster-3d-character",
+                  hoverCharacterMode === "contained" && "poster-3d-character--contained",
                   isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                 )}
               />
@@ -360,7 +376,7 @@ export const MovieCard = ({
             )}
           </div>
 
-          {(canUseHoverPortal && Boolean(hoverImageUrl)) && isPortalMounted && hoverRect &&
+          {portalEnabled && isPortalMounted && hoverRect &&
             createPortal(
               <div
                 className={cn("poster-3d-hover-portal", isPortalActive && "is-active")}

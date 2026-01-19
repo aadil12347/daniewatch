@@ -13,6 +13,8 @@ interface TabbedContentRowProps {
   isLoading?: boolean;
   size?: "sm" | "md" | "lg";
   defaultTab?: "movies" | "tv";
+  hoverCharacterMode?: "popout" | "contained";
+  enableHoverPortal?: boolean;
 }
 
 export const TabbedContentRow = ({
@@ -22,6 +24,8 @@ export const TabbedContentRow = ({
   isLoading = false,
   size = "md",
   defaultTab = "movies",
+  hoverCharacterMode,
+  enableHoverPortal,
 }: TabbedContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { filterBlockedPosts } = usePostModeration();
@@ -134,6 +138,8 @@ export const TabbedContentRow = ({
                   }}
                   index={idx}
                   size={size}
+                  hoverCharacterMode={hoverCharacterMode}
+                  enableHoverPortal={enableHoverPortal}
                 />
               ))}
         </div>
