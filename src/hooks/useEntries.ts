@@ -20,6 +20,8 @@ interface EntryData {
   type: "movie" | "series";
   content: MovieContent | SeriesContent;
   hover_image_url?: string | null;
+  genre_ids?: number[] | null;
+  release_year?: number | null;
   created_at?: string;
 }
 
@@ -55,7 +57,9 @@ export const useEntries = () => {
     id: string,
     watchLink: string,
     downloadLink: string,
-    hoverImageUrl?: string
+    hoverImageUrl?: string,
+    genreIds?: number[],
+    releaseYear?: number | null
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const content: MovieContent = {
@@ -70,6 +74,8 @@ export const useEntries = () => {
         type: "movie",
         content,
         hover_image_url,
+        genre_ids: genreIds?.length ? genreIds : null,
+        release_year: typeof releaseYear === "number" ? releaseYear : null,
       });
 
       if (error) throw error;
@@ -97,7 +103,9 @@ export const useEntries = () => {
     season: number,
     watchLinks: string[],
     downloadLinks: string[],
-    hoverImageUrl?: string
+    hoverImageUrl?: string,
+    genreIds?: number[],
+    releaseYear?: number | null
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       // First, fetch existing entry to merge seasons
@@ -131,6 +139,8 @@ export const useEntries = () => {
         type: "series",
         content,
         hover_image_url,
+        genre_ids: genreIds?.length ? genreIds : null,
+        release_year: typeof releaseYear === "number" ? releaseYear : null,
       });
 
       if (error) throw error;
