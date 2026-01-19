@@ -110,7 +110,7 @@ export const MovieCard = ({
   }, [enableHoverPortal]);
 
   // Keep portal positioned correctly while hovering (scroll/resize) without React re-renders.
-  // This prevents the Home carousel hover from glitching while scrolling.
+  // Use translate3d instead of left/top changes to avoid layout thrash (prevents Home scroll glitch).
   useEffect(() => {
     if (!portalEnabled) return;
     if (!isHovered) return;
@@ -119,7 +119,6 @@ export const MovieCard = ({
 
     const update = () => {
       if (!posterRef.current) return;
-
       const rect = posterRef.current.getBoundingClientRect();
 
       if (!hasInitialPortalRectRef.current) {
@@ -128,10 +127,9 @@ export const MovieCard = ({
       }
 
       if (portalRef.current) {
-        portalRef.current.style.left = `${rect.left}px`;
-        portalRef.current.style.top = `${rect.top}px`;
-        portalRef.current.style.width = `${rect.width}px`;
-        portalRef.current.style.height = `${rect.height}px`;
+        portalRef.current.style.transform = `translate3d(${Math.round(rect.left)}px, ${Math.round(rect.top)}px, 0)`;
+        portalRef.current.style.width = `${Math.round(rect.width)}px`;
+        portalRef.current.style.height = `${Math.round(rect.height)}px`;
       }
     };
 
@@ -380,10 +378,11 @@ export const MovieCard = ({
                 ref={portalRef}
                 className={cn("poster-3d-hover-portal", isPortalActive && "is-active")}
                 style={{
-                  left: hoverRect.left,
-                  top: hoverRect.top,
+                  left: 0,
+                  top: 0,
                   width: hoverRect.width,
                   height: hoverRect.height,
+                  transform: `translate3d(${Math.round(hoverRect.left)}px, ${Math.round(hoverRect.top)}px, 0)`,
                 }}
               >
                 <img
