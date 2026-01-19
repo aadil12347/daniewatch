@@ -24,6 +24,11 @@ interface MovieCardProps {
    * Turn this off on grid pages to prevent re-triggered flashes on rerenders.
    */
   enableReveal?: boolean;
+  /**
+   * Enables the hover portal (fixes carousel clipping on Home rows).
+   * Disable on large grid pages (e.g. /tv) to reduce scroll/resize paint churn.
+   */
+  enableHoverPortal?: boolean;
 }
 
 export const MovieCard = ({
@@ -34,6 +39,7 @@ export const MovieCard = ({
   animationDelay = 0,
   className,
   enableReveal = true,
+  enableHoverPortal = true,
 }: MovieCardProps) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
@@ -64,7 +70,7 @@ export const MovieCard = ({
   const [isPortalMounted, setIsPortalMounted] = useState(false);
   const [isPortalActive, setIsPortalActive] = useState(false);
 
-  const portalEnabled = canUseHoverPortal && Boolean(hoverImageUrl);
+  const portalEnabled = enableHoverPortal && canUseHoverPortal && Boolean(hoverImageUrl);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
@@ -87,16 +93,18 @@ export const MovieCard = ({
 
   // Determine whether to use the portal (avoid on touch devices)
   useEffect(() => {
+    if (!enableHoverPortal) return;
     if (typeof window === "undefined") return;
     const mql = window.matchMedia?.("(hover: hover) and (pointer: fine)");
     const update = () => setCanUseHoverPortal(Boolean(mql?.matches));
     update();
     mql?.addEventListener?.("change", update);
     return () => mql?.removeEventListener?.("change", update);
-  }, []);
+  }, [enableHoverPortal]);
 
   // Keep portal positioned correctly while hovering (scroll/resize)
   useEffect(() => {
+    if (!enableHoverPortal) return;
     if (!canUseHoverPortal || !isHovered) return;
 
     let raf = 0;
@@ -118,12 +126,18 @@ export const MovieCard = ({
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
     };
-  }, [canUseHoverPortal, isHovered]);
+  }, [enableHoverPortal, canUseHoverPortal, isHovered]);
 
   
 
   // Smooth enter/exit for the portaled hover image
   useEffect(() => {
+    if (!enableHoverPortal) {
+      setIsPortalMounted(false);
+      setIsPortalActive(false);
+      return;
+    }
+
     if (!portalEnabled) {
       setIsPortalMounted(false);
       setIsPortalActive(false);
@@ -144,7 +158,7 @@ export const MovieCard = ({
       setHoverRect(null);
     }, 220);
     return () => window.clearTimeout(t);
-  }, [isHovered, portalEnabled]);
+  }, [enableHoverPortal, isHovered, portalEnabled]);
 
   // Sync optimistic state when actual state catches up
   useEffect(() => {
