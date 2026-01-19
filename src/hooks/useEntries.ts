@@ -23,6 +23,8 @@ interface EntryData {
   hover_image_url?: string | null;
   genre_ids?: number[] | null;
   release_year?: number | null;
+  original_language?: string | null;
+  origin_country?: string[] | null;
   created_at?: string;
 }
 
@@ -61,7 +63,9 @@ export const useEntries = () => {
     hoverImageUrl?: string,
     genreIds?: number[],
     releaseYear?: number | null,
-    title?: string | null
+    title?: string | null,
+    originalLanguage?: string | null,
+    originCountry?: string[] | null
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const content: MovieContent = {
@@ -80,6 +84,8 @@ export const useEntries = () => {
         hover_image_url,
         genre_ids: genreIds?.length ? genreIds : null,
         release_year: typeof releaseYear === "number" ? releaseYear : null,
+        original_language: originalLanguage || null,
+        origin_country: originCountry?.length ? originCountry : null,
       });
 
       if (error) throw error;
@@ -110,7 +116,9 @@ export const useEntries = () => {
     hoverImageUrl?: string,
     genreIds?: number[],
     releaseYear?: number | null,
-    title?: string | null
+    title?: string | null,
+    originalLanguage?: string | null,
+    originCountry?: string[] | null
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       // First, fetch existing entry to merge seasons
@@ -148,6 +156,8 @@ export const useEntries = () => {
         hover_image_url,
         genre_ids: genreIds?.length ? genreIds : null,
         release_year: typeof releaseYear === "number" ? releaseYear : null,
+        original_language: originalLanguage || null,
+        origin_country: originCountry?.length ? originCountry : null,
       });
 
       if (error) throw error;

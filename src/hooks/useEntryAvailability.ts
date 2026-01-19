@@ -12,6 +12,8 @@ export interface EntryDbMeta {
   releaseYear?: number | null;
   title?: string | null;
   type: "movie" | "series";
+  originalLanguage?: string | null;
+  originCountry?: string[] | null;
 }
 
 interface MovieContent {
@@ -36,6 +38,8 @@ interface EntryData {
   genre_ids?: number[] | null;
   release_year?: number | null;
   title?: string | null;
+  original_language?: string | null;
+  origin_country?: string[] | null;
 }
 
 const getEntryKey = (id: string, type: "movie" | "series") => `${id}-${type === "series" ? "tv" : "movie"}`;
@@ -54,7 +58,7 @@ export const useEntryAvailability = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("entries")
-        .select("id, type, content, hover_image_url, genre_ids, release_year, title");
+        .select("id, type, content, hover_image_url, genre_ids, release_year, title, original_language, origin_country");
 
       if (error) {
         console.error("[useEntryAvailability] Error fetching entries:", error);
@@ -98,6 +102,8 @@ export const useEntryAvailability = () => {
           genreIds: entry.genre_ids ?? null,
           releaseYear: entry.release_year ?? null,
           title: entry.title ?? null,
+          originalLanguage: entry.original_language ?? null,
+          originCountry: entry.origin_country ?? null,
         });
       });
 
@@ -129,6 +135,8 @@ export const useEntryAvailability = () => {
           releaseYear: meta.releaseYear ?? null,
           title: meta.title ?? null,
           type: meta.type,
+          originalLanguage: meta.originalLanguage ?? null,
+          originCountry: meta.originCountry ?? null,
         }
       : null;
   };

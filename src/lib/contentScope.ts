@@ -15,7 +15,38 @@ const hasGenre = (m: unknown, genreId: number): boolean => {
 
 export const isKoreanScope = (m: unknown): boolean => {
   const lang = getOriginalLanguage(m);
-  return lang ? (KOREAN_LANGS as readonly string[]).includes(lang) : false;
+  if (lang && (KOREAN_LANGS as readonly string[]).includes(lang)) {
+    return true;
+  }
+
+  const originCountry = (m as any)?.origin_country;
+  if (Array.isArray(originCountry) && originCountry.some((c: string) => ["KR", "CN", "TW", "HK", "TR"].includes(c))) {
+    return true;
+  }
+
+  const productionCountries = (m as any)?.production_countries;
+  if (Array.isArray(productionCountries) && productionCountries.some((pc: any) => ["KR", "CN", "TW", "HK", "TR"].includes(pc.iso_3166_1))) {
+    return true;
+  }
+
+  return false;
+};
+
+// Helper to check Korean scope with DB metadata priority
+export const isKoreanScopeWithDb = (
+  m: unknown,
+  dbMeta?: { originalLanguage?: string | null; originCountry?: string[] | null }
+): boolean => {
+  // Prefer DB metadata if available
+  if (dbMeta?.originalLanguage) {
+    return (KOREAN_LANGS as readonly string[]).includes(dbMeta.originalLanguage);
+  }
+  if (dbMeta?.originCountry?.length) {
+    return dbMeta.originCountry.some(c => ["KR", "CN", "TW", "HK", "TR"].includes(c));
+  }
+
+  // Fallback to TMDB item data
+  return isKoreanScope(m);
 };
 
 // Anime definition used across the app: Japanese + Animation genre.
@@ -24,9 +55,37 @@ export const isAnimeScope = (m: unknown): boolean => {
   return lang === "ja" && hasGenre(m, 16);
 };
 
+// Helper to check Anime scope with DB metadata priority
+export const isAnimeScopeWithDb = (
+  m: unknown,
+  dbMeta?: { originalLanguage?: string | null }
+): boolean => {
+  // Prefer DB metadata if available
+  if (dbMeta?.originalLanguage) {
+    return dbMeta.originalLanguage === "ja" && hasGenre(m, 16);
+  }
+
+  // Fallback to TMDB item data
+  return isAnimeScope(m);
+};
+
 export const isIndianScope = (m: unknown): boolean => {
   const lang = getOriginalLanguage(m);
   return lang ? (INDIAN_LANGS as readonly string[]).includes(lang) : false;
+};
+
+// Helper to check Indian scope with DB metadata priority
+export const isIndianScopeWithDb = (
+  m: unknown,
+  dbMeta?: { originalLanguage?: string | null }
+): boolean => {
+  // Prefer DB metadata if available
+  if (dbMeta?.originalLanguage) {
+    return (INDIAN_LANGS as readonly string[]).includes(dbMeta.originalLanguage);
+  }
+
+  // Fallback to TMDB item data
+  return isIndianScope(m);
 };
 
 export const isAllowedOnMoviesPage = (m: Pick<Movie, "media_type">): boolean => {

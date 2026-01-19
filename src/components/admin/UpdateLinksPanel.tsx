@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Link2,
   ClipboardPaste,
+  Wrench,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -40,6 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { MetadataBackfillTool } from "@/components/admin/MetadataBackfillTool";
 
 interface TMDBResult {
   id: number;
@@ -67,7 +69,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const { trashedEntries, moveToTrash, restoreFromTrash, permanentlyDelete, emptyTrash } = useEntriesTrash();
   const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<"update" | "trash">("update");
+  const [activeTab, setActiveTab] = useState<"update" | "trash" | "tools">("update");
 
   // Search state
   const [tmdbId, setTmdbId] = useState("");
@@ -307,41 +309,53 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
     setIsSaving(true);
 
-    if (tmdbResult.type === "movie") {
-      const result = await saveMovieEntry(
-        String(tmdbResult.id),
-        movieWatchLink,
-        movieDownloadLink,
-        trimmedHover,
-        tmdbResult.genreIds,
-        tmdbResult.releaseYear ?? null,
-        tmdbResult.title
-      );
-      if (result.success) {
-        setEntryExists(true);
-        toast({ title: "Saved", description: "Movie links saved successfully." });
-      }
-    } else {
-      const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
-      const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
+    try {
+      if (tmdbResult.type === "movie") {
+        // Fetch full TMDB details to get language and country
+        const details = await getMovieDetails(tmdbResult.id);
 
-      const result = await saveSeriesSeasonEntry(
-        String(tmdbResult.id),
-        selectedSeason,
-        watchLinks,
-        downloadLinks,
-        trimmedHover,
-        tmdbResult.genreIds,
-        tmdbResult.releaseYear ?? null,
-        tmdbResult.title
-      );
-      if (result.success) {
-        setEntryExists(true);
-        toast({ title: "Saved", description: `Season ${selectedSeason} links saved successfully.` });
+        const result = await saveMovieEntry(
+          String(tmdbResult.id),
+          movieWatchLink,
+          movieDownloadLink,
+          trimmedHover,
+          tmdbResult.genreIds,
+          tmdbResult.releaseYear ?? null,
+          tmdbResult.title,
+          details.original_language || null,
+          details.production_countries?.map((c: any) => c.iso_3166_1) || null
+        );
+        if (result.success) {
+          setEntryExists(true);
+        }
+      } else {
+        // Fetch full TMDB details to get language and country
+        const details = await getTVDetails(tmdbResult.id);
+
+        const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
+        const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
+
+        const result = await saveSeriesSeasonEntry(
+          String(tmdbResult.id),
+          selectedSeason,
+          watchLinks,
+          downloadLinks,
+          trimmedHover,
+          tmdbResult.genreIds,
+          tmdbResult.releaseYear ?? null,
+          tmdbResult.title,
+          details.original_language || null,
+          details.origin_country || null
+        );
+        if (result.success) {
+          setEntryExists(true);
+        }
       }
+    } catch (error) {
+      console.error("Error in handleSave:", error);
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   };
 
   const handleDeleteEntry = async () => {
@@ -507,7 +521,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       )}
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "update" | "trash")} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "update" | "trash" | "tools")} className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="update" className="gap-2">
             <Link2 className="w-4 h-4" />
@@ -516,6 +530,10 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           <TabsTrigger value="trash" className="gap-2">
             <Archive className="w-4 h-4" />
             Trash ({trashedEntries.length})
+          </TabsTrigger>
+          <TabsTrigger value="tools" className="gap-2">
+            <Wrench className="w-4 h-4" />
+            Tools
           </TabsTrigger>
         </TabsList>
 
@@ -938,6 +956,10 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="tools" className="space-y-4">
+          <MetadataBackfillTool />
         </TabsContent>
       </Tabs>
     </div>
