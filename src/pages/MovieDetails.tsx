@@ -211,6 +211,7 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
                 videoKey={trailerKey}
                 backdropUrl={backdropUrl}
                 title={movie.title}
+                controlsPlacement={modal ? "modal" : "page"}
               />
             ) : (
               <VideoPlayer
@@ -219,6 +220,7 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
                 onClose={() => navigate(-1)}
                 inline
                 fill
+                controlsPlacement={modal ? "modal" : "page"}
                 className="player-reveal-fast"
                 style={{
                   ["--reveal-x" as any]: revealOrigin ? `${revealOrigin.x}px` : "18%",

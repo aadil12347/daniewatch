@@ -316,7 +316,12 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           <div ref={heroRef} className="relative h-[70vh] md:h-screen md:min-h-[700px]">
             {/* Background Trailer (hide when playing) */}
             {!playerState.isOpen ? (
-              <BackgroundTrailer videoKey={trailerKey} backdropUrl={backdropUrl} title={title} />
+              <BackgroundTrailer
+                videoKey={trailerKey}
+                backdropUrl={backdropUrl}
+                title={title}
+                controlsPlacement={modal ? "modal" : "page"}
+              />
             ) : (
               <VideoPlayer
                 tmdbId={Number(id)}
@@ -326,6 +331,7 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
                 onClose={() => navigate(-1)}
                 inline
                 fill
+                controlsPlacement={modal ? "modal" : "page"}
                 className="player-reveal-fast"
                 style={{
                   ["--reveal-x" as any]: revealOrigin ? `${revealOrigin.x}px` : "18%",
