@@ -19,12 +19,12 @@ export default function MovieDetailsModal() {
         contentVariant="fullscreenBelowHeader"
         className="p-0 sm:rounded-none overflow-hidden gap-0 border-0 grid-rows-[1fr]"
       >
-        <div className="h-full flex flex-col bg-background">
-          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-3">
+        <div className="h-full bg-background relative">
+          <div className="absolute left-3 top-3 z-20">
             <AnimatedBackButton label="Back" size="navbar" />
           </div>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="h-full overflow-y-auto overscroll-contain">
             <MovieDetails modal />
           </div>
         </div>
