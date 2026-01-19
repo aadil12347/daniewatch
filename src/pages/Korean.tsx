@@ -139,6 +139,16 @@ const Korean = () => {
         setIsLoadingMore(true);
       }
 
+      const dedupe = (arr: Movie[]) => {
+        const seen = new Set<string>();
+        return arr.filter((it) => {
+          const key = `${it.id}-${it.media_type ?? (it.first_air_date ? "tv" : "movie")}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
+
       try {
         const today = new Date().toISOString().split("T")[0];
 
@@ -216,11 +226,13 @@ const Korean = () => {
         // Hide blocked posts for normal users; admins can toggle show/hide
         const visibleResults = filterBlockedPosts(sortedResults);
 
+        const uniqueVisible = dedupe(visibleResults);
+
         if (reset) {
-          setItems(visibleResults);
+          setItems(uniqueVisible);
           setDisplayCount(BATCH_SIZE);
         } else {
-          setItems((prev) => [...prev, ...visibleResults]);
+          setItems((prev) => dedupe([...prev, ...uniqueVisible]));
           if (loadMoreFetchRequestedRef.current) {
             loadMoreFetchRequestedRef.current = false;
             setDisplayCount((prev) => prev + BATCH_SIZE);
