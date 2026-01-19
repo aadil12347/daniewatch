@@ -6,7 +6,6 @@ import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
-import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
@@ -15,46 +14,34 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 
-type Slot =
-  | { kind: "item"; movie: Movie }
-  | { kind: "placeholder"; key: string };
-
 const TVShows = () => {
   const BATCH_SIZE = 10;
 
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [shows, setShows] = useState<Movie[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
-  // NOTE: `page` tracks the next TMDB "discover" page to request (for cache restore).
-  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(600);
   const [hasMore, setHasMore] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const [endReached, setEndReached] = useState(false);
+  const [justAddedIds, setJustAddedIds] = useState<Set<number>>(() => new Set());
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const restoreScrollYRef = useRef<number | null>(null);
+  const justAddedTimerRef = useRef<number | null>(null);
 
   const tmdbPageRef = useRef(1);
   const bufferRef = useRef<Movie[]>([]);
   const loadedIdsRef = useRef<Set<number>>(new Set());
   const isFetchingNextBatchRef = useRef(false);
-  const placeholderStartIndexRef = useRef(0);
-  const { saveCache, getCache } = useListStateCache<Movie>();
+
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
   const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
-  const items = useMemo(
-    () => slots.filter((s): s is Extract<Slot, { kind: "item" }> => s.kind === "item").map((s) => s.movie),
-    [slots]
-  );
-
-  const baseVisible = useMemo(() => filterBlockedPosts(items, "tv"), [filterBlockedPosts, items]);
+  const baseVisible = useMemo(() => filterBlockedPosts(shows, "tv"), [filterBlockedPosts, shows]);
 
   // IMPORTANT: Keep order stable to avoid “flashing/jumping”.
   // Only filter (admin) without re-sorting.
@@ -66,6 +53,8 @@ const TVShows = () => {
         })
       : baseVisible;
   }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
+
+  const visibleIdSet = useMemo(() => new Set(visibleShows.map((s) => s.id)), [visibleShows]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleShows, { enabled: !isLoading });
 
@@ -84,58 +73,11 @@ const TVShows = () => {
     fetchGenres();
   }, []);
 
-  // Try to restore from cache on mount.
-  // If there is no cache, the filter-change effect will load the first batch.
-  useEffect(() => {
-    const cached = getCache("default", selectedGenres);
-    if (cached && cached.items.length > 0) {
-      restoreScrollYRef.current = cached.scrollY ?? 0;
-      setSlots(cached.items.map((m) => ({ kind: "item", movie: m })));
-      setPage(cached.page);
-      tmdbPageRef.current = cached.page;
-      bufferRef.current = [];
-      loadedIdsRef.current = new Set(cached.items.map((s) => s.id));
-      setHasMore(cached.hasMore);
-      setIsLoading(false);
-      setIsRestoredFromCache(true);
-    }
-    setIsInitialized(true);
-  }, [getCache, selectedGenres]);
-
-  // Restore scroll position after cache is applied
-  useEffect(() => {
-    if (!isRestoredFromCache) return;
-    if (slots.length === 0) return;
-
-    const y = restoreScrollYRef.current;
-    if (y === null) return;
-    restoreScrollYRef.current = null;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: y, left: 0, behavior: "auto" });
-      });
-    });
-  }, [isRestoredFromCache, slots.length]);
-
-  // Save cache before unmount
   useEffect(() => {
     return () => {
-      const moviesToCache = slots
-        .filter((s): s is Extract<Slot, { kind: "item" }> => s.kind === "item")
-        .map((s) => s.movie);
-
-      if (moviesToCache.length > 0) {
-        saveCache({
-          items: moviesToCache,
-          page,
-          hasMore,
-          activeTab: "default",
-          selectedFilters: selectedGenres,
-        });
-      }
+      if (justAddedTimerRef.current) window.clearTimeout(justAddedTimerRef.current);
     };
-  }, [slots, page, hasMore, selectedGenres, saveCache]);
+  }, []);
 
   const requestTmdbPage = useCallback(
     async (pageNum: number) => {
@@ -176,18 +118,18 @@ const TVShows = () => {
 
   const resetAndLoadFirstBatch = useCallback(async () => {
     setIsLoading(true);
-    setSlots([]);
+    setEndReached(false);
+
+    setShows([]);
     setHasMore(true);
 
     bufferRef.current = [];
     loadedIdsRef.current = new Set();
     tmdbPageRef.current = 1;
-    setPage(1);
 
     try {
       const { results, totalPages } = await requestTmdbPage(1);
 
-      // Fill the first 10 items; keep the rest buffered so future loads are exactly +10.
       const unique = results.filter((m) => {
         if (!m?.id) return false;
         if (loadedIdsRef.current.has(m.id)) return false;
@@ -196,14 +138,16 @@ const TVShows = () => {
       });
 
       const first = unique.slice(0, BATCH_SIZE);
-      setSlots(first.map((m) => ({ kind: "item", movie: m })));
+      setShows(first);
       bufferRef.current = unique.slice(BATCH_SIZE);
 
       tmdbPageRef.current = 2;
-      setPage(2);
 
       // Has more if TMDB has more pages OR we still have buffered items.
       setHasMore(1 < totalPages || bufferRef.current.length > 0);
+
+      // Animate initial reveal once (optional): treat first batch as not "just added"
+      setJustAddedIds(new Set());
     } catch (error) {
       console.error("Failed to fetch TV shows:", error);
       setHasMore(false);
@@ -220,18 +164,9 @@ const TVShows = () => {
     isFetchingNextBatchRef.current = true;
     setIsLoadingMore(true);
 
-    // 1) Add placeholders immediately (reserve space, avoid "flash")
-    const placeholderKeys = Array.from({ length: BATCH_SIZE }).map(
-      (_, i) => `tv-ph-${Date.now()}-${i}-${Math.random().toString(16).slice(2)}`
-    );
-
-    setSlots((prev) => {
-      placeholderStartIndexRef.current = prev.length;
-      return [...prev, ...placeholderKeys.map((key) => ({ kind: "placeholder", key }) as const)];
-    });
-
     try {
       const batch: Movie[] = [];
+      let latestTotalPages: number | null = null;
 
       while (batch.length < BATCH_SIZE) {
         if (bufferRef.current.length > 0) {
@@ -242,10 +177,10 @@ const TVShows = () => {
 
         const nextPage = tmdbPageRef.current;
         const { results, totalPages } = await requestTmdbPage(nextPage);
+        latestTotalPages = totalPages;
 
         // Move cursor forward immediately to avoid double-fetching the same page.
         tmdbPageRef.current = nextPage + 1;
-        setPage(tmdbPageRef.current);
 
         const unique = results.filter((m) => {
           if (!m?.id) return false;
@@ -256,66 +191,46 @@ const TVShows = () => {
 
         bufferRef.current.push(...unique);
 
-        // If there are no more pages and the buffer is empty, we’re done.
         const noMorePages = nextPage >= totalPages;
         if (noMorePages && bufferRef.current.length === 0) break;
-
-        setHasMore(!noMorePages || bufferRef.current.length > 0);
       }
 
-      // 2) Replace placeholders IN PLACE with real items (no unmount/mount flash)
-      setSlots((prev) => {
-        const next = prev.slice();
+      if (batch.length > 0) {
+        setShows((prev) => [...prev, ...batch]);
 
-        for (let i = 0; i < placeholderKeys.length; i++) {
-          const idx = placeholderStartIndexRef.current + i;
-          const movie = batch[i];
-
-          if (movie) {
-            next[idx] = { kind: "item", movie };
-          } else {
-            // End reached: remove leftover placeholders
-            next.splice(idx, 1);
-            break;
-          }
-        }
-
-        return next;
-      });
-
-      if (batch.length < BATCH_SIZE && bufferRef.current.length === 0) {
-        setHasMore(false);
+        // New-item scale-in animation (only for appended batch)
+        const ids = new Set(batch.map((b) => b.id));
+        setJustAddedIds(ids);
+        if (justAddedTimerRef.current) window.clearTimeout(justAddedTimerRef.current);
+        justAddedTimerRef.current = window.setTimeout(() => setJustAddedIds(new Set()), 520);
       }
+
+      const noMorePagesNow = latestTotalPages !== null && tmdbPageRef.current > latestTotalPages;
+      setHasMore(!(noMorePagesNow && bufferRef.current.length === 0 && batch.length < BATCH_SIZE));
+
+      // After loading, hide the button until user reaches the new end again.
+      setEndReached(false);
     } catch (error) {
       console.error("Failed to fetch more TV shows:", error);
-      // On error: remove placeholders so we don't leave "dead" skeletons.
-      setSlots((prev) => prev.filter((s) => s.kind !== "placeholder"));
     } finally {
       setIsLoadingMore(false);
       isFetchingNextBatchRef.current = false;
     }
   }, [BATCH_SIZE, hasMore, isLoading, requestTmdbPage, setIsLoadingMore]);
 
-  // Reset and fetch when filters change
+  // Fetch when filters change (NO restoration/cache behavior on this page)
   useEffect(() => {
-    if (!isInitialized) return;
-    if (isRestoredFromCache) {
-      setIsRestoredFromCache(false);
-      return;
-    }
     resetAndLoadFirstBatch();
-  }, [selectedGenres, selectedYear, isInitialized, isRestoredFromCache, resetAndLoadFirstBatch]);
+  }, [selectedGenres, selectedYear, resetAndLoadFirstBatch]);
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    const itemCount = slots.reduce((acc, s) => acc + (s.kind === "item" ? 1 : 0), 0);
-    if (!pageIsLoading && itemCount > 0) {
+    if (!pageIsLoading && shows.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [pageIsLoading, slots]);
+  }, [pageIsLoading, shows.length]);
 
-  // Infinite scroll observer (loads exactly 10 placeholders, then fills them)
-  // IMPORTANT: prevent “auto-chaining” loads by unobserving while a batch is loading.
+  // Reach-end detector: when user hits the end, show a "Load more" button (no auto-fetch)
   useEffect(() => {
     observerRef.current?.disconnect();
 
@@ -323,22 +238,17 @@ const TVShows = () => {
       (entries, observer) => {
         const entry = entries[0];
         if (!entry?.isIntersecting) return;
+        if (!hasMore) return;
+        if (isLoading || isLoadingMore) return;
+
         const el = loadMoreRef.current;
         if (!el) return;
 
-        // Stop observing immediately so we only trigger once per “reach the end”.
+        // Arm the button once per "end".
+        setEndReached(true);
         observer.unobserve(el);
-
-        void loadNextBatch().finally(() => {
-          // Re-observe after the DOM has updated so the new end must be reached again.
-          requestAnimationFrame(() => {
-            const nextEl = loadMoreRef.current;
-            if (nextEl) observer.observe(nextEl);
-          });
-        });
       },
       {
-        // Trigger closer to the actual end (less prefetch → less accidental re-trigger).
         threshold: 0.8,
         rootMargin: "0px 0px 200px 0px",
       }
@@ -349,7 +259,20 @@ const TVShows = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [loadNextBatch]);
+  }, [hasMore, isLoading, isLoadingMore]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore) return;
+    if (isLoadingMore) return;
+
+    await loadNextBatch();
+
+    // Re-observe after DOM updates so the *new* end must be reached again.
+    requestAnimationFrame(() => {
+      const el = loadMoreRef.current;
+      if (el && observerRef.current && hasMore) observerRef.current.observe(el);
+    });
+  }, [hasMore, isLoadingMore, loadNextBatch]);
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
@@ -395,35 +318,23 @@ const TVShows = () => {
             {pageIsLoading ? (
               Array.from({ length: 18 }).map((_, i) => (
                 <div key={i}>
-                  <Skeleton className="aspect-[2/3] rounded-xl" />
-                  <Skeleton className="h-4 w-3/4 mt-3" />
-                  <Skeleton className="h-3 w-1/2 mt-2" />
+                  <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                  <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                  <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                 </div>
               ))
             ) : (
               <>
-                {slots.map((slot, index) => {
-                  if (slot.kind === "item") {
-                    const show = slot.movie;
-                    const isVisible = visibleShows.some((s) => s.id === show.id);
-                    if (!isVisible) return null;
-
-                    return (
-                      <MovieCard
-                        key={`tv-slot-${show.id}`}
-                        movie={{ ...show, media_type: "tv" }}
-                        animationDelay={Math.min(index * 30, 300)}
-                      />
-                    );
-                  }
+                {shows.map((show, index) => {
+                  if (!visibleIdSet.has(show.id)) return null;
 
                   return (
-                    <div key={slot.key}>
-                      {/* Stable placeholders: no card-reveal and no pulse */}
-                      <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                      <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                      <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                    </div>
+                    <MovieCard
+                      key={`tv-${show.id}`}
+                      movie={{ ...show, media_type: "tv" }}
+                      animationDelay={Math.min(index * 30, 300)}
+                      className={justAddedIds.has(show.id) ? "tv-element-in" : undefined}
+                    />
                   );
                 })}
               </>
@@ -431,22 +342,30 @@ const TVShows = () => {
           </div>
 
           {/* No results message */}
-          {!pageIsLoading && items.length === 0 && (
+          {!pageIsLoading && shows.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No TV shows found with the selected filters.</p>
-              <button
-                onClick={clearFilters}
-                className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors"
-              >
+              <button onClick={clearFilters} className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm hover:bg-primary/90 transition-colors">
                 Clear filters
               </button>
             </div>
           )}
 
-          {/* Loading More Indicator */}
+          {/* Load more area */}
           <div ref={loadMoreRef} className="flex justify-center py-6 min-h-[56px]">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!isLoadingMore && !hasMore && items.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+
+            {!isLoadingMore && !hasMore && shows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+
+            {!isLoadingMore && hasMore && endReached && (
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                className="px-5 py-2 rounded-full bg-secondary text-secondary-foreground text-sm hover:bg-secondary/80 transition-colors"
+              >
+                Load more
+              </button>
+            )}
           </div>
         </div>
 

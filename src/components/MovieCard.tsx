@@ -18,9 +18,17 @@ interface MovieCardProps {
   showRank?: boolean;
   size?: "sm" | "md" | "lg";
   animationDelay?: number;
+  className?: string;
 }
 
-export const MovieCard = ({ movie, index, showRank = false, size = "md", animationDelay = 0 }: MovieCardProps) => {
+export const MovieCard = ({
+  movie,
+  index,
+  showRank = false,
+  size = "md",
+  animationDelay = 0,
+  className,
+}: MovieCardProps) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
@@ -167,7 +175,7 @@ export const MovieCard = ({ movie, index, showRank = false, size = "md", animati
   return (
     <div
       ref={cardRef}
-      className={cn("group relative flex-shrink-0 card-reveal", showRank && "pl-6 sm:pl-10")}
+      className={cn("group relative flex-shrink-0 card-reveal", className, showRank && "pl-6 sm:pl-10")}
       style={{ animationDelay: `${animationDelay}ms` }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
