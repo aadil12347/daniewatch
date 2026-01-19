@@ -422,14 +422,10 @@ export const Navbar = () => {
 
       </nav>
 
-      {/* Sticky Back button on details pages */}
-      {isDetailsPage && (
-        <div className={cn("fixed left-4 top-20 z-[60]", isModalDetails ? "block" : "hidden md:block")}>
-          <AnimatedBackButton
-            label="Back"
-            size="navbar"
-            to={isModalDetails ? `${backgroundLocation.pathname}${backgroundLocation.search ?? ""}` : undefined}
-          />
+      {/* Sticky Back button on details pages (full-page only; modal has its own back button) */}
+      {isDetailsPage && !isModalDetails && (
+        <div className="hidden md:block fixed left-4 top-20 z-[60]">
+          <AnimatedBackButton label="Back" size="navbar" />
         </div>
       )}
 
