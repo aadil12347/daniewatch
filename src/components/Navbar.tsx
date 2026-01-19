@@ -500,9 +500,9 @@ export const Navbar = () => {
                     to={link.to}
                     onClick={() => setIsMenuOpen(false)}
                     className={cn(
-                      "flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200",
-                      location.pathname === link.to 
-                        ? "bg-primary/15 text-primary" 
+                      "nav-link-glow flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200",
+                      location.pathname === link.to
+                        ? "nav-link-glow-active bg-primary/15 text-primary"
                         : "text-foreground/80 hover:bg-secondary/50 hover:text-foreground"
                     )}
                   >
