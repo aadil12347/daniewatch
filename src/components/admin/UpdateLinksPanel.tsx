@@ -110,6 +110,10 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [backfillMissingCount, setBackfillMissingCount] = useState<number | null>(null);
   const [backfillLastCheckedAt, setBackfillLastCheckedAt] = useState<number | null>(null);
 
+  // Auto mode: keep checking + updating until nothing remains or user stops
+  const [isAutoBackfilling, setIsAutoBackfilling] = useState(false);
+  const autoStopRequestedRef = useRef(false);
+
   const loadSeasonData = useCallback(async (content: any, season: number) => {
     const seasonKey = `season_${season}`;
     const seasonData = content?.[seasonKey];
@@ -313,6 +317,8 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     }
   }, [isBackfillChecking, isBackfilling, toast]);
 
+
+
   const runMetadataBackfill = useCallback(
     async (rowsOverride?: Array<{ id: string; type: "movie" | "series" }>) => {
       if (isBackfilling) return;
@@ -348,11 +354,15 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         // Small batches to avoid TMDB rate limits.
         const BATCH = 10;
         for (let i = 0; i < rowsToProcess.length; i += BATCH) {
+          if (autoStopRequestedRef.current) break;
+
           const slice = rowsToProcess.slice(i, i + BATCH);
 
           await Promise.all(
             slice.map(async (row) => {
               try {
+                if (autoStopRequestedRef.current) return;
+
                 const tmdbIdNum = Number(row.id);
                 if (!Number.isFinite(tmdbIdNum)) throw new Error("Invalid TMDB id");
 
@@ -377,7 +387,8 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 if (existingErr) throw existingErr;
 
                 const nextGenreIds = (existing?.genre_ids?.length ?? 0) > 0 ? existing?.genre_ids : genreIds;
-                const nextReleaseYear = existing?.release_year ?? (Number.isFinite(releaseYear as number) ? releaseYear : null);
+                const nextReleaseYear =
+                  existing?.release_year ?? (Number.isFinite(releaseYear as number) ? releaseYear : null);
 
                 const { error: updateErr } = await supabase
                   .from("entries")
@@ -420,6 +431,50 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     },
     [checkMissingMetadata, isBackfilling, toast]
   );
+
+  const startAutoMetadataUpdate = useCallback(async () => {
+    if (isAutoBackfilling) return;
+
+    autoStopRequestedRef.current = false;
+    setIsAutoBackfilling(true);
+
+    try {
+      toast({
+        title: "Auto update started",
+        description: "Will keep checking and updating until nothing remains (or you stop).",
+      });
+
+      while (!autoStopRequestedRef.current) {
+        await checkMissingMetadata();
+
+        if (backfillMissingCount === null) throw new Error("Couldn't read missing count");
+        if (backfillMissingCount === 0) break;
+
+        await runMetadataBackfill();
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      if (autoStopRequestedRef.current) {
+        toast({ title: "Auto update stopped" });
+      } else {
+        toast({ title: "Auto update finished", description: "No missing genres/year remain." });
+      }
+    } catch (e: any) {
+      console.error("[auto-backfill] error", e);
+      toast({
+        title: "Auto update error",
+        description: e?.message || "Auto update failed.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutoBackfilling(false);
+      autoStopRequestedRef.current = false;
+    }
+  }, [backfillMissingCount, checkMissingMetadata, isAutoBackfilling, runMetadataBackfill, toast]);
+
+  const stopAutoMetadataUpdate = useCallback(() => {
+    autoStopRequestedRef.current = true;
+  }, []);
 
   /**
    * One-time manual backfill for existing DB rows that are missing genre_ids/release_year.
@@ -661,41 +716,28 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
           <div className="flex flex-col items-end gap-2">
             <Button
-              variant="secondary"
+              variant={isAutoBackfilling ? "destructive" : "secondary"}
               disabled={isBackfilling || isBackfillChecking}
               className="shrink-0"
               onClick={() => {
-                // First click: check. Second click (after check): run update.
-                if (backfillMissingCount === null) {
-                  void checkMissingMetadata();
-                  return;
+                if (isAutoBackfilling) {
+                  stopAutoMetadataUpdate();
+                } else {
+                  void startAutoMetadataUpdate();
                 }
-
-                if (backfillMissingCount === 0) {
-                  toast({ title: "Nothing to update", description: "All entries already have genres/year." });
-                  return;
-                }
-
-                void runMetadataBackfill();
               }}
             >
-              {isBackfilling || isBackfillChecking ? (
+              {isBackfilling || isBackfillChecking || isAutoBackfilling ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <RotateCcw className="w-4 h-4" />
               )}
-              <span className="ml-2">
-                {backfillMissingCount === null
-                  ? "Check missing genres"
-                  : backfillMissingCount === 0
-                  ? "All genres updated"
-                  : `Update genres (${backfillMissingCount})`}
-              </span>
+              <span className="ml-2">{isAutoBackfilling ? "Stop auto update" : "Start auto update"}</span>
             </Button>
 
             <div className="text-xs text-muted-foreground text-right">
               {backfillMissingCount === null
-                ? "Click to scan database for missing metadata"
+                ? "Auto update will scan + fill missing genres/year"
                 : `Missing: ${backfillMissingCount}`}
               {backfillLastCheckedAt ? ` • Checked ${formatDistanceToNow(backfillLastCheckedAt, { addSuffix: true })}` : ""}
             </div>
