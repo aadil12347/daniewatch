@@ -19,6 +19,11 @@ interface MovieCardProps {
   size?: "sm" | "md" | "lg";
   animationDelay?: number;
   className?: string;
+  /**
+   * Enables the staggered reveal animation (card-reveal).
+   * Turn this off on grid pages to prevent re-triggered flashes on rerenders.
+   */
+  enableReveal?: boolean;
 }
 
 export const MovieCard = ({
@@ -28,6 +33,7 @@ export const MovieCard = ({
   size = "md",
   animationDelay = 0,
   className,
+  enableReveal = true,
 }: MovieCardProps) => {
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdmin();
@@ -175,7 +181,12 @@ export const MovieCard = ({
   return (
     <div
       ref={cardRef}
-      className={cn("group relative flex-shrink-0 card-reveal", className, showRank && "pl-6 sm:pl-10")}
+      className={cn(
+        "group relative flex-shrink-0",
+        enableReveal && "card-reveal",
+        className,
+        showRank && "pl-6 sm:pl-10"
+      )}
       style={{ animationDelay: `${animationDelay}ms` }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
