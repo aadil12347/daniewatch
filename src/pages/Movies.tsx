@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
@@ -11,6 +11,9 @@ import { usePostModeration } from "@/hooks/usePostModeration";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
+import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -28,10 +31,32 @@ const Movies = () => {
 
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
+  const { isAdmin } = useAdmin();
+  const { showOnlyDbLinked } = useAdminListFilter();
+  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
-  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(movies, { enabled: !isLoading });
+  const isDbLinked = useMemo(() => {
+    return (tmdbId: number) => {
+      const a = getAvailability(tmdbId);
+      return a.hasWatch || a.hasDownload;
+    };
+  }, [getAvailability]);
 
-  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading;
+  const baseVisible = useMemo(() => filterBlockedPosts(movies, "movie"), [filterBlockedPosts, movies]);
+
+  const visibleMovies = useMemo(() => {
+    const linked = baseVisible.filter((m) => isDbLinked(m.id));
+    const unlinked = baseVisible.filter((m) => !isDbLinked(m.id));
+
+    const linkedSorted = sortWithPinnedFirst(linked, "movies", "movie");
+    const unlinkedSorted = sortWithPinnedFirst(unlinked, "movies", "movie");
+
+    return isAdmin && showOnlyDbLinked ? linkedSorted : [...linkedSorted, ...unlinkedSorted];
+  }, [baseVisible, isAdmin, isDbLinked, showOnlyDbLinked, sortWithPinnedFirst]);
+
+  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleMovies, { enabled: !isLoading });
+
+  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
 
   // Fetch genres on mount
   useEffect(() => {
@@ -232,15 +257,13 @@ const Movies = () => {
                     <Skeleton className="h-3 w-1/2 mt-2" />
                   </div>
                 ))
-              : sortWithPinnedFirst(filterBlockedPosts(movies, "movie"), "movies", "movie").map(
-                  (movie, index) => (
-                    <MovieCard
-                      key={`${movie.id}-${index}`}
-                      movie={{ ...movie, media_type: "movie" }}
-                      animationDelay={Math.min(index * 30, 300)}
-                    />
-                  )
-                )}
+              : visibleMovies.map((movie, index) => (
+                  <MovieCard
+                    key={`${movie.id}-${index}`}
+                    movie={{ ...movie, media_type: "movie" }}
+                    animationDelay={Math.min(index * 30, 300)}
+                  />
+                ))}
           </div>
 
           {/* No results message */}

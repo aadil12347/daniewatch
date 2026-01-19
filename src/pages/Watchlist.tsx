@@ -10,17 +10,40 @@ import { Bookmark, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
+import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { groupDbLinkedFirst } from "@/lib/sortContent";
 
 const Watchlist = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
+  const { showOnlyDbLinked } = useAdminListFilter();
+  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
   const { getWatchlistAsMovies, loading } = useWatchlist();
+
   const watchlistMovies = getWatchlistAsMovies();
-  const visibleWatchlist = useMemo(() => filterBlockedPosts(watchlistMovies), [filterBlockedPosts, watchlistMovies]);
+
+  const visibleWatchlist = useMemo(() => {
+    const base = filterBlockedPosts(watchlistMovies);
+
+    const sorted = groupDbLinkedFirst(base, (it) => {
+      const a = getAvailability(it.id);
+      return a.hasWatch || a.hasDownload;
+    });
+
+    return isAdmin && showOnlyDbLinked
+      ? sorted.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : sorted;
+  }, [filterBlockedPosts, getAvailability, isAdmin, showOnlyDbLinked, watchlistMovies]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleWatchlist, { enabled: !loading });
 
-  const pageIsLoading = loading || isModerationLoading || isHoverPreloadLoading;
+  const pageIsLoading = loading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
 
   return (
     <>

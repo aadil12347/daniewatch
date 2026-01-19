@@ -9,6 +9,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
 import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
+import { AdminListFilterProvider } from "./contexts/AdminListFilterContext";
 import { PageTransition } from "./components/PageTransition";
 import { GlobalRouteLoader } from "./components/GlobalRouteLoader";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
@@ -95,20 +96,22 @@ const App = () => (
         <TutorialProvider>
           <MediaProvider>
             <AdminContentVisibilityProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <MotionBlurCursor />
-                <BrowserRouter>
-                  <ErrorBoundary>
-                    <Navbar />
-                    <GlobalRouteLoader />
-                    <AppContent />
-                    <FloatingRequestButton />
-                    <TutorialOverlay />
-                  </ErrorBoundary>
-                </BrowserRouter>
-              </TooltipProvider>
+              <AdminListFilterProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <MotionBlurCursor />
+                  <BrowserRouter>
+                    <ErrorBoundary>
+                      <Navbar />
+                      <GlobalRouteLoader />
+                      <AppContent />
+                      <FloatingRequestButton />
+                      <TutorialOverlay />
+                    </ErrorBoundary>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </AdminListFilterProvider>
             </AdminContentVisibilityProvider>
           </MediaProvider>
         </TutorialProvider>
