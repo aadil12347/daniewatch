@@ -30,13 +30,17 @@ const TVShows = () => {
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const observedElRef = useRef<Element | null>(null);
-  const isFetchingMoreRef = useRef(false);
+
+  // "Example-style" batching: fetch a page into a buffer, then append ONE card per intersection.
+  const bufferRef = useRef<{ items: Movie[]; index: number } | null>(null);
+
+  const isFetchingPageRef = useRef(false);
   const pageRef = useRef(1);
 
   const restoreScrollYRef = useRef<number | null>(null);
-  const anchorRef = useRef<{ scrollY: number; docHeight: number; wasNearBottom: boolean } | null>(null);
-  const userMovedDuringLoadRef = useRef(false);
   const prevLenRef = useRef(0);
+  const userMovedDuringLoadRef = useRef(false);
+  const anchorRef = useRef<{ scrollY: number; wasNearBottom: boolean } | null>(null);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
@@ -162,7 +166,6 @@ const TVShows = () => {
     async (pageNum: number, reset: boolean = false) => {
       if (reset) {
         setIsLoading(true);
-        setAnimateFromIndex(0);
       } else {
         setIsLoadingMore(true);
       }
@@ -171,11 +174,14 @@ const TVShows = () => {
         const { results, hasMore: more } = await requestShows(pageNum);
 
         if (reset) {
-          setShows(results);
-          // avoid re-triggering fly-in on initial/reset renders (prevents "flashing")
-          setAnimateFromIndex(results.length);
+          // Match the example: render the first card, keep the rest in a buffer.
+          const [first, ...rest] = results;
+          setShows(first ? [first] : []);
+          bufferRef.current = { items: rest, index: 0 };
+          setAnimateFromIndex(0);
         } else {
-          setShows((prev) => [...prev, ...results]);
+          // When loading a new page for infinite scroll, refill the buffer.
+          bufferRef.current = { items: results, index: 0 };
         }
 
         setHasMore(more);
@@ -189,67 +195,82 @@ const TVShows = () => {
     [requestShows, setIsLoadingMore]
   );
 
-  const loadMore = useCallback(async () => {
-    if (!hasMore) return;
-    if (isLoading) return;
-    if (isLoadingMore) return;
-    if (isFetchingMoreRef.current) return;
+  const appendNextFromBuffer = useCallback(() => {
+    const buf = bufferRef.current;
+    if (!buf) return false;
 
-    // single-flight lock
-    isFetchingMoreRef.current = true;
+    if (buf.index >= buf.items.length) return false;
+
+    const next = buf.items[buf.index];
+    buf.index += 1;
+
+    setAnimateFromIndex((prev) => Math.min(prev, shows.length));
+    setShows((prev) => [...prev, next]);
+    setAnimateFromIndex(shows.length);
+
+    return true;
+  }, [shows.length]);
+
+  const fetchNextPageIntoBuffer = useCallback(async () => {
+    if (!hasMore) return false;
+    if (isFetchingPageRef.current) return false;
+
+    isFetchingPageRef.current = true;
 
     const distanceToBottom =
       document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-
     anchorRef.current = {
       scrollY: window.scrollY,
-      docHeight: document.documentElement.scrollHeight,
       wasNearBottom: distanceToBottom < 140,
     };
-    userMovedDuringLoadRef.current = false;
 
+    userMovedDuringLoadRef.current = false;
     const onUserScroll = () => {
       userMovedDuringLoadRef.current = true;
     };
-
     window.addEventListener("scroll", onUserScroll, { passive: true });
-
-    // animate only newly appended items
-    setAnimateFromIndex(shows.length);
 
     try {
       setIsLoadingMore(true);
       const nextPage = pageRef.current + 1;
       const { results, hasMore: more } = await requestShows(nextPage);
 
-      setShows((prev) => [...prev, ...results]);
-      setHasMore(more);
-
       pageRef.current = nextPage;
       setPage(nextPage);
-    } catch (error) {
-      console.error("Failed to fetch TV shows:", error);
+      setHasMore(more);
+
+      bufferRef.current = { items: results, index: 0 };
+      return results.length > 0;
+    } catch (e) {
+      console.error("Failed to fetch TV shows:", e);
+      return false;
     } finally {
       window.removeEventListener("scroll", onUserScroll);
       setIsLoadingMore(false);
-      isFetchingMoreRef.current = false;
+      isFetchingPageRef.current = false;
     }
-  }, [hasMore, isLoading, isLoadingMore, requestShows, setIsLoadingMore, shows.length]);
+  }, [hasMore, requestShows, setIsLoadingMore]);
 
   const ensureObserver = useCallback(() => {
     if (observerRef.current) return;
 
     observerRef.current = new IntersectionObserver(
-      (entries, self) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
+      async (entries, self) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
 
           // baton passing: only the last card should be observed
           self.unobserve(entry.target);
           observedElRef.current = null;
 
-          void loadMore();
-        });
+          // 1) Try to append one item from buffer.
+          const appended = appendNextFromBuffer();
+          if (appended) return;
+
+          // 2) If buffer is empty, fetch the next page, then append one.
+          const fetched = await fetchNextPageIntoBuffer();
+          if (fetched) appendNextFromBuffer();
+        }
       },
       {
         root: null,
@@ -257,7 +278,7 @@ const TVShows = () => {
         threshold: 0.99,
       }
     );
-  }, [loadMore]);
+  }, [appendNextFromBuffer, fetchNextPageIntoBuffer]);
 
   const setLastCardNode = useCallback(
     (node: HTMLElement | null) => {
@@ -295,6 +316,7 @@ const TVShows = () => {
     }
 
     pageRef.current = 1;
+    bufferRef.current = null;
     setPage(1);
     setShows([]);
     setHasMore(true);
@@ -302,7 +324,7 @@ const TVShows = () => {
     fetchShows(1, true);
   }, [selectedGenres, selectedYear, isInitialized, fetchShows, isRestoredFromCache]);
 
-  // Keep visual scroll position stable after appending cards
+  // Keep visual scroll position stable after fetching a NEW PAGE (not when appending buffered cards)
   useLayoutEffect(() => {
     const len = shows.length;
     const prev = prevLenRef.current;
@@ -311,22 +333,20 @@ const TVShows = () => {
     if (len <= prev) return;
     if (!anchorRef.current) return;
 
-    // Only stabilize when the user was actually "waiting at the bottom".
     if (!anchorRef.current.wasNearBottom) {
       anchorRef.current = null;
       return;
     }
 
-    // If the user scrolled intentionally during the request, don't fight them.
     if (userMovedDuringLoadRef.current) {
       anchorRef.current = null;
       return;
     }
 
-    // Only correct if we're still basically at the same scroll position.
     if (Math.abs(window.scrollY - anchorRef.current.scrollY) < 6) {
       window.scrollTo({ top: anchorRef.current.scrollY, left: 0, behavior: "auto" });
     }
+
     anchorRef.current = null;
   }, [shows.length]);
 
