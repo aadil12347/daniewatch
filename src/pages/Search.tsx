@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { Search as SearchIcon, Sparkles, Heart } from "lucide-react";
+import { Search as SearchIcon } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
@@ -178,14 +178,12 @@ const Search = () => {
         <div className="container mx-auto px-4 pt-24 pb-8">
           {query ? (
             <>
-              <div className="flex items-center gap-3 mb-2">
-                {category === "anime" && <Sparkles className="w-6 h-6 text-primary" />}
-                {category === "korean" && <Heart className="w-6 h-6 text-primary" />}
-              <h1 className="text-2xl md:text-3xl font-bold">{category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}</h1>
-            </div>
-            {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
-            <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}</p>
-          </>
+              <h1 className="sr-only">
+                {category ? `${getCategoryLabel()} Results for "${query}"` : `Search Results for "${query}"`}
+              </h1>
+              {category && <p className="text-sm text-primary/80 mb-2">Showing only {getCategoryLabel()} content</p>}
+              <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}</p>
+            </>
           ) : (
             <div className="text-center py-20">
               <SearchIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
