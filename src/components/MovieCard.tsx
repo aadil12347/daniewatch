@@ -289,7 +289,8 @@ export const MovieCard = ({
                     loading={isNearViewport ? "eager" : "lazy"}
                     className={cn(
                       "poster-3d-cover poster-3d-cover--base",
-                      isAdmin && blocked && "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                      isAdmin && blocked &&
+                        "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                     )}
                   />
 
@@ -310,12 +311,27 @@ export const MovieCard = ({
                   <span className="text-muted-foreground text-sm">{title}</span>
                 </div>
               )}
+
+              {/* CONTAINED character layer: render INSIDE the clipped poster so it never exits */}
+              {hoverImageUrl && hoverCharacterMode === "contained" && (
+                <img
+                  src={hoverImageUrl}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className={cn(
+                    "poster-3d-character",
+                    location.pathname === "/"
+                      ? "poster-3d-character--contained-home"
+                      : "poster-3d-character--contained-top",
+                    isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                  )}
+                />
+              )}
             </div>
 
-            {/* Optional character layer (from DB)
-                - inline version works on grid pages
-                - portal version is used on hover to bypass carousel clipping */}
-            {hoverImageUrl && (!portalEnabled || !isPortalMounted) && (
+            {/* POPOUT character layer: outside the clip (may use portal on Home rows) */}
+            {hoverImageUrl && hoverCharacterMode === "popout" && (!portalEnabled || !isPortalMounted) && (
               <img
                 src={hoverImageUrl}
                 alt=""
@@ -323,10 +339,6 @@ export const MovieCard = ({
                 loading="lazy"
                 className={cn(
                   "poster-3d-character",
-                  hoverCharacterMode === "contained" &&
-                    (location.pathname === "/"
-                      ? "poster-3d-character--contained-home"
-                      : "poster-3d-character--contained-top"),
                   isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                 )}
               />
