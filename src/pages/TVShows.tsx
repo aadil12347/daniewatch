@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
+import { getTVGenres, filterAdultContent, getTVDetails, Movie, Genre } from "@/lib/tmdb";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
@@ -13,13 +13,24 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { groupDbLinkedFirst } from "@/lib/sortContent";
+import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
+import { isAllowedOnTvPage } from "@/lib/contentScope";
 
 const INITIAL_BATCH_SIZE = 18;
 const LOAD_MORE_BATCH_SIZE = 18;
 
+type DbEntry = {
+  id: string;
+  type: "movie" | "series";
+  genre_ids?: number[] | null;
+  release_year?: number | null;
+  title?: string | null;
+};
+
 const TVShows = () => {
   const [displayShows, setDisplayShows] = useState<Movie[]>([]);
+  const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
+
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
@@ -45,49 +56,81 @@ const TVShows = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
+  const {
+    entries: dbEntries,
+    metaByKey,
+    getDbMetaByKey,
+    getAvailability,
+    isLoading: isAvailabilityLoading,
+  } = useEntryAvailability();
 
   const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
 
-  const visibleShows = useMemo(() => {
-    const base = filterBlockedPosts(displayShows, "tv");
+  const normalizedDbEntries = useMemo(() => (dbEntries as unknown as DbEntry[]) ?? [], [dbEntries]);
 
-    const sorted = isAvailabilityLoading
-      ? base
-      : groupDbLinkedFirst(base, (it) => {
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        });
+  const dbEntriesMatchingFilters = useMemo(() => {
+    return normalizedDbEntries.filter((e) => {
+      if (e.type !== "series") return false;
 
-    return needsDbLinkedFilter
-      ? sorted.filter((it) => {
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        })
-      : sorted;
-  }, [displayShows, filterBlockedPosts, getAvailability, isAvailabilityLoading, needsDbLinkedFilter]);
+      const genreIds = e.genre_ids ?? [];
+      const year = e.release_year ?? null;
 
-  const canFinalizeVisibility = !isModerationLoading && !isAvailabilityLoading;
-
-  // Preload hover images in the background ONLY (never gate the TV grid render on this).
-  usePageHoverPreload(visibleShows, { enabled: !isLoading });
-
-  // Only show skeletons before we have any real items to render.
-  const pageIsLoading = visibleShows.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
-
-  // Fetch genres on mount
-  useEffect(() => {
-    const fetchGenres = async () => {
-      try {
-        const response = await getTVGenres();
-        setGenres(response.genres);
-      } catch (error) {
-        console.error("Failed to fetch genres:", error);
+      // Genre filter (overlap)
+      if (selectedGenres.length > 0) {
+        const hasOverlap = genreIds.some((g) => selectedGenres.includes(g));
+        if (!hasOverlap) return false;
       }
-    };
-    fetchGenres();
-  }, []);
 
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          if (typeof year !== "number" || year > 2019) return false;
+        } else {
+          if (typeof year !== "number" || String(year) !== selectedYear) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [normalizedDbEntries, selectedGenres, selectedYear]);
+
+  const hydrateDbOnlyNow = useCallback(
+    async (tmdbKeys: Set<string>, limit: number) => {
+      if (metaByKey.size === 0) return [] as Movie[];
+
+      const candidates = dbEntriesMatchingFilters
+        .map((e) => ({ id: Number(e.id), mediaType: "tv" as const }))
+        .filter((e) => Number.isFinite(e.id))
+        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
+        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`))
+        .slice(0, limit);
+
+      if (candidates.length === 0) return [] as Movie[];
+
+      const BATCH = 5;
+      const results: Movie[] = [];
+
+      for (let i = 0; i < candidates.length; i += BATCH) {
+        const batch = candidates.slice(i, i + BATCH);
+        const hydrated = await Promise.all(
+          batch.map(async ({ id }) => {
+            try {
+              const d = await getTVDetails(id);
+              return { ...d, media_type: "tv" as const } as Movie;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const cleaned = (hydrated.filter(Boolean) as Movie[]).filter(isAllowedOnTvPage);
+        results.push(...(filterAdultContent(cleaned) as Movie[]));
+      }
+
+      return results;
+    },
+    [dbEntriesMatchingFilters, metaByKey, selectedGenres, selectedYear]
+  );
 
   const requestTmdbPage = useCallback(
     async (pageNum: number) => {
@@ -117,10 +160,14 @@ const TVShows = () => {
       const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
       const response = await res.json();
 
+      const scoped = (filterAdultContent(response.results) as Movie[])
+        .map((m) => ({ ...m, media_type: "tv" as const }))
+        .filter(isAllowedOnTvPage);
+
       return {
         page: response.page as number,
         totalPages: response.total_pages as number,
-        results: filterAdultContent(response.results) as Movie[],
+        results: scoped,
       };
     },
     [selectedGenres, selectedYear]
@@ -129,6 +176,7 @@ const TVShows = () => {
   const isCandidateVisible = useCallback(
     (m: Movie) => {
       if (!m?.id) return false;
+      if (!isAllowedOnTvPage(m)) return false;
 
       // Moderation filter (respects admin visibility rules internally)
       const moderated = filterBlockedPosts([m], "tv");
@@ -193,6 +241,7 @@ const TVShows = () => {
     setJustAddedIds(new Set());
 
     setDisplayShows([]);
+    setDbOnlyHydrated([]);
 
     bufferRef.current = [];
     loadedIdsRef.current = new Set();
@@ -207,6 +256,8 @@ const TVShows = () => {
     resetPaginationState();
   }, [selectedGenres, selectedYear, resetPaginationState]);
 
+  const canFinalizeVisibility = !isModerationLoading && !isAvailabilityLoading;
+
   // Initial load: fetch in background and commit ONCE (prevents show-then-filter flashes)
   useEffect(() => {
     if (!pendingInitialLoad) return;
@@ -218,8 +269,13 @@ const TVShows = () => {
     void (async () => {
       try {
         const first = await gatherNextVisibleItems(INITIAL_BATCH_SIZE);
-        const withType = first.map((m) => ({ ...m, media_type: "tv" as const }));
-        setDisplayShows(withType);
+
+        // Pre-hydrate DB-only items before first commit to avoid reorder-jumps.
+        const tmdbKeys = new Set(first.map((m) => `${m.id}-tv`));
+        const hydrated = await hydrateDbOnlyNow(tmdbKeys, 120);
+        setDbOnlyHydrated(hydrated);
+
+        setDisplayShows(first);
 
         // Initial batch shouldn't use the “just added” animation
         setJustAddedIds(new Set());
@@ -232,7 +288,46 @@ const TVShows = () => {
         isFetchingNextBatchRef.current = false;
       }
     })();
-  }, [canFinalizeVisibility, gatherNextVisibleItems, pendingInitialLoad]);
+  }, [canFinalizeVisibility, gatherNextVisibleItems, hydrateDbOnlyNow, pendingInitialLoad]);
+
+  const mergedBase = useMemo(() => {
+    return mergeDbAndTmdb({
+      tmdbItems: displayShows,
+      dbOnlyHydratedItems: dbOnlyHydrated,
+      isDbItem: (key) => metaByKey.has(key),
+      getDbMeta: getDbMetaByKey,
+    });
+  }, [dbOnlyHydrated, displayShows, getDbMetaByKey, metaByKey]);
+
+  const visibleShows = useMemo(() => {
+    const base = filterBlockedPosts(mergedBase, "tv");
+
+    return needsDbLinkedFilter
+      ? base.filter((it) => {
+          const a = getAvailability(it.id);
+          return a.hasWatch || a.hasDownload;
+        })
+      : base;
+  }, [filterBlockedPosts, getAvailability, mergedBase, needsDbLinkedFilter]);
+
+  // Preload hover images in the background ONLY (never gate the TV grid render on this).
+  usePageHoverPreload(visibleShows, { enabled: !isLoading });
+
+  // Only show skeletons before we have any real items to render.
+  const pageIsLoading = visibleShows.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
+
+  // Fetch genres on mount
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const response = await getTVGenres();
+        setGenres(response.genres);
+      } catch (error) {
+        console.error("Failed to fetch genres:", error);
+      }
+    };
+    fetchGenres();
+  }, []);
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
@@ -293,11 +388,9 @@ const TVShows = () => {
         const nextBatch = await gatherNextVisibleItems(LOAD_MORE_BATCH_SIZE);
 
         if (nextBatch.length > 0) {
-          const withType = nextBatch.map((m) => ({ ...m, media_type: "tv" as const }));
+          setDisplayShows((prev) => [...prev, ...nextBatch]);
 
-          setDisplayShows((prev) => [...prev, ...withType]);
-
-          const ids = new Set(withType.map((b) => b.id));
+          const ids = new Set(nextBatch.map((b) => b.id));
           setJustAddedIds((prev) => new Set([...prev, ...ids]));
         } else {
           setHasMore(false);
@@ -423,6 +516,3 @@ const TVShows = () => {
 };
 
 export default TVShows;
-
-
-

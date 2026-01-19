@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMovieGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
+import { getMovieGenres, filterAdultContent, getMovieDetails, Movie, Genre } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
@@ -14,11 +14,23 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
+import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
+import { isAllowedOnMoviesPage } from "@/lib/contentScope";
 
 const BATCH_SIZE = 18;
 
+type DbEntry = {
+  id: string;
+  type: "movie" | "series";
+  genre_ids?: number[] | null;
+  release_year?: number | null;
+  title?: string | null;
+};
+
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
+
   const [displayCount, setDisplayCount] = useState(0);
   const [animateFromIndex, setAnimateFromIndex] = useState<number | null>(null);
   const [pendingLoadMore, setPendingLoadMore] = useState(false);
@@ -41,30 +53,130 @@ const Movies = () => {
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
+  const {
+    entries: dbEntries,
+    metaByKey,
+    getDbMetaByKey,
+    getAvailability,
+    isLoading: isAvailabilityLoading,
+  } = useEntryAvailability();
 
-  const isDbLinked = useMemo(() => {
-    return (tmdbId: number) => {
-      const a = getAvailability(tmdbId);
-      return a.hasWatch || a.hasDownload;
-    };
-  }, [getAvailability]);
+  const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
+    const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
+    return `${m.id}-${media}`;
+  }, []);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(movies, "movie"), [filterBlockedPosts, movies]);
+  const normalizedDbEntries = useMemo(() => (dbEntries as unknown as DbEntry[]) ?? [], [dbEntries]);
+
+  const dbEntriesMatchingFilters = useMemo(() => {
+    return normalizedDbEntries.filter((e) => {
+      if (e.type !== "movie") return false;
+
+      const genreIds = e.genre_ids ?? [];
+      const year = e.release_year ?? null;
+
+      // Genre filter (overlap)
+      if (selectedGenres.length > 0) {
+        const hasOverlap = genreIds.some((g) => selectedGenres.includes(g));
+        if (!hasOverlap) return false;
+      }
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          if (typeof year !== "number" || year > 2019) return false;
+        } else {
+          if (typeof year !== "number" || String(year) !== selectedYear) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [normalizedDbEntries, selectedGenres, selectedYear]);
+
+  const hydrateDbOnly = useCallback(
+    async (tmdbKeys: Set<string>, limit: number) => {
+      if (metaByKey.size === 0) return;
+
+      const candidates = dbEntriesMatchingFilters
+        .map((e) => ({ id: Number(e.id), mediaType: "movie" as const }))
+        .filter((e) => Number.isFinite(e.id))
+        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
+        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`));
+
+      const hydratedKeys = new Set(dbOnlyHydrated.map((m) => getKey(m)));
+      const toHydrate = candidates.filter((c) => !hydratedKeys.has(`${c.id}-${c.mediaType}`)).slice(0, limit);
+      if (toHydrate.length === 0) return;
+
+      const BATCH = 5;
+      const results: Movie[] = [];
+
+      for (let i = 0; i < toHydrate.length; i += BATCH) {
+        const batch = toHydrate.slice(i, i + BATCH);
+        const hydrated = await Promise.all(
+          batch.map(async ({ id }) => {
+            try {
+              const d = await getMovieDetails(id);
+              return { ...d, media_type: "movie" as const } as Movie;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const cleaned = (hydrated.filter(Boolean) as Movie[]).filter(isAllowedOnMoviesPage);
+        results.push(...(filterAdultContent(cleaned) as Movie[]));
+      }
+
+      if (results.length > 0) {
+        setDbOnlyHydrated((prev) => {
+          const seen = new Set(prev.map((m) => getKey(m)));
+          const next = [...prev];
+          for (const m of results) {
+            const k = getKey(m);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            next.push(m);
+          }
+          return next;
+        });
+      }
+    },
+    [dbEntriesMatchingFilters, dbOnlyHydrated, getKey, metaByKey]
+  );
+
+  const mergedBase = useMemo(() => {
+    return mergeDbAndTmdb({
+      tmdbItems: movies,
+      dbOnlyHydratedItems: dbOnlyHydrated,
+      isDbItem: (key) => metaByKey.has(key),
+      getDbMeta: getDbMetaByKey,
+    });
+  }, [dbOnlyHydrated, getDbMetaByKey, movies, metaByKey]);
+
+  const baseVisible = useMemo(() => filterBlockedPosts(mergedBase, "movie"), [filterBlockedPosts, mergedBase]);
 
   const visibleMovies = useMemo(() => {
-    if (isAvailabilityLoading) {
-      return sortWithPinnedFirst(baseVisible, "movies", "movie");
+    // Keep DB-first grouping intact; apply pinned ordering within each group.
+    const isDb = (m: Movie) => metaByKey.has(`${m.id}-movie`);
+
+    const dbGroup = baseVisible.filter(isDb);
+    const tmdbGroup = baseVisible.filter((m) => !isDb(m));
+
+    const dbSorted = sortWithPinnedFirst(dbGroup, "movies", "movie");
+    const tmdbSorted = sortWithPinnedFirst(tmdbGroup, "movies", "movie");
+
+    const combined = [...dbSorted, ...tmdbSorted];
+
+    if (isAdmin && showOnlyDbLinked) {
+      return combined.filter((m) => {
+        const a = getAvailability(m.id);
+        return a.hasWatch || a.hasDownload;
+      });
     }
 
-    const linked = baseVisible.filter((m) => isDbLinked(m.id));
-    const unlinked = baseVisible.filter((m) => !isDbLinked(m.id));
-
-    const linkedSorted = sortWithPinnedFirst(linked, "movies", "movie");
-    const unlinkedSorted = sortWithPinnedFirst(unlinked, "movies", "movie");
-
-    return isAdmin && showOnlyDbLinked ? linkedSorted : [...linkedSorted, ...unlinkedSorted];
-  }, [baseVisible, isAdmin, isAvailabilityLoading, isDbLinked, showOnlyDbLinked, sortWithPinnedFirst]);
+    return combined;
+  }, [baseVisible, getAvailability, isAdmin, metaByKey, showOnlyDbLinked, sortWithPinnedFirst]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleMovies, { enabled: !isLoading });
@@ -136,9 +248,20 @@ const Movies = () => {
     async (pageNum: number, reset: boolean = false) => {
       if (reset) {
         setIsLoading(true);
+        setDbOnlyHydrated([]);
       } else {
         setIsLoadingMore(true);
       }
+
+      const dedupe = (arr: Movie[]) => {
+        const seen = new Set<string>();
+        return arr.filter((it) => {
+          const key = getKey(it);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
 
       try {
         const today = new Date().toISOString().split("T")[0];
@@ -170,19 +293,28 @@ const Movies = () => {
         const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
         const response = await res.json();
 
-        const filteredResults = filterAdultContent(response.results) as Movie[];
+        const filteredResults = (filterAdultContent(response.results) as Movie[])
+          .map((m) => ({ ...m, media_type: "movie" as const }))
+          .filter(isAllowedOnMoviesPage);
+
+        const unique = dedupe(filteredResults);
+
+        if (reset && metaByKey.size > 0) {
+          const tmdbKeys = new Set(unique.map((m) => getKey(m)));
+          await hydrateDbOnly(tmdbKeys, 60);
+        }
 
         if (reset) {
-          setMovies(filteredResults);
+          setMovies(unique);
           setDisplayCount(BATCH_SIZE);
         } else {
-          setMovies((prev) => [...prev, ...filteredResults]);
-          // If this fetch was triggered by scroll batching, reveal the next batch.
+          setMovies((prev) => dedupe([...prev, ...unique]));
           if (loadMoreFetchRequestedRef.current) {
             loadMoreFetchRequestedRef.current = false;
             setDisplayCount((prev) => prev + BATCH_SIZE);
           }
         }
+
         setHasMore(response.page < response.total_pages);
       } catch (error) {
         console.error("Failed to fetch movies:", error);
@@ -191,7 +323,7 @@ const Movies = () => {
         setIsLoadingMore(false);
       }
     },
-    [selectedGenres, selectedYear, setIsLoadingMore]
+    [getKey, hydrateDbOnly, metaByKey.size, selectedGenres, selectedYear, setIsLoadingMore]
   );
 
   // Reset and fetch when filters change
@@ -203,6 +335,7 @@ const Movies = () => {
     }
     setPage(1);
     setMovies([]);
+    setDbOnlyHydrated([]);
     setDisplayCount(0);
     setAnimateFromIndex(null);
     setHasMore(true);
@@ -272,9 +405,7 @@ const Movies = () => {
   }, [page, fetchMovies, isRestoredFromCache]);
 
   const toggleGenre = (genreId: number) => {
-    setSelectedGenres((prev) =>
-      prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]
-    );
+    setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
   };
 
   const clearGenres = () => {
@@ -297,8 +428,6 @@ const Movies = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
-
         <div className="container mx-auto px-4 pt-24 pb-8">
           <h1 className="sr-only">Movies</h1>
 
@@ -339,7 +468,7 @@ const Movies = () => {
                     </div>
                   );
                 })}
-           </div>
+          </div>
 
           {/* No results message */}
           {!pageIsLoading && visibleMovies.length === 0 && (
@@ -370,4 +499,3 @@ const Movies = () => {
 };
 
 export default Movies;
-

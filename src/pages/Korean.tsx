@@ -15,6 +15,7 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
+import { isKoreanScope, KOREAN_LANGS } from "@/lib/contentScope";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -151,7 +152,7 @@ const Korean = () => {
 
         const cleaned = hydrated.filter(Boolean) as Movie[];
         const strict = await filterAdultContentStrict(cleaned);
-        results.push(...strict);
+        results.push(...strict.filter(isKoreanScope));
       }
 
       if (results.length > 0) {
@@ -278,59 +279,74 @@ const Korean = () => {
           })
           .join(",");
 
-        // Build movie params - sorted by release date desc
-        const movieParams = new URLSearchParams({
-          api_key: "fc6d85b3839330e3458701b975195487",
-          include_adult: "false",
-          page: pageNum.toString(),
-          sort_by: "primary_release_date.desc",
-          with_original_language: "ko",
-          "vote_count.gte": "50",
-          "primary_release_date.lte": today,
-        });
+        const makeMovieParams = (lang: string) => {
+          const p = new URLSearchParams({
+            api_key: "fc6d85b3839330e3458701b975195487",
+            include_adult: "false",
+            page: pageNum.toString(),
+            sort_by: "primary_release_date.desc",
+            with_original_language: lang,
+            "vote_count.gte": "50",
+            "primary_release_date.lte": today,
+          });
 
-        // Build TV params - sorted by first air date desc
-        const tvParams = new URLSearchParams({
-          api_key: "fc6d85b3839330e3458701b975195487",
-          include_adult: "false",
-          page: pageNum.toString(),
-          sort_by: "first_air_date.desc",
-          with_original_language: "ko",
-          "vote_count.gte": "20",
-          "first_air_date.lte": today,
-        });
-
-        // Year filter
-        if (selectedYear) {
-          if (selectedYear === "older") {
-            movieParams.set("primary_release_date.lte", "2019-12-31");
-            tvParams.set("first_air_date.lte", "2019-12-31");
-          } else {
-            movieParams.set("primary_release_year", selectedYear);
-            tvParams.set("first_air_date_year", selectedYear);
+          if (selectedYear) {
+            if (selectedYear === "older") {
+              p.set("primary_release_date.lte", "2019-12-31");
+            } else {
+              p.set("primary_release_year", selectedYear);
+            }
           }
-        }
 
-        // Genre filter
-        if (selectedTags.length > 0) {
-          movieParams.set("with_genres", movieGenres);
-          tvParams.set("with_genres", tvGenres);
-        }
+          if (selectedTags.length > 0) {
+            p.set("with_genres", movieGenres);
+          }
 
-        // Fetch both movies and TV in parallel
-        const [moviesRes, tvRes] = await Promise.all([
-          fetch(`https://api.themoviedb.org/3/discover/movie?${movieParams}`),
-          fetch(`https://api.themoviedb.org/3/discover/tv?${tvParams}`),
-        ]);
+          return p;
+        };
 
-        const [moviesData, tvData] = await Promise.all([moviesRes.json(), tvRes.json()]);
+        const makeTvParams = (lang: string) => {
+          const p = new URLSearchParams({
+            api_key: "fc6d85b3839330e3458701b975195487",
+            include_adult: "false",
+            page: pageNum.toString(),
+            sort_by: "first_air_date.desc",
+            with_original_language: lang,
+            "vote_count.gte": "20",
+            "first_air_date.lte": today,
+          });
 
-        // Combine with media_type tags and filter adult content with strict certification checks
+          if (selectedYear) {
+            if (selectedYear === "older") {
+              p.set("first_air_date.lte", "2019-12-31");
+            } else {
+              p.set("first_air_date_year", selectedYear);
+            }
+          }
+
+          if (selectedTags.length > 0) {
+            p.set("with_genres", tvGenres);
+          }
+
+          return p;
+        };
+
+        // Fetch movies + TV for ko/zh/tr in parallel
+        const movieUrls = KOREAN_LANGS.map((lang) => `https://api.themoviedb.org/3/discover/movie?${makeMovieParams(lang)}`);
+        const tvUrls = KOREAN_LANGS.map((lang) => `https://api.themoviedb.org/3/discover/tv?${makeTvParams(lang)}`);
+
+        const responses = await Promise.all([...movieUrls, ...tvUrls].map((u) => fetch(u)));
+        const json = await Promise.all(responses.map((r) => r.json()));
+
+        const movieJson = json.slice(0, movieUrls.length);
+        const tvJson = json.slice(movieUrls.length);
+
         const combined = [
-          ...(moviesData.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const })),
-          ...(tvData.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const })),
+          ...movieJson.flatMap((d: any) => (d?.results || []).map((m: Movie) => ({ ...m, media_type: "movie" as const }))),
+          ...tvJson.flatMap((d: any) => (d?.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))),
         ];
-        const combinedResults = await filterAdultContentStrict(combined);
+
+        const combinedResults = (await filterAdultContentStrict(combined)).filter(isKoreanScope);
 
         // Sort by release date descending (TMDB fallback ordering only)
         const sortedResults = combinedResults.sort((a, b) => {
@@ -361,8 +377,12 @@ const Korean = () => {
           }
         }
 
-        // Has more if either endpoint has more pages
-        const maxPages = Math.max(moviesData.total_pages || 0, tvData.total_pages || 0);
+        // Has more if any of the language feeds still has pages
+        const maxPages = Math.max(
+          0,
+          ...movieJson.map((d: any) => Number(d?.total_pages) || 0),
+          ...tvJson.map((d: any) => Number(d?.total_pages) || 0)
+        );
         setHasMore(pageNum < maxPages);
       } catch (error) {
         console.error("Failed to fetch Korean content:", error);
