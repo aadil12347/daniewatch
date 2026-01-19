@@ -14,8 +14,8 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 
-const INITIAL_BATCH_SIZE = 20;
-const LOAD_MORE_BATCH_SIZE = 10;
+const INITIAL_BATCH_SIZE = 19;
+const LOAD_MORE_BATCH_SIZE = 18;
 
 const TVShows = () => {
   const [displayShows, setDisplayShows] = useState<Movie[]>([]);
@@ -345,7 +345,7 @@ const TVShows = () => {
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading ? (
-              Array.from({ length: 18 }).map((_, i) => (
+              Array.from({ length: 19 }).map((_, i) => (
                 <div key={i}>
                   <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
                   <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
