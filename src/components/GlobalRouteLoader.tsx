@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, type Location } from "react-router-dom";
 
 /**
  * Global loader overlay shown during route changes + while network requests are in flight.
@@ -29,10 +29,12 @@ export function GlobalRouteLoader() {
   const [isOpen, setIsOpen] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
 
-  const currentRouteKey = useMemo(
-    () => location.pathname + location.search,
-    [location.pathname, location.search]
-  );
+  const backgroundLocation = (location.state as any)?.backgroundLocation as Location | undefined;
+
+  const currentRouteKey = useMemo(() => {
+    const l = backgroundLocation ?? location;
+    return l.pathname + l.search;
+  }, [backgroundLocation, location.pathname, location.search]);
   const lastRouteKeyRef = useRef(currentRouteKey);
 
   const prevWantedRef = useRef(false);
