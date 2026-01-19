@@ -44,9 +44,12 @@ const Search = () => {
       : sorted;
   }, [filterBlockedPosts, results, getAvailability, isAdmin, showOnlyDbLinked]);
 
-  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleResults, { enabled: !isLoading });
+  // Preload hover images in the background ONLY (never gate the search grid on this).
+  usePageHoverPreload(visibleResults, { enabled: !isLoading });
 
-  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
+  // Only show skeletons before we have any real results to render.
+  const pageIsLoading =
+    visibleResults.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
 
   const getCategoryLabel = () => {
     if (category === "anime") return "Anime";
@@ -100,7 +103,7 @@ const Search = () => {
     };
 
     fetchResults();
-  }, [query, category, refreshKey, filterBlockedPosts]);
+  }, [query, category, refreshKey]);
 
   return (
     <>
@@ -135,12 +138,19 @@ const Search = () => {
               {pageIsLoading
                 ? Array.from({ length: 12 }).map((_, i) => (
                     <div key={i}>
-                      <Skeleton className="aspect-[2/3] rounded-xl" />
-                      <Skeleton className="h-4 w-3/4 mt-3" />
-                      <Skeleton className="h-3 w-1/2 mt-2" />
+                      <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                      <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                      <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                     </div>
                   ))
-                : visibleResults.map((item) => <MovieCard key={item.id} movie={item} />)}
+                : visibleResults.map((item) => (
+                    <MovieCard
+                      key={`${item.id}-${item.media_type ?? "multi"}`}
+                      movie={item}
+                      enableReveal={false}
+                      enableHoverPortal={false}
+                    />
+                  ))}
             </div>
           )}
 
