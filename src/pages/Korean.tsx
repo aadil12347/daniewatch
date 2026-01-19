@@ -58,7 +58,21 @@ const Korean = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
+  const dedupeItems = useCallback((arr: Movie[]) => {
+    const seen = new Set<string>();
+    return arr.filter((it) => {
+      const media = it.media_type ?? (it.first_air_date ? "tv" : "movie");
+      const key = `${it.id}-${media}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, []);
+
+  const baseVisible = useMemo(() => {
+    const moderated = filterBlockedPosts(items);
+    return dedupeItems(moderated);
+  }, [dedupeItems, filterBlockedPosts, items]);
 
   const visibleItems = useMemo(() => {
     const sorted = isAvailabilityLoading
