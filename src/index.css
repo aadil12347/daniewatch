@@ -1064,9 +1064,9 @@ html {
 
   /* TV list "append" animation (scale in) */
   .tv-element-in {
-    opacity: 1;
-    animation: tvListIn 0.4s ease both;
-    transform: scale(1);
+    opacity: 1 !important;
+    animation: tvListIn 0.4s ease both !important;
+    transform: scale(1) !important;
   }
 
   @keyframes tvListIn {
