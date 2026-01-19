@@ -77,6 +77,8 @@ export const MovieCard = ({
 
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
+  const portalRef = useRef<HTMLDivElement>(null);
+  const hasInitialPortalRectRef = useRef(false);
   const isNearViewport = useInViewport(cardRef);
 
   // Preload hover character image as the card gets near the viewport (so hover feels instant while scrolling)
@@ -107,26 +109,30 @@ export const MovieCard = ({
     setCanUseHoverPortal(true);
   }, [enableHoverPortal]);
 
-  // Close the hover portal immediately when any scrolling occurs.
-  // This prevents scroll-induced flicker/jitter from frequent rect recalculations.
+  // Keep portal positioned correctly while hovering (scroll/resize) without React re-renders.
+  // This prevents the Home carousel hover from glitching while scrolling.
   useEffect(() => {
     if (!portalEnabled) return;
     if (!isHovered) return;
 
-    const onScroll = () => setIsHovered(false);
-    window.addEventListener("scroll", onScroll, true);
-    return () => window.removeEventListener("scroll", onScroll, true);
-  }, [isHovered, portalEnabled]);
-
-  // Keep portal positioned correctly while hovering (resize only)
-  useEffect(() => {
-    if (!enableHoverPortal) return;
-    if (!canUseHoverPortal || !isHovered) return;
-
     let raf = 0;
+
     const update = () => {
       if (!posterRef.current) return;
-      setHoverRect(posterRef.current.getBoundingClientRect());
+
+      const rect = posterRef.current.getBoundingClientRect();
+
+      if (!hasInitialPortalRectRef.current) {
+        hasInitialPortalRectRef.current = true;
+        setHoverRect(rect);
+      }
+
+      if (portalRef.current) {
+        portalRef.current.style.left = `${rect.left}px`;
+        portalRef.current.style.top = `${rect.top}px`;
+        portalRef.current.style.width = `${rect.width}px`;
+        portalRef.current.style.height = `${rect.height}px`;
+      }
     };
 
     const schedule = () => {
@@ -135,12 +141,14 @@ export const MovieCard = ({
     };
 
     update();
+    window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
     };
-  }, [enableHoverPortal, canUseHoverPortal, isHovered]);
+  }, [isHovered, portalEnabled]);
   useEffect(() => {
     if (!enableHoverPortal) {
       setIsPortalMounted(false);
@@ -166,6 +174,7 @@ export const MovieCard = ({
     const t = window.setTimeout(() => {
       setIsPortalMounted(false);
       setHoverRect(null);
+      hasInitialPortalRectRef.current = false;
     }, 220);
     return () => window.clearTimeout(t);
   }, [enableHoverPortal, isHovered, portalEnabled]);
@@ -303,7 +312,7 @@ export const MovieCard = ({
             {/* Optional character layer (from DB)
                 - inline version works on grid pages
                 - portal version is used on hover to bypass carousel clipping */}
-            {hoverImageUrl && (!(canUseHoverPortal && Boolean(hoverImageUrl)) || !isPortalMounted) && (
+            {hoverImageUrl && !portalEnabled && (
               <img
                 src={hoverImageUrl}
                 alt=""
@@ -365,9 +374,10 @@ export const MovieCard = ({
             )}
           </div>
 
-          {(canUseHoverPortal && Boolean(hoverImageUrl)) && isPortalMounted && hoverRect &&
+          {portalEnabled && isPortalMounted && hoverRect &&
             createPortal(
               <div
+                ref={portalRef}
                 className={cn("poster-3d-hover-portal", isPortalActive && "is-active")}
                 style={{
                   left: hoverRect.left,
