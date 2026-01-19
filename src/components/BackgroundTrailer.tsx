@@ -9,9 +9,20 @@ interface BackgroundTrailerProps {
   videoKey: string | null;
   backdropUrl: string | null;
   title: string;
+  /**
+   * Controls placement context.
+   * - "page": sits lower (below header UI)
+   * - "modal": aligns with the modal back button (top corners)
+   */
+  controlsPlacement?: "page" | "modal";
 }
 
-export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTrailerProps) => {
+export const BackgroundTrailer = ({
+  videoKey,
+  backdropUrl,
+  title,
+  controlsPlacement = "page",
+}: BackgroundTrailerProps) => {
   const [volume, setVolume] = useState(0);
   const [previousVolume, setPreviousVolume] = useState(50);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
@@ -91,8 +102,11 @@ export const BackgroundTrailer = ({ videoKey, backdropUrl, title }: BackgroundTr
 
       {/* Volume control - top right */}
       {videoKey && (
-        <div 
-          className="absolute top-20 right-6 z-20 flex items-center gap-3"
+        <div
+          className={cn(
+            controlsPlacement === "modal" ? "absolute top-3 right-3 md:top-4 md:right-4" : "absolute top-20 right-6",
+            "z-20 flex items-center gap-3",
+          )}
           onMouseEnter={() => !isMobile && setShowVolumeSlider(true)}
           onMouseLeave={() => !isMobile && setShowVolumeSlider(false)}
         >

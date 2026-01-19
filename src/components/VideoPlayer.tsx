@@ -23,6 +23,12 @@ interface VideoPlayerProps {
    */
   fill?: boolean;
   /**
+   * Controls placement context.
+   * - "page": can account for header UI on mobile
+   * - "modal": aligns with the modal back button (top corners)
+   */
+  controlsPlacement?: "page" | "modal";
+  /**
    * Optional extra classes for the outer container.
    */
   className?: string;
@@ -65,6 +71,7 @@ export const VideoPlayer = ({
   onClose,
   inline = false,
   fill = false,
+  controlsPlacement = "page",
   className,
   style,
 }: VideoPlayerProps) => {
@@ -263,11 +270,14 @@ export const VideoPlayer = ({
   // - Inline+fill on mobile (hero player): push below the fixed header so it never sits under the user icon.
   // - Fullscreen players: keep controls inside the fullscreen container (which is already offset below the header)
   //   so it never overlaps the Navbar/user icon on mobile.
-  const switchPlacementClass = inline
-    ? fill && isMobile
-      ? "absolute right-3 top-[calc(var(--app-header-offset,0px)+0.75rem)]"
-      : "absolute top-3 right-3"
-    : "absolute top-3 right-3 md:top-4 md:right-4";
+  const switchPlacementClass =
+    controlsPlacement === "modal"
+      ? "absolute top-3 right-3 md:top-4 md:right-4"
+      : inline
+        ? fill && isMobile
+          ? "absolute right-3 top-[calc(var(--app-header-offset,0px)+0.75rem)]"
+          : "absolute top-3 right-3"
+        : "absolute top-3 right-3 md:top-4 md:right-4";
 
   // We intentionally keep the tooltip generic; we don't reveal provider names in the UI.
 
