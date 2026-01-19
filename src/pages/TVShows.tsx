@@ -14,23 +14,25 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { groupDbLinkedFirst } from "@/lib/sortContent";
+
+type Slot =
+  | { kind: "item"; movie: Movie }
+  | { kind: "placeholder"; key: string };
 
 const TVShows = () => {
   const BATCH_SIZE = 10;
 
-  const [shows, setShows] = useState<Movie[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
-  // NOTE: `page` now tracks the next TMDB "discover" page to request (for cache restore).
+  // NOTE: `page` tracks the next TMDB "discover" page to request (for cache restore).
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
-  const [pendingPlaceholders, setPendingPlaceholders] = useState(0);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -40,29 +42,30 @@ const TVShows = () => {
   const bufferRef = useRef<Movie[]>([]);
   const loadedIdsRef = useRef<Set<number>>(new Set());
   const isFetchingNextBatchRef = useRef(false);
+  const placeholderStartIndexRef = useRef(0);
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
   const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
-  const baseVisible = useMemo(() => filterBlockedPosts(shows, "tv"), [filterBlockedPosts, shows]);
+  const items = useMemo(
+    () => slots.filter((s): s is Extract<Slot, { kind: "item" }> => s.kind === "item").map((s) => s.movie),
+    [slots]
+  );
 
+  const baseVisible = useMemo(() => filterBlockedPosts(items, "tv"), [filterBlockedPosts, items]);
+
+  // IMPORTANT: Keep order stable to avoid “flashing/jumping”.
+  // Only filter (admin) without re-sorting.
   const visibleShows = useMemo(() => {
-    const sorted = isAvailabilityLoading
-      ? baseVisible
-      : groupDbLinkedFirst(baseVisible, (s) => {
-          const a = getAvailability(s.id);
-          return a.hasWatch || a.hasDownload;
-        });
-
     return isAdmin && showOnlyDbLinked
-      ? sorted.filter((s) => {
+      ? baseVisible.filter((s) => {
           const a = getAvailability(s.id);
           return a.hasWatch || a.hasDownload;
         })
-      : sorted;
-  }, [baseVisible, getAvailability, isAdmin, isAvailabilityLoading, showOnlyDbLinked]);
+      : baseVisible;
+  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleShows, { enabled: !isLoading });
 
@@ -87,7 +90,7 @@ const TVShows = () => {
     const cached = getCache("default", selectedGenres);
     if (cached && cached.items.length > 0) {
       restoreScrollYRef.current = cached.scrollY ?? 0;
-      setShows(cached.items);
+      setSlots(cached.items.map((m) => ({ kind: "item", movie: m })));
       setPage(cached.page);
       tmdbPageRef.current = cached.page;
       bufferRef.current = [];
@@ -102,7 +105,7 @@ const TVShows = () => {
   // Restore scroll position after cache is applied
   useEffect(() => {
     if (!isRestoredFromCache) return;
-    if (shows.length === 0) return;
+    if (slots.length === 0) return;
 
     const y = restoreScrollYRef.current;
     if (y === null) return;
@@ -113,14 +116,18 @@ const TVShows = () => {
         window.scrollTo({ top: y, left: 0, behavior: "auto" });
       });
     });
-  }, [isRestoredFromCache, shows.length]);
+  }, [isRestoredFromCache, slots.length]);
 
   // Save cache before unmount
   useEffect(() => {
     return () => {
-      if (shows.length > 0) {
+      const moviesToCache = slots
+        .filter((s): s is Extract<Slot, { kind: "item" }> => s.kind === "item")
+        .map((s) => s.movie);
+
+      if (moviesToCache.length > 0) {
         saveCache({
-          items: shows,
+          items: moviesToCache,
           page,
           hasMore,
           activeTab: "default",
@@ -128,7 +135,7 @@ const TVShows = () => {
         });
       }
     };
-  }, [shows, page, hasMore, selectedGenres, saveCache]);
+  }, [slots, page, hasMore, selectedGenres, saveCache]);
 
   const requestTmdbPage = useCallback(
     async (pageNum: number) => {
@@ -169,9 +176,8 @@ const TVShows = () => {
 
   const resetAndLoadFirstBatch = useCallback(async () => {
     setIsLoading(true);
-    setShows([]);
+    setSlots([]);
     setHasMore(true);
-    setPendingPlaceholders(0);
 
     bufferRef.current = [];
     loadedIdsRef.current = new Set();
@@ -189,7 +195,8 @@ const TVShows = () => {
         return true;
       });
 
-      setShows(unique.slice(0, BATCH_SIZE));
+      const first = unique.slice(0, BATCH_SIZE);
+      setSlots(first.map((m) => ({ kind: "item", movie: m })));
       bufferRef.current = unique.slice(BATCH_SIZE);
 
       tmdbPageRef.current = 2;
@@ -211,8 +218,17 @@ const TVShows = () => {
     if (isLoading) return;
 
     isFetchingNextBatchRef.current = true;
-    setPendingPlaceholders(BATCH_SIZE);
     setIsLoadingMore(true);
+
+    // 1) Add placeholders immediately (reserve space, avoid "flash")
+    const placeholderKeys = Array.from({ length: BATCH_SIZE }).map(
+      (_, i) => `tv-ph-${Date.now()}-${i}-${Math.random().toString(16).slice(2)}`
+    );
+
+    setSlots((prev) => {
+      placeholderStartIndexRef.current = prev.length;
+      return [...prev, ...placeholderKeys.map((key) => ({ kind: "placeholder", key }) as const)];
+    });
 
     try {
       const batch: Movie[] = [];
@@ -247,18 +263,34 @@ const TVShows = () => {
         setHasMore(!noMorePages || bufferRef.current.length > 0);
       }
 
-      if (batch.length > 0) {
-        setShows((prev) => [...prev, ...batch]);
-      }
+      // 2) Replace placeholders IN PLACE with real items (no unmount/mount flash)
+      setSlots((prev) => {
+        const next = prev.slice();
+
+        for (let i = 0; i < placeholderKeys.length; i++) {
+          const idx = placeholderStartIndexRef.current + i;
+          const movie = batch[i];
+
+          if (movie) {
+            next[idx] = { kind: "item", movie };
+          } else {
+            // End reached: remove leftover placeholders
+            next.splice(idx, 1);
+            break;
+          }
+        }
+
+        return next;
+      });
 
       if (batch.length < BATCH_SIZE && bufferRef.current.length === 0) {
         setHasMore(false);
       }
     } catch (error) {
       console.error("Failed to fetch more TV shows:", error);
-      // Keep hasMore as-is; user can scroll again to retry.
+      // On error: remove placeholders so we don't leave "dead" skeletons.
+      setSlots((prev) => prev.filter((s) => s.kind !== "placeholder"));
     } finally {
-      setPendingPlaceholders(0);
       setIsLoadingMore(false);
       isFetchingNextBatchRef.current = false;
     }
@@ -276,10 +308,11 @@ const TVShows = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!pageIsLoading && shows.length > 0) {
+    const itemCount = slots.reduce((acc, s) => acc + (s.kind === "item" ? 1 : 0), 0);
+    if (!pageIsLoading && itemCount > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [pageIsLoading, shows.length]);
+  }, [pageIsLoading, slots]);
 
   // Infinite scroll observer (loads exactly 10 placeholders, then fills them)
   useEffect(() => {
@@ -354,32 +387,39 @@ const TVShows = () => {
               ))
             ) : (
               <>
-                {visibleShows.map((show, index) => (
-                  <MovieCard
-                    key={`${show.id}-tv`}
-                    movie={{ ...show, media_type: "tv" }}
-                    animationDelay={Math.min(index * 30, 300)}
-                  />
-                ))}
+                {slots.map((slot, index) => {
+                  if (slot.kind === "item") {
+                    const show = slot.movie;
+                    const isVisible = visibleShows.some((s) => s.id === show.id);
+                    if (!isVisible) return null;
 
-                {/* While fetching the next batch, render 10 mock cards (then fill them) */}
-                {Array.from({ length: pendingPlaceholders }).map((_, i) => (
-                  <div
-                    key={`tv-ph-${shows.length}-${i}`}
-                    className="card-reveal"
-                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                  >
-                    <Skeleton className="aspect-[2/3] rounded-xl" />
-                    <Skeleton className="h-4 w-3/4 mt-3" />
-                    <Skeleton className="h-3 w-1/2 mt-2" />
-                  </div>
-                ))}
+                    return (
+                      <MovieCard
+                        key={`tv-slot-${show.id}`}
+                        movie={{ ...show, media_type: "tv" }}
+                        animationDelay={Math.min(index * 30, 300)}
+                      />
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={slot.key}
+                      className="card-reveal"
+                      style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
+                    >
+                      <Skeleton className="aspect-[2/3] rounded-xl" />
+                      <Skeleton className="h-4 w-3/4 mt-3" />
+                      <Skeleton className="h-3 w-1/2 mt-2" />
+                    </div>
+                  );
+                })}
               </>
             )}
           </div>
 
           {/* No results message */}
-          {!pageIsLoading && shows.length === 0 && (
+          {!pageIsLoading && items.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No TV shows found with the selected filters.</p>
               <button
@@ -394,7 +434,7 @@ const TVShows = () => {
           {/* Loading More Indicator */}
           <div ref={loadMoreRef} className="flex justify-center py-6 min-h-[56px]">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!isLoadingMore && !hasMore && shows.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+            {!isLoadingMore && !hasMore && items.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 
