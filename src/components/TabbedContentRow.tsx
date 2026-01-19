@@ -134,7 +134,6 @@ export const TabbedContentRow = ({
                   }}
                   index={idx}
                   size={size}
-                  enableReveal={false}
                 />
               ))}
         </div>

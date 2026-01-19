@@ -77,8 +77,6 @@ export const MovieCard = ({
 
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
-  const portalRef = useRef<HTMLDivElement>(null);
-  const hasInitialPortalRectRef = useRef(false);
   const isNearViewport = useInViewport(cardRef);
 
   // Preload hover character image as the card gets near the viewport (so hover feels instant while scrolling)
@@ -109,28 +107,15 @@ export const MovieCard = ({
     setCanUseHoverPortal(true);
   }, [enableHoverPortal]);
 
-  // Keep portal positioned correctly while hovering (scroll/resize) without React re-renders.
-  // Use translate3d instead of left/top changes to avoid layout thrash (prevents Home scroll glitch).
+  // Keep portal positioned correctly while hovering (scroll/resize)
   useEffect(() => {
-    if (!portalEnabled) return;
-    if (!isHovered) return;
+    if (!enableHoverPortal) return;
+    if (!canUseHoverPortal || !isHovered) return;
 
     let raf = 0;
-
     const update = () => {
       if (!posterRef.current) return;
-      const rect = posterRef.current.getBoundingClientRect();
-
-      if (!hasInitialPortalRectRef.current) {
-        hasInitialPortalRectRef.current = true;
-        setHoverRect(rect);
-      }
-
-      if (portalRef.current) {
-        portalRef.current.style.transform = `translate3d(${Math.round(rect.left)}px, ${Math.round(rect.top)}px, 0)`;
-        portalRef.current.style.width = `${Math.round(rect.width)}px`;
-        portalRef.current.style.height = `${Math.round(rect.height)}px`;
-      }
+      setHoverRect(posterRef.current.getBoundingClientRect());
     };
 
     const schedule = () => {
@@ -146,7 +131,11 @@ export const MovieCard = ({
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
     };
-  }, [isHovered, portalEnabled]);
+  }, [enableHoverPortal, canUseHoverPortal, isHovered]);
+
+  
+
+  // Smooth enter/exit for the portaled hover image
   useEffect(() => {
     if (!enableHoverPortal) {
       setIsPortalMounted(false);
@@ -172,7 +161,6 @@ export const MovieCard = ({
     const t = window.setTimeout(() => {
       setIsPortalMounted(false);
       setHoverRect(null);
-      hasInitialPortalRectRef.current = false;
     }, 220);
     return () => window.clearTimeout(t);
   }, [enableHoverPortal, isHovered, portalEnabled]);
@@ -310,7 +298,7 @@ export const MovieCard = ({
             {/* Optional character layer (from DB)
                 - inline version works on grid pages
                 - portal version is used on hover to bypass carousel clipping */}
-            {hoverImageUrl && !portalEnabled && (
+            {hoverImageUrl && (!(canUseHoverPortal && Boolean(hoverImageUrl)) || !isPortalMounted) && (
               <img
                 src={hoverImageUrl}
                 alt=""
@@ -372,17 +360,15 @@ export const MovieCard = ({
             )}
           </div>
 
-          {portalEnabled && isPortalMounted && hoverRect &&
+          {(canUseHoverPortal && Boolean(hoverImageUrl)) && isPortalMounted && hoverRect &&
             createPortal(
               <div
-                ref={portalRef}
                 className={cn("poster-3d-hover-portal", isPortalActive && "is-active")}
                 style={{
-                  left: 0,
-                  top: 0,
+                  left: hoverRect.left,
+                  top: hoverRect.top,
                   width: hoverRect.width,
                   height: hoverRect.height,
-                  transform: `translate3d(${Math.round(hoverRect.left)}px, ${Math.round(hoverRect.top)}px, 0)`,
                 }}
               >
                 <img

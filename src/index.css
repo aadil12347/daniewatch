@@ -468,13 +468,8 @@ html {
   /* Hover portal (renders above carousel overflow so it never gets clipped) */
   .poster-3d-hover-portal {
     position: fixed;
-    left: 0;
-    top: 0;
     pointer-events: none;
     z-index: 2000;
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
-    contain: layout paint style;
   }
 
   /* Default portal state: hidden; transitions to active for smoothness */
