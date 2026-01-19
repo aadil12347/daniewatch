@@ -25,6 +25,8 @@ const INDIAN_LANGS: Array<{ key: IndianLang; label: string; tmdbLang?: string }>
   { key: "hi", label: "Bollywood", tmdbLang: "hi" },
 ];
 
+const BATCH_SIZE = 18;
+
 const Indian = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
@@ -32,9 +34,13 @@ const Indian = () => {
   const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const [items, setItems] = useState<Movie[]>([]);
+  const [displayCount, setDisplayCount] = useState(0);
+  const [pendingLoadMore, setPendingLoadMore] = useState(false);
+  const loadMoreFetchRequestedRef = useRef(false);
+
   const [selectedLang, setSelectedLang] = useState<IndianLang>("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(2000);
+  const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(600);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -57,9 +63,11 @@ const Indian = () => {
       : sorted;
   }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
 
-  const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleItems, { enabled: !isLoading });
+  // Preload hover images in the background ONLY (never gate the grid render on this).
+  usePageHoverPreload(visibleItems, { enabled: !isLoading });
 
-  const pageIsLoading = isLoading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
+  // Only show skeletons before we have any real items to render.
+  const pageIsLoading = visibleItems.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -72,6 +80,7 @@ const Indian = () => {
     if (cached && cached.items.length > 0) {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setItems(cached.items);
+      setDisplayCount(cached.items.length);
       setPage(cached.page);
       setHasMore(cached.hasMore);
       setIsLoading(false);
@@ -186,12 +195,18 @@ const Indian = () => {
 
         if (reset) {
           setItems(visibleResults);
+          setDisplayCount(BATCH_SIZE);
         } else {
           setItems((prev) => {
             const existingKeys = new Set(prev.map((item) => `${item.id}-${item.media_type}`));
             const newItems = visibleResults.filter((item) => !existingKeys.has(`${item.id}-${item.media_type}`));
             return [...prev, ...newItems];
           });
+
+          if (loadMoreFetchRequestedRef.current) {
+            loadMoreFetchRequestedRef.current = false;
+            setDisplayCount((prev) => prev + BATCH_SIZE);
+          }
         }
 
         // Determine pagination
@@ -218,6 +233,7 @@ const Indian = () => {
 
     setPage(1);
     setItems([]);
+    setDisplayCount(0);
     setHasMore(true);
     fetchIndian(1, true);
   }, [selectedLang, isInitialized, fetchIndian, isRestoredFromCache]);
@@ -229,15 +245,19 @@ const Indian = () => {
     }
   }, [pageIsLoading, visibleItems.length]);
 
-  // Infinite scroll observer
+  // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
   useEffect(() => {
     observerRef.current?.disconnect();
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage((prev) => prev + 1);
-        }
+        if (!entries[0].isIntersecting) return;
+        if (isLoading || isLoadingMore || pendingLoadMore) return;
+
+        const hasBuffered = displayCount < visibleItems.length;
+        if (!hasBuffered && !hasMore) return;
+
+        setPendingLoadMore(true);
       },
       { threshold: 0.1 }
     );
@@ -247,7 +267,29 @@ const Indian = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [hasMore, isLoading, isLoadingMore]);
+  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleItems.length]);
+
+  // Resolve pending "load more": reveal from buffer first, otherwise fetch next TMDB page.
+  useEffect(() => {
+    if (!pendingLoadMore) return;
+
+    const hasBuffered = displayCount < visibleItems.length;
+    if (hasBuffered) {
+      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleItems.length));
+      setPendingLoadMore(false);
+      return;
+    }
+
+    if (!hasMore) {
+      setPendingLoadMore(false);
+      return;
+    }
+
+    loadMoreFetchRequestedRef.current = true;
+    setIsLoadingMore(true);
+    setPendingLoadMore(false);
+    setPage((prev) => prev + 1);
+  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore]);
 
   // Fetch more when page changes
   useEffect(() => {
@@ -294,18 +336,20 @@ const Indian = () => {
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
-              ? Array.from({ length: 18 }).map((_, i) => (
+              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
                   <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl" />
-                    <Skeleton className="h-4 w-3/4 mt-3" />
-                    <Skeleton className="h-3 w-1/2 mt-2" />
+                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                   </div>
                 ))
-              : visibleItems.map((item, index) => (
+              : visibleItems.slice(0, displayCount).map((item, index) => (
                   <MovieCard
                     key={`${item.id}-${item.media_type}`}
                     movie={item}
                     animationDelay={Math.min(index * 30, 300)}
+                    enableReveal={false}
+                    enableHoverPortal={false}
                   />
                 ))}
           </div>
