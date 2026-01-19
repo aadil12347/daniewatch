@@ -266,6 +266,8 @@ export interface MovieDetails extends Movie {
   tagline: string;
   status: string;
   production_companies: { id: number; name: string; logo_path: string | null }[];
+  production_countries?: { iso_3166_1: string; name: string }[];
+  original_language?: string;
   videos?: {
     results: { key: string; type: string; site: string }[];
   };
@@ -279,6 +281,8 @@ export interface TVDetails extends Movie {
   number_of_seasons: number;
   number_of_episodes: number;
   seasons: Season[];
+  original_language?: string;
+  origin_country?: string[];
   videos?: {
     results: { key: string; type: string; site: string }[];
   };
