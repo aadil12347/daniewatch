@@ -45,7 +45,7 @@ export const MovieCard = ({
   className,
   enableReveal = true,
   enableHoverPortal = true,
-  hoverCharacterMode = "contained",
+  hoverCharacterMode = "popout",
 }: MovieCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
