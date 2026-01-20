@@ -11,6 +11,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
+import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 interface MovieCardProps {
   movie: Movie;
   index?: number;
@@ -34,6 +35,13 @@ interface MovieCardProps {
    * - contained: character stays fully inside the poster bounds.
    */
   hoverCharacterMode?: "popout" | "contained";
+
+  /** Disable the character hover image (and related preloading). */
+  disableHoverCharacter?: boolean;
+  /** Disable the poster logo overlay (and related fetching). */
+  disableHoverLogo?: boolean;
+  /** Disable the rank-number fill animation on hover (when showRank=true). */
+  disableRankFillHover?: boolean;
 }
 
 export const MovieCard = ({
@@ -48,6 +56,10 @@ export const MovieCard = ({
   enableHoverPortal = false,
   // Non-home pages: push character as high as possible inside the poster.
   hoverCharacterMode = "contained",
+
+  disableHoverCharacter = false,
+  disableHoverLogo = false,
+  disableRankFillHover = false,
 }: MovieCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,6 +69,7 @@ export const MovieCard = ({
   const { isAdmin } = useAdmin();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
   const { getAvailability, getHoverImageUrl } = useEntryAvailability();
+  const { isPerformance } = usePerformanceMode();
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as "movie" | "tv");
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
@@ -66,7 +79,7 @@ export const MovieCard = ({
 
   const blocked = isBlocked(movie.id, mediaType as "movie" | "tv");
   const { hasWatch, hasDownload } = getAvailability(movie.id);
-  const hoverImageUrl = getHoverImageUrl(movie.id);
+  const hoverImageUrl = disableHoverCharacter || isPerformance ? null : getHoverImageUrl(movie.id);
 
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -86,24 +99,26 @@ export const MovieCard = ({
 
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
-  const isNearViewport = useInViewport(cardRef);
+  const isNearViewport = useInViewport(cardRef, { rootMargin: isPerformance ? "80px" : "240px" });
 
   // Preload hover character image as the card gets near the viewport (so hover feels instant while scrolling)
   useEffect(() => {
     if (!hoverImageUrl) return;
+    if (isPerformance) return;
     if (!isNearViewport && !isHovered) return;
 
     const img = new Image();
     img.decoding = "async";
     img.loading = "eager";
     img.src = hoverImageUrl;
-  }, [hoverImageUrl, isNearViewport, isHovered]);
+  }, [hoverImageUrl, isNearViewport, isHovered, isPerformance]);
 
   // Preload the hover logo as soon as the card is on/near screen.
   const dbLogoUrl = (movie as any).logo_url as string | null | undefined;
-  const shouldFetchTmdbLogo = !dbLogoUrl && (isPosterActive || isNearViewport);
+  const allowLogo = !disableHoverLogo && !isPerformance;
+  const shouldFetchTmdbLogo = allowLogo && !dbLogoUrl && (isPosterActive || isNearViewport);
   const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, shouldFetchTmdbLogo);
-  const displayedLogoUrl = dbLogoUrl || logoUrl;
+  const displayedLogoUrl = allowLogo ? dbLogoUrl || logoUrl : null;
   const displayedInWatchlist = optimisticInWatchlist !== null ? optimisticInWatchlist : inWatchlist;
 
   // Determine whether to use the portal.
@@ -226,7 +241,8 @@ export const MovieCard = ({
         "group relative flex-shrink-0",
         enableReveal && "card-reveal",
         className,
-        showRank && "pl-6 sm:pl-10"
+        showRank && "pl-6 sm:pl-10",
+        showRank && disableRankFillHover && "rank-no-fill"
       )}
       style={{ animationDelay: `${animationDelay}ms` }}
       onMouseEnter={() => setIsHovered(true)}
@@ -300,16 +316,18 @@ export const MovieCard = ({
                   />
 
                   {/* Mild poster blur layer (kept subtle) */}
-                  <img
-                    src={posterUrl}
-                    alt=""
-                    aria-hidden="true"
-                    loading={isNearViewport ? "eager" : "lazy"}
-                    className={cn(
-                      "poster-3d-cover poster-3d-cover--blur",
-                      isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
-                    )}
-                  />
+                  {!isPerformance && (
+                    <img
+                      src={posterUrl}
+                      alt=""
+                      aria-hidden="true"
+                      loading={isNearViewport ? "eager" : "lazy"}
+                      className={cn(
+                        "poster-3d-cover poster-3d-cover--blur",
+                        isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                      )}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -425,7 +443,7 @@ export const MovieCard = ({
 
           {/* Info */}
           <div className="mt-3 px-1">
-            <h3 className="title-glow-underline font-medium text-sm truncate max-w-full">{title}</h3>
+            <h3 className="font-medium text-sm truncate max-w-full">{title}</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-muted-foreground">{year}</span>
               <span className="text-xs text-muted-foreground capitalize">• {mediaType}</span>

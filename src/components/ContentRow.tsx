@@ -13,6 +13,9 @@ interface ContentRowProps {
   size?: "sm" | "md" | "lg";
   hoverCharacterMode?: "popout" | "contained";
   enableHoverPortal?: boolean;
+  disableHoverCharacter?: boolean;
+  disableHoverLogo?: boolean;
+  disableRankFillHover?: boolean;
 }
 
 export const ContentRow = ({
@@ -23,6 +26,9 @@ export const ContentRow = ({
   size = "md",
   hoverCharacterMode,
   enableHoverPortal,
+  disableHoverCharacter,
+  disableHoverLogo,
+  disableRankFillHover,
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { filterBlockedPosts } = usePostModeration();
@@ -103,6 +109,9 @@ export const ContentRow = ({
                   size={size}
                   hoverCharacterMode={hoverCharacterMode}
                   enableHoverPortal={enableHoverPortal}
+                  disableHoverCharacter={disableHoverCharacter}
+                  disableHoverLogo={disableHoverLogo}
+                  disableRankFillHover={disableRankFillHover}
                 />
               ))}
         </div>
