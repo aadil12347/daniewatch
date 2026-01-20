@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminContentVisibility } from "@/contexts/AdminContentVisibilityContext";
 import { getSearchScopeForPathname, useSearchOverlay } from "@/contexts/SearchOverlayContext";
@@ -15,6 +16,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -29,6 +33,7 @@ export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { showBlockedPosts, setShowBlockedPosts } = useAdminContentVisibility();
+  const { mode, setMode } = usePerformanceMode();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
@@ -353,6 +358,13 @@ export const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5 text-sm text-muted-foreground truncate">{user.email}</div>
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuLabel className="text-xs">Rendering</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={mode} onValueChange={(v) => setMode(v as any)}>
+                    <DropdownMenuRadioItem value="quality">Quality</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="performance">Performance</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
 
                   <DropdownMenuItem asChild>
