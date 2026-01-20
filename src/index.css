@@ -1,5 +1,235 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
 
+/* =========================
+   Initial splash (once per session)
+   ========================= */
+
+html[data-initial-splash="1"] body {
+  padding-top: 0;
+}
+
+.dw-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+
+  background:
+    radial-gradient(1200px 700px at 50% 48%, hsl(var(--primary) / 0.12), transparent 60%),
+    radial-gradient(900px 520px at 50% 55%, hsl(0 0% 0% / 0.55), transparent 68%),
+    hsl(var(--background));
+}
+
+.dw-splash[data-state="closing"] {
+  animation: dwSplashFadeOut 220ms ease forwards;
+}
+
+.dw-splash__puff {
+  height: 0;
+  padding: 0;
+  border: 120em solid hsl(var(--primary));
+  position: fixed;
+  left: 50%;
+  top: 100%;
+  display: block;
+  box-sizing: initial;
+  overflow: hidden;
+
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 22px hsl(var(--primary) / 0.35));
+  will-change: transform, opacity;
+  animation:
+    dwSplashPuff 520ms 1.8s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards,
+    dwSplashBorderRadius 220ms 2.3s linear forwards;
+}
+
+.dw-splash__core {
+  background: hsl(var(--cinema-darker));
+  width: 56px;
+  height: 56px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  overflow: hidden;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  box-shadow: 0 0 28px hsl(var(--primary) / 0.22);
+  will-change: transform, opacity;
+  animation:
+    dwSplashInit 520ms 0.2s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards,
+    dwSplashMoveDown 1s 0.8s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards,
+    dwSplashMoveUp 1s 1.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+    dwSplashMateria 520ms 2.7s cubic-bezier(0.86, 0, 0.07, 1) forwards;
+}
+
+.dw-splash__brand {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  gap: 0.1em;
+  align-items: baseline;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: dwSplashBrandIn 700ms 2.9s ease forwards;
+}
+
+.dw-splash__brandMark {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  font-size: clamp(28px, 4.5vw, 56px);
+  text-transform: none;
+  color: hsl(var(--foreground));
+  text-shadow:
+    0 0 18px hsl(var(--primary) / 0.22),
+    0 0 46px hsl(var(--primary) / 0.12);
+}
+
+.dw-splash__brandMark--accent {
+  color: hsl(var(--primary));
+}
+
+@keyframes dwSplashInit {
+  0% {
+    width: 0;
+    height: 0;
+  }
+  100% {
+    width: 56px;
+    height: 56px;
+    opacity: 1;
+  }
+}
+
+@keyframes dwSplashPuff {
+  0% {
+    top: 100%;
+    height: 0;
+    padding: 0;
+  }
+  100% {
+    top: 50%;
+    height: 100%;
+    padding: 0 100%;
+  }
+}
+
+@keyframes dwSplashBorderRadius {
+  0% {
+    border-radius: 50%;
+  }
+  100% {
+    border-radius: 0;
+  }
+}
+
+@keyframes dwSplashMoveDown {
+  0% {
+    top: 50%;
+  }
+  50% {
+    top: 40%;
+  }
+  100% {
+    top: 105%;
+  }
+}
+
+@keyframes dwSplashMoveUp {
+  0% {
+    background: hsl(var(--cinema-darker));
+    top: 105%;
+  }
+  50% {
+    top: 40%;
+  }
+  100% {
+    top: 50%;
+    background: hsl(var(--primary));
+  }
+}
+
+@keyframes dwSplashMateria {
+  0% {
+    background: hsl(var(--primary));
+  }
+  50% {
+    background: hsl(var(--primary));
+    top: 26px;
+  }
+  100% {
+    background: hsl(var(--background));
+    width: 100%;
+    height: 64px;
+    border-radius: 0;
+    top: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes dwSplashBrandIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dwSplashFadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes dwSplashNavIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html[data-just-exited-splash="1"] .app-navbar {
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: dwSplashNavIn 700ms ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dw-splash__puff,
+  .dw-splash__core,
+  .dw-splash__brand {
+    animation: none !important;
+  }
+
+  .dw-splash {
+    animation: none;
+  }
+
+  .dw-splash__brand {
+    opacity: 1;
+    transform: none;
+  }
+
+  html[data-just-exited-splash="1"] .app-navbar {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Rank number styling */
 .rank-number {
   -webkit-text-stroke: 2px hsl(var(--primary));
