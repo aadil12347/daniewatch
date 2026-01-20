@@ -15,6 +15,15 @@ interface SeriesContent {
   [key: string]: SeriesSeasonContent;
 }
 
+type EntryMediaFields = {
+  poster_url?: string | null;
+  backdrop_url?: string | null;
+  logo_url?: string | null;
+  vote_average?: number | null;
+  vote_count?: number | null;
+  media_updated_at?: string | null;
+};
+
 interface EntryData {
   id: string;
   type: "movie" | "series";
@@ -25,6 +34,12 @@ interface EntryData {
   release_year?: number | null;
   original_language?: string | null;
   origin_country?: string[] | null;
+  poster_url?: string | null;
+  backdrop_url?: string | null;
+  logo_url?: string | null;
+  vote_average?: number | null;
+  vote_count?: number | null;
+  media_updated_at?: string | null;
   created_at?: string;
 }
 
@@ -65,7 +80,8 @@ export const useEntries = () => {
     releaseYear?: number | null,
     title?: string | null,
     originalLanguage?: string | null,
-    originCountry?: string[] | null
+    originCountry?: string[] | null,
+    media?: EntryMediaFields
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const content: MovieContent = {
@@ -86,6 +102,7 @@ export const useEntries = () => {
         release_year: typeof releaseYear === "number" ? releaseYear : null,
         original_language: originalLanguage || null,
         origin_country: originCountry?.length ? originCountry : null,
+        ...(media ?? {}),
       });
 
       if (error) throw error;
@@ -118,7 +135,8 @@ export const useEntries = () => {
     releaseYear?: number | null,
     title?: string | null,
     originalLanguage?: string | null,
-    originCountry?: string[] | null
+    originCountry?: string[] | null,
+    media?: EntryMediaFields
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       // First, fetch existing entry to merge seasons
@@ -158,6 +176,7 @@ export const useEntries = () => {
         release_year: typeof releaseYear === "number" ? releaseYear : null,
         original_language: originalLanguage || null,
         origin_country: originCountry?.length ? originCountry : null,
+        ...(media ?? {}),
       });
 
       if (error) throw error;

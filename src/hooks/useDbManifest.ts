@@ -10,6 +10,11 @@ export interface ManifestItem {
   release_year: number | null;
   original_language: string | null;
   origin_country: string[] | null;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  logo_url: string | null;
+  vote_average: number | null;
+  vote_count: number | null;
   hasWatch: boolean;
   hasDownload: boolean;
 }
@@ -26,6 +31,11 @@ export interface ManifestMetadata {
   title: string | null;
   originalLanguage: string | null;
   originCountry: string[] | null;
+  posterUrl: string | null;
+  backdropUrl: string | null;
+  logoUrl: string | null;
+  voteAverage: number | null;
+  voteCount: number | null;
 }
 
 export interface ManifestAvailability {
@@ -154,6 +164,11 @@ export const useDbManifest = () => {
         title: item.title,
         originalLanguage: item.original_language,
         originCountry: item.origin_country,
+        posterUrl: item.poster_url,
+        backdropUrl: item.backdrop_url,
+        logoUrl: item.logo_url,
+        voteAverage: item.vote_average,
+        voteCount: item.vote_count,
       });
 
       availabilityById.set(item.id, {

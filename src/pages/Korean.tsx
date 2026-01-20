@@ -219,8 +219,11 @@ const Korean = () => {
       const base: Partial<Movie> = {
         id: c.id,
         media_type: c.mediaType,
-        poster_path: null,
+        // poster_path is allowed to be a FULL URL now (getImageUrl/getPosterUrl will pass it through).
+        poster_path: meta?.posterUrl ?? null,
         genre_ids: meta?.genreIds ?? [],
+        vote_average: meta?.voteAverage ?? 0,
+        logo_url: meta?.logoUrl ?? null,
       };
 
       if (c.mediaType === "movie") {

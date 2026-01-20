@@ -17,6 +17,11 @@ interface ManifestItem {
   release_year: number | null;
   original_language: string | null;
   origin_country: string[] | null;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  logo_url: string | null;
+  vote_average: number | null;
+  vote_count: number | null;
   hasWatch: boolean;
   hasDownload: boolean;
 }
@@ -54,7 +59,9 @@ export function ManifestUpdateTool() {
       // 1. Fetch all entries from DB
       const { data: entries, error: fetchError } = await supabase
         .from("entries")
-        .select("id, type, title, hover_image_url, genre_ids, release_year, original_language, origin_country, content");
+        .select(
+          "id, type, title, hover_image_url, genre_ids, release_year, original_language, origin_country, content, poster_url, backdrop_url, logo_url, vote_average, vote_count"
+        );
 
       if (fetchError) throw fetchError;
 
@@ -98,6 +105,11 @@ export function ManifestUpdateTool() {
           release_year: entry.release_year || null,
           original_language: entry.original_language || null,
           origin_country: entry.origin_country || null,
+          poster_url: (entry as any).poster_url || null,
+          backdrop_url: (entry as any).backdrop_url || null,
+          logo_url: (entry as any).logo_url || null,
+          vote_average: typeof (entry as any).vote_average === "number" ? (entry as any).vote_average : null,
+          vote_count: typeof (entry as any).vote_count === "number" ? (entry as any).vote_count : null,
           hasWatch,
           hasDownload,
         };

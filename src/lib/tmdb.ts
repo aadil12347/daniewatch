@@ -4,6 +4,8 @@ const IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
 
 export const getImageUrl = (path: string | null, size: string = "w500") => {
   if (!path) return null;
+  // Allow callers to pass a full URL (stored in DB / manifest) without re-prefixing TMDB.
+  if (/^https?:\/\//i.test(path)) return path;
   return `${IMAGE_BASE_URL}/${size}${path}`;
 };
 
@@ -43,6 +45,9 @@ export interface Movie {
   poster_path: string | null;
   backdrop_path: string | null;
   vote_average: number;
+  vote_count?: number;
+  /** Optional DB/manifest-provided logo URL (full URL). */
+  logo_url?: string | null;
   release_date?: string;
   first_air_date?: string;
   genre_ids: number[];

@@ -68,8 +68,6 @@ export const MovieCard = ({
   const { hasWatch, hasDownload } = getAvailability(movie.id);
   const hoverImageUrl = getHoverImageUrl(movie.id);
 
-  // Hard safety: never render blocked items to normal users.
-  if (!isAdmin && blocked) return null;
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPosterActive, setIsPosterActive] = useState(false);
@@ -102,7 +100,10 @@ export const MovieCard = ({
   }, [hoverImageUrl, isNearViewport, isHovered]);
 
   // Preload the hover logo as soon as the card is on/near screen.
-  const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, isPosterActive || isNearViewport);
+  const dbLogoUrl = (movie as any).logo_url as string | null | undefined;
+  const shouldFetchTmdbLogo = !dbLogoUrl && (isPosterActive || isNearViewport);
+  const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, shouldFetchTmdbLogo);
+  const displayedLogoUrl = dbLogoUrl || logoUrl;
   const displayedInWatchlist = optimisticInWatchlist !== null ? optimisticInWatchlist : inWatchlist;
 
   // Determine whether to use the portal.
@@ -213,6 +214,10 @@ export const MovieCard = ({
     if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return true;
     return false;
   };
+
+  // Hard safety: never render blocked items to normal users.
+  // (Must come after hooks to satisfy Rules of Hooks.)
+  if (!isAdmin && blocked) return null;
 
   return (
     <div
@@ -344,10 +349,10 @@ export const MovieCard = ({
               />
             )}
 
-            {/* Logo (TMDB) - TOP layer; if missing, show the title instead */}
-            {logoUrl ? (
+            {/* Logo (DB/manifest preferred, TMDB fallback) - TOP layer; if missing, show the title instead */}
+            {displayedLogoUrl ? (
               <img
-                src={logoUrl}
+                src={displayedLogoUrl}
                 alt={`${title} logo`}
                 loading="eager"
                 className={cn(
