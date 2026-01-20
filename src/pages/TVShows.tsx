@@ -1,4 +1,3 @@
-import React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 
@@ -12,10 +11,7 @@ import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
-import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useDbManifest } from "@/hooks/useDbManifest";
-import { useAdmin } from "@/hooks/useAdmin";
-import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
@@ -41,16 +37,9 @@ const TVShows = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
-  const { isAdmin } = useAdmin();
-  const { showOnlyDbLinked } = useAdminListFilter();
 
   // Use manifest for DB metadata (fast, cached)
-  const { items: manifestItems, availabilityById: manifestAvailabilityById, isLoading: isManifestLoading } = useDbManifest();
-
-  // Fallback to live DB query for admin indicators
-  const { getAvailability } = useEntryAvailability();
-
-  const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
+  const { items: manifestItems, isLoading: isManifestLoading } = useDbManifest();
 
   const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
     const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
@@ -152,24 +141,11 @@ const TVShows = () => {
     });
   }, [dbCandidates, manifestItemByKey]);
 
-  const filterDbLinked = useCallback(
-    (list: Movie[]) => {
-      if (!needsDbLinkedFilter) return list;
-      return list.filter((it) => {
-        const manifestAvail = manifestAvailabilityById.get(it.id);
-        if (manifestAvail) return manifestAvail.hasWatch || manifestAvail.hasDownload;
-        const a = getAvailability(it.id);
-        return a.hasWatch || a.hasDownload;
-      });
-    },
-    [getAvailability, manifestAvailabilityById, needsDbLinkedFilter]
-  );
-
   const baseDbVisible = useMemo(() => filterBlockedPosts(dbStubItems, "tv"), [dbStubItems, filterBlockedPosts]);
   const baseTmdbVisible = useMemo(() => filterBlockedPosts(tmdbItems, "tv"), [filterBlockedPosts, tmdbItems]);
 
-  const filteredDbItems = useMemo(() => filterDbLinked(baseDbVisible), [baseDbVisible, filterDbLinked]);
-  const filteredTmdbItems = useMemo(() => filterDbLinked(baseTmdbVisible), [baseTmdbVisible, filterDbLinked]);
+  const filteredDbItems = baseDbVisible;
+  const filteredTmdbItems = baseTmdbVisible;
 
   // Hide TMDB section until user exhausts the DB partition.
   const visibleAll = useMemo(() => {

@@ -1,4 +1,3 @@
-import React from "react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
@@ -12,10 +11,7 @@ import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
-import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useDbManifest } from "@/hooks/useDbManifest";
-import { useAdmin } from "@/hooks/useAdmin";
-import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { isAnimeScope } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
@@ -36,30 +32,15 @@ const ANIME_TAGS = [
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
 
-type DbEntry = {
-  id: string;
-  type: "movie" | "series";
-  genre_ids?: number[] | null;
-  release_year?: number | null;
-  title?: string | null;
-};
-
 const Anime = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
-  const { isAdmin } = useAdmin();
-  const { showOnlyDbLinked } = useAdminListFilter();
   
   // Use manifest for DB metadata (fast, cached)
   const {
     items: manifestItems,
     metaByKey: manifestMetaByKey,
-    availabilityById: manifestAvailabilityById,
-    getManifestMetaByKey,
     isLoading: isManifestLoading,
   } = useDbManifest();
-
-  // Fallback to live DB query for admin indicators
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const [items, setItems] = useState<Movie[]>([]);
   const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
@@ -257,23 +238,8 @@ const Anime = () => {
   const baseDbVisible = useMemo(() => filterBlockedPosts(dbVisibleItems, "tv"), [dbVisibleItems, filterBlockedPosts]);
   const baseTmdbVisible = useMemo(() => filterBlockedPosts(tmdbOnlyItems, "tv"), [filterBlockedPosts, tmdbOnlyItems]);
 
-  const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
-
-  const filterDbLinked = useCallback(
-    (list: Movie[]) => {
-      if (!needsDbLinkedFilter) return list;
-      return list.filter((it) => {
-        const manifestAvail = manifestAvailabilityById.get(it.id);
-        if (manifestAvail) return manifestAvail.hasWatch || manifestAvail.hasDownload;
-        const a = getAvailability(it.id);
-        return a.hasWatch || a.hasDownload;
-      });
-    },
-    [getAvailability, manifestAvailabilityById, needsDbLinkedFilter]
-  );
-
-  const filteredDbItems = useMemo(() => filterDbLinked(baseDbVisible), [baseDbVisible, filterDbLinked]);
-  const filteredTmdbItems = useMemo(() => filterDbLinked(baseTmdbVisible), [baseTmdbVisible, filterDbLinked]);
+  const filteredDbItems = baseDbVisible;
+  const filteredTmdbItems = baseTmdbVisible;
 
   const visibleItems = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -10,7 +9,6 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
 import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
-import { AdminListFilterProvider } from "./contexts/AdminListFilterContext";
 import { PageTransition } from "./components/PageTransition";
 import { GlobalRouteLoader } from "./components/GlobalRouteLoader";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
@@ -109,22 +107,20 @@ const App = () => (
         <TutorialProvider>
           <MediaProvider>
             <AdminContentVisibilityProvider>
-              <AdminListFilterProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <MotionBlurCursor />
-                  <BrowserRouter>
-                    <ErrorBoundary>
-                      <Navbar />
-                      <GlobalRouteLoader />
-                      <AppContent />
-                      <FloatingRequestButton />
-                      <TutorialOverlay />
-                    </ErrorBoundary>
-                  </BrowserRouter>
-                </TooltipProvider>
-              </AdminListFilterProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <MotionBlurCursor />
+                <BrowserRouter>
+                  <ErrorBoundary>
+                    <Navbar />
+                    <GlobalRouteLoader />
+                    <AppContent />
+                    <FloatingRequestButton />
+                    <TutorialOverlay />
+                  </ErrorBoundary>
+                </BrowserRouter>
+              </TooltipProvider>
             </AdminContentVisibilityProvider>
           </MediaProvider>
         </TutorialProvider>

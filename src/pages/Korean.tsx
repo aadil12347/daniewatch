@@ -1,4 +1,3 @@
-import React from "react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
@@ -12,10 +11,7 @@ import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
-import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useDbManifest } from "@/hooks/useDbManifest";
-import { useAdmin } from "@/hooks/useAdmin";
-import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { isKoreanScope, isAnimeScope, KOREAN_LANGS } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
@@ -42,30 +38,15 @@ const INITIAL_REVEAL_COUNT = 24;
 // (manifest-driven) to appear if they exist in the database.
 const TMDB_KOREAN_LANGS = ["ko", "zh"] as const;
 
-type DbEntry = {
-  id: string;
-  type: "movie" | "series";
-  genre_ids?: number[] | null;
-  release_year?: number | null;
-  title?: string | null;
-};
-
 const Korean = () => {
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
-  const { isAdmin } = useAdmin();
-  const { showOnlyDbLinked } = useAdminListFilter();
   
   // Use manifest for DB metadata (fast, cached)
   const {
     items: manifestItems,
     metaByKey: manifestMetaByKey,
-    availabilityById: manifestAvailabilityById,
-    getManifestMetaByKey,
     isLoading: isManifestLoading,
   } = useDbManifest();
-
-  // Fallback to live DB query for admin indicators
-  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const [items, setItems] = useState<Movie[]>([]);
   const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
@@ -261,25 +242,9 @@ const Korean = () => {
     return sortWithPinnedFirst(safe, "korean", undefined);
   }, [dbCandidates, filterBlockedPosts, getKey, items, sortWithPinnedFirst]);
 
-  const applyAdminDbOnlyFilter = useCallback(
-    (list: Movie[]) => {
-      if (!(isAdmin && showOnlyDbLinked)) return list;
-      return list.filter((it) => {
-        // Use manifest availability first (fast), fallback to live query
-        const manifestAvail = manifestAvailabilityById.get(it.id);
-        if (manifestAvail) {
-          return manifestAvail.hasWatch || manifestAvail.hasDownload;
-        }
-        const a = getAvailability(it.id);
-        return a.hasWatch || a.hasDownload;
-      });
-    },
-    [getAvailability, isAdmin, manifestAvailabilityById, showOnlyDbLinked]
-  );
-
-  // Apply admin "DB links only" filter, then genre/year filters, then concatenate (DB first, TMDB after).
+  // Apply genre/year filters, then concatenate (DB first, TMDB after).
   const filteredDbItems = useMemo(() => {
-    const base = applyAdminDbOnlyFilter(dbVisibleItems);
+    const base = dbVisibleItems;
 
     if (normalizedDbGenreSet.size === 0 && !selectedYear) return base;
 
@@ -303,10 +268,10 @@ const Korean = () => {
 
       return true;
     });
-  }, [applyAdminDbOnlyFilter, dbVisibleItems, normalizedDbGenreSet, selectedYear]);
+  }, [dbVisibleItems, normalizedDbGenreSet, selectedYear]);
 
   const filteredTmdbItems = useMemo(() => {
-    const base = applyAdminDbOnlyFilter(tmdbOnlyVisibleItems);
+    const base = tmdbOnlyVisibleItems;
 
     if (normalizedDbGenreSet.size === 0 && !selectedYear) return base;
 
@@ -330,7 +295,7 @@ const Korean = () => {
 
       return true;
     });
-  }, [applyAdminDbOnlyFilter, normalizedDbGenreSet, selectedYear, tmdbOnlyVisibleItems]);
+  }, [normalizedDbGenreSet, selectedYear, tmdbOnlyVisibleItems]);
 
   const filteredVisibleItems = useMemo(() => {
     return [...filteredDbItems, ...filteredTmdbItems];

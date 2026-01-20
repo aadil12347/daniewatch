@@ -1,4 +1,3 @@
-import React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -10,8 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { filterMinimal, Movie, searchMulti } from "@/lib/tmdb";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
-import { useAdmin } from "@/hooks/useAdmin";
-import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { useDbManifest } from "@/hooks/useDbManifest";
 
@@ -32,10 +29,8 @@ const Search = () => {
   const { saveCache, getCache } = useListStateCache<Movie>({ includeSearch: true });
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
-  const { isAdmin } = useAdmin();
-  const { showOnlyDbLinked } = useAdminListFilter();
 
-  const { items: manifestItems, availabilityById: manifestAvailabilityById, isLoading: isManifestLoading } = useDbManifest();
+  const { items: manifestItems, isLoading: isManifestLoading } = useDbManifest();
 
   // DB-first matches come from the manifest (fast + complete posters/logos/ratings)
   const dbStubMatches = useMemo(() => {
@@ -76,16 +71,8 @@ const Search = () => {
 
     // Strict DB-first ordering
     const combined = [...dbStubMatches, ...tmdbFiltered];
-    const moderated = filterBlockedPosts(combined);
-
-    if (!(isAdmin && showOnlyDbLinked)) return moderated;
-
-    // Admin-only: DB links only (use manifest availability flags)
-    return moderated.filter((it) => {
-      const a = manifestAvailabilityById.get(it.id);
-      return a ? a.hasWatch || a.hasDownload : false;
-    });
-  }, [dbStubMatches, filterBlockedPosts, isAdmin, manifestAvailabilityById, showOnlyDbLinked, tmdbResults]);
+    return filterBlockedPosts(combined);
+  }, [dbStubMatches, filterBlockedPosts, tmdbResults]);
 
   // Preload hover images in the background ONLY (never gate the search grid on this).
   usePageHoverPreload(visibleResults, { enabled: !isLoading });
