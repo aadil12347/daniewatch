@@ -143,6 +143,9 @@
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 98%;
 
+    /* Accents */
+    --rating: 45 93% 55%;
+
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 60%;
 
@@ -184,6 +187,10 @@
 
     /* Default header offset (Navbar will overwrite with measured height) */
     --app-header-offset: 64px;
+
+    /* Navbar dynamic tint (set by HeroSection sampling) */
+    --navbar-tint: var(--primary);
+    --navbar-tint-alpha: 0.14;
   }
 
   .dark {
@@ -241,6 +248,21 @@ html {
 }
 
 @layer components {
+  .navbar-tint-layer {
+    /* Subtle cinematic tint that adapts to the hero backdrop */
+    background:
+      radial-gradient(
+        120% 160% at 50% -40%,
+        hsl(var(--navbar-tint) / var(--navbar-tint-alpha)) 0%,
+        transparent 62%
+      ),
+      linear-gradient(
+        to bottom,
+        hsl(var(--navbar-tint) / calc(var(--navbar-tint-alpha) * 0.55)) 0%,
+        transparent 70%
+      );
+  }
+
   .glass {
     background: hsl(var(--cinema-glass));
     backdrop-filter: blur(20px);

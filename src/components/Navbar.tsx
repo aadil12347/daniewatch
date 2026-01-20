@@ -209,6 +209,8 @@ export const Navbar = () => {
         )}
       >
         {/* Bottom glow effect */}
+        {/* Dynamic tint overlay (driven by --navbar-tint) */}
+        <div className="absolute inset-0 pointer-events-none navbar-tint-layer" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
         <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
         

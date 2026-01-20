@@ -98,6 +98,110 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     if (currentIndex >= featured.length) setCurrentIndex(0);
   }, [currentIndex, featured.length, isLoading]);
 
+  // Derive current hero (may be undefined while loading)
+  const current = featured[currentIndex];
+  const backdropUrl = current ? getBackdropUrl(current.backdrop_path) : null;
+
+  const setNavbarTintFromImageUrl = async (url: string | null) => {
+    const root = document.documentElement;
+    if (!url) {
+      root.style.setProperty("--navbar-tint", "var(--primary)");
+      root.style.setProperty("--navbar-tint-alpha", "0.14");
+      return;
+    }
+
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.decoding = "async";
+      img.src = url;
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load hero image for tint"));
+      });
+
+      const canvas = document.createElement("canvas");
+      const size = 32;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) throw new Error("No canvas context");
+
+      // Downsample aggressively for speed.
+      ctx.drawImage(img, 0, 0, size, size);
+      const { data } = ctx.getImageData(0, 0, size, size);
+
+      // Average non-transparent pixels.
+      let r = 0,
+        g = 0,
+        b = 0,
+        n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const a = data[i + 3];
+        if (a < 16) continue;
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        n++;
+      }
+      if (!n) throw new Error("No pixels sampled");
+
+      r = Math.round(r / n);
+      g = Math.round(g / n);
+      b = Math.round(b / n);
+
+      // Convert RGB -> HSL (0-360, 0-100, 0-100)
+      const rf = r / 255;
+      const gf = g / 255;
+      const bf = b / 255;
+      const max = Math.max(rf, gf, bf);
+      const min = Math.min(rf, gf, bf);
+      const d = max - min;
+      let h = 0;
+      const l = (max + min) / 2;
+      const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+
+      if (d !== 0) {
+        switch (max) {
+          case rf:
+            h = ((gf - bf) / d) % 6;
+            break;
+          case gf:
+            h = (bf - rf) / d + 2;
+            break;
+          default:
+            h = (rf - gf) / d + 4;
+        }
+        h = Math.round(h * 60);
+        if (h < 0) h += 360;
+      }
+
+      // Keep it subtle + readable.
+      const hh = Math.round(h);
+      const ss = Math.round(Math.min(62, Math.max(18, s * 100)));
+      const ll = Math.round(Math.min(28, Math.max(10, l * 100)));
+
+      root.style.setProperty("--navbar-tint", `${hh} ${ss}% ${ll}%`);
+      root.style.setProperty("--navbar-tint-alpha", "0.14");
+    } catch {
+      const root = document.documentElement;
+      root.style.setProperty("--navbar-tint", "var(--primary)");
+      root.style.setProperty("--navbar-tint-alpha", "0.14");
+    }
+  };
+
+  // Update navbar tint when the featured hero changes.
+  useEffect(() => {
+    setNavbarTintFromImageUrl(backdropUrl);
+    return () => {
+      const root = document.documentElement;
+      root.style.setProperty("--navbar-tint", "var(--primary)");
+      root.style.setProperty("--navbar-tint-alpha", "0.14");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backdropUrl]);
+
   if (isLoading) {
     return (
       <div className="relative h-[85vh] min-h-[600px]">
@@ -128,11 +232,8 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     );
   }
 
-  const current = featured[currentIndex];
-
   if (!current) return null;
 
-  const backdropUrl = getBackdropUrl(current.backdrop_path);
   const title = getDisplayTitle(current);
   const year = getYear(getReleaseDate(current));
   const rating = current.vote_average?.toFixed(1);
@@ -167,7 +268,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
               {mediaType === "tv" ? "TV Series" : "Movie"}
             </span>
             <div className="flex items-center gap-1">
-              <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+              <Star className="w-3.5 h-3.5 text-[hsl(var(--rating))] fill-[hsl(var(--rating))]" />
               <span className="text-sm font-medium">{rating}</span>
             </div>
             <span className="text-sm text-muted-foreground">{year}</span>
