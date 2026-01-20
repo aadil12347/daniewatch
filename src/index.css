@@ -456,7 +456,7 @@ html {
   */
   @media (min-width: 768px) {
     .details-overlap-desktop {
-      margin-top: calc(-1 * min(24rem, 42vh));
+      margin-top: calc(-1 * min(28rem, 48vh));
     }
   }
 
