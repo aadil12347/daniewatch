@@ -205,7 +205,8 @@ export const Navbar = () => {
       <nav
         ref={navRef}
         className={cn(
-          "fixed top-0 left-0 right-0 z-50 h-16 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/65 bg-background/80 transition-[background-color] duration-300 ease-out",
+          // Keep header visually solid so page content never appears "behind" it.
+          "fixed top-0 left-0 right-0 z-50 h-16 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/90 bg-background/95 transition-[background-color] duration-300 ease-out",
         )}
       >
         {/* Bottom glow effect */}
