@@ -28,22 +28,21 @@ export default function MovieDetailsModal() {
         className="p-0 sm:rounded-none overflow-hidden gap-0 border-0 grid-rows-[1fr]"
       >
         <div className="h-full bg-background relative">
-          <div className="absolute left-3 top-3 z-20">
+          <div className="absolute left-3 top-3 z-20 hidden md:block">
             <AnimatedBackButton label="Back" size="navbar" />
           </div>
 
-          <div className="absolute right-3 top-3 z-20">
-            <Button
-              size="icon"
-              variant="secondary"
-              onClick={() => setRequestOpen(true)}
-              disabled={!currentMedia}
-              aria-label="Request this title"
-              title={!currentMedia ? "Loading title…" : "Request"}
-            >
-              <MessageSquarePlus className="w-5 h-5" />
-            </Button>
-          </div>
+          {/* Match the page's floating Request button placement */}
+          <Button
+            size="icon"
+            onClick={() => setRequestOpen(true)}
+            disabled={!currentMedia}
+            aria-label="Request this title"
+            title={!currentMedia ? "Loading title…" : "Request"}
+            className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 hover:scale-110 animate-pulse-glow"
+          >
+            <MessageSquarePlus className="w-6 h-6" />
+          </Button>
 
           <RequestHelpSheet
             open={requestOpen}
