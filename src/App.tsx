@@ -9,6 +9,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
 import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
+import { SearchOverlayProvider } from "./contexts/SearchOverlayContext";
 import { PageTransition } from "./components/PageTransition";
 import { GlobalRouteLoader } from "./components/GlobalRouteLoader";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
@@ -16,6 +17,7 @@ import { TutorialOverlay } from "./components/TutorialOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Navbar } from "@/components/Navbar";
 import { MotionBlurCursor } from "@/components/MotionBlurCursor";
+import { SearchOverlay } from "@/components/SearchOverlay";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -107,20 +109,23 @@ const App = () => (
         <TutorialProvider>
           <MediaProvider>
             <AdminContentVisibilityProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <MotionBlurCursor />
-                <BrowserRouter>
-                  <ErrorBoundary>
-                    <Navbar />
-                    <GlobalRouteLoader />
-                    <AppContent />
-                    <FloatingRequestButton />
-                    <TutorialOverlay />
-                  </ErrorBoundary>
-                </BrowserRouter>
-              </TooltipProvider>
+              <SearchOverlayProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <MotionBlurCursor />
+                  <BrowserRouter>
+                    <ErrorBoundary>
+                      <Navbar />
+                      <SearchOverlay />
+                      <GlobalRouteLoader />
+                      <AppContent />
+                      <FloatingRequestButton />
+                      <TutorialOverlay />
+                    </ErrorBoundary>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </SearchOverlayProvider>
             </AdminContentVisibilityProvider>
           </MediaProvider>
         </TutorialProvider>

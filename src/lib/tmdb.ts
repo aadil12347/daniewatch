@@ -373,7 +373,7 @@ export const EPISODE_GROUP_CONFIG: Record<number, string> = {
   71446: "5eb730dfca7ec6001f7beb51", // La Casa de Papel - Parts
 };
 
-interface TMDBResponse<T> {
+export interface TMDBResponse<T> {
   page: number;
   results: T[];
   total_pages: number;

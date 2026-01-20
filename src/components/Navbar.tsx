@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminContentVisibility } from "@/contexts/AdminContentVisibilityContext";
+import { getSearchScopeForPathname, useSearchOverlay } from "@/contexts/SearchOverlayContext";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -35,6 +36,7 @@ export const Navbar = () => {
   const navRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { open: openSearchOverlay, close: closeSearchOverlay } = useSearchOverlay();
 
   const setIsSearchOpen = (next: boolean) => {
     _setIsSearchOpen(next);
@@ -144,36 +146,12 @@ export const Navbar = () => {
     };
   }, [isMenuOpen]);
 
-  const getOriginalPath = () => {
-    if (location.pathname === "/anime" || getUrlParam("category") === "anime") {
-      return "/anime";
-    }
-    if (location.pathname === "/korean" || getUrlParam("category") === "korean") {
-      return "/korean";
-    }
-    return null;
-  };
-
-  const getCategoryParam = () => {
-    const originalPath = getOriginalPath();
-    if (originalPath === "/anime") return "&category=anime";
-    if (originalPath === "/korean") return "&category=korean";
-    return "";
-  };
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    
-    // If user clears the search bar, navigate back to original page
-    if (!value.trim()) {
-      const originalPath = getOriginalPath();
-      if (originalPath) {
-        navigate(originalPath, { replace: true });
-      } else if (location.pathname === "/search") {
-        navigate("/", { replace: true });
-      }
-    }
+
+    // Clearing should NEVER navigate away; just close overlay.
+    if (!value.trim()) closeSearchOverlay();
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -181,9 +159,11 @@ export const Navbar = () => {
 
     if (!searchQuery.trim()) return;
 
-    const nextUrl = `/search?q=${encodeURIComponent(searchQuery.trim())}${getCategoryParam()}&t=${Date.now()}`;
-    console.log("[search] navigate", nextUrl);
-    navigate(nextUrl);
+    // Stay on the same page: open overlay + strict scope.
+    openSearchOverlay({
+      query: searchQuery.trim(),
+      scope: getSearchScopeForPathname(location.pathname),
+    });
   };
 
   const handleBack = () => {
