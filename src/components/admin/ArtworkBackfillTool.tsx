@@ -18,18 +18,23 @@ type EntryRow = {
   vote_count: number | null;
 };
 
-const BATCH_SIZE = 15;
+const QUERY_PAGE_SIZE = 500;
+const BATCH_SIZE = 6;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function ArtworkBackfillTool() {
   const { toast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
   const [processed, setProcessed] = useState(0);
   const [updated, setUpdated] = useState(0);
+  const [failed, setFailed] = useState(0);
+  const [attemptedNoLogo, setAttemptedNoLogo] = useState(0);
 
   const status = useMemo(() => {
     if (!isRunning) return null;
-    return { processed, updated };
-  }, [isRunning, processed, updated]);
+    return { processed, updated, failed, attemptedNoLogo };
+  }, [isRunning, processed, updated, failed, attemptedNoLogo]);
 
   const pickLogoUrl = (logos: { file_path: string; iso_639_1: string | null }[]) => {
     if (!logos?.length) return null;
@@ -37,102 +42,164 @@ export function ArtworkBackfillTool() {
     return getImageUrl(preferred?.file_path ?? null, "w500");
   };
 
+  const withRetry = async <T,>(fn: () => Promise<T>, tries = 3): Promise<T> => {
+    let lastErr: unknown;
+    for (let i = 0; i < tries; i++) {
+      try {
+        return await fn();
+      } catch (e) {
+        lastErr = e;
+        const msg = e instanceof Error ? e.message : String(e);
+        // TMDB rate limiting is common when doing large backfills.
+        if (msg.includes("429") && i < tries - 1) {
+          await sleep(900 * (i + 1));
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error("Unknown error");
+  };
+
   const handleRun = async () => {
     setIsRunning(true);
     setProcessed(0);
     setUpdated(0);
+    setFailed(0);
+    setAttemptedNoLogo(0);
 
     try {
-      const { data, error } = await supabase
-        .from("entries")
-        .select("id, type, poster_url, backdrop_url, logo_url, vote_average, vote_count")
-        .or("poster_url.is.null,logo_url.is.null,vote_average.is.null")
-        .limit(2000);
-
-      if (error) throw error;
-      const rows = (data ?? []) as EntryRow[];
-
-      if (rows.length === 0) {
-        toast({ title: "Nothing to backfill", description: "All entries already have artwork + rating fields." });
-        return;
-      }
-
       const media_updated_at = new Date().toISOString();
       let processedCount = 0;
       let updatedCount = 0;
+      let failedCount = 0;
+      let attemptedNoLogoCount = 0;
 
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
+      // IMPORTANT: paginate; .limit(2000) can silently leave entries unprocessed.
+      let offset = 0;
 
-        const updates = await Promise.all(
-          batch.map(async (row) => {
-            const needsPoster = !row.poster_url;
-            const needsLogo = !row.logo_url;
-            const needsRating = row.vote_average == null;
+      while (true) {
+        const { data, error } = await supabase
+          .from("entries")
+          .select("id, type, poster_url, backdrop_url, logo_url, vote_average, vote_count")
+          .or("poster_url.is.null,logo_url.is.null,vote_average.is.null")
+          .order("id", { ascending: true })
+          .range(offset, offset + QUERY_PAGE_SIZE - 1);
 
-            if (!needsPoster && !needsLogo && !needsRating) {
-              return { id: row.id, patch: null as Record<string, any> | null };
-            }
+        if (error) throw error;
+        const rows = (data ?? []) as EntryRow[];
 
-            const tmdbId = Number(row.id);
-            const isSeries = row.type === "series";
+        if (rows.length === 0) break;
+        offset += rows.length;
 
-            try {
-              if (!Number.isFinite(tmdbId)) return { id: row.id, patch: null };
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+          const batch = rows.slice(i, i + BATCH_SIZE);
 
-              if (!isSeries) {
-                const [details, images] = await Promise.all([getMovieDetails(tmdbId), getMovieImages(tmdbId)]);
+          // Run a small concurrent batch to avoid TMDB 429s.
+          const updates = await Promise.all(
+            batch.map(async (row) => {
+              const needsPoster = !row.poster_url;
+              const needsLogo = !row.logo_url;
+              const needsRating = row.vote_average == null;
 
-                const patch: Record<string, any> = {};
-                if (needsPoster) patch.poster_url = getImageUrl(details.poster_path, "w342");
-                if (!row.backdrop_url) patch.backdrop_url = getImageUrl(details.backdrop_path, "original");
-                if (needsLogo) patch.logo_url = pickLogoUrl(images.logos);
-                if (needsRating) patch.vote_average = typeof details.vote_average === "number" ? details.vote_average : null;
-                if (row.vote_count == null) patch.vote_count = typeof (details as any).vote_count === "number" ? (details as any).vote_count : null;
-
-                if (Object.keys(patch).length === 0) return { id: row.id, patch: null };
-                patch.media_updated_at = media_updated_at;
-
-                return { id: row.id, patch };
+              if (!needsPoster && !needsLogo && !needsRating) {
+                return { id: row.id, patch: null as Record<string, any> | null, noLogo: false };
               }
 
-              const [details, images] = await Promise.all([getTVDetails(tmdbId), getTVImages(tmdbId)]);
+              const tmdbId = Number(row.id);
+              const isSeries = row.type === "series";
 
-              const patch: Record<string, any> = {};
-              if (needsPoster) patch.poster_url = getImageUrl(details.poster_path, "w342");
-              if (!row.backdrop_url) patch.backdrop_url = getImageUrl(details.backdrop_path, "original");
-              if (needsLogo) patch.logo_url = pickLogoUrl(images.logos);
-              if (needsRating) patch.vote_average = typeof details.vote_average === "number" ? details.vote_average : null;
-              if (row.vote_count == null) patch.vote_count = typeof (details as any).vote_count === "number" ? (details as any).vote_count : null;
+              try {
+                if (!Number.isFinite(tmdbId)) {
+                  return { id: row.id, patch: null as Record<string, any> | null, noLogo: false };
+                }
 
-              if (Object.keys(patch).length === 0) return { id: row.id, patch: null };
-              patch.media_updated_at = media_updated_at;
+                const patch: Record<string, any> = {};
+                let noLogo = false;
 
-              return { id: row.id, patch };
-            } catch {
-              return { id: row.id, patch: null };
+                if (!isSeries) {
+                  const [details, images] = await withRetry(() =>
+                    Promise.all([getMovieDetails(tmdbId), getMovieImages(tmdbId)]) as Promise<any>
+                  );
+
+                  if (needsPoster) patch.poster_url = getImageUrl(details.poster_path, "w342");
+                  if (!row.backdrop_url) patch.backdrop_url = getImageUrl(details.backdrop_path, "original");
+
+                  if (needsLogo) {
+                    const logoUrl = pickLogoUrl(images.logos);
+                    if (logoUrl) patch.logo_url = logoUrl;
+                    else noLogo = true;
+                  }
+
+                  if (needsRating) patch.vote_average = typeof details.vote_average === "number" ? details.vote_average : null;
+                  if (row.vote_count == null)
+                    patch.vote_count = typeof (details as any).vote_count === "number" ? (details as any).vote_count : null;
+                } else {
+                  const [details, images] = await withRetry(() =>
+                    Promise.all([getTVDetails(tmdbId), getTVImages(tmdbId)]) as Promise<any>
+                  );
+
+                  if (needsPoster) patch.poster_url = getImageUrl(details.poster_path, "w342");
+                  if (!row.backdrop_url) patch.backdrop_url = getImageUrl(details.backdrop_path, "original");
+
+                  if (needsLogo) {
+                    const logoUrl = pickLogoUrl(images.logos);
+                    if (logoUrl) patch.logo_url = logoUrl;
+                    else noLogo = true;
+                  }
+
+                  if (needsRating) patch.vote_average = typeof details.vote_average === "number" ? details.vote_average : null;
+                  if (row.vote_count == null)
+                    patch.vote_count = typeof (details as any).vote_count === "number" ? (details as any).vote_count : null;
+                }
+
+                // Always stamp media_updated_at if we wrote anything, even if logo was missing.
+                if (Object.keys(patch).length > 0) patch.media_updated_at = media_updated_at;
+
+                return { id: row.id, patch: Object.keys(patch).length ? patch : null, noLogo };
+              } catch {
+                return { id: row.id, patch: null as Record<string, any> | null, noLogo: false };
+              }
+            })
+          );
+
+          for (const u of updates) {
+            processedCount += 1;
+            setProcessed(processedCount);
+
+            if (u.noLogo) {
+              attemptedNoLogoCount += 1;
+              setAttemptedNoLogo(attemptedNoLogoCount);
             }
-          })
-        );
 
-        for (const u of updates) {
-          processedCount += 1;
-          setProcessed(processedCount);
+            if (!u.patch) continue;
 
-          if (!u.patch) continue;
+            const { error: updateError } = await supabase.from("entries").update(u.patch).eq("id", u.id);
+            if (!updateError) {
+              updatedCount += 1;
+              setUpdated(updatedCount);
+            } else {
+              failedCount += 1;
+              setFailed(failedCount);
+            }
 
-          const { error: updateError } = await supabase.from("entries").update(u.patch).eq("id", u.id);
-          if (!updateError) {
-            updatedCount += 1;
-            setUpdated(updatedCount);
+            // tiny pacing to keep TMDB + Supabase happy during big runs
+            await sleep(80);
           }
         }
+
+        // brief pause between pages
+        await sleep(300);
       }
 
       toast({
         title: "Backfill complete",
-        description: `Processed ${rows.length} entries. Updated ${updatedCount} entries.`,
+        description: `Processed ${processedCount} entries. Updated ${updatedCount}. Failed ${failedCount}. (Some titles may have no logo on TMDB.)`,
       });
+
+      if (processedCount === 0) {
+        toast({ title: "Nothing to backfill", description: "All entries already have artwork + rating fields." });
+      }
     } catch (e) {
       console.error("[ArtworkBackfillTool]", e);
       toast({
@@ -144,6 +211,7 @@ export function ArtworkBackfillTool() {
       setIsRunning(false);
     }
   };
+
 
   return (
     <Card>
@@ -170,6 +238,8 @@ export function ArtworkBackfillTool() {
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">Processed: {status.processed}</Badge>
             <Badge variant="outline">Updated: {status.updated}</Badge>
+            <Badge variant="outline">Failed: {status.failed}</Badge>
+            <Badge variant="outline">No logo on TMDB: {status.attemptedNoLogo}</Badge>
           </div>
         ) : (
           <div className="text-sm text-muted-foreground">
