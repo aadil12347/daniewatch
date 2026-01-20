@@ -12,6 +12,7 @@ import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
@@ -55,27 +56,31 @@ const Movies = () => {
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
+  
+  // Use manifest for DB metadata (fast, cached)
   const {
-    entries: dbEntries,
-    metaByKey,
-    getDbMetaByKey,
-    getAvailability,
-    isLoading: isAvailabilityLoading,
-  } = useEntryAvailability();
+    items: manifestItems,
+    metaByKey: manifestMetaByKey,
+    availabilityById: manifestAvailabilityById,
+    getManifestMetaByKey,
+    isLoading: isManifestLoading,
+  } = useDbManifest();
+
+  // Fallback to live DB query for admin indicators
+  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
     const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
     return `${m.id}-${media}`;
   }, []);
 
-  const normalizedDbEntries = useMemo(() => (dbEntries as unknown as DbEntry[]) ?? [], [dbEntries]);
-
+  // Build DB entries from manifest
   const dbEntriesMatchingFilters = useMemo(() => {
-    return normalizedDbEntries.filter((e) => {
-      if (e.type !== "movie") return false;
+    return manifestItems.filter((item) => {
+      if (item.media_type !== "movie") return false;
 
-      const genreIds = e.genre_ids ?? [];
-      const year = e.release_year ?? null;
+      const genreIds = item.genre_ids ?? [];
+      const year = item.release_year ?? null;
 
       // Genre filter (overlap)
       if (selectedGenres.length > 0) {
@@ -94,23 +99,19 @@ const Movies = () => {
 
       return true;
     });
-  }, [normalizedDbEntries, selectedGenres, selectedYear]);
+  }, [manifestItems, selectedGenres, selectedYear]);
 
   const dbCandidates = useMemo(() => {
-    const out: Array<{ id: number; mediaType: "movie"; sortYear: number }> = [];
+    const out: Array<{ id: number; mediaType: "movie"; sortYear: number; hasLinks: boolean }> = [];
 
-    for (const e of dbEntriesMatchingFilters) {
-      const id = Number(e.id);
+    for (const item of dbEntriesMatchingFilters) {
+      const id = item.id;
       if (!Number.isFinite(id)) continue;
 
-      const key = `${id}-movie`;
-      const meta = metaByKey.get(key);
-      if (!meta) continue;
-
-      // Enforce Movies-page scope using DB metadata (avoid hydrating off-scope entries).
-      const lang = meta.originalLanguage ?? null;
-      const genreIds = meta.genreIds ?? [];
-      const origin = meta.originCountry ?? [];
+      // Enforce Movies-page scope using DB metadata
+      const lang = item.original_language ?? null;
+      const genreIds = item.genre_ids ?? [];
+      const origin = item.origin_country ?? [];
 
       const isAnime = lang === "ja" && genreIds.includes(16);
       const isIndian = ["hi", "ta", "te"].includes(lang ?? "");
@@ -118,20 +119,24 @@ const Movies = () => {
 
       if (isAnime || isIndian || isKorean) continue;
 
-      const sortYear = (typeof e.release_year === "number" && Number.isFinite(e.release_year) ? e.release_year : null) ??
-        (typeof meta.releaseYear === "number" && Number.isFinite(meta.releaseYear) ? meta.releaseYear : null) ??
-        0;
+      const sortYear = item.release_year ?? 0;
+      const hasLinks = item.hasWatch || item.hasDownload;
 
-      out.push({ id, mediaType: "movie", sortYear });
+      out.push({ id, mediaType: "movie", sortYear, hasLinks });
     }
 
-    out.sort((a, b) => b.sortYear - a.sortYear);
+    // Sort: items with links first, then by year descending
+    out.sort((a, b) => {
+      if (a.hasLinks !== b.hasLinks) return a.hasLinks ? -1 : 1;
+      return b.sortYear - a.sortYear;
+    });
+
     return out;
-  }, [dbEntriesMatchingFilters, metaByKey]);
+  }, [dbEntriesMatchingFilters]);
 
   const hydrateDbOnly = useCallback(
     async (tmdbKeys: Set<string>, limit: number) => {
-      if (metaByKey.size === 0) return;
+      if (manifestMetaByKey.size === 0) return;
 
       const hydratedKeys = new Set(dbOnlyHydrated.map((m) => getKey(m)));
       const toHydrate: Array<{ id: number }> = [];
@@ -185,23 +190,23 @@ const Movies = () => {
         });
       }
     },
-    [dbCandidates, dbOnlyHydrated, getKey, metaByKey.size]
+    [dbCandidates, dbOnlyHydrated, getKey, manifestMetaByKey.size]
   );
 
   const mergedBase = useMemo(() => {
     return mergeDbAndTmdb({
       tmdbItems: movies,
       dbOnlyHydratedItems: dbOnlyHydrated,
-      isDbItem: (key) => metaByKey.has(key),
-      getDbMeta: getDbMetaByKey,
+      isDbItem: (key) => manifestMetaByKey.has(key),
+      getDbMeta: getManifestMetaByKey,
     });
-  }, [dbOnlyHydrated, getDbMetaByKey, movies, metaByKey]);
+  }, [dbOnlyHydrated, getManifestMetaByKey, movies, manifestMetaByKey]);
 
   const baseVisible = useMemo(() => filterBlockedPosts(mergedBase, "movie"), [filterBlockedPosts, mergedBase]);
 
   const visibleMovies = useMemo(() => {
     // Keep DB-first grouping intact; apply pinned ordering within each group.
-    const isDb = (m: Movie) => metaByKey.has(`${m.id}-movie`);
+    const isDb = (m: Movie) => manifestMetaByKey.has(`${m.id}-movie`);
 
     const dbGroup = baseVisible.filter(isDb);
     const tmdbGroup = baseVisible.filter((m) => !isDb(m));
@@ -213,19 +218,24 @@ const Movies = () => {
 
     if (isAdmin && showOnlyDbLinked) {
       return combined.filter((m) => {
+        // Use manifest availability first (fast), fallback to live query
+        const manifestAvail = manifestAvailabilityById.get(m.id);
+        if (manifestAvail) {
+          return manifestAvail.hasWatch || manifestAvail.hasDownload;
+        }
         const a = getAvailability(m.id);
         return a.hasWatch || a.hasDownload;
       });
     }
 
     return combined;
-  }, [baseVisible, getAvailability, isAdmin, metaByKey, showOnlyDbLinked, sortWithPinnedFirst]);
+  }, [baseVisible, getAvailability, isAdmin, manifestAvailabilityById, manifestMetaByKey, showOnlyDbLinked, sortWithPinnedFirst]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleMovies, { enabled: !isLoading });
 
   // Only show skeletons before we have any real items to render.
-  const pageIsLoading = displayCount === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
+  const pageIsLoading = displayCount === 0 && (isLoading || isModerationLoading || isManifestLoading);
 
   // Fetch genres on mount
   useEffect(() => {
@@ -343,7 +353,7 @@ const Movies = () => {
 
         const unique = dedupe(filteredResults);
 
-        if (reset && metaByKey.size > 0) {
+        if (reset && manifestMetaByKey.size > 0) {
           const tmdbKeys = new Set(unique.map((m) => getKey(m)));
           await hydrateDbOnly(tmdbKeys, 60);
         }
@@ -367,7 +377,7 @@ const Movies = () => {
         setIsLoadingMore(false);
       }
     },
-    [getKey, hydrateDbOnly, metaByKey.size, selectedGenres, selectedYear, setIsLoadingMore]
+    [getKey, hydrateDbOnly, manifestMetaByKey.size, selectedGenres, selectedYear, setIsLoadingMore]
   );
 
   // Reset and fetch when filters change
