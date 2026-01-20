@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Search as SearchIcon } from "lucide-react";
@@ -7,29 +8,21 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePostModeration } from "@/hooks/usePostModeration";
-import { searchMulti, filterMinimal, getMovieDetails, getTVDetails, Movie } from "@/lib/tmdb";
+import { filterMinimal, Movie, searchMulti } from "@/lib/tmdb";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
-import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { useListStateCache } from "@/hooks/useListStateCache";
-import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
+import { useDbManifest } from "@/hooks/useDbManifest";
 
-type DbEntry = {
-  id: string;
-  type: "movie" | "series";
-  genre_ids?: number[] | null;
-  release_year?: number | null;
-  title?: string | null;
-};
+const MAX_DB_MATCHES = 60;
 
 const Search = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const refreshKey = searchParams.get("t") || "";
 
-  const [results, setResults] = useState<Movie[]>([]);
-  const [dbOnlyHydrated, setDbOnlyHydrated] = useState<Movie[]>([]);
+  const [tmdbResults, setTmdbResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const requestIdRef = useRef(0);
@@ -41,39 +34,64 @@ const Search = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
-  const {
-    entries: dbEntries,
-    metaByKey,
-    getDbMetaByKey,
-    getAvailability,
-    isLoading: isAvailabilityLoading,
-  } = useEntryAvailability();
 
-  const mergedBase = useMemo(() => {
-    return mergeDbAndTmdb({
-      tmdbItems: results,
-      dbOnlyHydratedItems: dbOnlyHydrated,
-      isDbItem: (key) => metaByKey.has(key),
-      getDbMeta: getDbMetaByKey,
-    });
-  }, [dbOnlyHydrated, getDbMetaByKey, metaByKey, results]);
+  const { items: manifestItems, availabilityById: manifestAvailabilityById, isLoading: isManifestLoading } = useDbManifest();
+
+  // DB-first matches come from the manifest (fast + complete posters/logos/ratings)
+  const dbStubMatches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [] as Movie[];
+
+    const matches = manifestItems
+      .filter((it) => {
+        const title = (it.title ?? "").toLowerCase();
+        return title.includes(q);
+      })
+      .slice(0, MAX_DB_MATCHES)
+      .map((it) => {
+        const isTv = it.media_type === "tv";
+        const title = it.title ?? "Untitled";
+        const releaseYear = it.release_year ?? null;
+
+        return {
+          id: it.id,
+          media_type: isTv ? ("tv" as const) : ("movie" as const),
+          ...(isTv ? { name: title, original_name: title, first_air_date: releaseYear ? `${releaseYear}-01-01` : "" } : {}),
+          ...(!isTv ? { title, original_title: title, release_date: releaseYear ? `${releaseYear}-01-01` : "" } : {}),
+          genre_ids: it.genre_ids ?? [],
+          poster_path: it.poster_url ?? null,
+          vote_average: it.vote_average ?? undefined,
+          vote_count: it.vote_count ?? undefined,
+          logo_url: it.logo_url ?? null,
+          backdrop_path: it.backdrop_url ?? undefined,
+        } as unknown as Movie;
+      });
+
+    return matches;
+  }, [manifestItems, query]);
 
   const visibleResults = useMemo(() => {
-    const base = filterBlockedPosts(mergedBase);
+    const dbKeys = new Set(dbStubMatches.map((m) => `${m.id}-${m.media_type}`));
+    const tmdbFiltered = tmdbResults.filter((m) => !dbKeys.has(`${m.id}-${m.media_type}`));
 
-    return isAdmin && showOnlyDbLinked
-      ? base.filter((it) => {
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        })
-      : base;
-  }, [filterBlockedPosts, getAvailability, isAdmin, mergedBase, showOnlyDbLinked]);
+    // Strict DB-first ordering
+    const combined = [...dbStubMatches, ...tmdbFiltered];
+    const moderated = filterBlockedPosts(combined);
+
+    if (!(isAdmin && showOnlyDbLinked)) return moderated;
+
+    // Admin-only: DB links only (use manifest availability flags)
+    return moderated.filter((it) => {
+      const a = manifestAvailabilityById.get(it.id);
+      return a ? a.hasWatch || a.hasDownload : false;
+    });
+  }, [dbStubMatches, filterBlockedPosts, isAdmin, manifestAvailabilityById, showOnlyDbLinked, tmdbResults]);
 
   // Preload hover images in the background ONLY (never gate the search grid on this).
   usePageHoverPreload(visibleResults, { enabled: !isLoading });
 
   // Only show skeletons before we have any real results to render.
-  const pageIsLoading = visibleResults.length === 0 && (isLoading || isModerationLoading || isAvailabilityLoading);
+  const pageIsLoading = visibleResults.length === 0 && (isLoading || isModerationLoading || isManifestLoading);
 
   // Restore cached results+scroll for this exact query on mount.
   useEffect(() => {
@@ -90,14 +108,14 @@ const Search = () => {
 
     restoredKeyRef.current = key;
     restoreScrollYRef.current = cached.scrollY ?? 0;
-    setResults(cached.items);
+    setTmdbResults(cached.items);
     setIsLoading(false);
   }, [getCache, query]);
 
   // Restore scroll AFTER results render.
   useEffect(() => {
     if (restoreScrollYRef.current === null) return;
-    if (results.length === 0) return;
+    if (visibleResults.length === 0) return;
 
     const y = restoreScrollYRef.current;
     restoreScrollYRef.current = null;
@@ -107,7 +125,7 @@ const Search = () => {
         window.scrollTo(0, y);
       });
     });
-  }, [results.length]);
+  }, [visibleResults.length]);
 
   // Save results+scroll so the list state survives full refresh.
   useEffect(() => {
@@ -115,14 +133,14 @@ const Search = () => {
 
     return () => {
       saveCache({
-        items: results,
+        items: tmdbResults,
         page: 1,
         hasMore: false,
         activeTab: "all",
         selectedFilters: [],
       });
     };
-  }, [saveCache, results, query]);
+  }, [saveCache, tmdbResults, query]);
 
   useEffect(() => {
     const key = query;
@@ -133,12 +151,9 @@ const Search = () => {
       return;
     }
 
-    // Increment request id so late responses from older searches can't overwrite new results
     const requestId = ++requestIdRef.current;
 
-    // Always clear results and show loading state for a fresh search
-    setResults([]);
-    setDbOnlyHydrated([]);
+    setTmdbResults([]);
     setIsLoading(true);
 
     const fetchResults = async () => {
@@ -148,57 +163,19 @@ const Search = () => {
       }
 
       try {
-        // Requirement: no category restrictions; always use multi search
         const response = await searchMulti(query);
-
         if (requestId !== requestIdRef.current) return;
 
         const baseResults = filterMinimal(
           response.results.filter((item) => item.media_type === "movie" || item.media_type === "tv")
         );
 
-        setResults(baseResults);
-
-        // DB title matches (DB-first), hydrate a small set for card display
-        const entries = (dbEntries as unknown as DbEntry[]) ?? [];
-        const q = query.trim().toLowerCase();
-        const matches = entries
-          .filter((e) => (e.title || "").toLowerCase().includes(q))
-          .slice(0, 30)
-          .map((e) => ({ id: Number(e.id), mediaType: e.type === "series" ? ("tv" as const) : ("movie" as const) }))
-          .filter((m) => Number.isFinite(m.id));
-
-        const tmdbKeys = new Set(baseResults.map((m) => `${m.id}-${m.media_type}`));
-        const toHydrate = matches.filter((m) => !tmdbKeys.has(`${m.id}-${m.mediaType}`)).slice(0, 25);
-
-        const BATCH = 5;
-        const hydrated: Movie[] = [];
-        for (let i = 0; i < toHydrate.length; i += BATCH) {
-          const batch = toHydrate.slice(i, i + BATCH);
-          const part = await Promise.all(
-            batch.map(async ({ id, mediaType }) => {
-              try {
-                if (mediaType === "movie") {
-                  const d = await getMovieDetails(id);
-                  return { ...d, media_type: "movie" as const } as Movie;
-                }
-                const d = await getTVDetails(id);
-                return { ...d, media_type: "tv" as const } as Movie;
-              } catch {
-                return null;
-              }
-            })
-          );
-          hydrated.push(...(part.filter(Boolean) as Movie[]));
-        }
-
-        if (requestId !== requestIdRef.current) return;
-        setDbOnlyHydrated(hydrated);
+        // TMDB is always secondary; DB matches are rendered first via dbStubMatches.
+        setTmdbResults(baseResults);
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Search failed:", error);
-        setResults([]);
-        setDbOnlyHydrated([]);
+        setTmdbResults([]);
       } finally {
         if (requestId === requestIdRef.current) {
           setIsLoading(false);
@@ -207,13 +184,13 @@ const Search = () => {
     };
 
     fetchResults();
-  }, [query, refreshKey, getCache, dbEntries]);
+  }, [query, refreshKey]);
 
   return (
     <>
       <Helmet>
         <title>{query ? `Search: ${query}` : "Search"} - DanieWatch</title>
-        <meta name="description" content={`Search results for ${query}`} />
+        <meta name="description" content={query ? `Search results for ${query}` : "Search movies and TV shows"} />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -221,11 +198,9 @@ const Search = () => {
           {query ? (
             <>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl md:text-3xl font-bold">Search Results for "{query}"</h1>
+                <h1 className="text-2xl md:text-3xl font-bold">Search Results for \"{query}\"</h1>
               </div>
-              <p className="text-muted-foreground mb-8">
-                {pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}
-              </p>
+              <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}</p>
             </>
           ) : (
             <div className="text-center py-20">
@@ -260,7 +235,7 @@ const Search = () => {
           {/* No Results */}
           {!pageIsLoading && query && visibleResults.length === 0 && (
             <div className="text-center py-20">
-              <p className="text-xl text-muted-foreground">No results found for "{query}"</p>
+              <p className="text-xl text-muted-foreground">No results found for \"{query}\"</p>
               <p className="text-muted-foreground mt-2">Try searching for something else</p>
             </div>
           )}
@@ -273,3 +248,4 @@ const Search = () => {
 };
 
 export default Search;
+
