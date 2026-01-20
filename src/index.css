@@ -153,19 +153,36 @@ html[data-initial-splash="1"] body {
 }
 
 @keyframes dwSplashMateria {
+  /* Last beat: bounce UP, then expand into a navbar strip (like your reference) */
   0% {
     background: hsl(var(--primary));
+    top: 50%;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    opacity: 1;
   }
-  50% {
+  /* Pop upward */
+  28% {
+    top: 10%;
     background: hsl(var(--primary));
-    top: 26px;
   }
+  /* Small bounce down */
+  44% {
+    top: 16%;
+  }
+  /* Settle to the very top edge */
+  62% {
+    top: 0;
+    background: hsl(var(--primary));
+  }
+  /* Expand into the navbar */
   100% {
+    top: 0;
     background: hsl(var(--background));
     width: 100%;
     height: 64px;
     border-radius: 0;
-    top: 0;
     opacity: 0;
   }
 }
