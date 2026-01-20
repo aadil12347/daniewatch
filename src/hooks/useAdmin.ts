@@ -448,25 +448,85 @@ export const useAdmin = () => {
   useEffect(() => {
     if (!isAdmin || !isSupabaseConfigured) return;
 
+    const selectWithMeta = '*, request_meta ( tmdb_id, media_type )';
+
     const channel = supabase
       .channel('admin-requests-realtime')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'requests' },
         (payload) => {
+          const insertedId = (payload.new as { id?: string } | null)?.id;
           console.log('New request received:', payload.new);
-          setAllRequests((prev) => [payload.new as AdminRequest, ...prev]);
+
           setRequestsError(null);
+
+          // payload.new does NOT include joined request_meta; fetch the joined row so admins can see Post Code.
+          if (!insertedId) {
+            setAllRequests((prev) => [payload.new as AdminRequest, ...prev]);
+            return;
+          }
+
+          void (async () => {
+            const { data, error } = await supabase
+              .from('requests')
+              .select(selectWithMeta)
+              .eq('id', insertedId)
+              .maybeSingle();
+
+            if (error) {
+              console.error('Error fetching request with meta (INSERT):', error);
+              setAllRequests((prev) => {
+                if (prev.some((r) => r.id === insertedId)) return prev;
+                return [payload.new as AdminRequest, ...prev];
+              });
+              return;
+            }
+
+            if (data) {
+              setAllRequests((prev) => [data as AdminRequest, ...prev.filter((r) => r.id !== insertedId)]);
+            }
+          })();
         }
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'requests' },
         (payload) => {
+          const updatedId = (payload.new as { id?: string } | null)?.id;
           console.log('Request updated:', payload.new);
-          setAllRequests((prev) =>
-            prev.map((r) => (r.id === (payload.new as AdminRequest).id ? (payload.new as AdminRequest) : r))
-          );
+
+          if (!updatedId) return;
+
+          // Same issue as INSERT: UPDATE payload won't include joined request_meta.
+          void (async () => {
+            const { data, error } = await supabase
+              .from('requests')
+              .select(selectWithMeta)
+              .eq('id', updatedId)
+              .maybeSingle();
+
+            if (error) {
+              console.error('Error fetching request with meta (UPDATE):', error);
+              setAllRequests((prev) =>
+                prev.map((r) => {
+                  if (r.id !== updatedId) return r;
+                  const next = payload.new as AdminRequest;
+                  return {
+                    ...r,
+                    ...next,
+                    // keep existing joined meta if the refetch failed
+                    request_meta: r.request_meta ?? next.request_meta ?? null,
+                  };
+                })
+              );
+              return;
+            }
+
+            if (data) {
+              setAllRequests((prev) => prev.map((r) => (r.id === updatedId ? (data as AdminRequest) : r)));
+            }
+          })();
         }
       )
       .on(
