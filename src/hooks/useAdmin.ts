@@ -2,39 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-const OWNER_EMAIL = 'mdaniyalaadil@gmail.com';
-const ADMIN_CACHE_KEY = 'admin_status_cache';
-
-// Get cached admin status instantly (sync)
-const getCachedAdminStatus = (): { isAdmin: boolean; isOwner: boolean } | null => {
-  try {
-    const cached = localStorage.getItem(ADMIN_CACHE_KEY);
-    if (cached) {
-      return JSON.parse(cached);
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return null;
-};
-
-// Save admin status to cache
-const setCachedAdminStatus = (isAdmin: boolean, isOwner: boolean) => {
-  try {
-    localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify({ isAdmin, isOwner }));
-  } catch {
-    // Ignore storage errors
-  }
-};
-
-// Clear admin cache on logout
-const clearAdminCache = () => {
-  try {
-    localStorage.removeItem(ADMIN_CACHE_KEY);
-  } catch {
-    // Ignore errors
-  }
-};
+// IMPORTANT SECURITY:
+// - Roles are stored in the separate `user_roles` table.
+// - Do NOT trust localStorage/sessionStorage or hardcoded emails for admin/owner checks.
+// - Always validate via the database (and enforce access via RLS policies).
 
 export interface UserRole {
   id: string;
@@ -82,63 +53,42 @@ const normalizeAdminRequest = (req: AdminRequestRow): AdminRequest => ({
 
 export const useAdmin = () => {
   const { user } = useAuth();
-  // Initialize from cache for instant display
-  const cached = getCachedAdminStatus();
-  const [isAdmin, setIsAdmin] = useState(cached?.isAdmin ?? false);
-  const [isOwner, setIsOwner] = useState(cached?.isOwner ?? false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [allRequests, setAllRequests] = useState<AdminRequest[]>([]);
   const [admins, setAdmins] = useState<UserRole[]>([]);
   const [requestsError, setRequestsError] = useState<string | null>(null);
 
-  // Check if user is admin
+  // Check if user is admin/owner (database-driven; do not trust client-side checks)
   const checkAdminStatus = async () => {
     if (!user || !isSupabaseConfigured) {
       setIsAdmin(false);
       setIsOwner(false);
-      clearAdminCache();
       setIsLoading(false);
       return;
     }
 
-    try {
-      // Check if user is owner by email
-      const userIsOwner = user.email === OWNER_EMAIL;
-      setIsOwner(userIsOwner);
+    setIsLoading(true);
 
-      // Check user_roles table
+    try {
+      // NOTE: `is_owner` must exist on `user_roles` (boolean, default false)
       const { data, error } = await supabase
         .from('user_roles')
-        .select('*')
+        .select('role, is_owner')
         .eq('user_id', user.id)
         .eq('role', 'admin')
         .maybeSingle();
 
-      if (error) {
-        console.error('Error checking admin status:', error);
-        // If owner but not in table yet, still consider admin
-        setIsAdmin(userIsOwner);
-        setCachedAdminStatus(userIsOwner, userIsOwner);
-      } else {
-        const adminStatus = !!data || userIsOwner;
-        setIsAdmin(adminStatus);
-        setCachedAdminStatus(adminStatus, userIsOwner);
-      }
+      if (error) throw error;
 
-      // If owner and not in user_roles, auto-add
-      if (userIsOwner && !data) {
-        await supabase.from('user_roles').upsert(
-          {
-            user_id: user.id,
-            role: 'admin',
-            is_owner: true,
-          },
-          { onConflict: 'user_id,role' }
-        );
-      }
+      const adminStatus = !!data;
+      setIsAdmin(adminStatus);
+      setIsOwner(!!data?.is_owner);
     } catch (error) {
-      console.error('Error in checkAdminStatus:', error);
+      console.error('Error checking admin status:', error);
       setIsAdmin(false);
+      setIsOwner(false);
     } finally {
       setIsLoading(false);
     }
