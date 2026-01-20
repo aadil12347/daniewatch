@@ -1,15 +1,10 @@
+import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { X, Search as SearchIcon } from "lucide-react";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import {
-  filterMinimal,
-  searchAnimeScoped,
-  searchKoreanScoped,
-  searchMergedGlobal,
-  type Movie,
-} from "@/lib/tmdb";
+import { BLOCKED_IDS, Movie, searchAnimeScoped, searchKoreanScoped, searchMergedGlobal } from "../lib/tmdb";
 import { isAllowedOnMoviesPage, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useSearchOverlay } from "@/contexts/SearchOverlayContext";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -84,7 +79,7 @@ export const SearchOverlay = () => {
 
         // Movies / TV / Global: merged TMDB search + minimal filter + scope filter.
         const res = await searchMergedGlobal(q);
-        let items = filterMinimal(res.results);
+        let items: Movie[] = (res.results as Movie[]).filter((it) => !it.adult && !BLOCKED_IDS.has(it.id));
 
         if (scope === "movies") {
           items = items.filter((it) => isAllowedOnMoviesPage({ media_type: (it.media_type as any) ?? "movie" }));
