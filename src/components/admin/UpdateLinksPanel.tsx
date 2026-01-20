@@ -19,7 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useEntries } from "@/hooks/useEntries";
 import { useEntriesTrash, TrashedEntry } from "@/hooks/useEntriesTrash";
 import { useToast } from "@/hooks/use-toast";
-import { getMovieDetails, getTVDetails, getImageUrl } from "@/lib/tmdb";
+import { getMovieDetails, getMovieImages, getTVDetails, getTVImages, getImageUrl } from "@/lib/tmdb";
 import { supabase } from "@/integrations/supabase/client";
 
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MetadataBackfillTool } from "@/components/admin/MetadataBackfillTool";
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
+import { ArtworkBackfillTool } from "@/components/admin/ArtworkBackfillTool";
 
 interface TMDBResult {
   id: number;
@@ -311,9 +312,26 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     setIsSaving(true);
 
     try {
+      const media_updated_at = new Date().toISOString();
+
+      const pickLogoUrl = (logos: { file_path: string; iso_639_1: string | null }[]) => {
+        if (!logos?.length) return null;
+        const preferred = logos.find((l) => l.iso_639_1 === "en") ?? logos.find((l) => l.iso_639_1 == null) ?? logos[0];
+        return getImageUrl(preferred?.file_path ?? null, "w500");
+      };
+
       if (tmdbResult.type === "movie") {
-        // Fetch full TMDB details to get language and country
-        const details = await getMovieDetails(tmdbResult.id);
+        // Fetch full TMDB details + images to capture artwork + rating.
+        const [details, images] = await Promise.all([getMovieDetails(tmdbResult.id), getMovieImages(tmdbResult.id)]);
+
+        const media = {
+          poster_url: getImageUrl(details.poster_path, "w342"),
+          backdrop_url: getImageUrl(details.backdrop_path, "original"),
+          logo_url: pickLogoUrl(images.logos),
+          vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
+          vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
+          media_updated_at,
+        };
 
         const result = await saveMovieEntry(
           String(tmdbResult.id),
@@ -324,17 +342,27 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           tmdbResult.releaseYear ?? null,
           tmdbResult.title,
           details.original_language || null,
-          details.production_countries?.map((c: any) => c.iso_3166_1) || null
+          details.production_countries?.map((c: any) => c.iso_3166_1) || null,
+          media
         );
         if (result.success) {
           setEntryExists(true);
         }
       } else {
-        // Fetch full TMDB details to get language and country
-        const details = await getTVDetails(tmdbResult.id);
+        // Fetch full TMDB details + images to capture artwork + rating.
+        const [details, images] = await Promise.all([getTVDetails(tmdbResult.id), getTVImages(tmdbResult.id)]);
 
         const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
         const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
+
+        const media = {
+          poster_url: getImageUrl(details.poster_path, "w342"),
+          backdrop_url: getImageUrl(details.backdrop_path, "original"),
+          logo_url: pickLogoUrl(images.logos),
+          vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
+          vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
+          media_updated_at,
+        };
 
         const result = await saveSeriesSeasonEntry(
           String(tmdbResult.id),
@@ -346,7 +374,8 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           tmdbResult.releaseYear ?? null,
           tmdbResult.title,
           details.original_language || null,
-          details.origin_country || null
+          details.origin_country || null,
+          media
         );
         if (result.success) {
           setEntryExists(true);
@@ -961,6 +990,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
         <TabsContent value="tools" className="space-y-4">
           <ManifestUpdateTool />
+          <ArtworkBackfillTool />
           <MetadataBackfillTool />
         </TabsContent>
       </Tabs>
