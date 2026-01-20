@@ -119,7 +119,7 @@ const Korean = () => {
 
       // Korean page scope + anime exclusion
       if (!(inLang || inCountry)) continue;
-      if (lang === "ja" && item.genre_ids.includes(16)) continue;
+      if (lang === "ja" && item.genre_ids?.includes(16)) continue;
 
       const sortYear = item.release_year ?? 0;
       const hasLinks = item.hasWatch || item.hasDownload;
@@ -448,7 +448,7 @@ const Korean = () => {
         // Hydrate DB-only items *before* we reveal the first batch (prevents reorder-jumps)
         if (reset && manifestMetaByKey.size > 0) {
           const tmdbKeys = new Set(uniqueVisible.map((m) => getKey(m)));
-          await hydrateDbOnly(tmdbKeys, 36);
+          await hydrateDbOnly(tmdbKeys, 60);
         }
 
         if (reset) {
@@ -512,7 +512,7 @@ const Korean = () => {
         if (!entries[0].isIntersecting) return;
         if (isLoading || isLoadingMore || pendingLoadMore) return;
 
-        const hasBuffered = displayCount < visibleItems.length;
+        const hasBuffered = displayCount < filteredVisibleItems.length;
         if (!hasBuffered && !hasMore) return;
 
         setPendingLoadMore(true);
@@ -525,13 +525,13 @@ const Korean = () => {
     }
 
     return () => observerRef.current?.disconnect();
-  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleItems.length]);
+  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, filteredVisibleItems.length]);
 
   // Resolve pending "load more": reveal from buffer first, otherwise fetch next TMDB page.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
-    const hasBuffered = displayCount < visibleItems.length;
+    const hasBuffered = displayCount < filteredVisibleItems.length;
     if (hasBuffered) {
       setAnimateFromIndex(displayCount);
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, filteredVisibleItems.length));
@@ -549,7 +549,7 @@ const Korean = () => {
       void (async () => {
         try {
           const tmdbKeys = new Set(items.map((m) => getKey(m)));
-          await hydrateDbOnly(tmdbKeys, 36);
+          await hydrateDbOnly(tmdbKeys, 60);
           setDisplayCount((prev) => prev + BATCH_SIZE);
         } finally {
           setIsLoadingMore(false);
