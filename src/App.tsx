@@ -16,8 +16,8 @@ import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Navbar } from "@/components/Navbar";
-import { MotionBlurCursor } from "@/components/MotionBlurCursor";
 import { SearchOverlay } from "@/components/SearchOverlay";
+import { PerformanceModeProvider } from "@/contexts/PerformanceModeContext";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -106,29 +106,30 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TutorialProvider>
-          <MediaProvider>
-            <AdminContentVisibilityProvider>
-              <SearchOverlayProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <MotionBlurCursor />
-                  <BrowserRouter>
-                    <ErrorBoundary>
-                      <Navbar />
-                      <SearchOverlay />
-                      <GlobalRouteLoader />
-                      <AppContent />
-                      <FloatingRequestButton />
-                      <TutorialOverlay />
-                    </ErrorBoundary>
-                  </BrowserRouter>
-                </TooltipProvider>
-              </SearchOverlayProvider>
-            </AdminContentVisibilityProvider>
-          </MediaProvider>
-        </TutorialProvider>
+        <PerformanceModeProvider>
+          <TutorialProvider>
+            <MediaProvider>
+              <AdminContentVisibilityProvider>
+                <SearchOverlayProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
+                    <BrowserRouter>
+                      <ErrorBoundary>
+                        <Navbar />
+                        <SearchOverlay />
+                        <GlobalRouteLoader />
+                        <AppContent />
+                        <FloatingRequestButton />
+                        <TutorialOverlay />
+                      </ErrorBoundary>
+                    </BrowserRouter>
+                  </TooltipProvider>
+                </SearchOverlayProvider>
+              </AdminContentVisibilityProvider>
+            </MediaProvider>
+          </TutorialProvider>
+        </PerformanceModeProvider>
       </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>
