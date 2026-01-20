@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -186,6 +187,8 @@ export const Navbar = () => {
 
     if (!searchQuery.trim()) return;
 
+    haptic("tap");
+
     // Stay on the same page: open overlay + strict scope.
     openSearchOverlay({
       query: searchQuery.trim(),
@@ -194,6 +197,7 @@ export const Navbar = () => {
   };
 
   const handleClearSearch = () => {
+    haptic("tap");
     setSearchQuery("");
     closeSearchOverlay();
   };
@@ -285,6 +289,7 @@ export const Navbar = () => {
                 <Link
                   key={link.to}
                   to={link.to}
+                  onClick={() => haptic("tap")}
                   className={cn(
                     "nav-link-glow flex items-center gap-2 transition-all duration-300",
                     isActive && "nav-link-glow-active",
@@ -332,7 +337,10 @@ export const Navbar = () => {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setIsSearchOpen(true)}
+                  onClick={() => {
+                    haptic("tap");
+                    setIsSearchOpen(true);
+                  }}
                   className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
                   aria-label="Search"
                   data-tutorial="search"
@@ -348,7 +356,10 @@ export const Navbar = () => {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-1 rounded-full hover:bg-secondary/50 transition-colors">
+                  <button
+                    className="p-1 rounded-full hover:bg-secondary/50 transition-colors"
+                    onClick={() => haptic("tap")}
+                  >
                     <Avatar className="w-8 h-8">
                       <AvatarFallback className="bg-primary/20 text-primary text-sm">
                         {user.email?.charAt(0).toUpperCase() || 'U'}
@@ -361,7 +372,13 @@ export const Navbar = () => {
                   <DropdownMenuSeparator />
 
                   <DropdownMenuLabel className="text-xs">Rendering</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={mode} onValueChange={(v) => setMode(v as any)}>
+                  <DropdownMenuRadioGroup
+                    value={mode}
+                    onValueChange={(v) => {
+                      haptic("tap");
+                      setMode(v as any);
+                    }}
+                  >
                     <DropdownMenuRadioItem value="quality">Quality</DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="performance">Performance</DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
@@ -412,7 +429,13 @@ export const Navbar = () => {
                   )}
 
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      haptic("tap");
+                      signOut();
+                    }}
+                    className="cursor-pointer text-destructive"
+                  >
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
                   </DropdownMenuItem>
@@ -421,6 +444,7 @@ export const Navbar = () => {
             ) : (
               <Link
                 to="/auth"
+                onClick={() => haptic("tap")}
                 className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
                 aria-label="Sign in"
               >
@@ -503,7 +527,10 @@ export const Navbar = () => {
                 >
                   <Link
                     to={link.to}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={() => {
+                      haptic("tap");
+                      setIsMenuOpen(false);
+                    }}
                     className={cn(
                       "nav-link-glow flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200",
                       location.pathname === link.to

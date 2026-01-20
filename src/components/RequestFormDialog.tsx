@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { useRequests } from "@/hooks/useRequests";
 import { useToast } from "@/hooks/use-toast";
+import { haptic } from "@/lib/haptics";
 
 const requestSchema = z.object({
   request_type: z.enum(['movie', 'tv_season', 'general']),
@@ -99,12 +100,14 @@ export const RequestFormDialog = ({
     setIsSubmitting(false);
 
     if (error) {
+      haptic("error");
       toast({
         title: "Error",
         description: "Failed to submit request. Please try again.",
         variant: "destructive",
       });
     } else {
+      haptic("success");
       toast({
         title: "Request Submitted!",
         description: "We'll review your request and get back to you soon.",

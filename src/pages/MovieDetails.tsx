@@ -35,6 +35,7 @@ import {
   getYear,
 } from "@/lib/tmdb";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { haptic } from "@/lib/haptics";
 
 type MovieDetailsProps = {
   modal?: boolean;
@@ -406,6 +407,7 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
                     variant="outline"
                     className="w-11 h-11 md:w-10 md:h-10 rounded-md md:rounded-lg bg-secondary/50 border-2 border-primary/80 text-primary backdrop-blur-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]"
                     onClick={() => {
+                      haptic("tap");
                       window.open(mediaResult.downloadUrl, "_blank");
                     }}
                   >
