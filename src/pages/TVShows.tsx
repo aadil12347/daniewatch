@@ -11,6 +11,7 @@ import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
@@ -56,24 +57,28 @@ const TVShows = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
+  
+  // Use manifest for DB metadata (fast, cached)
   const {
-    entries: dbEntries,
-    metaByKey,
-    getDbMetaByKey,
-    getAvailability,
-    isLoading: isAvailabilityLoading,
-  } = useEntryAvailability();
+    items: manifestItems,
+    metaByKey: manifestMetaByKey,
+    availabilityById: manifestAvailabilityById,
+    getManifestMetaByKey,
+    isLoading: isManifestLoading,
+  } = useDbManifest();
+
+  // Fallback to live DB query for admin indicators
+  const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
   const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
 
-  const normalizedDbEntries = useMemo(() => (dbEntries as unknown as DbEntry[]) ?? [], [dbEntries]);
-
+  // Build DB entries from manifest
   const dbEntriesMatchingFilters = useMemo(() => {
-    return normalizedDbEntries.filter((e) => {
-      if (e.type !== "series") return false;
+    return manifestItems.filter((item) => {
+      if (item.media_type !== "tv") return false;
 
-      const genreIds = e.genre_ids ?? [];
-      const year = e.release_year ?? null;
+      const genreIds = item.genre_ids ?? [];
+      const year = item.release_year ?? null;
 
       // Genre filter (overlap)
       if (selectedGenres.length > 0) {
@@ -92,18 +97,20 @@ const TVShows = () => {
 
       return true;
     });
-  }, [normalizedDbEntries, selectedGenres, selectedYear]);
+  }, [manifestItems, selectedGenres, selectedYear]);
 
   const hydrateDbOnlyNow = useCallback(
     async (tmdbKeys: Set<string>, limit: number) => {
-      if (metaByKey.size === 0) return [] as Movie[];
+      if (manifestMetaByKey.size === 0) return [] as Movie[];
 
       const candidates = dbEntriesMatchingFilters
-        .map((e) => ({ id: Number(e.id), sortYear: e.release_year ?? 0 }))
+        .map((item) => ({ id: item.id, sortYear: item.release_year ?? 0, hasLinks: item.hasWatch || item.hasDownload }))
         .filter((e) => Number.isFinite(e.id))
-        .filter((e) => metaByKey.has(`${e.id}-tv`))
         .filter((e) => !tmdbKeys.has(`${e.id}-tv`))
-        .sort((a, b) => (b.sortYear ?? 0) - (a.sortYear ?? 0));
+        .sort((a, b) => {
+          if (a.hasLinks !== b.hasLinks) return a.hasLinks ? -1 : 1;
+          return (b.sortYear ?? 0) - (a.sortYear ?? 0);
+        });
 
       const picked = candidates.slice(0, limit);
       if (picked.length === 0) return [] as Movie[];
@@ -130,7 +137,7 @@ const TVShows = () => {
 
       return results;
     },
-    [dbEntriesMatchingFilters, metaByKey]
+    [dbEntriesMatchingFilters, manifestMetaByKey]
   );
 
   const requestTmdbPage = useCallback(
@@ -257,7 +264,7 @@ const TVShows = () => {
     resetPaginationState();
   }, [selectedGenres, selectedYear, resetPaginationState]);
 
-  const canFinalizeVisibility = !isModerationLoading && !isAvailabilityLoading;
+  const canFinalizeVisibility = !isModerationLoading && !isManifestLoading;
 
   // Initial load: fetch in background and commit ONCE (prevents show-then-filter flashes)
   useEffect(() => {
@@ -295,16 +302,21 @@ const TVShows = () => {
     return mergeDbAndTmdb({
       tmdbItems: displayShows,
       dbOnlyHydratedItems: dbOnlyHydrated,
-      isDbItem: (key) => metaByKey.has(key),
-      getDbMeta: getDbMetaByKey,
+      isDbItem: (key) => manifestMetaByKey.has(key),
+      getDbMeta: getManifestMetaByKey,
     });
-  }, [dbOnlyHydrated, displayShows, getDbMetaByKey, metaByKey]);
+  }, [dbOnlyHydrated, displayShows, getManifestMetaByKey, manifestMetaByKey]);
 
   const visibleShows = useMemo(() => {
     const base = filterBlockedPosts(mergedBase, "tv");
 
     return needsDbLinkedFilter
       ? base.filter((it) => {
+          // Use manifest availability first (fast), fallback to live query
+          const manifestAvail = manifestAvailabilityById.get(it.id);
+          if (manifestAvail) {
+            return manifestAvail.hasWatch || manifestAvail.hasDownload;
+          }
           const a = getAvailability(it.id);
           return a.hasWatch || a.hasDownload;
         })
