@@ -1,5 +1,7 @@
+import React from "react";
 import { useMemo } from "react";
 import { Helmet } from "react-helmet-async";
+
 import { Link } from "react-router-dom";
 
 import { Footer } from "@/components/Footer";
@@ -14,6 +16,7 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { groupDbLinkedFirst } from "@/lib/sortContent";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 const Watchlist = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
@@ -45,6 +48,7 @@ const Watchlist = () => {
 
   const pageIsLoading = loading || isModerationLoading || isHoverPreloadLoading || isAvailabilityLoading;
 
+  useRouteContentReady(!user || !pageIsLoading);
   return (
     <>
       <Helmet>

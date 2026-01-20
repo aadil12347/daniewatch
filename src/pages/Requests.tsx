@@ -1,5 +1,7 @@
-import { useState } from "react";
+import React from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
+
 
 import { Footer } from "@/components/Footer";
 import { useRequests, Request } from "@/hooks/useRequests";
@@ -23,6 +25,7 @@ import {
 import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 const getStatusBadge = (status: Request['status']) => {
   switch (status) {
@@ -116,6 +119,8 @@ const Requests = () => {
   const { requests, isLoading, deleteRequest, clearAllRequests } = useRequests();
   const { toast } = useToast();
   const [isClearing, setIsClearing] = useState(false);
+
+  useRouteContentReady(!user || !isLoading);
 
   const handleDelete = async (id: string) => {
     const { error } = await deleteRequest(id);

@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
+
 
 import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
@@ -8,6 +10,7 @@ import { Footer } from "@/components/Footer";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { usePreloadImages } from "@/hooks/usePreloadImages";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import {
   getTrending,
   getPopularMovies,
@@ -68,6 +71,9 @@ const Index = () => {
 
   const aboveFoldReady = hoverTotal === 0 ? true : hoverLoaded / hoverTotal >= SHOW_THRESHOLD;
   const pageIsLoading = isLoading || isModerationLoading || isAvailabilityLoading || !aboveFoldReady;
+
+  // Home exception: keep loader until Hero + Top 10 are ready.
+  useRouteContentReady(!pageIsLoading && trending.length >= Math.min(10, trending.length || 10));
 
   useEffect(() => {
     const fetchData = async () => {

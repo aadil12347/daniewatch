@@ -1,7 +1,9 @@
+import React from "react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/contexts/AuthContext";
+
 import { setTutorialFlag } from "@/contexts/TutorialContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, ArrowLeft, User, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 type AuthMode = "select" | "login" | "signup" | "forgot";
 

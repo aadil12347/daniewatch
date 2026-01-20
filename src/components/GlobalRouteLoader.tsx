@@ -122,16 +122,11 @@ export function GlobalRouteLoader() {
     if (!rawWanted && timedOut) setTimedOut(false);
   }, [rawWanted, timedOut]);
 
-  // Clear pending state once there are no requests left (or once page reports content ready).
-  useEffect(() => {
-    if (!routePending) return;
-    if (contentReadyRef.current) return;
-    if (inflight > 0) return;
+  // IMPORTANT: we no longer auto-hide just because network is idle.
+  // Pages must explicitly report "content ready" (after their first meaningful render),
+  // otherwise the loader stays up until the hard timeout.
+  // This prevents the overlay from disappearing before the initial grid batch is actually visible.
 
-    // Let the new page paint first, then hide.
-    const raf = requestAnimationFrame(() => setRoutePending(false));
-    return () => cancelAnimationFrame(raf);
-  }, [inflight, routePending]);
 
   const wanted = rawWanted && !timedOut;
 
