@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { haptic } from '@/lib/haptics';
 
 import { Movie } from '@/lib/tmdb';
 
@@ -86,6 +87,7 @@ export const useWatchlist = () => {
     };
     setWatchlist(prev => [newItem, ...prev]);
 
+    haptic("confirm");
     toast({ title: "Added to watchlist" });
 
     try {
@@ -131,6 +133,7 @@ export const useWatchlist = () => {
       item => !(item.tmdb_id === tmdbId && item.media_type === mediaType)
     ));
 
+    haptic("confirm");
     toast({ title: "Removed from watchlist" });
 
     try {

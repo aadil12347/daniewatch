@@ -1,6 +1,8 @@
+import React from "react";
 import { Play, Download } from "lucide-react";
 import { Episode, getImageUrl } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 
 interface EpisodeCardProps {
   episode: Episode;
@@ -17,6 +19,7 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (downloadLink) {
+      haptic("tap");
       window.open(downloadLink, '_blank');
     }
   };

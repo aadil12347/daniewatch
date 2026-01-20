@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { cn } from "@/lib/utils";
 import { RequestHelpSheet } from "@/components/RequestHelpSheet";
+import { haptic } from "@/lib/haptics";
 
 export const FloatingRequestButton = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,6 +27,7 @@ export const FloatingRequestButton = () => {
   if (isAdmin || isOwner || isVideoPlaying || isDetailsModalOpen) return null;
 
   const handleButtonClick = () => {
+    haptic("tap");
     if (!user) {
       // Redirect non-authenticated users to signup
       navigate("/auth");
