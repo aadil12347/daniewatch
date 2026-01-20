@@ -36,7 +36,7 @@ export const Navbar = () => {
   const navRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { open: openSearchOverlay, close: closeSearchOverlay } = useSearchOverlay();
+  const { open: openSearchOverlay, close: closeSearchOverlay, isOpen: isSearchResultsOpen } = useSearchOverlay();
 
   const setIsSearchOpen = (next: boolean) => {
     _setIsSearchOpen(next);
@@ -166,6 +166,11 @@ export const Navbar = () => {
     });
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    closeSearchOverlay();
+  };
+
   const handleBack = () => {
     if (window.history.length > 1) {
       navigate(-1);
@@ -287,10 +292,12 @@ export const Navbar = () => {
                     autoFocus
                   />
                   <button
-                    type="submit"
+                    type={searchQuery.trim() ? "button" : "submit"}
+                    onClick={searchQuery.trim() ? handleClearSearch : undefined}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={searchQuery.trim() ? "Clear search" : "Search"}
                   >
-                    <Search className="w-4 h-4" />
+                    {searchQuery.trim() && isSearchResultsOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
                   </button>
                 </div>
               ) : (
