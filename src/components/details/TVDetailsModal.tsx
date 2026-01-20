@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { MessageSquarePlus } from "lucide-react";
 
 import TVDetails from "@/pages/TVDetails";
@@ -12,8 +12,11 @@ import { RequestHelpSheet } from "@/components/RequestHelpSheet";
 
 export default function TVDetailsModal() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentMedia } = useMedia();
   const [requestOpen, setRequestOpen] = useState(false);
+
+  const isPlayerOpen = new URLSearchParams(location.search).get("watch") === "1";
 
   return (
     <Dialog
@@ -33,16 +36,18 @@ export default function TVDetailsModal() {
           </div>
 
           {/* Match the page's floating Request button placement */}
-          <Button
-            size="icon"
-            onClick={() => setRequestOpen(true)}
-            disabled={!currentMedia}
-            aria-label="Request this title"
-            title={!currentMedia ? "Loading title…" : "Request"}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 hover:scale-110 animate-pulse-glow"
-          >
-            <MessageSquarePlus className="w-6 h-6" />
-          </Button>
+          {!isPlayerOpen && (
+            <Button
+              size="icon"
+              onClick={() => setRequestOpen(true)}
+              disabled={!currentMedia}
+              aria-label="Request this title"
+              title={!currentMedia ? "Loading title…" : "Request"}
+              className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 hover:scale-110 animate-pulse-glow"
+            >
+              <MessageSquarePlus className="w-6 h-6" />
+            </Button>
+          )}
 
           <RequestHelpSheet
             open={requestOpen}
