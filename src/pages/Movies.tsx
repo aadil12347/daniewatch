@@ -217,7 +217,15 @@ const Movies = () => {
         original_title: title,
         genre_ids,
         release_date: releaseYear ? `${releaseYear}-01-01` : "",
-        poster_path: null,
+
+        // Manifest already stores full image URLs.
+        poster_path: meta?.poster_url ?? null,
+
+        // Extra fields MovieCard can use immediately.
+        vote_average: meta?.vote_average ?? undefined,
+        vote_count: meta?.vote_count ?? undefined,
+        logo_url: meta?.logo_url ?? null,
+        backdrop_path: meta?.backdrop_url ?? undefined,
       } as unknown as Movie;
     });
   }, [dbCandidates, manifestItemByKey]);
@@ -267,6 +275,17 @@ const Movies = () => {
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleMovies, { enabled: !isLoading });
+
+  // If we have DB items from the manifest, show them immediately (even before TMDB fetch/hydration finishes).
+  useEffect(() => {
+    if (isRestoredFromCache) return;
+    if (displayCount > 0) return;
+    if (isManifestLoading) return;
+
+    if (filteredDbItems.length > 0) {
+      setDisplayCount(Math.min(BATCH_SIZE, filteredDbItems.length));
+    }
+  }, [displayCount, filteredDbItems.length, isManifestLoading, isRestoredFromCache]);
 
   // Only show skeletons before we have any real items to render.
   const pageIsLoading = displayCount === 0 && (isLoading || isModerationLoading || isManifestLoading);
