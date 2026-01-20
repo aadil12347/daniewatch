@@ -209,6 +209,9 @@ html {
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'DM Sans', sans-serif;
+    /* Reserve space for the fixed Navbar so content never sits behind it */
+    padding-top: var(--app-header-offset);
+    scroll-padding-top: var(--app-header-offset);
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
