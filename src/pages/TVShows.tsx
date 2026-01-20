@@ -16,7 +16,7 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { KOREAN_LANGS, INDIAN_LANGS } from "@/lib/contentScope";
+import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScope";
 
 const BATCH_SIZE = 18;
 
@@ -220,7 +220,9 @@ const TVShows = () => {
       const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
       const response = await res.json();
 
-      const scoped = (filterAdultContent(response.results) as Movie[]).map((m) => ({ ...m, media_type: "tv" as const }));
+      const scoped = (filterAdultContent(response.results) as Movie[])
+        .map((m) => ({ ...m, media_type: "tv" as const }))
+        .filter(isAllowedOnTvPage);
 
       return {
         page: response.page as number,
