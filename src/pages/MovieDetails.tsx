@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+
 import { Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2, Ban, Pin } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
@@ -32,6 +34,7 @@ import {
   formatRuntime,
   getYear,
 } from "@/lib/tmdb";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 type MovieDetailsProps = {
   modal?: boolean;
@@ -46,11 +49,8 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
-  const [isBookmarking, setIsBookmarking] = useState(false);
-  const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
-  const [watchlistAnim, setWatchlistAnim] = useState<"add" | "remove" | null>(null);
-  const [revealOrigin, setRevealOrigin] = useState<{ x: number; y: number } | null>(null);
+
+  useRouteContentReady(!isLoading);
 
   const heroRef = useRef<HTMLDivElement | null>(null);
   const playButtonRef = useRef<HTMLButtonElement | null>(null);

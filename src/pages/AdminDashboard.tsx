@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { formatDistanceToNow } from "date-fns";
@@ -5,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Footer } from "@/components/Footer";
 import { useAdmin, AdminRequest } from "@/hooks/useAdmin";
 import { useAdminTrash, TrashedRequest } from "@/hooks/useAdminTrash";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -65,6 +67,7 @@ import {
 
 import { useToast } from "@/hooks/use-toast";
 import { BlockedPostsPanel } from "@/components/admin/BlockedPostsPanel";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
   switch (status) {
@@ -398,18 +401,21 @@ const BlockedPostsManagement = () => {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const { 
-    isAdmin, 
-    isOwner, 
-    isLoading, 
-    allRequests, 
-    requestsError, 
+  const {
+    isAdmin,
+    isOwner,
+    isLoading,
+    allRequests,
+    requestsError,
     updateRequestStatus,
     updateMultipleRequestsStatus,
     deleteRequest,
     deleteRequests,
-    refetchRequests 
+    refetchRequests,
   } = useAdmin();
+
+  useRouteContentReady(!user || !isLoading);
+
   const {
     trashedRequests,
     moveToTrash,

@@ -1,5 +1,5 @@
+import React from "react";
 import { Helmet } from "react-helmet-async";
-
 
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,10 +12,14 @@ import { Link } from "react-router-dom";
 import { Shield } from "lucide-react";
 
 import { UpdateLinksPanel } from "@/components/admin/UpdateLinksPanel";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 const UpdateLinks = () => {
   const { user } = useAuth();
   const { isAdmin, isLoading } = useAdmin();
+
+  useRouteContentReady(!isLoading);
+
 
   if (!user) {
     return (

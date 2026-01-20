@@ -17,6 +17,7 @@ import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { isKoreanScope, isAnimeScope, KOREAN_LANGS } from "@/lib/contentScope";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -35,6 +36,7 @@ const TV_ACTION_GENRE = 10759;
 const TV_FANTASY_GENRE = 10765;
 
 const BATCH_SIZE = 18;
+const INITIAL_REVEAL_COUNT = 24;
 
 // TMDB fetching for the Korean page excludes Turkish. We still allow Turkish DB entries
 // (manifest-driven) to appear if they exist in the database.
@@ -519,7 +521,7 @@ const Korean = () => {
 
         if (reset) {
           setItems(uniqueVisible);
-          setDisplayCount(BATCH_SIZE);
+          setDisplayCount(INITIAL_REVEAL_COUNT);
         } else {
           setItems((prev) => dedupe([...prev, ...uniqueVisible]));
           if (loadMoreFetchRequestedRef.current) {
@@ -562,12 +564,11 @@ const Korean = () => {
     fetchKorean(1, true);
   }, [selectedTags, selectedYear, isInitialized]);
 
-  // Tell global loader it can stop as soon as we have real content on screen.
-  useEffect(() => {
-    if (!pageIsLoading && filteredVisibleItems.length > 0) {
-      requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
-    }
-  }, [pageIsLoading, filteredVisibleItems.length]);
+  // Keep the global fullscreen loader until the first 24 tiles are actually visible.
+  const routeReady =
+    !pageIsLoading &&
+    (filteredVisibleItems.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, filteredVisibleItems.length));
+  useRouteContentReady(routeReady);
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
   useEffect(() => {

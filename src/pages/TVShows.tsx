@@ -17,8 +17,10 @@ import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScope";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 const BATCH_SIZE = 18;
+const INITIAL_REVEAL_COUNT = 24;
 
 const TVShows = () => {
   const [tmdbItems, setTmdbItems] = useState<Movie[]>([]);
@@ -188,7 +190,7 @@ const TVShows = () => {
     if (displayCount > 0) return;
     if (isManifestLoading) return;
     if (filteredDbItems.length > 0) {
-      setDisplayCount(Math.min(BATCH_SIZE, filteredDbItems.length));
+      setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
     }
   }, [displayCount, filteredDbItems.length, isManifestLoading]);
 
@@ -323,7 +325,7 @@ const TVShows = () => {
 
     // Reset reveal to DB section
     if (!isManifestLoading) {
-      setDisplayCount(Math.min(BATCH_SIZE, filteredDbItems.length));
+      setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
     } else {
       setDisplayCount(0);
     }
@@ -342,12 +344,11 @@ const TVShows = () => {
     fetchGenres();
   }, []);
 
-  // Tell global loader it can stop as soon as we have real content on screen.
-  useEffect(() => {
-    if (!pageIsLoading && visibleAll.length > 0) {
-      requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
-    }
-  }, [pageIsLoading, visibleAll.length]);
+  // Keep the global fullscreen loader until the first 24 tiles are actually visible.
+  const routeReady =
+    !pageIsLoading && (visibleAll.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, visibleAll.length));
+  useRouteContentReady(routeReady);
+
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));

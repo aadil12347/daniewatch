@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+
 import { Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
@@ -44,6 +46,7 @@ import {
   getImageUrl,
   getYear,
 } from "@/lib/tmdb";
+import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 type TVDetailsProps = {
   modal?: boolean;
