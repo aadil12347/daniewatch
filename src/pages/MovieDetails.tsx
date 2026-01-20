@@ -50,6 +50,17 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Watchlist optimistic UI + micro-animations
+  const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
+  const [watchlistAnim, setWatchlistAnim] = useState<"add" | "remove" | null>(null);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+
+  // Media links (DB -> fallback)
+  const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
+
+  // Player reveal origin (for the splash animation)
+  const [revealOrigin, setRevealOrigin] = useState<{ x: number; y: number } | null>(null);
+
   useRouteContentReady(!isLoading);
 
   const heroRef = useRef<HTMLDivElement | null>(null);
