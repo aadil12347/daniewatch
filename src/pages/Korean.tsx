@@ -75,6 +75,8 @@ const Korean = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
+  const dbHydrationCursorRef = useRef(0);
+
   const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
     const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
     return `${m.id}-${media}`;
@@ -114,20 +116,60 @@ const Korean = () => {
     });
   }, [dbEntries, normalizedDbGenreSet, selectedYear]);
 
+  const dbCandidates = useMemo(() => {
+    const allowedCountries = new Set(["KR", "CN", "TW", "HK", "TR"]);
+    const out: Array<{ id: number; mediaType: "movie" | "tv"; sortYear: number }> = [];
+
+    for (const e of dbEntriesMatchingFilters) {
+      const mediaType = e.type === "series" ? ("tv" as const) : ("movie" as const);
+      const id = Number(e.id);
+      if (!Number.isFinite(id)) continue;
+
+      const key = `${id}-${mediaType}`;
+      const meta = metaByKey.get(key);
+      if (!meta) continue;
+
+      const lang = meta.originalLanguage ?? null;
+      const origin = meta.originCountry ?? null;
+
+      const inLang = !!lang && (KOREAN_LANGS as readonly string[]).includes(lang);
+      const inCountry = Array.isArray(origin) && origin.some((c) => allowedCountries.has(c));
+
+      // Korean page scope + anime exclusion
+      if (!(inLang || inCountry)) continue;
+      if (lang === "ja" && (meta.genreIds ?? []).includes(16)) continue;
+
+      const sortYear = (typeof e.release_year === "number" && Number.isFinite(e.release_year) ? e.release_year : null) ??
+        (typeof meta.releaseYear === "number" && Number.isFinite(meta.releaseYear) ? meta.releaseYear : null) ??
+        0;
+
+      out.push({ id, mediaType, sortYear });
+    }
+
+    out.sort((a, b) => b.sortYear - a.sortYear);
+    return out;
+  }, [dbEntriesMatchingFilters, metaByKey]);
+
   const hydrateDbOnly = useCallback(
     async (tmdbKeys: Set<string>, limit: number) => {
-      const candidates = dbEntriesMatchingFilters
-        .map((e) => {
-          const mediaType = e.type === "series" ? ("tv" as const) : ("movie" as const);
-          return { id: Number(e.id), mediaType };
-        })
-        .filter((e) => Number.isFinite(e.id))
-        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
-        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`));
+      if (metaByKey.size === 0) return;
 
-      // Remove ones we already hydrated
       const hydratedKeys = new Set(dbOnlyHydrated.map((m) => getKey(m)));
-      const toHydrate = candidates.filter((c) => !hydratedKeys.has(`${c.id}-${c.mediaType}`)).slice(0, limit);
+      const toHydrate: Array<{ id: number; mediaType: "movie" | "tv" }> = [];
+
+      let cursor = dbHydrationCursorRef.current;
+      while (cursor < dbCandidates.length && toHydrate.length < limit) {
+        const c = dbCandidates[cursor];
+        cursor += 1;
+
+        const key = `${c.id}-${c.mediaType}`;
+        if (tmdbKeys.has(key)) continue;
+        if (hydratedKeys.has(key)) continue;
+
+        toHydrate.push({ id: c.id, mediaType: c.mediaType });
+      }
+      dbHydrationCursorRef.current = cursor;
+
       if (toHydrate.length === 0) return;
 
       const BATCH = 5;
@@ -152,7 +194,7 @@ const Korean = () => {
 
         const cleaned = hydrated.filter(Boolean) as Movie[];
         const strict = await filterAdultContentStrict(cleaned);
-        results.push(...strict.filter(m => isKoreanScope(m) && !isAnimeScope(m)));
+        results.push(...strict.filter((m) => isKoreanScope(m) && !isAnimeScope(m)));
       }
 
       if (results.length > 0) {
@@ -169,7 +211,7 @@ const Korean = () => {
         });
       }
     },
-    [dbEntriesMatchingFilters, dbOnlyHydrated, getKey, metaByKey]
+    [dbCandidates, dbOnlyHydrated, getKey, metaByKey.size]
   );
 
   const mergedBase = useMemo(() => {
@@ -252,6 +294,7 @@ const Korean = () => {
       if (reset) {
         setIsLoading(true);
         setDbOnlyHydrated([]);
+        dbHydrationCursorRef.current = 0;
       } else {
         setIsLoadingMore(true);
       }
@@ -405,6 +448,7 @@ const Korean = () => {
     setPage(1);
     setItems([]);
     setDbOnlyHydrated([]);
+    dbHydrationCursorRef.current = 0;
     setDisplayCount(0);
     setAnimateFromIndex(null);
     setHasMore(true);
@@ -454,6 +498,25 @@ const Korean = () => {
       return;
     }
 
+    const hasMoreDb = dbHydrationCursorRef.current < dbCandidates.length;
+    if (hasMoreDb) {
+      // Keep showing DB items first until we exhaust scoped DB candidates.
+      setAnimateFromIndex(displayCount);
+      setPendingLoadMore(false);
+      setIsLoadingMore(true);
+
+      void (async () => {
+        try {
+          const tmdbKeys = new Set(items.map((m) => getKey(m)));
+          await hydrateDbOnly(tmdbKeys, 36);
+          setDisplayCount((prev) => prev + BATCH_SIZE);
+        } finally {
+          setIsLoadingMore(false);
+        }
+      })();
+      return;
+    }
+
     if (!hasMore) {
       setPendingLoadMore(false);
       return;
@@ -464,7 +527,7 @@ const Korean = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore]);
+  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore, dbCandidates.length, getKey, hydrateDbOnly, items]);
 
   // Fetch more when page changes
   useEffect(() => {
