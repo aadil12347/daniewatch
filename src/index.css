@@ -220,6 +220,109 @@ html {
     scroll-behavior: smooth;
   }
 
+/* Performance/Quality switch overlay */
+.mode-switch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+
+  background:
+    radial-gradient(1200px 600px at 50% 45%, hsl(var(--primary) / 0.08), transparent 60%),
+    radial-gradient(900px 500px at 50% 55%, hsl(0 0% 0% / 0.45), transparent 65%),
+    hsl(var(--background) / 0.62);
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity var(--transition-smooth),
+    transform var(--transition-smooth);
+}
+
+.mode-switch-overlay[data-state="open"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mode-switch-overlay[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.mode-switch-overlay__inner {
+  width: min(1100px, 92vw);
+  padding: 4vh 4vw;
+}
+
+.mode-switch-overlay__text {
+  display: grid;
+  gap: clamp(8px, 2.2vh, 18px);
+  justify-items: center;
+  text-align: center;
+
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  line-height: 0.92;
+
+  color: hsl(var(--foreground));
+  text-shadow:
+    0 0 18px hsl(var(--primary) / 0.35),
+    0 0 46px hsl(var(--primary) / 0.22);
+}
+
+.mode-switch-overlay__line {
+  display: block;
+  font-size: clamp(40px, 9vw, 128px);
+}
+
+.mode-switch-overlay__line + .mode-switch-overlay__line {
+  font-size: clamp(26px, 6vw, 84px);
+  letter-spacing: 0.18em;
+}
+
+.mode-switch-overlay__space {
+  display: inline-block;
+  width: 0.35em;
+}
+
+.mode-switch-overlay__letter {
+  display: inline-block;
+  will-change: opacity, transform;
+  animation: modeSwitchFade 2s ease-in-out infinite;
+}
+
+@keyframes modeSwitchFade {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.25;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-switch-overlay {
+    transition: none;
+    transform: none;
+  }
+
+  .mode-switch-overlay__letter {
+    animation: none;
+  }
+}
+
   html, body {
     overflow-x: hidden;
     max-width: 100vw;

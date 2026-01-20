@@ -4,10 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type PerformanceMode = "quality" | "performance";
 
+export type LastModeSwitch = {
+  mode: PerformanceMode;
+  at: number;
+};
+
 type PerformanceModeContextValue = {
   mode: PerformanceMode;
   setMode: (next: PerformanceMode) => void;
   isPerformance: boolean;
+  lastSwitch: LastModeSwitch | null;
 };
 
 const PerformanceModeContext = createContext<PerformanceModeContextValue | null>(null);
@@ -90,6 +96,7 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
   const { user } = useAuth();
 
   const [mode, setModeState] = useState<PerformanceMode>("quality");
+  const [lastSwitch, setLastSwitch] = useState<LastModeSwitch | null>(null);
 
   // Hydrate on mount and when user changes (per-user persistence)
   useEffect(() => {
@@ -146,7 +153,10 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
   }, [mode]);
 
   const setMode = (next: PerformanceMode) => {
+    if (next === mode) return;
+
     setModeState(next);
+    setLastSwitch({ mode: next, at: Date.now() });
     // Always store on device so the same device remembers a default even before login
     safeWrite(GUEST_KEY, next);
     if (user?.id) {
@@ -160,14 +170,15 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
       mode,
       setMode,
       isPerformance: mode === "performance",
+      lastSwitch,
     }),
-    [mode]
+    [mode, lastSwitch]
   );
 
   return <PerformanceModeContext.Provider value={value}>{children}</PerformanceModeContext.Provider>;
 }
 
-export function usePerformanceMode() {
+export function usePerformanceMode(): PerformanceModeContextValue {
   const ctx = useContext(PerformanceModeContext);
   if (!ctx) throw new Error("usePerformanceMode must be used within PerformanceModeProvider");
   return ctx;

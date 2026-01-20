@@ -18,6 +18,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Navbar } from "@/components/Navbar";
 import { SearchOverlay } from "@/components/SearchOverlay";
 import { PerformanceModeProvider } from "@/contexts/PerformanceModeContext";
+import { PerformanceModeSwitchOverlay } from "@/components/PerformanceModeSwitchOverlay";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -119,6 +120,7 @@ const App = () => (
                         <Navbar />
                         <SearchOverlay />
                         <GlobalRouteLoader />
+                        <PerformanceModeSwitchOverlay />
                         <AppContent />
                         <FloatingRequestButton />
                         <TutorialOverlay />
