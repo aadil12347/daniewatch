@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
@@ -15,7 +16,6 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
 import { isKoreanScope, isAnimeScope, KOREAN_LANGS } from "@/lib/contentScope";
 
 // Korean content genres (for both movies and TV)
@@ -200,34 +200,62 @@ const Korean = () => {
     [dbCandidates, dbOnlyHydrated, getKey, manifestMetaByKey.size]
   );
 
-  const mergedBase = useMemo(() => {
-    return mergeDbAndTmdb({
-      tmdbItems: items,
-      dbOnlyHydratedItems: dbOnlyHydrated,
-      isDbItem: (key) => manifestMetaByKey.has(key),
-      getDbMeta: getManifestMetaByKey,
+  const hydratedByKey = useMemo(() => {
+    const byKey = new Map<string, Movie>();
+    for (const m of items) byKey.set(getKey(m), m);
+    for (const m of dbOnlyHydrated) byKey.set(getKey(m), m);
+    return byKey;
+  }, [dbOnlyHydrated, getKey, items]);
+
+  // DB stubs: every scoped DB item exists in the list immediately.
+  // Hydration only upgrades stubs "in place" (no reordering/teleport).
+  const dbStubItems = useMemo(() => {
+    return dbCandidates.map((c) => {
+      const key = `${c.id}-${c.mediaType}`;
+      const meta = manifestMetaByKey.get(key);
+      const title = meta?.title ?? "";
+      const releaseYear = meta?.releaseYear ?? null;
+
+      const base: Partial<Movie> = {
+        id: c.id,
+        media_type: c.mediaType,
+        poster_path: null,
+        genre_ids: meta?.genreIds ?? [],
+      };
+
+      if (c.mediaType === "movie") {
+        (base as any).title = title;
+        (base as any).release_date = releaseYear ? `${releaseYear}-01-01` : "";
+      } else {
+        (base as any).name = title;
+        (base as any).first_air_date = releaseYear ? `${releaseYear}-01-01` : "";
+      }
+
+      return base as Movie;
     });
-  }, [dbOnlyHydrated, getManifestMetaByKey, items, manifestMetaByKey]);
+  }, [dbCandidates, manifestMetaByKey]);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(mergedBase), [filterBlockedPosts, mergedBase]);
+  const dbVisibleItems = useMemo(() => {
+    const replaced = dbStubItems.map((stub) => {
+      const k = getKey(stub);
+      return hydratedByKey.get(k) ?? stub;
+    });
 
-  const visibleItems = useMemo(() => {
-    // Keep DB-first grouping intact; apply pinned ordering within each group.
-    const isDb = (m: Movie) => {
-      const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
-      return manifestMetaByKey.has(`${m.id}-${media}`);
-    };
+    const safe = filterBlockedPosts(replaced);
+    return sortWithPinnedFirst(safe, "korean", undefined);
+  }, [dbStubItems, filterBlockedPosts, getKey, hydratedByKey, sortWithPinnedFirst]);
 
-    const dbGroup = baseVisible.filter(isDb);
-    const tmdbGroup = baseVisible.filter((m) => !isDb(m));
+  const tmdbOnlyVisibleItems = useMemo(() => {
+    const dbKeys = new Set(dbCandidates.map((c) => `${c.id}-${c.mediaType}`));
+    const tmdbOnly = items.filter((m) => !dbKeys.has(getKey(m)));
+    const safe = filterBlockedPosts(tmdbOnly);
+    return sortWithPinnedFirst(safe, "korean", undefined);
+  }, [dbCandidates, filterBlockedPosts, getKey, items, sortWithPinnedFirst]);
 
-    const dbSorted = sortWithPinnedFirst(dbGroup, "korean", undefined);
-    const tmdbSorted = sortWithPinnedFirst(tmdbGroup, "korean", undefined);
-
-    const combined = [...dbSorted, ...tmdbSorted];
-
-    if (isAdmin && showOnlyDbLinked) {
-      return combined.filter((it) => {
+  const applyAdminDbOnlyFilter = useCallback(
+    (list: Movie[]) => {
+      if (!(isAdmin && showOnlyDbLinked)) return list;
+      return list.filter((it) => {
         // Use manifest availability first (fast), fallback to live query
         const manifestAvail = manifestAvailabilityById.get(it.id);
         if (manifestAvail) {
@@ -236,33 +264,26 @@ const Korean = () => {
         const a = getAvailability(it.id);
         return a.hasWatch || a.hasDownload;
       });
-    }
+    },
+    [getAvailability, isAdmin, manifestAvailabilityById, showOnlyDbLinked]
+  );
 
-    return combined;
-  }, [baseVisible, getAvailability, isAdmin, manifestAvailabilityById, manifestMetaByKey, showOnlyDbLinked, sortWithPinnedFirst]);
+  // Apply admin "DB links only" filter, then genre/year filters, then concatenate (DB first, TMDB after).
+  const filteredDbItems = useMemo(() => {
+    const base = applyAdminDbOnlyFilter(dbVisibleItems);
 
-  // Apply genre and year filters to the final sorted list (after DB-first ordering)
-  const filteredVisibleItems = useMemo(() => {
-    // If no filters active, return all visible items
-    if (normalizedDbGenreSet.size === 0 && !selectedYear) {
-      return visibleItems;
-    }
+    if (normalizedDbGenreSet.size === 0 && !selectedYear) return base;
 
-    // Apply genre and year filters to the final sorted list
-    return visibleItems.filter((item) => {
+    return base.filter((item) => {
       const genreIds = item.genre_ids ?? [];
-      
-      // Get year from item
       const dateStr = item.release_date || item.first_air_date || "";
       const year = dateStr ? parseInt(dateStr.slice(0, 4)) : null;
 
-      // Genre filter (overlap)
       if (normalizedDbGenreSet.size > 0) {
         const hasOverlap = genreIds.some((g) => normalizedDbGenreSet.has(g));
         if (!hasOverlap) return false;
       }
 
-      // Year filter
       if (selectedYear) {
         if (selectedYear === "older") {
           if (typeof year !== "number" || year > 2019) return false;
@@ -273,7 +294,38 @@ const Korean = () => {
 
       return true;
     });
-  }, [visibleItems, normalizedDbGenreSet, selectedYear]);
+  }, [applyAdminDbOnlyFilter, dbVisibleItems, normalizedDbGenreSet, selectedYear]);
+
+  const filteredTmdbItems = useMemo(() => {
+    const base = applyAdminDbOnlyFilter(tmdbOnlyVisibleItems);
+
+    if (normalizedDbGenreSet.size === 0 && !selectedYear) return base;
+
+    return base.filter((item) => {
+      const genreIds = item.genre_ids ?? [];
+      const dateStr = item.release_date || item.first_air_date || "";
+      const year = dateStr ? parseInt(dateStr.slice(0, 4)) : null;
+
+      if (normalizedDbGenreSet.size > 0) {
+        const hasOverlap = genreIds.some((g) => normalizedDbGenreSet.has(g));
+        if (!hasOverlap) return false;
+      }
+
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          if (typeof year !== "number" || year > 2019) return false;
+        } else {
+          if (typeof year !== "number" || String(year) !== selectedYear) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [applyAdminDbOnlyFilter, normalizedDbGenreSet, selectedYear, tmdbOnlyVisibleItems]);
+
+  const filteredVisibleItems = useMemo(() => {
+    return [...filteredDbItems, ...filteredTmdbItems];
+  }, [filteredDbItems, filteredTmdbItems]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(filteredVisibleItems, { enabled: !isLoading });
@@ -445,10 +497,10 @@ const Korean = () => {
 
         const uniqueVisible = dedupe(visibleResults);
 
-        // Hydrate DB-only items *before* we reveal the first batch (prevents reorder-jumps)
+        // Hydrate DB-only items in the background (stubs are already visible; hydration only upgrades in-place)
         if (reset && manifestMetaByKey.size > 0) {
           const tmdbKeys = new Set(uniqueVisible.map((m) => getKey(m)));
-          await hydrateDbOnly(tmdbKeys, 60);
+          void hydrateDbOnly(tmdbKeys, 60);
         }
 
         if (reset) {
@@ -527,7 +579,7 @@ const Korean = () => {
     return () => observerRef.current?.disconnect();
   }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, filteredVisibleItems.length]);
 
-  // Resolve pending "load more": reveal from buffer first, otherwise fetch next TMDB page.
+  // Resolve pending "load more": reveal from buffer first; ONLY fetch TMDB after DB section is fully revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
@@ -535,26 +587,21 @@ const Korean = () => {
     if (hasBuffered) {
       setAnimateFromIndex(displayCount);
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, filteredVisibleItems.length));
+
+      // While we're still in the DB section, hydrate ahead in the background (no waiting, no reordering).
+      if (displayCount < filteredDbItems.length) {
+        const tmdbKeys = new Set(items.map((m) => getKey(m)));
+        void hydrateDbOnly(tmdbKeys, 30);
+      }
+
       setPendingLoadMore(false);
       return;
     }
 
-    const hasMoreDb = dbHydrationCursorRef.current < dbCandidates.length;
-    if (hasMoreDb) {
-      // Keep showing DB items first until we exhaust scoped DB candidates.
-      setAnimateFromIndex(displayCount);
+    // No buffered items left.
+    // STRICT RULE: Do not fetch/show TMDB-only items until the DB section is completely revealed.
+    if (displayCount < filteredDbItems.length) {
       setPendingLoadMore(false);
-      setIsLoadingMore(true);
-
-      void (async () => {
-        try {
-          const tmdbKeys = new Set(items.map((m) => getKey(m)));
-          await hydrateDbOnly(tmdbKeys, 60);
-          setDisplayCount((prev) => prev + BATCH_SIZE);
-        } finally {
-          setIsLoadingMore(false);
-        }
-      })();
       return;
     }
 
@@ -568,7 +615,7 @@ const Korean = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, filteredVisibleItems.length, hasMore, setIsLoadingMore, dbCandidates.length, getKey, hydrateDbOnly, items]);
+  }, [pendingLoadMore, displayCount, filteredVisibleItems.length, filteredDbItems.length, hasMore, setIsLoadingMore, getKey, hydrateDbOnly, items]);
 
   // Fetch more when page changes
   useEffect(() => {
