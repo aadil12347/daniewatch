@@ -119,9 +119,7 @@ const App = () => (
                       <Navbar />
                       <SearchOverlay />
                       <GlobalRouteLoader />
-                      <div className="pt-[var(--app-header-offset)]">
-                        <AppContent />
-                      </div>
+                      <AppContent />
                       <FloatingRequestButton />
                       <TutorialOverlay />
                     </ErrorBoundary>
