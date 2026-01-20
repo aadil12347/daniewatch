@@ -45,7 +45,7 @@ type DbEntry = {
 };
 
 const Korean = () => {
-  const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
+  const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
   const { isAdmin } = useAdmin();
   const { showOnlyDbLinked } = useAdminListFilter();
   
@@ -231,18 +231,34 @@ const Korean = () => {
   const baseVisible = useMemo(() => filterBlockedPosts(mergedBase), [filterBlockedPosts, mergedBase]);
 
   const visibleItems = useMemo(() => {
-    return isAdmin && showOnlyDbLinked
-      ? baseVisible.filter((it) => {
-          // Use manifest availability first (fast), fallback to live query
-          const manifestAvail = manifestAvailabilityById.get(it.id);
-          if (manifestAvail) {
-            return manifestAvail.hasWatch || manifestAvail.hasDownload;
-          }
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        })
-      : baseVisible;
-  }, [baseVisible, getAvailability, isAdmin, manifestAvailabilityById, showOnlyDbLinked]);
+    // Keep DB-first grouping intact; apply pinned ordering within each group.
+    const isDb = (m: Movie) => {
+      const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
+      return manifestMetaByKey.has(`${m.id}-${media}`);
+    };
+
+    const dbGroup = baseVisible.filter(isDb);
+    const tmdbGroup = baseVisible.filter((m) => !isDb(m));
+
+    const dbSorted = sortWithPinnedFirst(dbGroup, "korean", undefined);
+    const tmdbSorted = sortWithPinnedFirst(tmdbGroup, "korean", undefined);
+
+    const combined = [...dbSorted, ...tmdbSorted];
+
+    if (isAdmin && showOnlyDbLinked) {
+      return combined.filter((it) => {
+        // Use manifest availability first (fast), fallback to live query
+        const manifestAvail = manifestAvailabilityById.get(it.id);
+        if (manifestAvail) {
+          return manifestAvail.hasWatch || manifestAvail.hasDownload;
+        }
+        const a = getAvailability(it.id);
+        return a.hasWatch || a.hasDownload;
+      });
+    }
+
+    return combined;
+  }, [baseVisible, getAvailability, isAdmin, manifestAvailabilityById, manifestMetaByKey, showOnlyDbLinked, sortWithPinnedFirst]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleItems, { enabled: !isLoading });
