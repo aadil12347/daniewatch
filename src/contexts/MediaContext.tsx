@@ -4,6 +4,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 interface CurrentMedia {
   title: string;
   type: 'movie' | 'tv';
+  tmdbId: number;
   seasonNumber?: number;
 }
 

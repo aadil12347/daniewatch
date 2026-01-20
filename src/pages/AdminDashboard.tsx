@@ -138,6 +138,23 @@ const RequestCard = ({
                   {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
                   {request.request_type === 'general' && 'General Request'}
                 </div>
+
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-medium">Request ID:</span> <span className="font-mono">{request.id}</span>
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-medium">User ID:</span> <span className="font-mono">{request.user_id}</span>
+                </div>
+
+                {request.request_meta?.tmdb_id && (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">TMDB:</span>{' '}
+                    <span className="font-mono">{request.request_meta.tmdb_id}</span>{' '}
+                    <span className="text-muted-foreground">({request.request_meta.media_type})</span>
+                  </div>
+                )}
+
                 {request.user_email && (
                   <div className="text-xs text-muted-foreground">
                     <span className="font-medium">From:</span> {request.user_email}

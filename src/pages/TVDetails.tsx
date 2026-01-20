@@ -95,7 +95,46 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
   }, [location.search]);
 
   // Set media context when show loads or season changes
+  useEffect(() => {
+    if (!show) return;
+    setCurrentMedia({ title: show.name, type: 'tv', tmdbId: show.id, seasonNumber: selectedSeason });
+    return () => {
+      clearCurrentMedia();
+    };
+  }, [show, selectedSeason, setCurrentMedia, clearCurrentMedia]);
 
+  const extendEpisodesWithDbLinks = (
+    baseEpisodes: Episode[],
+    links: MediaLinkResult | null,
+    tmdbId: number,
+    seasonNumber: number
+  ): Episode[] => {
+    const dbWatchCount = links?.seasonEpisodeLinks?.length ?? 0;
+    const dbDownloadCount = links?.seasonDownloadLinks?.length ?? 0;
+    const dbCount = Math.max(dbWatchCount, dbDownloadCount);
+
+    const tmdbCount = baseEpisodes.length;
+    const effectiveCount = Math.max(tmdbCount, dbCount);
+
+    if (effectiveCount <= tmdbCount) return baseEpisodes;
+
+    const placeholders: Episode[] = Array.from({ length: effectiveCount - tmdbCount }, (_, i) => {
+      const epNum = tmdbCount + i + 1;
+      return {
+        id: -(tmdbId * 10000 + seasonNumber * 100 + epNum),
+        name: `Episode ${epNum}`,
+        episode_number: epNum,
+        season_number: seasonNumber,
+        overview: "",
+        still_path: null,
+        air_date: null,
+        runtime: null,
+        vote_average: 0,
+      };
+    });
+
+    return [...baseEpisodes, ...placeholders];
+  };
   const displayedInWatchlist =
     optimisticInWatchlist !== null ? optimisticInWatchlist : isInWatchlist(show?.id ?? 0, "tv");
 
@@ -166,18 +205,19 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           // Set first group's episodes
           const firstGroup = groupDetails.groups[0];
           if (firstGroup) {
-            setSelectedSeason(1); // Use 1-based index for Parts
-            // Map episode group episodes to standard Episode format
-            setEpisodes(
-              firstGroup.episodes.map((ep, index) => ({
-                ...ep,
-                episode_number: index + 1, // Use order as episode number
-              }))
-            );
+            const partIndex = 1; // 1-based index for Parts
+            setSelectedSeason(partIndex);
 
-            // Check for media links (Supabase -> Blogger -> fallback)
-            const mediaRes = await getMediaLinks(Number(id), "tv", 1);
+            const baseEpisodes: Episode[] = firstGroup.episodes.map((ep, index) => ({
+              ...ep,
+              episode_number: index + 1,
+              season_number: partIndex,
+            }));
+
+            // Fetch links and extend episode list if DB has more links than TMDB
+            const mediaRes = await getMediaLinks(Number(id), "tv", partIndex);
             setMediaResult(mediaRes);
+            setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), partIndex));
           }
         } else {
           // Use standard seasons (existing logic)
@@ -190,11 +230,12 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
 
           // Fetch first season episodes
           const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
-          setEpisodes(seasonRes.episodes || []);
+          const baseEpisodes = seasonRes.episodes || [];
 
-          // Check for media links (Supabase -> Blogger -> fallback)
+          // Fetch links and extend episode list if DB has more links than TMDB
           const mediaRes = await getMediaLinks(Number(id), "tv", firstSeason);
           setMediaResult(mediaRes);
+          setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), firstSeason));
         }
       } catch (error) {
         console.error("Failed to fetch TV details:", error);
@@ -219,23 +260,24 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
         // Use episode groups (Parts)
         const group = episodeGroups[partOrSeasonNumber - 1]; // 1-based to 0-based
         if (group) {
-          setEpisodes(group.episodes.map((ep, index) => ({
+          const baseEpisodes: Episode[] = group.episodes.map((ep, index) => ({
             ...ep,
             episode_number: index + 1,
-          })));
+            season_number: partOrSeasonNumber,
+          }));
+
+          const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
+          setMediaResult(mediaRes);
+          setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), partOrSeasonNumber));
         }
-        
-        // Check for media links (Supabase -> Blogger -> fallback) for selected part
-        const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
-        setMediaResult(mediaRes);
       } else {
         // Use standard seasons
         const seasonRes = await getTVSeasonDetails(Number(id), partOrSeasonNumber);
-        setEpisodes(seasonRes.episodes || []);
+        const baseEpisodes = seasonRes.episodes || [];
 
-        // Check for media links (Supabase -> Blogger -> fallback) for selected season
         const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
         setMediaResult(mediaRes);
+        setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), partOrSeasonNumber));
       }
     } catch (error) {
       console.error("Failed to fetch season:", error);
