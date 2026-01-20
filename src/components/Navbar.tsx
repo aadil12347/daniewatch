@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";

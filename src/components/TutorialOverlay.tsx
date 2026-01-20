@@ -1,3 +1,4 @@
+import React from "react";
 import { useEffect, useState, useCallback } from "react";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { TutorialTooltip } from "./TutorialTooltip";
