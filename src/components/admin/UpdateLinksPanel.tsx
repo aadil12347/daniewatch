@@ -42,6 +42,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { MetadataBackfillTool } from "@/components/admin/MetadataBackfillTool";
+import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
 
 interface TMDBResult {
   id: number;
@@ -959,6 +960,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         </TabsContent>
 
         <TabsContent value="tools" className="space-y-4">
+          <ManifestUpdateTool />
           <MetadataBackfillTool />
         </TabsContent>
       </Tabs>
