@@ -14,7 +14,6 @@ import {
   getTopRatedMovies,
   getPopularTV,
   getTopRatedTV,
-  getIndianPopular,
   getAnimePopular,
   getKoreanPopular,
   filterAdultContent,
@@ -30,7 +29,6 @@ const Index = () => {
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
   const [popularTV, setPopularTV] = useState<Movie[]>([]);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
-  const [indianPopular, setIndianPopular] = useState<Movie[]>([]);
   const [animePopular, setAnimePopular] = useState<Movie[]>([]);
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,7 +78,6 @@ const Index = () => {
           topRatedMoviesRes,
           popularTVRes,
           topRatedTVRes,
-          indianRes,
           animeRes,
           koreanRes,
         ] = await Promise.all([
@@ -89,7 +86,6 @@ const Index = () => {
           getTopRatedMovies(),
           getPopularTV(),
           getTopRatedTV(),
-          getIndianPopular(),
           getAnimePopular(),
           getKoreanPopular(),
         ]);
@@ -99,7 +95,6 @@ const Index = () => {
         setTopRatedMovies(filterAdultContent(topRatedMoviesRes.results));
         setPopularTV(filterAdultContent(popularTVRes.results));
         setTopRatedTV(filterAdultContent(topRatedTVRes.results));
-        setIndianPopular(filterAdultContent(indianRes.results));
         setAnimePopular(filterAdultContent(animeRes.results));
         setKoreanPopular(filterAdultContent(koreanRes.results));
       } catch (error) {
@@ -178,16 +173,17 @@ const Index = () => {
 
           {/* Regional Popular Sections */}
           <TabbedContentRow
-            title="Indian Popular"
+            title="Anime Popular"
             moviesItems={filterBlockedPosts(
-              indianPopular.filter((item) => item.media_type === "movie"),
+              animePopular.filter((item) => item.media_type === "movie"),
               "movie"
             )}
             tvItems={filterBlockedPosts(
-              indianPopular.filter((item) => item.media_type === "tv"),
+              animePopular.filter((item) => item.media_type === "tv"),
               "tv"
             )}
             isLoading={pageIsLoading}
+            defaultTab="tv"
             hoverCharacterMode="contained"
             enableHoverPortal={false}
           />

@@ -153,9 +153,6 @@ export const Navbar = () => {
     if (location.pathname === "/korean" || getUrlParam("category") === "korean") {
       return "/korean";
     }
-    if (location.pathname === "/indian" || getUrlParam("category") === "indian") {
-      return "/indian";
-    }
     return null;
   };
 
@@ -163,7 +160,6 @@ export const Navbar = () => {
     const originalPath = getOriginalPath();
     if (originalPath === "/anime") return "&category=anime";
     if (originalPath === "/korean") return "&category=korean";
-    if (originalPath === "/indian") return "&category=indian";
     return "";
   };
 
@@ -204,7 +200,6 @@ export const Navbar = () => {
   const navLinks = [
     { to: "/movies", label: "Movies", icon: Film },
     { to: "/tv", label: "TV Shows", icon: Tv },
-    { to: "/indian", label: "Indian", icon: Globe },
     { to: "/anime", label: "Anime", icon: Sparkles },
     { to: "/korean", label: "Korean", icon: Heart },
     { to: "/watchlist", label: "Watch List", icon: Bookmark },
