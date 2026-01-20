@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePostModeration } from "@/hooks/usePostModeration";
-import { filterMinimal, Movie, searchMulti } from "@/lib/tmdb";
+import { filterMinimal, Movie, searchAnimeScoped, searchKoreanScoped, searchMergedGlobal } from "@/lib/tmdb";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { useDbManifest } from "@/hooks/useDbManifest";
@@ -17,6 +17,7 @@ const MAX_DB_MATCHES = 60;
 const Search = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
+  const category = searchParams.get("category") || "";
   const refreshKey = searchParams.get("t") || "";
 
   const [tmdbResults, setTmdbResults] = useState<Movie[]>([]);
@@ -82,7 +83,7 @@ const Search = () => {
 
   // Restore cached results+scroll for this exact query on mount.
   useEffect(() => {
-    const key = query;
+    const key = `${category}|${query}`;
 
     if (!query.trim()) {
       restoredKeyRef.current = null;
@@ -97,7 +98,7 @@ const Search = () => {
     restoreScrollYRef.current = cached.scrollY ?? 0;
     setTmdbResults(cached.items);
     setIsLoading(false);
-  }, [getCache, query]);
+  }, [getCache, query, category]);
 
   // Restore scroll AFTER results render.
   useEffect(() => {
@@ -130,7 +131,7 @@ const Search = () => {
   }, [saveCache, tmdbResults, query]);
 
   useEffect(() => {
-    const key = query;
+    const key = `${category}|${query}`;
 
     // If we just restored this exact state and no explicit refresh was requested, keep it.
     if (restoredKeyRef.current === key && !refreshKey) {
@@ -150,7 +151,12 @@ const Search = () => {
       }
 
       try {
-        const response = await searchMulti(query);
+        const response =
+          category === "korean"
+            ? await searchKoreanScoped(query)
+            : category === "anime"
+              ? await searchAnimeScoped(query)
+              : await searchMergedGlobal(query);
         if (requestId !== requestIdRef.current) return;
 
         const baseResults = filterMinimal(
@@ -171,7 +177,7 @@ const Search = () => {
     };
 
     fetchResults();
-  }, [query, refreshKey]);
+  }, [query, refreshKey, category]);
 
   return (
     <>

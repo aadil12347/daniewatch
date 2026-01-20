@@ -450,6 +450,173 @@ export const discoverTV = (page: number = 1, genreIds: number[] = [], sortBy: st
 export const searchMulti = (query: string) =>
   fetchTMDB<TMDBResponse<Movie>>("/search/multi", { query });
 
+export const searchMovie = (query: string) =>
+  fetchTMDB<TMDBResponse<Movie>>("/search/movie", { query });
+
+export const searchTv = (query: string) =>
+  fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
+
+const withMediaType = (items: Movie[], mediaType: "movie" | "tv"): Movie[] =>
+  items.map((it) => ({ ...it, media_type: mediaType }));
+
+const dedupeByIdAndType = (items: Movie[]): Movie[] => {
+  const seen = new Set<string>();
+  const out: Movie[] = [];
+  for (const it of items) {
+    const mt = (it.media_type as string | undefined) ?? "movie";
+    const key = `${it.id}-${mt}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(it);
+  }
+  return out;
+};
+
+// Global search that maximizes TMDB coverage by merging multi + tv + movie.
+// This prevents cases where /search/multi page 1 omits a valid tv/movie match.
+export const searchMergedGlobal = async (query: string): Promise<TMDBResponse<Movie>> => {
+  const [multi, tv, movie] = await Promise.allSettled([searchMulti(query), searchTv(query), searchMovie(query)]);
+
+  const merged: Movie[] = [];
+
+  if (multi.status === "fulfilled") {
+    merged.push(
+      ...multi.value.results.filter((it) => it.media_type === "movie" || it.media_type === "tv")
+    );
+  }
+  if (tv.status === "fulfilled") merged.push(...withMediaType(tv.value.results, "tv"));
+  if (movie.status === "fulfilled") merged.push(...withMediaType(movie.value.results, "movie"));
+
+  const results = dedupeByIdAndType(merged);
+  return {
+    page: 1,
+    results,
+    total_pages: 1,
+    total_results: results.length,
+  };
+};
+
+const KOREAN_SUPPORTED_COUNTRIES = ["KR", "CN", "TW", "HK", "TR"] as const;
+const KOREAN_SUPPORTED_LANGS = ["ko", "zh", "tr"] as const;
+
+const hasAnimationGenre = (genreIds: number[] | undefined, genres?: { id: number }[]): boolean => {
+  if (Array.isArray(genreIds) && genreIds.includes(16)) return true;
+  if (Array.isArray(genres) && genres.some((g) => g.id === 16)) return true;
+  return false;
+};
+
+const isKoreanMatchTvDetails = (details: any): boolean => {
+  const originCountry: unknown = details?.origin_country;
+  const originalLanguage: unknown = details?.original_language;
+  const hasMatchingCountry =
+    Array.isArray(originCountry) && originCountry.some((c: string) => (KOREAN_SUPPORTED_COUNTRIES as readonly string[]).includes(c));
+  const hasMatchingLanguage =
+    typeof originalLanguage === "string" && (KOREAN_SUPPORTED_LANGS as readonly string[]).includes(originalLanguage);
+  return hasMatchingCountry || hasMatchingLanguage;
+};
+
+const isKoreanMatchMovieDetails = (details: any): boolean => {
+  const productionCountries: unknown = details?.production_countries;
+  const originalLanguage: unknown = details?.original_language;
+  const hasMatchingCountry =
+    Array.isArray(productionCountries) &&
+    productionCountries.some((pc: any) => (KOREAN_SUPPORTED_COUNTRIES as readonly string[]).includes(pc?.iso_3166_1));
+  const hasMatchingLanguage =
+    typeof originalLanguage === "string" && (KOREAN_SUPPORTED_LANGS as readonly string[]).includes(originalLanguage);
+  return hasMatchingCountry || hasMatchingLanguage;
+};
+
+const isAnimeMatchDetails = (details: any, fallbackGenreIds: number[] | undefined): boolean => {
+  const originalLanguage: unknown = details?.original_language;
+  const genres: unknown = details?.genres;
+
+  const isJapanese = typeof originalLanguage === "string" && originalLanguage === "ja";
+  const isAnimation = hasAnimationGenre(fallbackGenreIds, Array.isArray(genres) ? (genres as any[]) : undefined);
+  return isJapanese && isAnimation;
+};
+
+// Strict scoped search used ONLY when searching from the Korean page.
+// Includes both TV and movies, but excludes Anime (Japanese animation) to keep the category pure.
+export const searchKoreanScoped = async (query: string): Promise<TMDBResponse<Movie>> => {
+  const [tvRes, movieRes] = await Promise.all([searchTv(query), searchMovie(query)]);
+  const candidates = dedupeByIdAndType([
+    ...withMediaType(tvRes.results, "tv"),
+    ...withMediaType(movieRes.results, "movie"),
+  ]);
+
+  const MAX_DETAIL_CHECKS = 50;
+  const checked = candidates.slice(0, MAX_DETAIL_CHECKS);
+
+  const matches: Movie[] = [];
+  await Promise.allSettled(
+    checked.map(async (item) => {
+      try {
+        if (item.media_type === "tv") {
+          const details = await fetchTMDB<any>(`/tv/${item.id}`);
+          const isAnime = isAnimeMatchDetails(details, item.genre_ids);
+          if (isAnime) return;
+          if (isKoreanMatchTvDetails(details)) matches.push({ ...item, media_type: "tv" });
+          return;
+        }
+
+        const details = await fetchTMDB<any>(`/movie/${item.id}`);
+        const isAnime = isAnimeMatchDetails(details, item.genre_ids);
+        if (isAnime) return;
+        if (isKoreanMatchMovieDetails(details)) matches.push({ ...item, media_type: "movie" });
+      } catch {
+        // ignore individual failures
+      }
+    })
+  );
+
+  // Keep search ordering as much as possible by filtering the original candidate list.
+  const matchKeys = new Set(matches.map((m) => `${m.id}-${m.media_type}`));
+  const orderedMatches = candidates.filter((c) => matchKeys.has(`${c.id}-${c.media_type}`));
+
+  return {
+    ...tvRes,
+    results: filterAdultContent(orderedMatches),
+  };
+};
+
+// Strict scoped search used ONLY when searching from the Anime page.
+// Includes both TV and movies; requires Japanese + Animation genre.
+export const searchAnimeScoped = async (query: string): Promise<TMDBResponse<Movie>> => {
+  const [tvRes, movieRes] = await Promise.all([searchTv(query), searchMovie(query)]);
+  const candidates = dedupeByIdAndType([
+    ...withMediaType(tvRes.results, "tv"),
+    ...withMediaType(movieRes.results, "movie"),
+  ]).filter((it) => hasAnimationGenre(it.genre_ids, undefined));
+
+  const MAX_DETAIL_CHECKS = 50;
+  const checked = candidates.slice(0, MAX_DETAIL_CHECKS);
+
+  const matches: Movie[] = [];
+  await Promise.allSettled(
+    checked.map(async (item) => {
+      try {
+        if (item.media_type === "tv") {
+          const details = await fetchTMDB<any>(`/tv/${item.id}`);
+          if (isAnimeMatchDetails(details, item.genre_ids)) matches.push({ ...item, media_type: "tv" });
+          return;
+        }
+        const details = await fetchTMDB<any>(`/movie/${item.id}`);
+        if (isAnimeMatchDetails(details, item.genre_ids)) matches.push({ ...item, media_type: "movie" });
+      } catch {
+        // ignore individual failures
+      }
+    })
+  );
+
+  const matchKeys = new Set(matches.map((m) => `${m.id}-${m.media_type}`));
+  const orderedMatches = candidates.filter((c) => matchKeys.has(`${c.id}-${c.media_type}`));
+
+  return {
+    ...tvRes,
+    results: filterAdultContent(orderedMatches),
+  };
+};
+
 // Search for anime (Japanese animation)
 export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> => {
   const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
