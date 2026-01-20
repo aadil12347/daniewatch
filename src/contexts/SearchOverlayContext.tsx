@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 export type SearchScope = "anime" | "korean" | "movies" | "tv" | "watchlist" | "global";
 
@@ -32,9 +32,46 @@ export const SearchOverlayProvider = ({ children }: { children: React.ReactNode 
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<SearchScope>("global");
 
+  const isOpenRef = useRef(false);
+  const shouldPushHistoryRef = useRef(false);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  // Close overlay on browser/device back, without navigating away.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onPopState = () => {
+      // If the overlay is open, treat back as "close search results".
+      setIsOpen(false);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [isOpen]);
+
+  // Add a history entry when opening so that a single Back press closes the overlay.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!shouldPushHistoryRef.current) return;
+
+    shouldPushHistoryRef.current = false;
+
+    try {
+      window.history.pushState({ __searchOverlay: true }, "", window.location.href);
+    } catch {
+      // ignore
+    }
+  }, [isOpen]);
+
   const open = useCallback(({ query: q, scope: s }: OpenArgs) => {
     setQuery(q);
     setScope(s);
+    if (!isOpenRef.current) {
+      shouldPushHistoryRef.current = true;
+    }
     setIsOpen(true);
   }, []);
 

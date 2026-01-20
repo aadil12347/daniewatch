@@ -1,6 +1,5 @@
 import React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { BLOCKED_IDS, searchAnimeScoped, searchKoreanScoped, searchMergedGlobal, type Movie } from "@/lib/tmdb";
@@ -8,15 +7,6 @@ import { isAllowedOnMoviesPage, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useSearchOverlay } from "@/contexts/SearchOverlayContext";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { MovieCard } from "@/components/MovieCard";
-
-const SCOPE_LABEL: Record<string, string> = {
-  anime: "Anime",
-  korean: "Korean",
-  movies: "Movies",
-  tv: "TV",
-  watchlist: "Watchlist",
-  global: "Search",
-};
 
 export const SearchOverlay = () => {
   const { isOpen, query, scope, close } = useSearchOverlay();
@@ -113,31 +103,12 @@ export const SearchOverlay = () => {
         contentVariant="fullscreenBelowHeader"
         className="p-0 overflow-hidden"
         overlayClassName="bg-background/80"
+        // Keep results open when users click around the navbar/header.
+        onInteractOutside={(e) => e.preventDefault()}
+        // Close results ONLY by clearing the navbar input or browser back.
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="h-full w-full flex flex-col">
-          {/* No secondary search bar here (Navbar is the only search input). */}
-          <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-xl">
-            <div className="px-4 py-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-medium truncate">{SCOPE_LABEL[scope] ?? "Search"}</div>
-                {query.trim() ? (
-                  <div className="text-xs text-muted-foreground truncate">Results for “{query.trim()}”</div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">Type in the navbar search to begin.</div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={close}
-                className="shrink-0 rounded-full p-2 hover:bg-secondary/60 transition-colors"
-                aria-label="Close search"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
           <div className="flex-1 overflow-auto p-4">
             {error && <div className="text-sm text-destructive">{error}</div>}
 
