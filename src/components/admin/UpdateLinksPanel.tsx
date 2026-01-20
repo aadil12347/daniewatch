@@ -45,6 +45,9 @@ import { MetadataBackfillTool } from "@/components/admin/MetadataBackfillTool";
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
 import { ArtworkBackfillTool } from "@/components/admin/ArtworkBackfillTool";
 
+const UPDATE_LINKS_CACHE_KEY = "updateLinksPanelState_v1";
+const UPDATE_LINKS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
 interface TMDBResult {
   id: number;
   title: string;
@@ -104,6 +107,112 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
+
+  // Restore panel state if the page is temporarily unmounted (e.g. admin check reruns)
+  // and there is no explicit TMDB id coming from URL/prop.
+  useEffect(() => {
+    const idParam = (initialTmdbId ?? searchParams.get("id") ?? "").trim();
+    if (idParam) return;
+
+    try {
+      const raw = sessionStorage.getItem(UPDATE_LINKS_CACHE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as {
+        timestamp: number;
+        activeTab?: "update" | "trash" | "tools";
+        tmdbId?: string;
+        tmdbResult?: TMDBResult | null;
+        candidates?: { movie: TMDBResult | null; series: TMDBResult | null };
+        searchError?: string | null;
+        entryExists?: boolean;
+        selectedSeason?: number;
+        movieWatchLink?: string;
+        movieDownloadLink?: string;
+        hoverImageUrl?: string;
+        seriesWatchLinks?: string;
+        seriesDownloadLinks?: string;
+      };
+
+      if (!parsed?.timestamp || Date.now() - parsed.timestamp > UPDATE_LINKS_CACHE_TTL_MS) {
+        sessionStorage.removeItem(UPDATE_LINKS_CACHE_KEY);
+        return;
+      }
+
+      if (parsed.activeTab) setActiveTab(parsed.activeTab);
+      if (typeof parsed.tmdbId === "string") setTmdbId(parsed.tmdbId);
+      if (typeof parsed.searchError !== "undefined") setSearchError(parsed.searchError ?? null);
+      if (typeof parsed.entryExists === "boolean") setEntryExists(parsed.entryExists);
+      if (typeof parsed.selectedSeason === "number") setSelectedSeason(parsed.selectedSeason);
+      if (typeof parsed.movieWatchLink === "string") setMovieWatchLink(parsed.movieWatchLink);
+      if (typeof parsed.movieDownloadLink === "string") setMovieDownloadLink(parsed.movieDownloadLink);
+      if (typeof parsed.hoverImageUrl === "string") setHoverImageUrl(parsed.hoverImageUrl);
+      if (typeof parsed.seriesWatchLinks === "string") setSeriesWatchLinks(parsed.seriesWatchLinks);
+      if (typeof parsed.seriesDownloadLinks === "string") setSeriesDownloadLinks(parsed.seriesDownloadLinks);
+      if (typeof parsed.tmdbResult !== "undefined") setTmdbResult(parsed.tmdbResult ?? null);
+      if (typeof parsed.candidates !== "undefined") {
+        setCandidates(
+          parsed.candidates ?? {
+            movie: null,
+            series: null,
+          }
+        );
+      }
+    } catch {
+      // ignore cache errors
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist state so switching tabs/minimizing doesn't wipe the current work.
+  useEffect(() => {
+    // Don't cache transient loading states.
+    if (isSearching || isSaving || isDeleting || isDeletingSeason) return;
+
+    const handle = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(
+          UPDATE_LINKS_CACHE_KEY,
+          JSON.stringify({
+            timestamp: Date.now(),
+            activeTab,
+            tmdbId,
+            tmdbResult,
+            candidates,
+            searchError,
+            entryExists,
+            selectedSeason,
+            movieWatchLink,
+            movieDownloadLink,
+            hoverImageUrl,
+            seriesWatchLinks,
+            seriesDownloadLinks,
+          })
+        );
+      } catch {
+        // ignore cache write errors
+      }
+    }, 200);
+
+    return () => window.clearTimeout(handle);
+  }, [
+    activeTab,
+    candidates,
+    entryExists,
+    hoverImageUrl,
+    isDeleting,
+    isDeletingSeason,
+    isSaving,
+    isSearching,
+    movieDownloadLink,
+    movieWatchLink,
+    searchError,
+    selectedSeason,
+    seriesDownloadLinks,
+    seriesWatchLinks,
+    tmdbId,
+    tmdbResult,
+  ]);
 
 
   const loadSeasonData = useCallback(async (content: any, season: number) => {
