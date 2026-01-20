@@ -80,6 +80,13 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
   }, [location.search]);
 
   // Set media context when movie loads
+  useEffect(() => {
+    if (!movie) return;
+    setCurrentMedia({ title: movie.title, type: 'movie', tmdbId: movie.id });
+    return () => {
+      clearCurrentMedia();
+    };
+  }, [movie, setCurrentMedia, clearCurrentMedia]);
 
   const displayedInWatchlist =
     optimisticInWatchlist !== null ? optimisticInWatchlist : isInWatchlist(movie?.id ?? 0, "movie");

@@ -81,6 +81,7 @@ export const FloatingRequestButton = () => {
               <RequestFormDialog
                 defaultTitle={currentMedia?.title}
                 defaultType={currentMedia?.type}
+                defaultTmdbId={currentMedia?.tmdbId}
                 defaultSeason={currentMedia?.seasonNumber}
                 onSuccess={() => setIsOpen(false)}
               />

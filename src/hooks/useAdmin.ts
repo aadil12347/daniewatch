@@ -57,6 +57,10 @@ export interface AdminRequest {
   admin_response: string | null;
   created_at: string;
   updated_at: string;
+  request_meta?: {
+    tmdb_id: string;
+    media_type: 'movie' | 'tv';
+  } | null;
 }
 
 export const useAdmin = () => {
@@ -132,7 +136,7 @@ export const useAdmin = () => {
     try {
       const { data, error } = await supabase
         .from('requests')
-        .select('*')
+        .select('*, request_meta ( tmdb_id, media_type )')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

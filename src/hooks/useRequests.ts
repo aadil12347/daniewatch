@@ -46,6 +46,8 @@ export const useRequests = () => {
     title: string;
     season_number?: number;
     message: string;
+    tmdb_id?: string;
+    media_type?: 'movie' | 'tv';
   }) => {
     if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
 
@@ -66,6 +68,16 @@ export const useRequests = () => {
         .single();
 
       if (error) throw error;
+
+      // Store TMDB metadata in admin-only table (best-effort)
+      if (newRequest?.id && data.tmdb_id && data.media_type) {
+        const { error: metaError } = await supabase.from('request_meta').upsert({
+          request_id: newRequest.id,
+          tmdb_id: data.tmdb_id,
+          media_type: data.media_type,
+        });
+        if (metaError) console.error('Error saving request_meta:', metaError);
+      }
 
       // Create a notification for the user confirming submission
       await supabase.from('notifications').insert({

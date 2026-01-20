@@ -38,6 +38,7 @@ type RequestFormValues = z.infer<typeof requestSchema>;
 interface RequestFormDialogProps {
   defaultTitle?: string;
   defaultType?: 'movie' | 'tv';
+  defaultTmdbId?: number;
   defaultSeason?: number;
   onSuccess?: () => void;
 }
@@ -45,6 +46,7 @@ interface RequestFormDialogProps {
 export const RequestFormDialog = ({
   defaultTitle = '',
   defaultType,
+  defaultTmdbId,
   defaultSeason,
   onSuccess,
 }: RequestFormDialogProps) => {
@@ -80,12 +82,17 @@ export const RequestFormDialog = ({
 
   const onSubmit = async (data: RequestFormValues) => {
     setIsSubmitting(true);
-    
+
+    const inferredMediaType =
+      data.request_type === 'movie' ? 'movie' : data.request_type === 'tv_season' ? 'tv' : undefined;
+
     const { error } = await createRequest({
       request_type: data.request_type,
       title: data.title,
       season_number: data.request_type === 'tv_season' ? data.season_number : undefined,
       message: data.message,
+      tmdb_id: defaultTmdbId ? String(defaultTmdbId) : undefined,
+      media_type: defaultTmdbId ? inferredMediaType : undefined,
     });
 
     setIsSubmitting(false);
