@@ -62,6 +62,10 @@ export const Navbar = () => {
   // Close search bar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Don't collapse the search bar when interacting anywhere within the navbar.
+      if (navRef.current && navRef.current.contains(event.target as Node)) {
+        return;
+      }
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsSearchOpen(false);
       }

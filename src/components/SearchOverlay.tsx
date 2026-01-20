@@ -105,6 +105,8 @@ export const SearchOverlay = () => {
         overlayClassName="bg-background/80"
         // Keep results open when users click around the navbar/header.
         onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
         // Close results ONLY by clearing the navbar input or browser back.
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
