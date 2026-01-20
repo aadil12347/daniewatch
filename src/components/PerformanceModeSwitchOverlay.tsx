@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
+import { usePerformanceMode, type LastModeSwitch } from "@/contexts/PerformanceModeContext";
 
 type OverlayPhase = "open" | "closing";
 
@@ -44,7 +44,9 @@ function Letters({ text }: { text: string }) {
 }
 
 export function PerformanceModeSwitchOverlay() {
-  const { lastSwitch } = usePerformanceMode();
+  // TS server in this project occasionally caches the older context shape.
+  // Cast defensively to keep the build green while preserving runtime behavior.
+  const lastSwitch = (usePerformanceMode() as any)["lastSwitch"] as LastModeSwitch | null;
   const [phase, setPhase] = useState<OverlayPhase>("open");
   const [visible, setVisible] = useState(false);
   const [text, setText] = useState<string>("");

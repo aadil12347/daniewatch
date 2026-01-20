@@ -9,7 +9,7 @@ export type LastModeSwitch = {
   at: number;
 };
 
-type PerformanceModeContextValue = {
+export type PerformanceModeContextValue = {
   mode: PerformanceMode;
   setMode: (next: PerformanceMode) => void;
   isPerformance: boolean;
