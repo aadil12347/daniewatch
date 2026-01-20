@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PerformanceMode = "quality" | "performance";
 
@@ -13,6 +14,12 @@ const PerformanceModeContext = createContext<PerformanceModeContextValue | null>
 
 const GUEST_KEY = "render_mode_guest_v1";
 const userKey = (userId: string) => `render_mode_user_${userId}_v1`;
+
+const PREFS_TABLE = "user_preferences";
+
+const normalizeMode = (value: unknown): PerformanceMode | null => {
+  return value === "quality" || value === "performance" ? value : null;
+};
 
 const safeRead = (key: string): string | null => {
   try {
@@ -54,6 +61,31 @@ const detectDefaultMode = (): PerformanceMode => {
   return "quality";
 };
 
+const loadDbMode = async (userId: string): Promise<PerformanceMode | null> => {
+  try {
+    const { data, error } = await supabase
+      .from(PREFS_TABLE)
+      .select("performance_mode")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) return null;
+    return normalizeMode((data as any)?.performance_mode);
+  } catch {
+    return null;
+  }
+};
+
+const saveDbMode = async (userId: string, mode: PerformanceMode): Promise<void> => {
+  try {
+    await supabase
+      .from(PREFS_TABLE)
+      .upsert({ user_id: userId, performance_mode: mode }, { onConflict: "user_id" });
+  } catch {
+    // ignore (do not block UI)
+  }
+};
+
 export function PerformanceModeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
@@ -61,29 +93,50 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
 
   // Hydrate on mount and when user changes (per-user persistence)
   useEffect(() => {
-    const key = user?.id ? userKey(user.id) : GUEST_KEY;
-    const stored = safeRead(key);
-    const normalized = stored === "performance" || stored === "quality" ? stored : null;
+    let cancelled = false;
 
-    if (normalized) {
-      setModeState(normalized);
-      return;
+    // Logged out => keep existing localStorage + detection behavior.
+    if (!user?.id) {
+      const stored = normalizeMode(safeRead(GUEST_KEY));
+      const next = stored ?? detectDefaultMode();
+      setModeState(next);
+      safeWrite(GUEST_KEY, next);
+      return () => {
+        cancelled = true;
+      };
     }
 
-    // If logged in and no user key, try inheriting guest choice.
-    if (user?.id) {
-      const guest = safeRead(GUEST_KEY);
-      const guestNorm = guest === "performance" || guest === "quality" ? guest : null;
-      if (guestNorm) {
-        setModeState(guestNorm);
-        safeWrite(key, guestNorm);
+    const uid = user.id;
+
+    // Compute a local fallback (used if DB read fails OR for first-time seed)
+    const storedUser = normalizeMode(safeRead(userKey(uid)));
+    const storedGuest = normalizeMode(safeRead(GUEST_KEY));
+    const fallbackMode = storedUser ?? storedGuest ?? detectDefaultMode();
+
+    (async () => {
+      const dbMode = await loadDbMode(uid);
+
+      if (cancelled) return;
+
+      if (dbMode) {
+        setModeState(dbMode);
+        // keep local device cache aligned (helpful before auth hydrates)
+        safeWrite(userKey(uid), dbMode);
+        safeWrite(GUEST_KEY, dbMode);
         return;
       }
-    }
 
-    const detected = detectDefaultMode();
-    setModeState(detected);
-    safeWrite(key, detected);
+      // No DB row (or DB error) => use fallback and try seeding.
+      setModeState(fallbackMode);
+      safeWrite(userKey(uid), fallbackMode);
+      safeWrite(GUEST_KEY, fallbackMode);
+      // Best-effort seed; DB is source of truth once it exists.
+      await saveDbMode(uid, fallbackMode);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
   // Apply root class hook for CSS
@@ -94,9 +147,12 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
 
   const setMode = (next: PerformanceMode) => {
     setModeState(next);
-    if (user?.id) safeWrite(userKey(user.id), next);
-    // Also store on device so the same device remembers a default even before login
+    // Always store on device so the same device remembers a default even before login
     safeWrite(GUEST_KEY, next);
+    if (user?.id) {
+      safeWrite(userKey(user.id), next);
+      void saveDbMode(user.id, next);
+    }
   };
 
   const value = useMemo<PerformanceModeContextValue>(
