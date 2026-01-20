@@ -1,4 +1,3 @@
-import React from "react";
 import { useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
@@ -13,16 +12,12 @@ import { Button } from "@/components/ui/button";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
-import { useAdmin } from "@/hooks/useAdmin";
-import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { groupDbLinkedFirst } from "@/lib/sortContent";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
 const Watchlist = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
   const { user } = useAuth();
-  const { isAdmin } = useAdmin();
-  const { showOnlyDbLinked } = useAdminListFilter();
   const { getAvailability, isLoading: isAvailabilityLoading } = useEntryAvailability();
   const { getWatchlistAsMovies, loading } = useWatchlist();
 
@@ -36,13 +31,8 @@ const Watchlist = () => {
       return a.hasWatch || a.hasDownload;
     });
 
-    return isAdmin && showOnlyDbLinked
-      ? sorted.filter((it) => {
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        })
-      : sorted;
-  }, [filterBlockedPosts, getAvailability, isAdmin, showOnlyDbLinked, watchlistMovies]);
+    return sorted;
+  }, [filterBlockedPosts, getAvailability, watchlistMovies]);
 
   const { isLoading: isHoverPreloadLoading } = usePageHoverPreload(visibleWatchlist, { enabled: !loading });
 

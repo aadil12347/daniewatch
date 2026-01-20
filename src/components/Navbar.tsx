@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminContentVisibility } from "@/contexts/AdminContentVisibilityContext";
-import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -29,7 +28,6 @@ export const Navbar = () => {
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
   const { showBlockedPosts, setShowBlockedPosts } = useAdminContentVisibility();
-  const { showOnlyDbLinked, setShowOnlyDbLinked } = useAdminListFilter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
@@ -385,18 +383,6 @@ export const Navbar = () => {
                           checked={showBlockedPosts}
                           onCheckedChange={(v) => setShowBlockedPosts(Boolean(v))}
                           aria-label={showBlockedPosts ? "Show blocked posts" : "Hide blocked posts"}
-                        />
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        className="cursor-default flex items-center justify-between gap-3"
-                      >
-                        <span className="text-sm">DB links only</span>
-                        <Switch
-                          checked={showOnlyDbLinked}
-                          onCheckedChange={(v) => setShowOnlyDbLinked(Boolean(v))}
-                          aria-label={showOnlyDbLinked ? "Show only DB-linked posts" : "Show all posts"}
                         />
                       </DropdownMenuItem>
                     </>
