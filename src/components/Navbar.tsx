@@ -138,6 +138,24 @@ export const Navbar = () => {
     };
   }, []);
 
+  // Scroll-reactive tint strength: strongest at top, fades as you scroll.
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const update = () => {
+      const y = Math.max(0, window.scrollY || 0);
+      // Fade over first ~520px of scroll.
+      const t = Math.min(1, y / 520);
+      // Subtle range: 0.18 -> 0.06
+      const alpha = 0.18 * (1 - t) + 0.06 * t;
+      root.style.setProperty("--navbar-tint-alpha", alpha.toFixed(3));
+    };
+
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
   // Prevent body scroll when menu is open
   useEffect(() => {
     if (isMenuOpen) {
