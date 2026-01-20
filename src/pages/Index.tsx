@@ -10,6 +10,7 @@ import { usePostModeration } from "@/hooks/usePostModeration";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { usePreloadImages } from "@/hooks/usePreloadImages";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 import {
   getTrending,
   getPopularMovies,
@@ -26,6 +27,7 @@ const ABOVE_FOLD_PRELOAD_COUNT = 20; // preload at least 20 hover images on init
 const SHOW_THRESHOLD = 0.5; // show when 50% of those hover images are ready
 
 const Index = () => {
+  const { isPerformance } = usePerformanceMode();
   const [trending, setTrending] = useState<Movie[]>([]);
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
@@ -150,9 +152,9 @@ const Index = () => {
             size="lg"
             hoverCharacterMode="contained"
             enableHoverPortal={false}
-            disableRankFillHover
-            disableHoverLogo
-            disableHoverCharacter
+            disableRankFillHover={isPerformance}
+            disableHoverLogo={isPerformance}
+            disableHoverCharacter={isPerformance}
           />
 
           <TabbedContentRow
