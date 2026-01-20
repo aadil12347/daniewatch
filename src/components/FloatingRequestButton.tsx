@@ -1,22 +1,14 @@
 import React from "react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { MessageSquarePlus, Send, Phone } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { MessageSquarePlus } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RequestFormDialog } from "./RequestFormDialog";
-import { ContactAdminSection } from "./ContactAdminSection";
 import { useMedia } from "@/contexts/MediaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { cn } from "@/lib/utils";
+import { RequestHelpSheet } from "@/components/RequestHelpSheet";
 
 export const FloatingRequestButton = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,9 +16,14 @@ export const FloatingRequestButton = () => {
   const { user } = useAuth();
   const { isAdmin, isOwner } = useAdmin();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Hide for admin/owner or when video is playing
-  if (isAdmin || isOwner || isVideoPlaying) return null;
+  const state = location.state as { backgroundLocation?: unknown } | null;
+  const isDetailsModalOpen = Boolean(state?.backgroundLocation);
+
+  // Hide for admin/owner, when video is playing, or when a details modal is open
+  // (details modals render their own in-modal Request button to avoid nested-dialog issues)
+  if (isAdmin || isOwner || isVideoPlaying || isDetailsModalOpen) return null;
 
   const handleButtonClick = () => {
     if (!user) {
@@ -39,7 +36,6 @@ export const FloatingRequestButton = () => {
 
   return (
     <>
-      {/* Floating Button */}
       <Button
         size="icon"
         onClick={handleButtonClick}
@@ -48,52 +44,27 @@ export const FloatingRequestButton = () => {
           "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg",
           "bg-primary hover:bg-primary/90 text-primary-foreground",
           "transition-all duration-300 hover:scale-110",
-          "animate-pulse-glow"
+          "animate-pulse-glow",
         )}
       >
         <MessageSquarePlus className="w-6 h-6" />
       </Button>
 
-      {/* Sheet for authenticated users */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>How can we help?</SheetTitle>
-          <SheetDescription>
-            Submit a request or contact us directly
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-6">
-          <Tabs defaultValue="request" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="request" className="flex items-center gap-2">
-                <Send className="w-4 h-4" />
-                Request
-              </TabsTrigger>
-              <TabsTrigger value="contact" className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                Contact
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="request" className="mt-4">
-              <RequestFormDialog
-                defaultTitle={currentMedia?.title}
-                defaultType={currentMedia?.type}
-                defaultTmdbId={currentMedia?.tmdbId}
-                defaultSeason={currentMedia?.seasonNumber}
-                onSuccess={() => setIsOpen(false)}
-              />
-            </TabsContent>
-            
-            <TabsContent value="contact" className="mt-4">
-              <ContactAdminSection />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </SheetContent>
-      </Sheet>
+      <RequestHelpSheet
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        defaults={
+          currentMedia
+            ? {
+                title: currentMedia.title,
+                type: currentMedia.type,
+                tmdbId: currentMedia.tmdbId,
+                seasonNumber: currentMedia.seasonNumber,
+              }
+            : undefined
+        }
+      />
     </>
   );
 };
+
