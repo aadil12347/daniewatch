@@ -1,5 +1,5 @@
 import React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { BLOCKED_IDS, searchAnimeScoped, searchKoreanScoped, searchMergedGlobal, type Movie } from "@/lib/tmdb";
@@ -9,7 +9,7 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { MovieCard } from "@/components/MovieCard";
 
 export const SearchOverlay = () => {
-  const { isOpen, query, scope, close } = useSearchOverlay();
+  const { isOpen, query, scope } = useSearchOverlay();
   const { getWatchlistAsMovies } = useWatchlist();
 
   const [debouncedQuery, setDebouncedQuery] = useState(query);
@@ -17,13 +17,14 @@ export const SearchOverlay = () => {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Movie[]>([]);
 
+  // Prevent repeated searches / stuck loading when dependencies change rapidly.
+  const runIdRef = useRef(0);
+
   useEffect(() => {
     if (!isOpen) return;
     const t = window.setTimeout(() => setDebouncedQuery(query.trim()), 350);
     return () => window.clearTimeout(t);
   }, [isOpen, query]);
-
-  const watchlistItems = useMemo(() => getWatchlistAsMovies(), [getWatchlistAsMovies]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -38,6 +39,8 @@ export const SearchOverlay = () => {
 
     let cancelled = false;
 
+    const runId = ++runIdRef.current;
+
     const run = async () => {
       setLoading(true);
       setError(null);
@@ -47,6 +50,7 @@ export const SearchOverlay = () => {
 
         if (scope === "watchlist") {
           // Strictly "page-contained" for watchlist: search only within watchlist items.
+          const watchlistItems = getWatchlistAsMovies();
           const qq = q.toLowerCase();
           items = watchlistItems.filter((it) => {
             const title = (it.title || it.name || "").toLowerCase();
@@ -75,11 +79,11 @@ export const SearchOverlay = () => {
           }
         }
 
-        if (!cancelled) setResults(items);
+        if (!cancelled && runId === runIdRef.current) setResults(items);
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Search failed");
+        if (!cancelled && runId === runIdRef.current) setError(e?.message || "Search failed");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && runId === runIdRef.current) setLoading(false);
       }
     };
 
@@ -88,7 +92,7 @@ export const SearchOverlay = () => {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, isOpen, scope, watchlistItems]);
+  }, [debouncedQuery, isOpen, scope, getWatchlistAsMovies]);
 
   return (
     <Dialog open={isOpen} modal={false} onOpenChange={() => {}}>
