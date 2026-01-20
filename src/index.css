@@ -450,6 +450,16 @@ html {
     scroll-behavior: smooth;
   }
 
+  /*
+    Details pages: keep the info block (logo/meta + Play button) within the desktop viewport.
+    Uses a viewport-aware negative margin so users don't need to scroll to reach Play.
+  */
+  @media (min-width: 768px) {
+    .details-overlap-desktop {
+      margin-top: calc(-1 * min(24rem, 42vh));
+    }
+  }
+
 /* Performance/Quality switch overlay */
 .mode-switch-overlay {
   position: fixed;
