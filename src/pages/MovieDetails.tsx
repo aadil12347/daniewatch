@@ -223,7 +223,10 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
           <div className="relative">
-          <div ref={heroRef} className="relative h-[70vh] md:h-screen md:min-h-[700px]">
+          <div
+            ref={heroRef}
+            className="relative h-[70vh] md:h-[calc(100vh-var(--app-header-offset))] md:min-h-[640px]"
+          >
             {/* Background Trailer (hide when playing) */}
             {!isPlayerOpen ? (
               <BackgroundTrailer
