@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
@@ -15,7 +16,6 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
 import { isAnimeScope } from "@/lib/contentScope";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
@@ -203,32 +203,72 @@ const Anime = () => {
     [dbCandidates, dbOnlyHydrated, getKey, manifestMetaByKey.size]
   );
 
-  const mergedBase = useMemo(() => {
-    return mergeDbAndTmdb({
-      tmdbItems: items,
-      dbOnlyHydratedItems: dbOnlyHydrated,
-      isDbItem: (key) => manifestMetaByKey.has(key),
-      getDbMeta: getManifestMetaByKey,
+  const manifestItemByKey = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const it of manifestItems) {
+      if (it.media_type !== "tv") continue;
+      map.set(`${it.id}-tv`, it);
+    }
+    return map;
+  }, [manifestItems]);
+
+  const dbStubItems = useMemo((): Movie[] => {
+    return dbCandidates.map(({ id }) => {
+      const meta = manifestItemByKey.get(`${id}-tv`);
+      const title = meta?.title ?? meta?.name ?? meta?.original_name ?? "Untitled";
+      const genre_ids = (meta?.genre_ids ?? [ANIME_GENRE_ID]) as number[];
+      const releaseYear = (meta?.release_year ?? 0) as number;
+
+      return {
+        id,
+        media_type: "tv" as const,
+        name: title,
+        original_name: title,
+        genre_ids,
+        first_air_date: releaseYear ? `${releaseYear}-01-01` : "",
+        poster_path: null,
+      } as unknown as Movie;
     });
-  }, [dbOnlyHydrated, getManifestMetaByKey, items, manifestMetaByKey]);
+  }, [dbCandidates, manifestItemByKey]);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(mergedBase, "tv"), [filterBlockedPosts, mergedBase]);
+  const hydratedByKey = useMemo(() => {
+    const map = new Map<string, Movie>();
+    for (const m of items) map.set(getKey(m), m);
+    for (const m of dbOnlyHydrated) map.set(getKey(m), m);
+    return map;
+  }, [dbOnlyHydrated, getKey, items]);
 
-  const visibleItems = useMemo(() => {
-    const list = baseVisible;
+  const dbVisibleItems = useMemo(() => {
+    return dbStubItems.map((stub) => hydratedByKey.get(getKey(stub)) ?? stub);
+  }, [dbStubItems, getKey, hydratedByKey]);
 
-    return isAdmin && showOnlyDbLinked
-      ? list.filter((it) => {
-          // Use manifest availability first (fast), fallback to live query
-          const manifestAvail = manifestAvailabilityById.get(it.id);
-          if (manifestAvail) {
-            return manifestAvail.hasWatch || manifestAvail.hasDownload;
-          }
-          const a = getAvailability(it.id);
-          return a.hasWatch || a.hasDownload;
-        })
-      : list;
-  }, [baseVisible, getAvailability, isAdmin, showOnlyDbLinked]);
+  const tmdbOnlyItems = useMemo(() => {
+    const dbKeys = new Set(dbStubItems.map((m) => getKey(m)));
+    return items.filter((m) => !dbKeys.has(getKey(m)));
+  }, [dbStubItems, getKey, items]);
+
+  const baseDbVisible = useMemo(() => filterBlockedPosts(dbVisibleItems, "tv"), [dbVisibleItems, filterBlockedPosts]);
+  const baseTmdbVisible = useMemo(() => filterBlockedPosts(tmdbOnlyItems, "tv"), [filterBlockedPosts, tmdbOnlyItems]);
+
+  const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
+
+  const filterDbLinked = useCallback(
+    (list: Movie[]) => {
+      if (!needsDbLinkedFilter) return list;
+      return list.filter((it) => {
+        const manifestAvail = manifestAvailabilityById.get(it.id);
+        if (manifestAvail) return manifestAvail.hasWatch || manifestAvail.hasDownload;
+        const a = getAvailability(it.id);
+        return a.hasWatch || a.hasDownload;
+      });
+    },
+    [getAvailability, manifestAvailabilityById, needsDbLinkedFilter]
+  );
+
+  const filteredDbItems = useMemo(() => filterDbLinked(baseDbVisible), [baseDbVisible, filterDbLinked]);
+  const filteredTmdbItems = useMemo(() => filterDbLinked(baseTmdbVisible), [baseTmdbVisible, filterDbLinked]);
+
+  const visibleItems = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleItems, { enabled: !isLoading });
@@ -415,7 +455,7 @@ const Anime = () => {
     return () => observerRef.current?.disconnect();
   }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleItems.length]);
 
-  // Resolve pending "load more": reveal from buffer first, otherwise fetch next TMDB page.
+  // Resolve pending "load more": reveal from buffer first. Only fetch next TMDB page AFTER all DB items are revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
@@ -424,24 +464,17 @@ const Anime = () => {
       setAnimateFromIndex(displayCount);
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleItems.length));
       setPendingLoadMore(false);
+
+      if (displayCount < filteredDbItems.length) {
+        const tmdbKeys = new Set(items.map((m) => getKey(m)));
+        void hydrateDbOnly(tmdbKeys, 30);
+      }
+
       return;
     }
 
-    const hasMoreDb = dbHydrationCursorRef.current < dbCandidates.length;
-    if (hasMoreDb) {
-      setAnimateFromIndex(displayCount);
+    if (displayCount < filteredDbItems.length) {
       setPendingLoadMore(false);
-      setIsLoadingMore(true);
-
-      void (async () => {
-        try {
-          const tmdbKeys = new Set(items.map((m) => getKey(m)));
-          await hydrateDbOnly(tmdbKeys, 60);
-          setDisplayCount((prev) => prev + BATCH_SIZE);
-        } finally {
-          setIsLoadingMore(false);
-        }
-      })();
       return;
     }
 
@@ -455,7 +488,7 @@ const Anime = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore, dbCandidates.length, getKey, hydrateDbOnly, items]);
+  }, [pendingLoadMore, displayCount, visibleItems.length, filteredDbItems.length, hasMore, items, getKey, hydrateDbOnly, setIsLoadingMore]);
 
   // Fetch more when page changes
   useEffect(() => {

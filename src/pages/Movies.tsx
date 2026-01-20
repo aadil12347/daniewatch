@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import React from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
@@ -15,7 +16,6 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminListFilter } from "@/contexts/AdminListFilterContext";
-import { mergeDbAndTmdb } from "@/lib/mergeDbAndTmdb";
 import { isAllowedOnMoviesPage } from "@/lib/contentScope";
 
 const BATCH_SIZE = 18;
@@ -193,43 +193,77 @@ const Movies = () => {
     [dbCandidates, dbOnlyHydrated, getKey, manifestMetaByKey.size]
   );
 
-  const mergedBase = useMemo(() => {
-    return mergeDbAndTmdb({
-      tmdbItems: movies,
-      dbOnlyHydratedItems: dbOnlyHydrated,
-      isDbItem: (key) => manifestMetaByKey.has(key),
-      getDbMeta: getManifestMetaByKey,
+  const manifestItemByKey = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const it of manifestItems) {
+      if (it.media_type !== "movie") continue;
+      map.set(`${it.id}-movie`, it);
+    }
+    return map;
+  }, [manifestItems]);
+
+  // Full DB list as lightweight stubs (visibility/order comes from DB, not hydration).
+  const dbStubItems = useMemo((): Movie[] => {
+    return dbCandidates.map(({ id }) => {
+      const meta = manifestItemByKey.get(`${id}-movie`);
+      const title = meta?.title ?? meta?.name ?? meta?.original_title ?? "Untitled";
+      const genre_ids = (meta?.genre_ids ?? []) as number[];
+      const releaseYear = (meta?.release_year ?? 0) as number;
+
+      return {
+        id,
+        media_type: "movie" as const,
+        title,
+        original_title: title,
+        genre_ids,
+        release_date: releaseYear ? `${releaseYear}-01-01` : "",
+        poster_path: null,
+      } as unknown as Movie;
     });
-  }, [dbOnlyHydrated, getManifestMetaByKey, movies, manifestMetaByKey]);
+  }, [dbCandidates, manifestItemByKey]);
 
-  const baseVisible = useMemo(() => filterBlockedPosts(mergedBase, "movie"), [filterBlockedPosts, mergedBase]);
+  // Prefer hydrated items if available, but always replace in-place (no reordering).
+  const hydratedByKey = useMemo(() => {
+    const map = new Map<string, Movie>();
+    for (const m of movies) map.set(getKey(m), m);
+    for (const m of dbOnlyHydrated) map.set(getKey(m), m);
+    return map;
+  }, [dbOnlyHydrated, getKey, movies]);
 
-  const visibleMovies = useMemo(() => {
-    // Keep DB-first grouping intact; apply pinned ordering within each group.
-    const isDb = (m: Movie) => manifestMetaByKey.has(`${m.id}-movie`);
+  const dbVisibleItems = useMemo(() => {
+    return dbStubItems.map((stub) => hydratedByKey.get(getKey(stub)) ?? stub);
+  }, [dbStubItems, getKey, hydratedByKey]);
 
-    const dbGroup = baseVisible.filter(isDb);
-    const tmdbGroup = baseVisible.filter((m) => !isDb(m));
+  const tmdbOnlyItems = useMemo(() => {
+    const dbKeys = new Set(dbStubItems.map((m) => getKey(m)));
+    return movies.filter((m) => !dbKeys.has(getKey(m)));
+  }, [dbStubItems, getKey, movies]);
 
-    const dbSorted = sortWithPinnedFirst(dbGroup, "movies", "movie");
-    const tmdbSorted = sortWithPinnedFirst(tmdbGroup, "movies", "movie");
+  const baseDbVisible = useMemo(() => filterBlockedPosts(dbVisibleItems, "movie"), [dbVisibleItems, filterBlockedPosts]);
+  const baseTmdbVisible = useMemo(() => filterBlockedPosts(tmdbOnlyItems, "movie"), [filterBlockedPosts, tmdbOnlyItems]);
 
-    const combined = [...dbSorted, ...tmdbSorted];
+  const dbSorted = useMemo(() => sortWithPinnedFirst(baseDbVisible, "movies", "movie"), [baseDbVisible, sortWithPinnedFirst]);
+  const tmdbSorted = useMemo(() => sortWithPinnedFirst(baseTmdbVisible, "movies", "movie"), [baseTmdbVisible, sortWithPinnedFirst]);
 
-    if (isAdmin && showOnlyDbLinked) {
-      return combined.filter((m) => {
-        // Use manifest availability first (fast), fallback to live query
+  const needsDbLinkedFilter = isAdmin && showOnlyDbLinked;
+
+  const filterDbLinked = useCallback(
+    (list: Movie[]) => {
+      if (!needsDbLinkedFilter) return list;
+      return list.filter((m) => {
         const manifestAvail = manifestAvailabilityById.get(m.id);
-        if (manifestAvail) {
-          return manifestAvail.hasWatch || manifestAvail.hasDownload;
-        }
+        if (manifestAvail) return manifestAvail.hasWatch || manifestAvail.hasDownload;
         const a = getAvailability(m.id);
         return a.hasWatch || a.hasDownload;
       });
-    }
+    },
+    [getAvailability, manifestAvailabilityById, needsDbLinkedFilter]
+  );
 
-    return combined;
-  }, [baseVisible, getAvailability, isAdmin, manifestAvailabilityById, manifestMetaByKey, showOnlyDbLinked, sortWithPinnedFirst]);
+  const filteredDbItems = useMemo(() => filterDbLinked(dbSorted), [dbSorted, filterDbLinked]);
+  const filteredTmdbItems = useMemo(() => filterDbLinked(tmdbSorted), [filterDbLinked, tmdbSorted]);
+
+  const visibleMovies = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleMovies, { enabled: !isLoading });
@@ -428,7 +462,7 @@ const Movies = () => {
     return () => observerRef.current?.disconnect();
   }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleMovies.length]);
 
-  // Resolve pending "load more": reveal from buffer first, otherwise fetch next TMDB page.
+  // Resolve pending "load more": reveal from buffer first. Only fetch next TMDB page AFTER all DB items are revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
@@ -437,24 +471,19 @@ const Movies = () => {
       setAnimateFromIndex(displayCount);
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleMovies.length));
       setPendingLoadMore(false);
+
+      // Background hydration for upcoming DB stubs (never affects ordering).
+      if (displayCount < filteredDbItems.length) {
+        const tmdbKeys = new Set(movies.map((m) => getKey(m)));
+        void hydrateDbOnly(tmdbKeys, 30);
+      }
+
       return;
     }
 
-    const hasMoreDb = dbHydrationCursorRef.current < dbCandidates.length;
-    if (hasMoreDb) {
-      setAnimateFromIndex(displayCount);
+    // Don't fetch TMDB until user has scrolled past the DB partition.
+    if (displayCount < filteredDbItems.length) {
       setPendingLoadMore(false);
-      setIsLoadingMore(true);
-
-      void (async () => {
-        try {
-          const tmdbKeys = new Set(movies.map((m) => getKey(m)));
-          await hydrateDbOnly(tmdbKeys, 60);
-          setDisplayCount((prev) => prev + BATCH_SIZE);
-        } finally {
-          setIsLoadingMore(false);
-        }
-      })();
       return;
     }
 
@@ -468,7 +497,7 @@ const Movies = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, visibleMovies.length, hasMore, setIsLoadingMore, dbCandidates.length, getKey, hydrateDbOnly, movies]);
+  }, [pendingLoadMore, displayCount, visibleMovies.length, filteredDbItems.length, hasMore, movies, getKey, hydrateDbOnly, setIsLoadingMore]);
 
   // Fetch more when page changes
   useEffect(() => {
