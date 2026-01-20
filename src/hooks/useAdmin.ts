@@ -45,7 +45,12 @@ export interface UserRole {
   created_at: string;
 }
 
-export interface AdminRequest {
+export type RequestMeta = {
+  tmdb_id: string;
+  media_type: 'movie' | 'tv';
+};
+
+type AdminRequestRow = {
   id: string;
   user_id: string;
   user_email: string | null;
@@ -57,11 +62,23 @@ export interface AdminRequest {
   admin_response: string | null;
   created_at: string;
   updated_at: string;
-  request_meta?: {
-    tmdb_id: string;
-    media_type: 'movie' | 'tv';
-  } | null;
+  request_meta?: RequestMeta | RequestMeta[] | null;
+};
+
+export interface AdminRequest extends Omit<AdminRequestRow, 'request_meta'> {
+  request_meta?: RequestMeta | null;
 }
+
+const normalizeRequestMeta = (meta: AdminRequestRow['request_meta']): RequestMeta | null => {
+  if (!meta) return null;
+  if (Array.isArray(meta)) return meta[0] ?? null;
+  return meta;
+};
+
+const normalizeAdminRequest = (req: AdminRequestRow): AdminRequest => ({
+  ...req,
+  request_meta: normalizeRequestMeta(req.request_meta),
+});
 
 export const useAdmin = () => {
   const { user } = useAuth();
@@ -140,8 +157,9 @@ export const useAdmin = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAllRequests((data as AdminRequest[]) || []);
 
+      const rows = (data as AdminRequestRow[]) || [];
+      setAllRequests(rows.map(normalizeAdminRequest));
       // If admin sees 0 rows, it's very often RLS policies blocking access.
       if ((data?.length ?? 0) === 0) {
         setRequestsError(
@@ -463,7 +481,7 @@ export const useAdmin = () => {
 
           // payload.new does NOT include joined request_meta; fetch the joined row so admins can see Post Code.
           if (!insertedId) {
-            setAllRequests((prev) => [payload.new as AdminRequest, ...prev]);
+            setAllRequests((prev) => [normalizeAdminRequest(payload.new as AdminRequestRow), ...prev]);
             return;
           }
 
@@ -478,13 +496,14 @@ export const useAdmin = () => {
               console.error('Error fetching request with meta (INSERT):', error);
               setAllRequests((prev) => {
                 if (prev.some((r) => r.id === insertedId)) return prev;
-                return [payload.new as AdminRequest, ...prev];
+                return [normalizeAdminRequest(payload.new as AdminRequestRow), ...prev];
               });
               return;
             }
 
             if (data) {
-              setAllRequests((prev) => [data as AdminRequest, ...prev.filter((r) => r.id !== insertedId)]);
+              const normalized = normalizeAdminRequest(data as AdminRequestRow);
+              setAllRequests((prev) => [normalized, ...prev.filter((r) => r.id !== insertedId)]);
             }
           })();
         }
@@ -511,12 +530,13 @@ export const useAdmin = () => {
               setAllRequests((prev) =>
                 prev.map((r) => {
                   if (r.id !== updatedId) return r;
-                  const next = payload.new as AdminRequest;
+                  const nextRow = payload.new as AdminRequestRow;
+                  const normalizedNext = normalizeAdminRequest(nextRow);
                   return {
                     ...r,
-                    ...next,
+                    ...normalizedNext,
                     // keep existing joined meta if the refetch failed
-                    request_meta: r.request_meta ?? next.request_meta ?? null,
+                    request_meta: r.request_meta ?? normalizedNext.request_meta ?? null,
                   };
                 })
               );
@@ -524,7 +544,8 @@ export const useAdmin = () => {
             }
 
             if (data) {
-              setAllRequests((prev) => prev.map((r) => (r.id === updatedId ? (data as AdminRequest) : r)));
+              const normalized = normalizeAdminRequest(data as AdminRequestRow);
+              setAllRequests((prev) => prev.map((r) => (r.id === updatedId ? normalized : r)));
             }
           })();
         }

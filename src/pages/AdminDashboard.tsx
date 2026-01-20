@@ -8,7 +8,7 @@ import { useAdmin, AdminRequest } from "@/hooks/useAdmin";
 import { useAdminTrash, TrashedRequest } from "@/hooks/useAdminTrash";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,6 +105,9 @@ const RequestCard = ({
   const [adminResponse, setAdminResponse] = useState(request.admin_response || '');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+  const meta = request.request_meta ?? null;
   const handleUpdate = async () => {
     setIsUpdating(true);
     await onUpdateStatus(request.id, selectedStatus, adminResponse);
@@ -139,13 +142,18 @@ const RequestCard = ({
                   {request.request_type === 'general' && 'General Request'}
                 </div>
 
-                {request.request_meta?.tmdb_id && (
+                {meta?.tmdb_id ? (
                   <div className="text-xs text-muted-foreground">
                     <span className="font-medium">Post Code:</span>{" "}
-                    <span className="font-mono">{request.request_meta.tmdb_id}</span>{" "}
-                    <span className="text-muted-foreground">({request.request_meta.media_type})</span>
+                    <span className="font-mono">{meta.tmdb_id}</span>{" "}
+                    <span className="text-muted-foreground">({meta.media_type})</span>
                   </div>
-                )}
+                ) : request.request_type !== 'general' ? (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">Post Code:</span>{" "}
+                    <span className="font-mono">missing</span>
+                  </div>
+                ) : null}
 
 
                 {request.user_email && (
@@ -175,6 +183,22 @@ const RequestCard = ({
           </p>
           
           <div className="flex items-center gap-2">
+            {request.request_type !== 'general' && (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!meta?.tmdb_id}
+                onClick={() => {
+                  if (!meta?.tmdb_id) return;
+                  const path = meta.media_type === 'movie' ? `/movie/${meta.tmdb_id}` : `/tv/${meta.tmdb_id}`;
+                  navigate(path, { state: { backgroundLocation: location } });
+                }}
+              >
+                <Link2 className="w-4 h-4 mr-2" />
+                Open Post
+              </Button>
+            )}
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
