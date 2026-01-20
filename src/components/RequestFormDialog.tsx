@@ -70,15 +70,16 @@ export const RequestFormDialog = ({
   // Update form when defaults change
   useEffect(() => {
     if (defaultTitle) {
-      form.setValue('title', defaultTitle);
+      form.setValue("title", defaultTitle);
     }
     if (defaultType) {
-      form.setValue('request_type', defaultType === 'tv' ? 'tv_season' : 'movie');
+      form.setValue("request_type", defaultType === "tv" ? "tv_season" : "movie");
     }
-    if (defaultSeason) {
-      form.setValue('season_number', defaultSeason);
+    if (defaultSeason !== undefined) {
+      form.setValue("season_number", defaultSeason);
     }
   }, [defaultTitle, defaultType, defaultSeason, form]);
+
 
   const onSubmit = async (data: RequestFormValues) => {
     setIsSubmitting(true);
