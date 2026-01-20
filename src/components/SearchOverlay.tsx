@@ -1,10 +1,9 @@
 import React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { X, Search as SearchIcon } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import { BLOCKED_IDS, Movie, searchAnimeScoped, searchKoreanScoped, searchMergedGlobal } from "../lib/tmdb";
+import { BLOCKED_IDS, searchAnimeScoped, searchKoreanScoped, searchMergedGlobal, type Movie } from "@/lib/tmdb";
 import { isAllowedOnMoviesPage, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useSearchOverlay } from "@/contexts/SearchOverlayContext";
 import { useWatchlist } from "@/hooks/useWatchlist";
@@ -20,7 +19,7 @@ const SCOPE_LABEL: Record<string, string> = {
 };
 
 export const SearchOverlay = () => {
-  const { isOpen, query, setQuery, scope, close } = useSearchOverlay();
+  const { isOpen, query, scope, close } = useSearchOverlay();
   const { getWatchlistAsMovies } = useWatchlist();
 
   const [debouncedQuery, setDebouncedQuery] = useState(query);
@@ -116,8 +115,18 @@ export const SearchOverlay = () => {
         overlayClassName="bg-background/80"
       >
         <div className="h-full w-full flex flex-col">
+          {/* No secondary search bar here (Navbar is the only search input). */}
           <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-xl">
-            <div className="px-4 py-3 flex items-center gap-3">
+            <div className="px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">{SCOPE_LABEL[scope] ?? "Search"}</div>
+                {query.trim() ? (
+                  <div className="text-xs text-muted-foreground truncate">Results for “{query.trim()}”</div>
+                ) : (
+                  <div className="text-xs text-muted-foreground">Type in the navbar search to begin.</div>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={close}
@@ -126,25 +135,6 @@ export const SearchOverlay = () => {
               >
                 <X className="h-5 w-5" />
               </button>
-
-              <div className="flex-1 relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={`Search ${SCOPE_LABEL[scope] ?? ""}...`}
-                  className={cn(
-                    "w-full rounded-full border border-border bg-secondary/30",
-                    "pl-9 pr-4 py-2 text-sm",
-                    "focus:outline-none focus:ring-2 focus:ring-ring"
-                  )}
-                  autoFocus
-                />
-              </div>
-
-              <div className="hidden sm:block text-xs text-muted-foreground shrink-0">
-                {SCOPE_LABEL[scope] ?? "Search"}
-              </div>
             </div>
           </div>
 
