@@ -43,42 +43,36 @@ export const SearchOverlay = () => {
       setError(null);
 
       try {
-        // Strictly "page-contained" for watchlist: search only within watchlist items.
+        let items: Movie[] = [];
+
         if (scope === "watchlist") {
+          // Strictly "page-contained" for watchlist: search only within watchlist items.
           const qq = q.toLowerCase();
-          const local = watchlistItems.filter((it) => {
+          items = watchlistItems.filter((it) => {
             const title = (it.title || it.name || "").toLowerCase();
             return title.includes(qq);
           });
-          if (!cancelled) setResults(local);
-          return;
-        }
-
-        if (scope === "anime") {
+        } else if (scope === "anime") {
           const res = await searchAnimeScoped(q);
-          if (!cancelled) setResults(res.results);
-          return;
-        }
-
-        if (scope === "korean") {
+          items = res.results;
+        } else if (scope === "korean") {
           const res = await searchKoreanScoped(q);
-          if (!cancelled) setResults(res.results);
-          return;
-        }
+          items = res.results;
+        } else {
+          // Movies / TV / Global: merged TMDB search + minimal filter + scope filter.
+          const res = await searchMergedGlobal(q);
+          items = (res.results as Movie[]).filter((it) => !it.adult && !BLOCKED_IDS.has(it.id));
 
-        // Movies / TV / Global: merged TMDB search + minimal filter + scope filter.
-        const res = await searchMergedGlobal(q);
-        let items: Movie[] = (res.results as Movie[]).filter((it) => !it.adult && !BLOCKED_IDS.has(it.id));
-
-        if (scope === "movies") {
-          items = items.filter((it) => isAllowedOnMoviesPage({ media_type: (it.media_type as any) ?? "movie" }));
-        } else if (scope === "tv") {
-          items = items.filter((it) =>
-            isAllowedOnTvPage({
-              media_type: (it.media_type as any) ?? (it.first_air_date ? "tv" : undefined),
-              first_air_date: it.first_air_date,
-            })
-          );
+          if (scope === "movies") {
+            items = items.filter((it) => isAllowedOnMoviesPage({ media_type: (it.media_type as any) ?? "movie" }));
+          } else if (scope === "tv") {
+            items = items.filter((it) =>
+              isAllowedOnTvPage({
+                media_type: (it.media_type as any) ?? (it.first_air_date ? "tv" : undefined),
+                first_air_date: it.first_air_date,
+              })
+            );
+          }
         }
 
         if (!cancelled) setResults(items);
@@ -97,18 +91,12 @@ export const SearchOverlay = () => {
   }, [debouncedQuery, isOpen, scope, watchlistItems]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => (!open ? close() : undefined)}>
+    <Dialog open={isOpen} modal={false} onOpenChange={() => {}}>
       <DialogContent
         hideClose
         contentVariant="fullscreenBelowHeader"
         className="p-0 overflow-hidden"
         overlayClassName="bg-background/80"
-        // Keep results open when users click around the navbar/header.
-        onInteractOutside={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onFocusOutside={(e) => e.preventDefault()}
-        // Close results ONLY by clearing the navbar input or browser back.
-        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="h-full w-full flex flex-col">
           <div className="flex-1 overflow-auto p-4">
