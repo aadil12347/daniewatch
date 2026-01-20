@@ -96,30 +96,11 @@ const Korean = () => {
     return s;
   }, [selectedTags]);
 
-  // Build DB entries from manifest
+  // Build DB entries from manifest - no filtering here, we want ALL DB items to appear first
+  // Filters will be applied to the final merged list after DB-first ordering
   const dbEntriesMatchingFilters = useMemo(() => {
-    return manifestItems.filter((item) => {
-      const genreIds = item.genre_ids ?? [];
-      const year = item.release_year ?? null;
-
-      // Genre filter (overlap)
-      if (normalizedDbGenreSet.size > 0) {
-        const hasOverlap = genreIds.some((g) => normalizedDbGenreSet.has(g));
-        if (!hasOverlap) return false;
-      }
-
-      // Year filter
-      if (selectedYear) {
-        if (selectedYear === "older") {
-          if (typeof year !== "number" || year > 2019) return false;
-        } else {
-          if (typeof year !== "number" || String(year) !== selectedYear) return false;
-        }
-      }
-
-      return true;
-    });
-  }, [manifestItems, normalizedDbGenreSet, selectedYear]);
+    return manifestItems;
+  }, [manifestItems]);
 
   const dbCandidates = useMemo(() => {
     const allowedCountries = new Set(["KR", "CN", "TW", "HK", "TR"]);
@@ -260,11 +241,45 @@ const Korean = () => {
     return combined;
   }, [baseVisible, getAvailability, isAdmin, manifestAvailabilityById, manifestMetaByKey, showOnlyDbLinked, sortWithPinnedFirst]);
 
+  // Apply genre and year filters to the final sorted list (after DB-first ordering)
+  const filteredVisibleItems = useMemo(() => {
+    // If no filters active, return all visible items
+    if (normalizedDbGenreSet.size === 0 && !selectedYear) {
+      return visibleItems;
+    }
+
+    // Apply genre and year filters to the final sorted list
+    return visibleItems.filter((item) => {
+      const genreIds = item.genre_ids ?? [];
+      
+      // Get year from item
+      const dateStr = item.release_date || item.first_air_date || "";
+      const year = dateStr ? parseInt(dateStr.slice(0, 4)) : null;
+
+      // Genre filter (overlap)
+      if (normalizedDbGenreSet.size > 0) {
+        const hasOverlap = genreIds.some((g) => normalizedDbGenreSet.has(g));
+        if (!hasOverlap) return false;
+      }
+
+      // Year filter
+      if (selectedYear) {
+        if (selectedYear === "older") {
+          if (typeof year !== "number" || year > 2019) return false;
+        } else {
+          if (typeof year !== "number" || String(year) !== selectedYear) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [visibleItems, normalizedDbGenreSet, selectedYear]);
+
   // Preload hover images in the background ONLY (never gate the grid render on this).
-  usePageHoverPreload(visibleItems, { enabled: !isLoading });
+  usePageHoverPreload(filteredVisibleItems, { enabled: !isLoading });
 
   // Only show skeletons before we have any real items to render.
-  const pageIsLoading = visibleItems.length === 0 && (isLoading || isModerationLoading || isManifestLoading);
+  const pageIsLoading = filteredVisibleItems.length === 0 && (isLoading || isModerationLoading || isManifestLoading);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
 
@@ -483,10 +498,10 @@ const Korean = () => {
 
   // Tell global loader it can stop as soon as we have real content on screen.
   useEffect(() => {
-    if (!pageIsLoading && visibleItems.length > 0) {
+    if (!pageIsLoading && filteredVisibleItems.length > 0) {
       requestAnimationFrame(() => window.dispatchEvent(new Event("route:content-ready")));
     }
-  }, [pageIsLoading, visibleItems.length]);
+  }, [pageIsLoading, filteredVisibleItems.length]);
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
   useEffect(() => {
@@ -519,7 +534,7 @@ const Korean = () => {
     const hasBuffered = displayCount < visibleItems.length;
     if (hasBuffered) {
       setAnimateFromIndex(displayCount);
-      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleItems.length));
+      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, filteredVisibleItems.length));
       setPendingLoadMore(false);
       return;
     }
@@ -553,7 +568,7 @@ const Korean = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore, dbCandidates.length, getKey, hydrateDbOnly, items]);
+  }, [pendingLoadMore, displayCount, filteredVisibleItems.length, hasMore, setIsLoadingMore, dbCandidates.length, getKey, hydrateDbOnly, items]);
 
   // Fetch more when page changes
   useEffect(() => {
@@ -614,7 +629,7 @@ const Korean = () => {
                     <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                   </div>
                 ))
-              : visibleItems.slice(0, displayCount).map((item, index) => {
+              : filteredVisibleItems.slice(0, displayCount).map((item, index) => {
                   const shouldAnimate =
                     animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
@@ -632,7 +647,7 @@ const Korean = () => {
           </div>
 
           {/* No results message */}
-          {!pageIsLoading && visibleItems.length === 0 && (
+          {!pageIsLoading && filteredVisibleItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No Korean content found with the selected filters.</p>
               <button
@@ -647,7 +662,7 @@ const Korean = () => {
           {/* Loading More Indicator */}
           <div ref={loadMoreRef} className="flex justify-center py-6">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!hasMore && visibleItems.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+            {!hasMore && filteredVisibleItems.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
 
