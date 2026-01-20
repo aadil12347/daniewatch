@@ -68,6 +68,8 @@ const Movies = () => {
     return `${m.id}-${media}`;
   }, []);
 
+  const normalizedDbEntries = useMemo(() => (dbEntries as unknown as DbEntry[]) ?? [], [dbEntries]);
+
   const dbEntriesMatchingFilters = useMemo(() => {
     return normalizedDbEntries.filter((e) => {
       if (e.type !== "movie") return false;
