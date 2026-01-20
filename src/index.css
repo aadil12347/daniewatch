@@ -4,7 +4,7 @@
 .rank-number {
   -webkit-text-stroke: 2px hsl(var(--primary));
   -webkit-text-fill-color: transparent;
-  transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-slow);
 }
 
 .group:hover .rank-number {
@@ -35,7 +35,7 @@
   background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--transition-smooth);
   box-shadow: 0 0 10px hsl(var(--primary)), 0 0 20px hsl(var(--primary));
 }
 
@@ -167,6 +167,13 @@
     --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
 
+    /* Motion durations (variables so Quality mode can feel snappier) */
+    --page-enter-ms: 300ms;
+    --page-exit-ms: 200ms;
+    --content-reveal-ms: 600ms;
+    --card-reveal-ms: 400ms;
+    --tv-list-in-ms: 320ms;
+
     /* Default header offset (Navbar will overwrite with measured height) */
     --app-header-offset: 64px;
 
@@ -183,6 +190,19 @@
 
     --transition-slow: 260ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Quality mode: keep visuals the same, but make motion feel snappier */
+  html.quality-mode {
+    --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 240ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 380ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    --page-enter-ms: 240ms;
+    --page-exit-ms: 160ms;
+    --content-reveal-ms: 460ms;
+    --card-reveal-ms: 320ms;
+    --tv-list-in-ms: 260ms;
   }
 
   .dark {
@@ -295,8 +315,8 @@ html {
   .cinema-card {
     @apply relative rounded-lg;
     box-shadow: var(--shadow-card);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--transition-smooth),
+                box-shadow var(--transition-smooth);
     will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
@@ -1086,11 +1106,11 @@ html {
   /* Mobile/Tablet: Slide animation */
   @media (max-width: 1023px) {
     .page-enter {
-      animation: pageSlideEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation: pageSlideEnter var(--page-enter-ms) cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
     .page-exit {
-      animation: pageSlideExit 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation: pageSlideExit var(--page-exit-ms) cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
     @keyframes pageSlideEnter {
@@ -1127,7 +1147,7 @@ html {
 
   /* Content reveal animations */
   .content-reveal {
-    animation: contentReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: contentReveal var(--content-reveal-ms) cubic-bezier(0.16, 1, 0.3, 1) forwards;
     opacity: 0;
   }
 
@@ -1149,7 +1169,7 @@ html {
   /* Card stagger animation */
   .card-reveal {
     opacity: 0;
-    animation: cardReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: cardReveal var(--card-reveal-ms) cubic-bezier(0.16, 1, 0.3, 1) forwards;
     will-change: opacity, transform;
     transform: translateZ(0);
     backface-visibility: hidden;
@@ -1175,7 +1195,7 @@ html {
   /* TV list "append" animation (subtle scale + fade to avoid flashing) */
   .tv-element-in {
     opacity: 1 !important;
-    animation: tvListIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    animation: tvListIn var(--tv-list-in-ms) cubic-bezier(0.16, 1, 0.3, 1) both !important;
     transform: none !important;
     will-change: transform, opacity;
   }

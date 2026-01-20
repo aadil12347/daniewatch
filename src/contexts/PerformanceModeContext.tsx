@@ -89,6 +89,7 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
   // Apply root class hook for CSS
   useEffect(() => {
     document.documentElement.classList.toggle("perf-mode", mode === "performance");
+    document.documentElement.classList.toggle("quality-mode", mode === "quality");
   }, [mode]);
 
   const setMode = (next: PerformanceMode) => {
