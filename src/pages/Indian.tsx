@@ -64,45 +64,67 @@ const Indian = () => {
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const restoreScrollYRef = useRef<number | null>(null);
 
+  const dbHydrationCursorRef = useRef(0);
+
   const getKey = useCallback((m: Pick<Movie, "id" | "media_type" | "first_air_date">) => {
     const media = (m.media_type as "movie" | "tv" | undefined) ?? (m.first_air_date ? "tv" : "movie");
     return `${m.id}-${media}`;
   }, []);
 
-  const normalizedDbEntries = useMemo(
-    () => (dbEntries as unknown as DbEntry[]) ?? [],
-    [dbEntries]
-  );
+  const normalizedDbEntries = useMemo(() => (dbEntries as unknown as DbEntry[]) ?? [], [dbEntries]);
 
-  // Filter DB entries by Indian scope using DB metadata
   const dbEntriesMatchingLanguage = useMemo(() => {
     return normalizedDbEntries.filter((e) => {
-      // Check if entry has Indian language in DB metadata
-      const meta = metaByKey.get(`${e.id}-${e.type === "series" ? "tv" : "movie"}`);
+      const mediaType = e.type === "series" ? "tv" : "movie";
+      const meta = metaByKey.get(`${e.id}-${mediaType}`);
       if (meta?.originalLanguage) {
         return ["hi", "ta", "te"].includes(meta.originalLanguage);
       }
-      return false; // If no metadata, skip (will be in TMDB results if relevant)
+      return false;
     });
   }, [normalizedDbEntries, metaByKey]);
+
+  const dbCandidates = useMemo(() => {
+    const out: Array<{ id: number; mediaType: "movie" | "tv"; sortYear: number }> = [];
+
+    for (const e of dbEntriesMatchingLanguage) {
+      const id = Number(e.id);
+      if (!Number.isFinite(id)) continue;
+      const mediaType = e.type === "series" ? ("tv" as const) : ("movie" as const);
+
+      const meta = metaByKey.get(`${id}-${mediaType}`);
+      if (!meta) continue;
+
+      const sortYear = (typeof e.release_year === "number" && Number.isFinite(e.release_year) ? e.release_year : null) ??
+        (typeof meta.releaseYear === "number" && Number.isFinite(meta.releaseYear) ? meta.releaseYear : null) ??
+        0;
+
+      out.push({ id, mediaType, sortYear });
+    }
+
+    out.sort((a, b) => b.sortYear - a.sortYear);
+    return out;
+  }, [dbEntriesMatchingLanguage, metaByKey]);
 
   const hydrateDbOnly = useCallback(
     async (tmdbKeys: Set<string>, limit: number) => {
       if (metaByKey.size === 0) return;
 
-      const candidates = dbEntriesMatchingLanguage
-        .map((e) => ({
-          id: Number(e.id),
-          mediaType: e.type === "series" ? ("tv" as const) : ("movie" as const),
-        }))
-        .filter((e) => Number.isFinite(e.id))
-        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
-        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`));
-
       const hydratedKeys = new Set(dbOnlyHydrated.map((m) => getKey(m)));
-      const toHydrate = candidates
-        .filter((c) => !hydratedKeys.has(`${c.id}-${c.mediaType}`))
-        .slice(0, limit);
+      const toHydrate: Array<{ id: number; mediaType: "movie" | "tv" }> = [];
+
+      let cursor = dbHydrationCursorRef.current;
+      while (cursor < dbCandidates.length && toHydrate.length < limit) {
+        const c = dbCandidates[cursor];
+        cursor += 1;
+
+        const key = `${c.id}-${c.mediaType}`;
+        if (tmdbKeys.has(key)) continue;
+        if (hydratedKeys.has(key)) continue;
+
+        toHydrate.push({ id: c.id, mediaType: c.mediaType });
+      }
+      dbHydrationCursorRef.current = cursor;
 
       if (toHydrate.length === 0) return;
 
@@ -144,7 +166,7 @@ const Indian = () => {
         });
       }
     },
-    [dbEntriesMatchingLanguage, dbOnlyHydrated, getKey, metaByKey]
+    [dbCandidates, dbOnlyHydrated, getKey, metaByKey.size]
   );
 
   const mergedBase = useMemo(() => {
@@ -234,6 +256,7 @@ const Indian = () => {
       if (reset) {
         setIsLoading(true);
         setDbOnlyHydrated([]);
+        dbHydrationCursorRef.current = 0;
       } else {
         setIsLoadingMore(true);
       }
@@ -350,6 +373,8 @@ const Indian = () => {
 
     setPage(1);
     setItems([]);
+    setDbOnlyHydrated([]);
+    dbHydrationCursorRef.current = 0;
     setDisplayCount(0);
     setAnimateFromIndex(null);
     setHasMore(true);
@@ -399,6 +424,24 @@ const Indian = () => {
       return;
     }
 
+    const hasMoreDb = dbHydrationCursorRef.current < dbCandidates.length;
+    if (hasMoreDb) {
+      setAnimateFromIndex(displayCount);
+      setPendingLoadMore(false);
+      setIsLoadingMore(true);
+
+      void (async () => {
+        try {
+          const tmdbKeys = new Set(items.map((m) => getKey(m)));
+          await hydrateDbOnly(tmdbKeys, 36);
+          setDisplayCount((prev) => prev + BATCH_SIZE);
+        } finally {
+          setIsLoadingMore(false);
+        }
+      })();
+      return;
+    }
+
     if (!hasMore) {
       setPendingLoadMore(false);
       return;
@@ -409,7 +452,7 @@ const Indian = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore]);
+  }, [pendingLoadMore, displayCount, visibleItems.length, hasMore, setIsLoadingMore, dbCandidates.length, getKey, hydrateDbOnly, items]);
 
   // Fetch more when page changes
   useEffect(() => {

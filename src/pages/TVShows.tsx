@@ -99,19 +99,20 @@ const TVShows = () => {
       if (metaByKey.size === 0) return [] as Movie[];
 
       const candidates = dbEntriesMatchingFilters
-        .map((e) => ({ id: Number(e.id), mediaType: "tv" as const }))
+        .map((e) => ({ id: Number(e.id), sortYear: e.release_year ?? 0 }))
         .filter((e) => Number.isFinite(e.id))
-        .filter((e) => metaByKey.has(`${e.id}-${e.mediaType}`))
-        .filter((e) => !tmdbKeys.has(`${e.id}-${e.mediaType}`))
-        .slice(0, limit);
+        .filter((e) => metaByKey.has(`${e.id}-tv`))
+        .filter((e) => !tmdbKeys.has(`${e.id}-tv`))
+        .sort((a, b) => (b.sortYear ?? 0) - (a.sortYear ?? 0));
 
-      if (candidates.length === 0) return [] as Movie[];
+      const picked = candidates.slice(0, limit);
+      if (picked.length === 0) return [] as Movie[];
 
       const BATCH = 5;
       const results: Movie[] = [];
 
-      for (let i = 0; i < candidates.length; i += BATCH) {
-        const batch = candidates.slice(i, i + BATCH);
+      for (let i = 0; i < picked.length; i += BATCH) {
+        const batch = picked.slice(i, i + BATCH);
         const hydrated = await Promise.all(
           batch.map(async ({ id }) => {
             try {
@@ -129,7 +130,7 @@ const TVShows = () => {
 
       return results;
     },
-    [dbEntriesMatchingFilters, metaByKey, selectedGenres, selectedYear]
+    [dbEntriesMatchingFilters, metaByKey]
   );
 
   const requestTmdbPage = useCallback(
