@@ -36,6 +36,10 @@ const TV_FANTASY_GENRE = 10765;
 
 const BATCH_SIZE = 18;
 
+// TMDB fetching for the Korean page excludes Turkish. We still allow Turkish DB entries
+// (manifest-driven) to appear if they exist in the database.
+const TMDB_KOREAN_LANGS = ["ko", "zh"] as const;
+
 type DbEntry = {
   id: string;
   type: "movie" | "series";
@@ -470,9 +474,9 @@ const Korean = () => {
           return p;
         };
 
-        // Fetch movies + TV for ko/zh/tr in parallel
-        const movieUrls = KOREAN_LANGS.map((lang) => `https://api.themoviedb.org/3/discover/movie?${makeMovieParams(lang)}`);
-        const tvUrls = KOREAN_LANGS.map((lang) => `https://api.themoviedb.org/3/discover/tv?${makeTvParams(lang)}`);
+        // Fetch movies + TV for Korean/Chinese in parallel (exclude Turkish from TMDB).
+        const movieUrls = TMDB_KOREAN_LANGS.map((lang) => `https://api.themoviedb.org/3/discover/movie?${makeMovieParams(lang)}`);
+        const tvUrls = TMDB_KOREAN_LANGS.map((lang) => `https://api.themoviedb.org/3/discover/tv?${makeTvParams(lang)}`);
 
         const responses = await Promise.all([...movieUrls, ...tvUrls].map((u) => fetch(u)));
         const json = await Promise.all(responses.map((r) => r.json()));
@@ -485,8 +489,15 @@ const Korean = () => {
           ...tvJson.flatMap((d: any) => (d?.results || []).map((t: Movie) => ({ ...t, media_type: "tv" as const }))),
         ];
 
-        const combinedResults = (await filterAdultContentStrict(combined))
-          .filter(m => isKoreanScope(m) && !isAnimeScope(m));
+        const combinedResults = (await filterAdultContentStrict(combined)).filter((m) => {
+          // Safety: never show Turkish TMDB results on this page.
+          const lang = (m as any)?.original_language;
+          const origin = (m as any)?.origin_country;
+          const isTurkish = lang === "tr" || (Array.isArray(origin) && origin.includes("TR"));
+          if (isTurkish) return false;
+
+          return isKoreanScope(m) && !isAnimeScope(m);
+        });
 
         // Sort by release date descending (TMDB fallback ordering only)
         const sortedResults = combinedResults.sort((a, b) => {
