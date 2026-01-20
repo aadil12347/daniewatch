@@ -15,7 +15,7 @@ export const PageTransition = ({ children }: PageTransitionProps) => {
     if (children !== displayChildren) {
       setTransitionStage("exit");
       
-      // Safety fallback: if onAnimationEnd doesn't fire within 250ms, force update
+      // Safety fallback: if onAnimationEnd doesn't fire within 220ms, force update
       timeoutRef.current = setTimeout(() => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
@@ -23,7 +23,7 @@ export const PageTransition = ({ children }: PageTransitionProps) => {
             setTransitionStage("enter");
           });
         });
-      }, 250);
+      }, 220);
     }
     
     return () => {
