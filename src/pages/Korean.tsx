@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
