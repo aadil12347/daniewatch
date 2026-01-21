@@ -172,22 +172,22 @@ export const useWatchlist = () => {
     }
   };
 
-  // Convert watchlist items to Movie format for display
-  const getWatchlistAsMovies = (): Movie[] => {
-    return watchlist.map(item => ({
+  // Convert watchlist items to Movie format for display (memoized for stable deps)
+  const getWatchlistAsMovies = useCallback((): Movie[] => {
+    return watchlist.map((item) => ({
       id: item.tmdb_id,
-      title: item.media_type === 'movie' ? item.title : undefined,
-      name: item.media_type === 'tv' ? item.title : undefined,
+      title: item.media_type === "movie" ? item.title : undefined,
+      name: item.media_type === "tv" ? item.title : undefined,
       poster_path: item.poster_path,
       vote_average: item.vote_average,
       media_type: item.media_type,
-      overview: '',
+      overview: "",
       backdrop_path: null,
       genre_ids: [],
-      release_date: item.media_type === 'movie' ? '' : undefined,
-      first_air_date: item.media_type === 'tv' ? '' : undefined,
+      release_date: item.media_type === "movie" ? "" : undefined,
+      first_air_date: item.media_type === "tv" ? "" : undefined,
     }));
-  };
+  }, [watchlist]);
 
   return {
     watchlist,

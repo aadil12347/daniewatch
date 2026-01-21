@@ -20,6 +20,15 @@ export const SearchOverlay = () => {
   // Prevent repeated searches / stuck loading when dependencies change rapidly.
   const runIdRef = useRef(0);
 
+  // Ensure we never leave the overlay in a "Searching…" state after it closes.
+  useEffect(() => {
+    if (isOpen) return;
+    runIdRef.current += 1; // invalidate any in-flight run
+    setLoading(false);
+    setError(null);
+    setResults([]);
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
     const t = window.setTimeout(() => setDebouncedQuery(query.trim()), 350);
