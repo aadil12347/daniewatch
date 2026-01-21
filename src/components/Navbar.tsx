@@ -74,6 +74,9 @@ export const Navbar = () => {
   // Close search bar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // If a search is active, keep the bar open until the user explicitly clears it.
+      if (searchQuery.trim() || isSearchResultsOpen) return;
+
       // Don't collapse the search bar when interacting anywhere within the navbar.
       if (navRef.current && navRef.current.contains(event.target as Node)) {
         return;
@@ -90,7 +93,7 @@ export const Navbar = () => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isSearchOpen]);
+  }, [isSearchOpen, isSearchResultsOpen, searchQuery]);
 
   // Check if we're on a details page
   const isDetailsPage =
