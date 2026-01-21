@@ -7,6 +7,12 @@ type OpenArgs = {
   scope: SearchScope;
 };
 
+type SearchHistoryState = {
+  __searchOverlay?: true;
+  query?: string;
+  scope?: SearchScope;
+};
+
 type SearchOverlayState = {
   isOpen: boolean;
   query: string;
@@ -39,18 +45,27 @@ export const SearchOverlayProvider = ({ children }: { children: React.ReactNode 
     isOpenRef.current = isOpen;
   }, [isOpen]);
 
-  // Close overlay on browser/device back, without navigating away.
+  // Keep overlay state in sync with browser history.
+  // - When returning from a details page (Back), we should restore the overlay.
+  // - When pressing Back again, we should close it.
   useEffect(() => {
-    if (!isOpen) return;
+    const syncFromHistory = () => {
+      const st = (window.history.state ?? {}) as SearchHistoryState;
+      const wantsOpen = Boolean(st.__searchOverlay);
 
-    const onPopState = () => {
-      // If the overlay is open, treat back as "close search results".
-      setIsOpen(false);
+      setIsOpen(wantsOpen);
+      if (wantsOpen) {
+        if (typeof st.query === "string") setQuery(st.query);
+        if (st.scope) setScope(st.scope);
+      }
     };
 
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, [isOpen]);
+    // Initial sync (covers reload while on an overlay-marked history entry)
+    syncFromHistory();
+
+    window.addEventListener("popstate", syncFromHistory);
+    return () => window.removeEventListener("popstate", syncFromHistory);
+  }, []);
 
   // Add a history entry when opening so that a single Back press closes the overlay.
   useEffect(() => {
@@ -60,11 +75,21 @@ export const SearchOverlayProvider = ({ children }: { children: React.ReactNode 
     shouldPushHistoryRef.current = false;
 
     try {
-      window.history.pushState({ __searchOverlay: true }, "", window.location.href);
+      const prev = (window.history.state ?? {}) as SearchHistoryState;
+      window.history.pushState(
+        {
+          ...prev,
+          __searchOverlay: true,
+          query,
+          scope,
+        } satisfies SearchHistoryState,
+        "",
+        window.location.href
+      );
     } catch {
       // ignore
     }
-  }, [isOpen]);
+  }, [isOpen, query, scope]);
 
   const open = useCallback(({ query: q, scope: s }: OpenArgs) => {
     setQuery(q);
