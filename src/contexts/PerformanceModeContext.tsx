@@ -44,26 +44,7 @@ const safeWrite = (key: string, value: string) => {
 };
 
 const detectDefaultMode = (): PerformanceMode => {
-  // Primary: deviceMemory threshold requested by user
-  const mem = (navigator as any).deviceMemory as number | undefined;
-  if (typeof mem === "number") {
-    return mem <= 6 ? "performance" : "quality";
-  }
-
-  // Fallback signals (safe + conservative)
-  const prefersReduced =
-    typeof window !== "undefined" &&
-    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-  if (prefersReduced) return "performance";
-
-  const connection = (navigator as any).connection as
-    | { saveData?: boolean; effectiveType?: string }
-    | undefined;
-  if (connection?.saveData) return "performance";
-  if (connection?.effectiveType && ["slow-2g", "2g"].includes(connection.effectiveType)) {
-    return "performance";
-  }
-
+  // Site default: always start in Quality mode unless the user has explicitly chosen otherwise.
   return "quality";
 };
 
