@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,12 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { open: openSearchOverlay, close: closeSearchOverlay, isOpen: isSearchResultsOpen } = useSearchOverlay();
+
+  const clearSearchResults = () => {
+    setSearchQuery("");
+    closeSearchOverlay();
+    setIsSearchOpen(false);
+  };
 
   const setIsSearchOpen = (next: boolean) => {
     _setIsSearchOpen(next);
@@ -198,8 +204,7 @@ export const Navbar = () => {
 
   const handleClearSearch = () => {
     haptic("tap");
-    setSearchQuery("");
-    closeSearchOverlay();
+    clearSearchResults();
   };
 
   const handleBack = () => {
@@ -260,6 +265,10 @@ export const Navbar = () => {
                 "flex items-center gap-2 group transition-all duration-300",
                 isSearchOpen && "md:flex hidden"
               )}
+              onClick={() => {
+                clearSearchResults();
+                haptic("tap");
+              }}
             >
               <div className="relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-all duration-500 group-hover:scale-110">
                 <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)] group-hover:drop-shadow-[0_0_15px_hsl(var(--primary)/0.8)] transition-all duration-500">
@@ -289,7 +298,10 @@ export const Navbar = () => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  onClick={() => haptic("tap")}
+                  onClick={() => {
+                    clearSearchResults();
+                    haptic("tap");
+                  }}
                   className={cn(
                     "nav-link-glow flex items-center gap-2 transition-all duration-300",
                     isActive && "nav-link-glow-active",
@@ -358,7 +370,10 @@ export const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <button
                     className="p-1 rounded-full hover:bg-secondary/50 transition-colors"
-                    onClick={() => haptic("tap")}
+                    onClick={() => {
+                      clearSearchResults();
+                      haptic("tap");
+                    }}
                   >
                     <Avatar className="w-8 h-8">
                       <AvatarFallback className="bg-primary/20 text-primary text-sm">
@@ -385,7 +400,14 @@ export const Navbar = () => {
                   <DropdownMenuSeparator />
 
                   <DropdownMenuItem asChild>
-                    <Link to="/watchlist" className="cursor-pointer">
+                    <Link
+                      to="/watchlist"
+                      className="cursor-pointer"
+                      onClick={() => {
+                        clearSearchResults();
+                        haptic("tap");
+                      }}
+                    >
                       <Bookmark className="w-4 h-4 mr-2" />
                       My Watchlist
                     </Link>
@@ -393,7 +415,14 @@ export const Navbar = () => {
 
                   {!isAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link to="/requests" className="cursor-pointer">
+                      <Link
+                        to="/requests"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          clearSearchResults();
+                          haptic("tap");
+                        }}
+                      >
                         <FileText className="w-4 h-4 mr-2" />
                         My Requests
                       </Link>
@@ -402,7 +431,14 @@ export const Navbar = () => {
 
                   {isAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer">
+                      <Link
+                        to="/admin"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          clearSearchResults();
+                          haptic("tap");
+                        }}
+                      >
                         <Shield className="w-4 h-4 mr-2" />
                         Admin Panel
                       </Link>
@@ -444,7 +480,10 @@ export const Navbar = () => {
             ) : (
               <Link
                 to="/auth"
-                onClick={() => haptic("tap")}
+                onClick={() => {
+                  clearSearchResults();
+                  haptic("tap");
+                }}
                 className="p-2 rounded-full hover:bg-secondary/50 transition-colors"
                 aria-label="Sign in"
               >
@@ -485,7 +524,15 @@ export const Navbar = () => {
         >
           {/* Menu Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
-            <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2">
+            <Link
+              to="/"
+              onClick={() => {
+                clearSearchResults();
+                haptic("tap");
+                setIsMenuOpen(false);
+              }}
+              className="flex items-center gap-2"
+            >
               <div className="w-8 h-8">
                 <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_hsl(var(--primary)/0.5)]">
                   <defs>
@@ -528,6 +575,7 @@ export const Navbar = () => {
                   <Link
                     to={link.to}
                     onClick={() => {
+                      clearSearchResults();
                       haptic("tap");
                       setIsMenuOpen(false);
                     }}
