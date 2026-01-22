@@ -59,6 +59,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
   const bottomObserverRef = useRef<IntersectionObserver | null>(null);
 
   const [rowStart, setRowStart] = useState(0);
+  const rowStartRef = useRef(0);
   const lastScrollYRef = useRef<number>(0);
   const lastScrollYPrevRef = useRef<number>(0);
 
@@ -96,12 +97,6 @@ export function BiDirectionalRecyclingPosterGrid<T>({
   const loadedRows = useMemo(() => {
     return Math.ceil(items.length / Math.max(columns, 1));
   }, [columns, items.length]);
-
-  // Rows represented by the estimated total (used only for placeholder ceiling).
-  const totalRowsCeiling = useMemo(() => {
-    const count = Math.max(0, totalItemCount);
-    return Math.ceil(count / Math.max(columns, 1));
-  }, [columns, totalItemCount]);
 
   useEffect(() => {
     // Reset monotonic tracker when the list is cleared/reset (e.g., filter changes).
@@ -144,12 +139,19 @@ export function BiDirectionalRecyclingPosterGrid<T>({
     const onScroll = () => {
       lastScrollYPrevRef.current = lastScrollYRef.current;
       lastScrollYRef.current = window.scrollY;
+
+       // Top-Zero Force: if we're near the top, wipe virtualization offsets immediately.
+       // This prevents "black screen" gaps during fast upward scrolling.
+       if (window.scrollY < 100 && rowStartRef.current !== 0) {
+         setRowStart(0);
+       }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
+    rowStartRef.current = rowStart;
     onTopIndexChange?.(rowStart * columns);
   }, [columns, onTopIndexChange, rowStart]);
 
@@ -222,15 +224,21 @@ export function BiDirectionalRecyclingPosterGrid<T>({
   const rowsToRender = useMemo(() => {
     const maxRows = maxLoadedRowsRef.current;
     if (maxRows <= 0) return [] as number[];
-    const start = Math.max(0, rowStart - overscanRows);
-    const end = Math.min(maxRows - 1, rowEnd + overscanRows);
+    // Safety Buffer: always keep at least 2 rows above and below in the DOM.
+    const safetyOverscan = Math.max(2, overscanRows);
+    const start = Math.max(0, rowStart - safetyOverscan);
+    const end = Math.min(maxRows - 1, rowEnd + safetyOverscan);
     const out: number[] = [];
     for (let r = start; r <= end; r += 1) out.push(r);
     return out;
   }, [overscanRows, rowEnd, rowStart, items.length, columns]);
 
   return (
-    <div ref={hostRef} style={{ overflowAnchor: "auto" }}>
+    <div
+      ref={hostRef}
+      className="min-h-screen bg-background"
+      style={{ overflowAnchor: "auto", minHeight: "100vh" }}
+    >
       <div style={{ height: topSpacerPx }} aria-hidden="true" />
 
       <div className="w-full">
@@ -256,7 +264,12 @@ export function BiDirectionalRecyclingPosterGrid<T>({
               {Array.from({ length: endIndex - startIndex }).map((_, col) => {
                 const index = startIndex + col;
                 const item = index < items.length ? items[index] : null;
-                return <React.Fragment key={index}>{renderItem(item, index)}</React.Fragment>;
+                // Keep each cell height stable to avoid row height "guessing".
+                return (
+                  <div key={index} className="h-full">
+                    {renderItem(item, index)}
+                  </div>
+                );
               })}
             </div>
           );
