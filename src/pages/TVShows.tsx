@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 
-import { Footer } from "@/components/Footer";
 import { CategoryNav } from "@/components/CategoryNav";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 
@@ -32,9 +31,6 @@ const TVShows = () => {
   const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(600);
   const [tmdbPage, setTmdbPage] = useState(1);
   const [hasMoreTmdb, setHasMoreTmdb] = useState(true);
-
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
 
@@ -335,12 +331,12 @@ const TVShows = () => {
         <meta name="description" content="Browse TV shows sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 pt-6 pb-8">
+      <main className="min-h-[100dvh] bg-background overflow-x-hidden flex flex-col">
+        <div className="w-full flex-1 flex flex-col px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
           <h1 className="sr-only">TV Shows</h1>
 
           {/* Category Navigation */}
-          <div className="mb-8">
+          <div className="mb-6">
             <CategoryNav
               genres={genresForNav}
               selectedGenres={selectedGenres}
@@ -351,9 +347,10 @@ const TVShows = () => {
             />
           </div>
 
-          {/* Virtualized container-scroll grid */}
-          <div className="mt-2" style={{ height: "calc(100vh - 260px)", minHeight: 420 }}>
+          {/* Full-height container-scroll grid (fills remaining viewport, no black gaps) */}
+          <div className="relative flex-1 min-h-0">
             <VirtualizedPosterGrid
+              className="h-full"
               items={pageIsLoading ? [] : visibleAll.slice(0, displayCount)}
               isLoading={pageIsLoading || displayCount === 0}
               skeletonCount={BATCH_SIZE}
@@ -367,6 +364,14 @@ const TVShows = () => {
                 setPendingLoadMore(true);
               }}
             />
+
+            {/* Loading More Indicator (overlay, avoids creating extra bottom space) */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+              {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+              {!isLoadingMore && !hasMoreTmdb && displayCount >= visibleAll.length && visibleAll.length > 0 && (
+                <p className="text-muted-foreground">You've reached the end</p>
+              )}
+            </div>
           </div>
 
           {/* No results message */}
@@ -381,18 +386,9 @@ const TVShows = () => {
               </button>
             </div>
           )}
-
-          {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-6">
-            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!hasMoreTmdb && displayCount >= visibleAll.length && visibleAll.length > 0 && (
-              <p className="text-muted-foreground">You've reached the end</p>
-            )}
-          </div>
         </div>
 
-        <Footer />
-      </div>
+      </main>
     </>
   );
 };
