@@ -1,7 +1,10 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
+import { Footer } from "@/components/Footer";
+import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getMovieGenres, filterAdultContent, getMovieDetails, Movie, Genre } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { usePostModeration } from "@/hooks/usePostModeration";
@@ -11,11 +14,9 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { isAllowedOnMoviesPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
-import { VirtualizedPosterGrid } from "@/components/VirtualizedPosterGrid";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
-const TMDB_MAX_PAGE = 500;
 
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -35,6 +36,8 @@ const Movies = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
   const dbHydrationCursorRef = useRef(0);
@@ -271,21 +274,12 @@ const Movies = () => {
   // Try to restore from cache on mount
   useEffect(() => {
     const cached = getCache("default", selectedGenres);
-    const cachedPage = cached?.page ?? 1;
-    const cacheLooksValid =
-      !!cached &&
-      Array.isArray(cached.items) &&
-      cached.items.length > 0 &&
-      Number.isFinite(cachedPage) &&
-      cachedPage >= 1 &&
-      cachedPage <= TMDB_MAX_PAGE;
-
-    if (cacheLooksValid) {
+    if (cached && cached.items.length > 0) {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setMovies(cached.items);
       setDisplayCount(cached.items.length);
       setAnimateFromIndex(null);
-      setPage(cachedPage);
+      setPage(cached.page);
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
@@ -326,14 +320,6 @@ const Movies = () => {
 
   const fetchMovies = useCallback(
     async (pageNum: number, reset: boolean = false) => {
-      // TMDB hard limit: pages are 1..500
-      if (pageNum < 1 || pageNum > TMDB_MAX_PAGE) {
-        setHasMore(false);
-        setIsLoading(false);
-        setIsLoadingMore(false);
-        return;
-      }
-
       if (reset) {
         setIsLoading(true);
         setDbOnlyHydrated([]);
@@ -382,12 +368,6 @@ const Movies = () => {
         const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
         const response = await res.json();
 
-        // TMDB can return { success:false, ... } (sometimes with 200/400). Guard against it.
-        if (!response || response.success === false || !Array.isArray(response.results)) {
-          setHasMore(false);
-          return;
-        }
-
         const filteredResults = (filterAdultContent(response.results) as Movie[])
           .map((m) => ({ ...m, media_type: "movie" as const }))
           .filter(isAllowedOnMoviesPage);
@@ -410,10 +390,9 @@ const Movies = () => {
           }
         }
 
-        setHasMore(Number(response.page) < Number(response.total_pages));
+        setHasMore(response.page < response.total_pages);
       } catch (error) {
         console.error("Failed to fetch movies:", error);
-        setHasMore(false);
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -445,17 +424,32 @@ const Movies = () => {
   useRouteContentReady(routeReady);
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
-  // NOTE: load-more is driven by VirtualizedPosterGrid.onEndReached.
+  useEffect(() => {
+    observerRef.current?.disconnect();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        if (isLoading || isLoadingMore || pendingLoadMore) return;
+
+        const hasBuffered = displayCount < visibleMovies.length;
+        if (!hasBuffered && !hasMore) return;
+
+        setPendingLoadMore(true);
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleMovies.length]);
 
   // Resolve pending "load more": reveal from buffer first. Only fetch next TMDB page AFTER all DB items are revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
-
-    // Never paginate/reveal when we have nothing at all yet (prevents runaway loops).
-    if (visibleMovies.length === 0) {
-      setPendingLoadMore(false);
-      return;
-    }
 
     const hasBuffered = displayCount < visibleMovies.length;
     if (hasBuffered) {
@@ -520,13 +514,12 @@ const Movies = () => {
         <meta name="description" content="Browse movies sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
-      {/* Page scrolling on /movies; the virtualized grid is driven by window scroll (no inner scrollbar). */}
-      <main className="min-h-[100dvh] bg-background overflow-x-hidden">
-        <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 pt-6 pb-8">
           <h1 className="sr-only">Movies</h1>
 
           {/* Category Navigation */}
-          <div className="mb-6">
+          <div className="mb-8">
             <CategoryNav
               genres={genresForNav}
               selectedGenres={selectedGenres}
@@ -537,31 +530,31 @@ const Movies = () => {
             />
           </div>
 
-          {/* Window-scroll virtualized grid (outer page scrollbar only) */}
-          <div className="relative w-full">
-            {/** Ensure we never render an empty non-loading grid (avoids blank first paint). */}
-            <VirtualizedPosterGrid
-              scrollMode="window"
-              className="w-full"
-              items={pageIsLoading ? [] : visibleMovies.slice(0, displayCount)}
-              isLoading={pageIsLoading || displayCount === 0}
-              skeletonCount={BATCH_SIZE}
-              onEndReached={() => {
-                if (pageIsLoading) return;
-                if (isLoading || isLoadingMore || pendingLoadMore) return;
-                const hasBuffered = displayCount < visibleMovies.length;
-                if (!hasBuffered && !hasMore) return;
-                setPendingLoadMore(true);
-              }}
-            />
+          {/* Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            {pageIsLoading
+              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                  </div>
+                ))
+              : visibleMovies.slice(0, displayCount).map((movie, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
-            {/* Loading More Indicator (sticky so it stays visible in window-scroll mode) */}
-            <div className="pointer-events-none sticky bottom-2 flex justify-center">
-              {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-              {!isLoadingMore && !hasMore && displayCount >= visibleMovies.length && visibleMovies.length > 0 && (
-                <p className="text-muted-foreground">You've reached the end</p>
-              )}
-            </div>
+                  return (
+                    <div key={`${movie.id}-movie`} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                      <MovieCard
+                        movie={movie}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
+                    </div>
+                  );
+                })}
           </div>
 
           {/* No results message */}
@@ -576,8 +569,18 @@ const Movies = () => {
               </button>
             </div>
           )}
+
+          {/* Loading More Indicator */}
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+            {!hasMore && displayCount >= visibleMovies.length && visibleMovies.length > 0 && (
+              <p className="text-muted-foreground">You've reached the end</p>
+            )}
+          </div>
         </div>
-      </main>
+
+        <Footer />
+      </div>
     </>
   );
 };

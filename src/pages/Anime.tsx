@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
+import { Footer } from "@/components/Footer";
+import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Movie, filterAdultContent, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
@@ -11,7 +14,6 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { isAnimeScope } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
-import { VirtualizedPosterGrid } from "@/components/VirtualizedPosterGrid";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -29,7 +31,6 @@ const ANIME_TAGS = [
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
-const TMDB_MAX_PAGE = 500;
 
 const Anime = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
@@ -57,6 +58,8 @@ const Anime = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
   const dbHydrationCursorRef = useRef(0);
@@ -262,21 +265,12 @@ const Anime = () => {
   // Try to restore from cache on mount
   useEffect(() => {
     const cached = getCache("default", selectedTags);
-    const cachedPage = cached?.page ?? 1;
-    const cacheLooksValid =
-      !!cached &&
-      Array.isArray(cached.items) &&
-      cached.items.length > 0 &&
-      Number.isFinite(cachedPage) &&
-      cachedPage >= 1 &&
-      cachedPage <= TMDB_MAX_PAGE;
-
-    if (cacheLooksValid) {
+    if (cached && cached.items.length > 0) {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setItems(cached.items);
       setDisplayCount(cached.items.length);
       setAnimateFromIndex(null);
-      setPage(cachedPage);
+      setPage(cached.page);
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
@@ -317,14 +311,6 @@ const Anime = () => {
 
   const fetchAnime = useCallback(
     async (pageNum: number, reset: boolean = false) => {
-      // TMDB hard limit: pages are 1..500
-      if (pageNum < 1 || pageNum > TMDB_MAX_PAGE) {
-        setHasMore(false);
-        setIsLoading(false);
-        setIsLoadingMore(false);
-        return;
-      }
-
       if (reset) {
         setIsLoading(true);
         setDbOnlyHydrated([]);
@@ -371,11 +357,6 @@ const Anime = () => {
         const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
         const response = await res.json();
 
-        if (!response || response.success === false || !Array.isArray(response.results)) {
-          setHasMore(false);
-          return;
-        }
-
         const filteredResults = (filterAdultContent(response.results) as Movie[])
           .map((m) => ({ ...m, media_type: "tv" as const }))
           .filter(isAnimeScope);
@@ -399,10 +380,9 @@ const Anime = () => {
             setDisplayCount((prev) => prev + BATCH_SIZE);
           }
         }
-        setHasMore(Number(response.page) < Number(response.total_pages));
+        setHasMore(response.page < response.total_pages);
       } catch (error) {
         console.error("Failed to fetch anime:", error);
-        setHasMore(false);
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -434,17 +414,33 @@ const Anime = () => {
   useRouteContentReady(routeReady);
 
 
-  // NOTE: load-more is driven by VirtualizedPosterGrid.onEndReached.
+  // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
+  useEffect(() => {
+    observerRef.current?.disconnect();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        if (isLoading || isLoadingMore || pendingLoadMore) return;
+
+        const hasBuffered = displayCount < visibleItems.length;
+        if (!hasBuffered && !hasMore) return;
+
+        setPendingLoadMore(true);
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleItems.length]);
 
   // Resolve pending "load more": reveal from buffer first. Only fetch next TMDB page AFTER all DB items are revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
-
-    // Never paginate/reveal when we have nothing at all yet (prevents runaway loops).
-    if (visibleItems.length === 0) {
-      setPendingLoadMore(false);
-      return;
-    }
 
     const hasBuffered = displayCount < visibleItems.length;
     if (hasBuffered) {
@@ -507,12 +503,12 @@ const Anime = () => {
         <meta name="description" content="Watch the best anime series sorted by latest release. Filter by genre and year." />
       </Helmet>
 
-      <main className="min-h-[100dvh] bg-background overflow-x-hidden flex flex-col">
-        <div className="w-full flex-1 flex flex-col px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 pt-6 pb-8">
           <h1 className="sr-only">Anime</h1>
 
           {/* Category Navigation */}
-          <div className="mb-6">
+          <div className="mb-8">
             <CategoryNav
               genres={genresForNav}
               selectedGenres={selectedTags}
@@ -523,29 +519,31 @@ const Anime = () => {
             />
           </div>
 
-          {/* Full-height container-scroll grid (fills remaining viewport, no black gaps) */}
-          <div className="relative flex-1 min-h-0">
-            <VirtualizedPosterGrid
-              className="h-full"
-              items={pageIsLoading ? [] : visibleItems.slice(0, displayCount)}
-              isLoading={pageIsLoading || displayCount === 0}
-              skeletonCount={BATCH_SIZE}
-              onEndReached={() => {
-                if (pageIsLoading) return;
-                if (isLoading || isLoadingMore || pendingLoadMore) return;
-                const hasBuffered = displayCount < visibleItems.length;
-                if (!hasBuffered && !hasMore) return;
-                setPendingLoadMore(true);
-              }}
-            />
+          {/* Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            {pageIsLoading
+              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                  </div>
+                ))
+              : visibleItems.slice(0, displayCount).map((item, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
-            {/* Loading More Indicator (overlay, avoids creating extra bottom space) */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
-              {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-              {!isLoadingMore && !hasMore && visibleItems.length > 0 && (
-                <p className="text-muted-foreground">You've reached the end</p>
-              )}
-            </div>
+                  return (
+                    <div key={`${item.id}-${item.media_type ?? "tv"}`} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                      <MovieCard
+                        movie={item}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
+                    </div>
+                  );
+                })}
           </div>
 
           {/* No results message */}
@@ -560,9 +558,16 @@ const Anime = () => {
               </button>
             </div>
           )}
+
+          {/* Loading More Indicator */}
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+            {!hasMore && visibleItems.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
+          </div>
         </div>
 
-      </main>
+        <Footer />
+      </div>
     </>
   );
 };

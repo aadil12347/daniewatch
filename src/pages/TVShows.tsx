@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 
+import { Footer } from "@/components/Footer";
+import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
+import { Skeleton } from "@/components/ui/skeleton";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 
 import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
@@ -11,11 +14,9 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
-import { VirtualizedPosterGrid } from "@/components/VirtualizedPosterGrid";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
-const TMDB_MAX_PAGE = 500;
 
 const TVShows = () => {
   const [tmdbItems, setTmdbItems] = useState<Movie[]>([]);
@@ -31,6 +32,9 @@ const TVShows = () => {
   const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(600);
   const [tmdbPage, setTmdbPage] = useState(1);
   const [hasMoreTmdb, setHasMoreTmdb] = useState(true);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
 
@@ -168,10 +172,6 @@ const TVShows = () => {
 
   const fetchTmdbPage = useCallback(
     async (pageNum: number) => {
-      if (pageNum < 1 || pageNum > TMDB_MAX_PAGE) {
-        return { page: pageNum, totalPages: pageNum - 1, results: [] as Movie[] };
-      }
-
       const today = new Date().toISOString().split("T")[0];
 
       const params = new URLSearchParams({
@@ -198,10 +198,6 @@ const TVShows = () => {
       const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
       const response = await res.json();
 
-      if (!response || response.success === false || !Array.isArray(response.results)) {
-        return { page: pageNum, totalPages: pageNum - 1, results: [] as Movie[] };
-      }
-
       const scoped = (filterAdultContent(response.results) as Movie[])
         .map((m) => ({ ...m, media_type: "tv" as const }))
         .filter(isAllowedOnTvPage);
@@ -215,7 +211,29 @@ const TVShows = () => {
     [selectedGenres, selectedYear]
   );
 
-  // Container-scroll virtualization drives load-more via VirtualizedPosterGrid.onEndReached
+  // Infinite scroll observer
+  useEffect(() => {
+    observerRef.current?.disconnect();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        if (isLoadingMore || pendingLoadMore) return;
+
+        const hasBuffered = displayCount < visibleAll.length;
+        if (!hasBuffered && !hasMoreTmdb) return;
+
+        setPendingLoadMore(true);
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [displayCount, hasMoreTmdb, isLoadingMore, pendingLoadMore, visibleAll.length]);
 
   // Resolve pending load more: reveal DB first; only then start fetching TMDB pages.
   useEffect(() => {
@@ -331,12 +349,12 @@ const TVShows = () => {
         <meta name="description" content="Browse TV shows sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
-      <main className="min-h-[100dvh] bg-background overflow-x-hidden flex flex-col">
-        <div className="w-full flex-1 flex flex-col px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 pt-6 pb-8">
           <h1 className="sr-only">TV Shows</h1>
 
           {/* Category Navigation */}
-          <div className="mb-6">
+          <div className="mb-8">
             <CategoryNav
               genres={genresForNav}
               selectedGenres={selectedGenres}
@@ -347,31 +365,31 @@ const TVShows = () => {
             />
           </div>
 
-          {/* Full-height container-scroll grid (fills remaining viewport, no black gaps) */}
-          <div className="relative flex-1 min-h-0">
-            <VirtualizedPosterGrid
-              className="h-full"
-              items={pageIsLoading ? [] : visibleAll.slice(0, displayCount)}
-              isLoading={pageIsLoading || displayCount === 0}
-              skeletonCount={BATCH_SIZE}
-              onEndReached={() => {
-                if (pageIsLoading) return;
-                if (isLoadingMore || pendingLoadMore) return;
+          {/* Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            {pageIsLoading
+              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                  </div>
+                ))
+              : visibleAll.slice(0, displayCount).map((show, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
-                const hasBuffered = displayCount < visibleAll.length;
-                if (!hasBuffered && !hasMoreTmdb) return;
-
-                setPendingLoadMore(true);
-              }}
-            />
-
-            {/* Loading More Indicator (overlay, avoids creating extra bottom space) */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
-              {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-              {!isLoadingMore && !hasMoreTmdb && displayCount >= visibleAll.length && visibleAll.length > 0 && (
-                <p className="text-muted-foreground">You've reached the end</p>
-              )}
-            </div>
+                  return (
+                    <div key={`tv-${show.id}`} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                      <MovieCard
+                        movie={show}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
+                    </div>
+                  );
+                })}
           </div>
 
           {/* No results message */}
@@ -386,9 +404,18 @@ const TVShows = () => {
               </button>
             </div>
           )}
+
+          {/* Loading More Indicator */}
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
+            {!hasMoreTmdb && displayCount >= visibleAll.length && visibleAll.length > 0 && (
+              <p className="text-muted-foreground">You've reached the end</p>
+            )}
+          </div>
         </div>
 
-      </main>
+        <Footer />
+      </div>
     </>
   );
 };
