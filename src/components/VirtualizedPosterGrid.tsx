@@ -1,6 +1,6 @@
 import React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Grid } from "react-window";
+import { Grid, useGridRef } from "react-window";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MovieCard } from "@/components/MovieCard";
 import { cn } from "@/lib/utils";
@@ -41,13 +41,14 @@ function useElementWidth(ref: React.RefObject<HTMLElement>) {
 
 export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, className, onEndReached }: Props) {
   const location = useLocation();
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const width = useElementWidth(viewportRef);
 
+  const gridRef = useGridRef();
+
   const [height, setHeight] = useState(600);
   useEffect(() => {
-    const el = scrollerRef.current;
+    const el = viewportRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       const h = entries[0]?.contentRect.height ?? 600;
@@ -58,8 +59,8 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
     return () => ro.disconnect();
   }, []);
 
-  // Container-scroll persistence (per route).
-  useContainerScrollCache(scrollerRef.current, `dw_scroll_${location.pathname}${location.search}`);
+  // Container-scroll persistence (per route). Grid owns the scroll container in react-window@2.
+  useContainerScrollCache(gridRef.current?.element, `dw_scroll_${location.pathname}${location.search}`);
 
   const { columnCount, columnWidth, rowHeight } = useMemo(() => {
     // Match your existing breakpoints (2..6 columns)
@@ -85,7 +86,7 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
   }, [items.length, isLoading]);
 
   // Never show a blank viewport (helps during the initial layout/caching races).
-  if (isLoading || items.length === 0) {
+  if (isLoading || items.length === 0 || width === 0) {
     return (
       <div className={cn("grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6", className)}>
         {Array.from({ length: skeletonCount }).map((_, i) => (
@@ -101,39 +102,33 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
 
   return (
     <div ref={viewportRef} className={cn("w-full h-full", className)}>
-      <div ref={scrollerRef} className="h-full w-full overflow-auto">
-        {width > 0 ? (
-          <Grid
-            columnCount={columnCount}
-            columnWidth={columnWidth}
-            defaultHeight={height}
-            defaultWidth={width}
-            rowCount={rowCount}
-            rowHeight={rowHeight}
-            overscanCount={3}
-            cellProps={{}}
-            style={{ height: "100%", width: "100%" }}
-            onCellsRendered={({ rowStopIndex }) => {
-              // Trigger a fetch when user is near the end.
-              const remainingRows = rowCount - 1 - rowStopIndex;
-              if (remainingRows > 3) return;
-              if (endReachedRef.current) return;
-              endReachedRef.current = true;
-              onEndReached?.();
-            }}
-            cellComponent={({ columnIndex, rowIndex, style }) => {
-              const index = rowIndex * columnCount + columnIndex;
-              const movie = renderItems[index];
-              if (!movie) return null;
-              return (
-                <div style={style} className="p-2 md:p-3">
-                  <MovieCard movie={movie} enableReveal={false} enableHoverPortal={false} />
-                </div>
-              );
-            }}
-          />
-        ) : null}
-      </div>
+      <Grid
+        gridRef={gridRef}
+        columnCount={columnCount}
+        columnWidth={columnWidth}
+        rowCount={rowCount}
+        rowHeight={rowHeight}
+        overscanCount={3}
+        cellProps={{}}
+        style={{ height, width }}
+        onCellsRendered={({ rowStopIndex }) => {
+          const remainingRows = rowCount - 1 - rowStopIndex;
+          if (remainingRows > 3) return;
+          if (endReachedRef.current) return;
+          endReachedRef.current = true;
+          onEndReached?.();
+        }}
+        cellComponent={({ columnIndex, rowIndex, style }) => {
+          const index = rowIndex * columnCount + columnIndex;
+          const movie = renderItems[index];
+          if (!movie) return null;
+          return (
+            <div style={style} className="p-2 md:p-3">
+              <MovieCard movie={movie} enableReveal={false} enableHoverPortal={false} />
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }
