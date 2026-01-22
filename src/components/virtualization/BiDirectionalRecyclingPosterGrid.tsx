@@ -102,6 +102,19 @@ export function BiDirectionalRecyclingPosterGrid<T>({
     return Math.ceil(items.length / Math.max(columns, 1));
   }, [columns, items.length]);
 
+  // Defensive: if we have a non-zero totalItemCount but zero loaded items,
+  // still render a small placeholder window so the page is never fully blank.
+  const renderRowsCap = useMemo(() => {
+    const totalRows = Math.ceil(totalItemCount / Math.max(columns, 1));
+    if (totalItemCount <= 0 || totalRows <= 0) return 0;
+    return Math.min(totalRows, windowRows);
+  }, [columns, totalItemCount, windowRows]);
+
+  const maxRowsForRender = useMemo(() => {
+    if (renderRowsCap <= 0) return maxLoadedRowsRef.current;
+    return Math.max(maxLoadedRowsRef.current, renderRowsCap);
+  }, [renderRowsCap]);
+
   useEffect(() => {
     // Reset monotonic tracker when the list is cleared/reset (e.g., filter changes).
     if (items.length < prevItemsLenRef.current) {
@@ -121,10 +134,10 @@ export function BiDirectionalRecyclingPosterGrid<T>({
   }, [columns, items.length, windowRows]);
 
   const rowEnd = useMemo(() => {
-    const maxRows = maxLoadedRowsRef.current;
+    const maxRows = maxRowsForRender;
     if (maxRows <= 0) return 0;
     return Math.min(maxRows - 1, rowStart + windowRows - 1);
-  }, [rowStart, windowRows, items.length, columns]);
+  }, [maxRowsForRender, rowStart, windowRows]);
 
   const rowStridePx = rowHeight + gapPx;
   const topSpacerPx = rowStart * rowStridePx;
@@ -232,7 +245,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
 
   // Render rows in the current window.
   const rowsToRender = useMemo(() => {
-    const maxRows = maxLoadedRowsRef.current;
+    const maxRows = maxRowsForRender;
     if (maxRows <= 0) return [] as number[];
     // Safety Buffer: always keep at least 2 rows above and below in the DOM.
     const safetyOverscan = Math.max(2, overscanRows);
@@ -241,7 +254,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
     const out: number[] = [];
     for (let r = start; r <= end; r += 1) out.push(r);
     return out;
-  }, [overscanRows, rowEnd, rowStart, items.length, columns]);
+  }, [maxRowsForRender, overscanRows, rowEnd, rowStart]);
 
   return (
     <div

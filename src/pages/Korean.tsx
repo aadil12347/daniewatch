@@ -302,6 +302,17 @@ const Korean = () => {
     return [...filteredDbItems, ...filteredTmdbItems];
   }, [filteredDbItems, filteredTmdbItems]);
 
+  // Ensure the grid is never blank on initial load: reveal the first DB chunk
+  // as soon as manifest-derived DB items are available.
+  useEffect(() => {
+    if (isRestoredFromCache) return;
+    if (displayCount !== 0) return;
+    if (filteredDbItems.length <= 0) return;
+
+    setAnimateFromIndex(null);
+    setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
+  }, [displayCount, filteredDbItems.length, isRestoredFromCache]);
+
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(filteredVisibleItems, { enabled: !isLoading });
 
