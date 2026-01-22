@@ -87,7 +87,7 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
   const showSkeletons = isLoading || items.length === 0 || width === 0;
 
   return (
-    <div ref={setViewportEl} className={cn("w-full h-full min-h-[360px]", className)}>
+    <div ref={setViewportEl} className={cn("w-full h-full min-h-[360px] overflow-x-hidden", className)}>
       {showSkeletons ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
           {Array.from({ length: skeletonCount }).map((_, i) => (
@@ -107,7 +107,8 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
           rowHeight={rowHeight}
           overscanCount={3}
           cellProps={{}}
-          style={{ height, width }}
+          // Prevent rare 1-2px width overshoots from creating a horizontal scrollbar.
+          style={{ height, width, overflowX: "hidden" }}
           onCellsRendered={({ rowStopIndex }) => {
             const remainingRows = rowCount - 1 - rowStopIndex;
             if (remainingRows > 3) return;
