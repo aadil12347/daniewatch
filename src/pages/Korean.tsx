@@ -695,6 +695,10 @@ const Korean = () => {
                       animationDelay={Math.min(index * 30, 300)}
                       enableReveal={false}
                       enableHoverPortal={false}
+                      // Layered Priority Hydration: metadata first, defer poster media work.
+                      deferPosterLoad
+                      disableHoverCharacter
+                      disableHoverLogo
                     />
                   </div>
                 );

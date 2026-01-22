@@ -52,6 +52,10 @@ export function BiDirectionalRecyclingPosterGrid<T>({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [hostWidth, setHostWidth] = useState(0);
 
+  // Top-Zero Force: when near the very top, force padding-top=0 and render from row 0.
+  const [topLock, setTopLock] = useState(false);
+  const topLockRef = useRef(false);
+
   const topRowRef = useRef<HTMLDivElement | null>(null);
   const bottomRowRef = useRef<HTMLDivElement | null>(null);
 
@@ -124,6 +128,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
 
   const rowStridePx = rowHeight + gapPx;
   const topSpacerPx = rowStart * rowStridePx;
+  const effectiveTopSpacerPx = topLock ? 0 : topSpacerPx;
   // Bottom padding represents only already-loaded rows that are currently not mounted,
   // plus a small fixed future buffer to allow smooth approach to the end.
   const bottomSpacerPx =
@@ -140,11 +145,16 @@ export function BiDirectionalRecyclingPosterGrid<T>({
       lastScrollYPrevRef.current = lastScrollYRef.current;
       lastScrollYRef.current = window.scrollY;
 
-       // Top-Zero Force: if we're near the top, wipe virtualization offsets immediately.
-       // This prevents "black screen" gaps during fast upward scrolling.
-       if (window.scrollY < 100 && rowStartRef.current !== 0) {
-         setRowStart(0);
-       }
+      // Top-Zero Force: if we're near the top, wipe virtualization offsets immediately.
+      // This prevents "black screen" gaps during fast upward scrolling.
+      const shouldLock = window.scrollY < 100;
+      if (shouldLock !== topLockRef.current) {
+        topLockRef.current = shouldLock;
+        setTopLock(shouldLock);
+      }
+      if (shouldLock && rowStartRef.current !== 0) {
+        setRowStart(0);
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -239,7 +249,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
       className="min-h-screen bg-background"
       style={{ overflowAnchor: "auto", minHeight: "100vh" }}
     >
-      <div style={{ height: topSpacerPx }} aria-hidden="true" />
+      <div style={{ height: effectiveTopSpacerPx }} aria-hidden="true" />
 
       <div className="w-full">
         {rowsToRender.map((r, idx) => {
