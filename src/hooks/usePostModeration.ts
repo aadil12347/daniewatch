@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
-import { useAdmin } from './useAdmin';
+import { useAdminStatus } from '@/contexts/AdminStatusContext';
 import { useAdminContentVisibility } from '@/contexts/AdminContentVisibilityContext';
 
 const POST_MODERATION_STORAGE_KEY = 'post_moderation';
@@ -31,7 +31,7 @@ type PostModerationRow = {
 const keyOf = (tmdbId: string, mediaType: 'movie' | 'tv') => `${mediaType}:${tmdbId}`;
 
 export const usePostModeration = () => {
-  const { isAdmin } = useAdmin();
+  const { isAdmin } = useAdminStatus();
   const { showBlockedPosts } = useAdminContentVisibility();
 
   // PINS: kept in localStorage (existing behavior)

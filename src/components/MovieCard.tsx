@@ -7,7 +7,7 @@ import { useRef, useState, useEffect, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
@@ -66,7 +66,7 @@ export const MovieCard = ({
   const backgroundLocation = (location.state as any)?.backgroundLocation ?? location;
 
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
-  const { isAdmin } = useAdmin();
+  const { isAdmin } = useAdminStatus();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
   const { getAvailability, getHoverImageUrl } = useEntryAvailability();
   const { isPerformance } = usePerformanceMode();
