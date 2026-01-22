@@ -672,6 +672,7 @@ const Korean = () => {
             <BiDirectionalRecyclingPosterGrid
               items={shownItems}
               totalItemCount={totalItemCount}
+              futureBufferPx={1000}
               onNeedMoreData={onNeedMoreData}
               renderItem={(item, index) => {
                 if (!item) {
