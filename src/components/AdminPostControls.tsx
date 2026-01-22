@@ -11,7 +11,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { QuickEditLinksDropdown } from '@/components/admin/QuickEditLinksDropdown';
 import { UpdateLinksPanel } from '@/components/admin/UpdateLinksPanel';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useAdminStatus } from '@/contexts/AdminStatusContext';
 
 interface AdminPostControlsProps {
   tmdbId: number | string;
@@ -28,7 +28,7 @@ export const AdminPostControls = ({
   posterPath,
   className = '',
 }: AdminPostControlsProps) => {
-  const { isAdmin } = useAdmin();
+  const { isAdmin } = useAdminStatus();
 
   const [linksOpen, setLinksOpen] = useState(false);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
@@ -60,7 +60,7 @@ export const AdminPostControls = ({
 
   const modalInitialId = String(tmdbId);
 
-  if (!isAdmin) return null;
+  const isDisabled = !isAdmin;
 
   return (
     <Dialog open={linksOpen} onOpenChange={setLinksOpen}>
@@ -71,12 +71,17 @@ export const AdminPostControls = ({
             ref={triggerRef}
             size="icon"
             variant="ghost"
-            className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className}`}
+            className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className} ${
+              isDisabled ? 'opacity-0 pointer-events-none' : ''
+            }`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
             }}
             title="Admin controls"
+            disabled={isDisabled}
+            aria-hidden={isDisabled}
+            tabIndex={isDisabled ? -1 : undefined}
           >
             <MoreVertical className="w-4 h-4 text-white" />
           </Button>
@@ -95,6 +100,7 @@ export const AdminPostControls = ({
               setQuickMenuOpen(false);
               setLinksOpen(true);
             }}
+            disabled={isDisabled}
           >
             <Link2 className="w-4 h-4 mr-2" />
             Update Links (Full)

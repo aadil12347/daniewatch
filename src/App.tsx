@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, type Location } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./contexts/AuthContext";
+import { AdminStatusProvider } from "@/contexts/AdminStatusContext";
 import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
 import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
@@ -124,6 +125,7 @@ const App = () => {
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+            <AdminStatusProvider>
           <PerformanceModeProvider>
             <TutorialProvider>
               <MediaProvider>
@@ -160,6 +162,7 @@ const App = () => {
               </MediaProvider>
             </TutorialProvider>
           </PerformanceModeProvider>
+            </AdminStatusProvider>
         </AuthProvider>
       </QueryClientProvider>
     </HelmetProvider>
