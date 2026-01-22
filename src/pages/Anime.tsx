@@ -2,9 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
-import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Movie, filterAdultContent, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
@@ -14,6 +12,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { isAnimeScope } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { VirtualizedPosterGrid } from "@/components/VirtualizedPosterGrid";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -519,31 +518,20 @@ const Anime = () => {
             />
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {pageIsLoading
-              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                  </div>
-                ))
-              : visibleItems.slice(0, displayCount).map((item, index) => {
-                  const shouldAnimate =
-                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
-
-                  return (
-                    <div key={`${item.id}-${item.media_type ?? "tv"}`} className={shouldAnimate ? "animate-fly-in" : undefined}>
-                      <MovieCard
-                        movie={item}
-                        animationDelay={Math.min(index * 30, 300)}
-                        enableReveal={false}
-                        enableHoverPortal={false}
-                      />
-                    </div>
-                  );
-                })}
+          {/* Virtualized container-scroll grid */}
+          <div className="mt-2" style={{ height: "calc(100vh - 260px)" }}>
+            <VirtualizedPosterGrid
+              items={pageIsLoading ? [] : visibleItems.slice(0, displayCount)}
+              isLoading={pageIsLoading || displayCount === 0}
+              skeletonCount={BATCH_SIZE}
+              onEndReached={() => {
+                if (pageIsLoading) return;
+                if (isLoading || isLoadingMore || pendingLoadMore) return;
+                const hasBuffered = displayCount < visibleItems.length;
+                if (!hasBuffered && !hasMore) return;
+                setPendingLoadMore(true);
+              }}
+            />
           </div>
 
           {/* No results message */}

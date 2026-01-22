@@ -84,7 +84,8 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
     endReachedRef.current = false;
   }, [items.length, isLoading]);
 
-  if (isLoading) {
+  // Never show a blank viewport (helps during the initial layout/caching races).
+  if (isLoading || items.length === 0) {
     return (
       <div className={cn("grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6", className)}>
         {Array.from({ length: skeletonCount }).map((_, i) => (
@@ -111,6 +112,7 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
             rowHeight={rowHeight}
             overscanCount={3}
             cellProps={{}}
+            style={{ height: "100%", width: "100%" }}
             onCellsRendered={({ rowStopIndex }) => {
               // Trigger a fetch when user is near the end.
               const remainingRows = rowCount - 1 - rowStopIndex;

@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { Footer } from "@/components/Footer";
-import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
-import { Skeleton } from "@/components/ui/skeleton";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 
 import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
@@ -14,6 +12,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { VirtualizedPosterGrid } from "@/components/VirtualizedPosterGrid";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
@@ -211,29 +210,7 @@ const TVShows = () => {
     [selectedGenres, selectedYear]
   );
 
-  // Infinite scroll observer
-  useEffect(() => {
-    observerRef.current?.disconnect();
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0].isIntersecting) return;
-        if (isLoadingMore || pendingLoadMore) return;
-
-        const hasBuffered = displayCount < visibleAll.length;
-        if (!hasBuffered && !hasMoreTmdb) return;
-
-        setPendingLoadMore(true);
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => observerRef.current?.disconnect();
-  }, [displayCount, hasMoreTmdb, isLoadingMore, pendingLoadMore, visibleAll.length]);
+  // Container-scroll virtualization drives load-more via VirtualizedPosterGrid.onEndReached
 
   // Resolve pending load more: reveal DB first; only then start fetching TMDB pages.
   useEffect(() => {
@@ -365,31 +342,22 @@ const TVShows = () => {
             />
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {pageIsLoading
-              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                  </div>
-                ))
-              : visibleAll.slice(0, displayCount).map((show, index) => {
-                  const shouldAnimate =
-                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+          {/* Virtualized container-scroll grid */}
+          <div className="mt-2" style={{ height: "calc(100vh - 260px)" }}>
+            <VirtualizedPosterGrid
+              items={pageIsLoading ? [] : visibleAll.slice(0, displayCount)}
+              isLoading={pageIsLoading || displayCount === 0}
+              skeletonCount={BATCH_SIZE}
+              onEndReached={() => {
+                if (pageIsLoading) return;
+                if (isLoadingMore || pendingLoadMore) return;
 
-                  return (
-                    <div key={`tv-${show.id}`} className={shouldAnimate ? "animate-fly-in" : undefined}>
-                      <MovieCard
-                        movie={show}
-                        animationDelay={Math.min(index * 30, 300)}
-                        enableReveal={false}
-                        enableHoverPortal={false}
-                      />
-                    </div>
-                  );
-                })}
+                const hasBuffered = displayCount < visibleAll.length;
+                if (!hasBuffered && !hasMoreTmdb) return;
+
+                setPendingLoadMore(true);
+              }}
+            />
           </div>
 
           {/* No results message */}
