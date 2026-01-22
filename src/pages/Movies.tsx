@@ -520,9 +520,9 @@ const Movies = () => {
         <meta name="description" content="Browse movies sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
-      {/* Lock page scrolling on /movies so only the virtualized grid provides the single scrollbar */}
-      <main className="h-[100dvh] bg-background overflow-hidden flex flex-col">
-        <div className="w-full flex-1 min-h-0 flex flex-col px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
+      {/* Page scrolling on /movies; the virtualized grid is driven by window scroll (no inner scrollbar). */}
+      <main className="min-h-[100dvh] bg-background overflow-x-hidden">
+        <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
           <h1 className="sr-only">Movies</h1>
 
           {/* Category Navigation */}
@@ -537,11 +537,12 @@ const Movies = () => {
             />
           </div>
 
-          {/* Full-height container-scroll grid (fills remaining viewport, no black gaps) */}
-          <div className="relative flex-1 min-h-0 overflow-hidden">
+          {/* Window-scroll virtualized grid (outer page scrollbar only) */}
+          <div className="relative w-full">
             {/** Ensure we never render an empty non-loading grid (avoids blank first paint). */}
             <VirtualizedPosterGrid
-              className="h-full"
+              scrollMode="window"
+              className="w-full"
               items={pageIsLoading ? [] : visibleMovies.slice(0, displayCount)}
               isLoading={pageIsLoading || displayCount === 0}
               skeletonCount={BATCH_SIZE}
@@ -554,8 +555,8 @@ const Movies = () => {
               }}
             />
 
-            {/* Loading More Indicator (overlay, avoids creating extra bottom space) */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+            {/* Loading More Indicator (sticky so it stays visible in window-scroll mode) */}
+            <div className="pointer-events-none sticky bottom-2 flex justify-center">
               {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
               {!isLoadingMore && !hasMore && displayCount >= visibleMovies.length && visibleMovies.length > 0 && (
                 <p className="text-muted-foreground">You've reached the end</p>
