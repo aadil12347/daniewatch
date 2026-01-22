@@ -530,7 +530,7 @@ const Movies = () => {
           </div>
 
           {/* Virtualized container-scroll grid */}
-          <div className="mt-2" style={{ height: "calc(100vh - 260px)" }}>
+          <div className="mt-2" style={{ height: "calc(100vh - 260px)", minHeight: 420 }}>
             {/** Ensure we never render an empty non-loading grid (avoids blank first paint). */}
             <VirtualizedPosterGrid
               items={pageIsLoading ? [] : visibleMovies.slice(0, displayCount)}

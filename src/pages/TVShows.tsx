@@ -343,7 +343,7 @@ const TVShows = () => {
           </div>
 
           {/* Virtualized container-scroll grid */}
-          <div className="mt-2" style={{ height: "calc(100vh - 260px)" }}>
+          <div className="mt-2" style={{ height: "calc(100vh - 260px)", minHeight: 420 }}>
             <VirtualizedPosterGrid
               items={pageIsLoading ? [] : visibleAll.slice(0, displayCount)}
               isLoading={pageIsLoading || displayCount === 0}

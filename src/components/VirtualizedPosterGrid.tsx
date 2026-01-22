@@ -17,11 +17,10 @@ type Props = {
   onEndReached?: () => void;
 };
 
-function useElementWidth(ref: React.RefObject<HTMLElement>) {
+function useElementWidth(el: HTMLElement | null) {
   const [width, setWidth] = useState(0);
 
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
 
     const ro = new ResizeObserver((entries) => {
@@ -34,30 +33,29 @@ function useElementWidth(ref: React.RefObject<HTMLElement>) {
     setWidth(Math.floor(el.getBoundingClientRect().width));
 
     return () => ro.disconnect();
-  }, [ref]);
+  }, [el]);
 
   return width;
 }
 
 export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, className, onEndReached }: Props) {
   const location = useLocation();
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const width = useElementWidth(viewportRef);
+  const [viewportEl, setViewportEl] = useState<HTMLDivElement | null>(null);
+  const width = useElementWidth(viewportEl);
 
   const gridRef = useGridRef();
 
   const [height, setHeight] = useState(600);
   useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
+    if (!viewportEl) return;
     const ro = new ResizeObserver((entries) => {
       const h = entries[0]?.contentRect.height ?? 600;
       setHeight(Math.max(300, Math.floor(h)));
     });
-    ro.observe(el);
-    setHeight(Math.max(300, Math.floor(el.getBoundingClientRect().height || 600)));
+    ro.observe(viewportEl);
+    setHeight(Math.max(300, Math.floor(viewportEl.getBoundingClientRect().height || 600)));
     return () => ro.disconnect();
-  }, []);
+  }, [viewportEl]);
 
   // Container-scroll persistence (per route). Grid owns the scroll container in react-window@2.
   useContainerScrollCache(gridRef.current?.element, `dw_scroll_${location.pathname}${location.search}`);
@@ -85,50 +83,50 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
     endReachedRef.current = false;
   }, [items.length, isLoading]);
 
-  // Never show a blank viewport (helps during the initial layout/caching races).
-  if (isLoading || items.length === 0 || width === 0) {
-    return (
-      <div className={cn("grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6", className)}>
-        {Array.from({ length: skeletonCount }).map((_, i) => (
-          <div key={i}>
-            <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-            <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-            <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  // Always render the measuring container so width/height can resolve (prevents blank pages).
+  const showSkeletons = isLoading || items.length === 0 || width === 0;
 
   return (
-    <div ref={viewportRef} className={cn("w-full h-full", className)}>
-      <Grid
-        gridRef={gridRef}
-        columnCount={columnCount}
-        columnWidth={columnWidth}
-        rowCount={rowCount}
-        rowHeight={rowHeight}
-        overscanCount={3}
-        cellProps={{}}
-        style={{ height, width }}
-        onCellsRendered={({ rowStopIndex }) => {
-          const remainingRows = rowCount - 1 - rowStopIndex;
-          if (remainingRows > 3) return;
-          if (endReachedRef.current) return;
-          endReachedRef.current = true;
-          onEndReached?.();
-        }}
-        cellComponent={({ columnIndex, rowIndex, style }) => {
-          const index = rowIndex * columnCount + columnIndex;
-          const movie = renderItems[index];
-          if (!movie) return null;
-          return (
-            <div style={style} className="p-2 md:p-3">
-              <MovieCard movie={movie} enableReveal={false} enableHoverPortal={false} />
+    <div ref={setViewportEl} className={cn("w-full h-full min-h-[360px]", className)}>
+      {showSkeletons ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+          {Array.from({ length: skeletonCount }).map((_, i) => (
+            <div key={i}>
+              <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+              <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+              <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
             </div>
-          );
-        }}
-      />
+          ))}
+        </div>
+      ) : (
+        <Grid
+          gridRef={gridRef}
+          columnCount={columnCount}
+          columnWidth={columnWidth}
+          rowCount={rowCount}
+          rowHeight={rowHeight}
+          overscanCount={3}
+          cellProps={{}}
+          style={{ height, width }}
+          onCellsRendered={({ rowStopIndex }) => {
+            const remainingRows = rowCount - 1 - rowStopIndex;
+            if (remainingRows > 3) return;
+            if (endReachedRef.current) return;
+            endReachedRef.current = true;
+            onEndReached?.();
+          }}
+          cellComponent={({ columnIndex, rowIndex, style }) => {
+            const index = rowIndex * columnCount + columnIndex;
+            const movie = renderItems[index];
+            if (!movie) return null;
+            return (
+              <div style={style} className="p-2 md:p-3">
+                <MovieCard movie={movie} enableReveal={false} enableHoverPortal={false} />
+              </div>
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
