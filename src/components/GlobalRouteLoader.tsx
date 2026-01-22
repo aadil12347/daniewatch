@@ -117,7 +117,9 @@ export function GlobalRouteLoader() {
   // If everything is settled, clear timeout suppression so the next load can show normally.
   // IMPORTANT: we only *show* the global overlay for initial doc load + route navigations.
   // Background fetches (e.g., infinite scroll) should use inline loaders, not a fullscreen overlay.
-  const rawWanted = docPending || routePending;
+  // To prevent visual "flashes" during SPA navigation, we only use the global overlay
+  // for the initial document load. Route transitions rely on PageTransition + inline loaders.
+  const rawWanted = docPending;
   useEffect(() => {
     if (!rawWanted && timedOut) setTimedOut(false);
   }, [rawWanted, timedOut]);
