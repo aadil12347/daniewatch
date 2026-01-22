@@ -58,9 +58,11 @@ export function BiDirectionalRecyclingPosterGrid<T>({
 
   const topRowRef = useRef<HTMLDivElement | null>(null);
   const bottomRowRef = useRef<HTMLDivElement | null>(null);
+  const bottomSpacerRef = useRef<HTMLDivElement | null>(null);
 
   const topObserverRef = useRef<IntersectionObserver | null>(null);
   const bottomObserverRef = useRef<IntersectionObserver | null>(null);
+  const bottomSpacerObserverRef = useRef<IntersectionObserver | null>(null);
 
   const [rowStart, setRowStart] = useState(0);
   const rowStartRef = useRef(0);
@@ -115,6 +117,24 @@ export function BiDirectionalRecyclingPosterGrid<T>({
     return Math.max(maxLoadedRowsRef.current, renderRowsCap);
   }, [renderRowsCap]);
 
+  // Prevent state updates that would cause the grid to render zero rows.
+  const safeSetRowStart = useMemo(() => {
+    return (updater: (prev: number) => number) => {
+      setRowStart((prev) => {
+        const maxRows = maxRowsForRender;
+        if (maxRows <= 0) return prev;
+
+        const proposed = updater(prev);
+        const clamped = Math.min(Math.max(0, proposed), Math.max(0, maxRows - windowRows));
+
+        const rowEndCandidate = Math.min(maxRows - 1, clamped + windowRows - 1);
+        if (rowEndCandidate < clamped) return prev;
+
+        return clamped;
+      });
+    };
+  }, [maxRowsForRender, windowRows]);
+
   useEffect(() => {
     // Reset monotonic tracker when the list is cleared/reset (e.g., filter changes).
     if (items.length < prevItemsLenRef.current) {
@@ -142,10 +162,12 @@ export function BiDirectionalRecyclingPosterGrid<T>({
   const rowStridePx = rowHeight + gapPx;
   const topSpacerPx = rowStart * rowStridePx;
   const effectiveTopSpacerPx = topLock ? 0 : topSpacerPx;
+
+  const effectiveFutureBufferPx = items.length >= totalItemCount ? 0 : Math.max(0, futureBufferPx);
   // Bottom padding represents only already-loaded rows that are currently not mounted,
   // plus a small fixed future buffer to allow smooth approach to the end.
   const bottomSpacerPx =
-    Math.max(0, (maxLoadedRowsRef.current - (rowEnd + 1)) * rowStridePx) + Math.max(0, futureBufferPx);
+    Math.max(0, (maxLoadedRowsRef.current - (rowEnd + 1)) * rowStridePx) + effectiveFutureBufferPx;
 
   const needsMoreThresholdIndex = useMemo(() => {
     // Similar to WindowVirtualizedPosterGrid: request more when within ~2 rows of end.
@@ -193,7 +215,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
 
         // If the top row has fully left the viewport upwards while scrolling down, recycle forward.
         if (!e.isIntersecting && e.boundingClientRect.top < 0) {
-          setRowStart((prev) => {
+          safeSetRowStart((prev) => {
             const maxStart = Math.max(0, maxLoadedRowsRef.current - windowRows);
             if (prev >= maxStart) return prev;
             return prev + 1;
@@ -205,7 +227,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
         if (e.isIntersecting && e.intersectionRatio > 0.85) {
           const scrollingUp = lastScrollYRef.current < lastScrollYPrevRef.current;
           if (!scrollingUp) return;
-          setRowStart((prev) => Math.max(0, prev - 1));
+          safeSetRowStart((prev) => Math.max(0, prev - 1));
         }
       },
       { threshold: [0, 0.85] }
@@ -216,15 +238,11 @@ export function BiDirectionalRecyclingPosterGrid<T>({
         const e = entries[0];
         if (!e?.isIntersecting) return;
 
-        // If our rendered window is approaching the end of loaded data, ask for more.
-        const lastRenderedItemIndex = (rowEnd + 1) * columns - 1;
-        const nearLoadedEnd = lastRenderedItemIndex >= needsMoreThresholdIndex;
-        if (nearLoadedEnd) onNeedMoreData?.();
-
         // If not yet at the end of loaded rows, keep recycling forward as the bottom becomes visible.
         // This keeps the mounted window centered around the viewport during fast scroll.
+        // Cap Row Recycling: do not advance unless there are *loaded* rows beyond the current window.
         if (rowEnd < maxLoadedRowsRef.current - 1) {
-          setRowStart((prev) => {
+          safeSetRowStart((prev) => {
             const maxStart = Math.max(0, maxLoadedRowsRef.current - windowRows);
             return Math.min(prev + 1, maxStart);
           });
@@ -241,7 +259,49 @@ export function BiDirectionalRecyclingPosterGrid<T>({
       bottomObserverRef.current?.disconnect();
     };
     // NOTE: depend on the computed rowEnd/totalRows so the observers rebind to new sentinels.
-  }, [columns, items.length, needsMoreThresholdIndex, onNeedMoreData, onTopIndexChange, rowEnd, rowStart, windowRows]);
+  }, [columns, items.length, rowEnd, rowStart, safeSetRowStart, windowRows]);
+
+  // Persistent Loading Sentinel: observe the bottom spacer so that as long as the user
+  // has scrolled into the future buffer area, we keep attempting to fetch more.
+  useEffect(() => {
+    bottomSpacerObserverRef.current?.disconnect();
+    const spacerEl = bottomSpacerRef.current;
+    if (!spacerEl) return;
+
+    let interval: number | null = null;
+    const clear = () => {
+      if (interval !== null) {
+        window.clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    bottomSpacerObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        if (!e) return;
+        if (!e.isIntersecting) {
+          clear();
+          return;
+        }
+
+        // Fire immediately and keep trying while the spacer remains visible.
+        onNeedMoreData?.();
+        if (interval === null) {
+          interval = window.setInterval(() => {
+            onNeedMoreData?.();
+          }, 700);
+        }
+      },
+      { rootMargin: "800px 0px 0px 0px", threshold: 0.01 }
+    );
+
+    bottomSpacerObserverRef.current.observe(spacerEl);
+    return () => {
+      clear();
+      bottomSpacerObserverRef.current?.disconnect();
+    };
+  }, [onNeedMoreData, effectiveFutureBufferPx, totalItemCount, items.length]);
 
   // Render rows in the current window.
   const rowsToRender = useMemo(() => {
@@ -299,7 +359,7 @@ export function BiDirectionalRecyclingPosterGrid<T>({
         })}
       </div>
 
-      <div style={{ height: bottomSpacerPx }} aria-hidden="true" />
+      <div ref={bottomSpacerRef} style={{ height: bottomSpacerPx }} aria-hidden="true" />
     </div>
   );
 }
