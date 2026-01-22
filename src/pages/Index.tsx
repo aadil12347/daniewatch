@@ -5,7 +5,6 @@ import { Helmet } from "react-helmet-async";
 import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
-import { Footer } from "@/components/Footer";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { usePreloadImages } from "@/hooks/usePreloadImages";
@@ -74,7 +73,9 @@ const Index = () => {
   const pageIsLoading = isLoading || isModerationLoading || isAvailabilityLoading || !aboveFoldReady;
 
   // Home exception: keep loader until Hero + Top 10 are ready.
-  useRouteContentReady(!pageIsLoading && trending.length >= Math.min(10, trending.length || 10));
+  // IMPORTANT: always release the global route loader once the page has settled,
+  // even if the homepage API request fails (otherwise the loader will hit the hard timeout every visit).
+  useRouteContentReady(!pageIsLoading && (fetchError !== null || trending.length > 0));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -125,9 +126,9 @@ const Index = () => {
         />
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <main className="min-h-[100dvh] bg-background overflow-x-hidden flex flex-col">
         {fetchError && !pageIsLoading && (
-          <div className="container mx-auto px-4 pt-24">
+          <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 pt-[calc(var(--app-header-offset)+24px)]">
             <div className="rounded-lg border bg-card p-4">
               <p className="text-sm text-muted-foreground">{fetchError}</p>
               <button
@@ -143,7 +144,7 @@ const Index = () => {
 
         <HeroSection items={trending} isLoading={pageIsLoading} />
 
-        <div className="relative z-10 -mt-16">
+        <div className="relative z-10 -mt-16 w-full px-3 sm:px-4 md:px-6 lg:px-8">
           <ContentRow
             title="Top 10 Today"
             items={sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
@@ -240,8 +241,7 @@ const Index = () => {
           />
         </div>
 
-        <Footer />
-      </div>
+      </main>
     </>
   );
 };
