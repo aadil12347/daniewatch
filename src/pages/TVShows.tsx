@@ -14,6 +14,9 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { WindowVirtualizedPosterGrid } from "@/components/virtualization/WindowVirtualizedPosterGrid";
+import { getPosterUrl } from "@/lib/tmdb";
+import { queuePriorityCache } from "@/lib/priorityCacheBridge";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
@@ -33,8 +36,7 @@ const TVShows = () => {
   const [tmdbPage, setTmdbPage] = useState(1);
   const [hasMoreTmdb, setHasMoreTmdb] = useState(true);
 
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [topIndex, setTopIndex] = useState(0);
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
 
@@ -211,29 +213,48 @@ const TVShows = () => {
     [selectedGenres, selectedYear]
   );
 
-  // Infinite scroll observer
-  useEffect(() => {
-    observerRef.current?.disconnect();
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0].isIntersecting) return;
-        if (isLoadingMore || pendingLoadMore) return;
-
-        const hasBuffered = displayCount < visibleAll.length;
-        if (!hasBuffered && !hasMoreTmdb) return;
-
-        setPendingLoadMore(true);
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => observerRef.current?.disconnect();
+  const onEndReached = useCallback(() => {
+    if (isLoadingMore || pendingLoadMore) return;
+    const hasBuffered = displayCount < visibleAll.length;
+    if (!hasBuffered && !hasMoreTmdb) return;
+    setPendingLoadMore(true);
   }, [displayCount, hasMoreTmdb, isLoadingMore, pendingLoadMore, visibleAll.length]);
+
+  useEffect(() => {
+    if (pageIsLoading) return;
+    const first = visibleAll.slice(0, 10);
+    const posterUrls = first
+      .map((m) => getPosterUrl((m as any)?.poster_path ?? null, "w342"))
+      .filter(Boolean) as string[];
+    queuePriorityCache("/tv", posterUrls);
+  }, [pageIsLoading, visibleAll]);
+
+  useEffect(() => {
+    const mem = (performance as any)?.memory;
+    if (!mem?.usedJSHeapSize || !mem?.jsHeapSizeLimit) return;
+    const ratio = mem.usedJSHeapSize / mem.jsHeapSizeLimit;
+    if (ratio < 0.82) return;
+
+    const keepTop = 5 * BATCH_SIZE;
+    const center = Math.max(0, topIndex);
+    const keepStart = Math.max(0, center - 36);
+    const keepEnd = center + 72;
+
+    setTmdbItems((prev) => {
+      if (prev.length <= keepTop) return prev;
+      const head = prev.slice(0, keepTop);
+      const mid = prev.slice(keepStart, Math.min(prev.length, keepEnd));
+      const seen = new Set(head.map((m) => getKey(m)));
+      const merged = [...head];
+      for (const m of mid) {
+        const k = getKey(m);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        merged.push(m);
+      }
+      return merged;
+    });
+  }, [getKey, topIndex]);
 
   // Resolve pending load more: reveal DB first; only then start fetching TMDB pages.
   useEffect(() => {
@@ -366,31 +387,41 @@ const TVShows = () => {
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {pageIsLoading
-              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                  </div>
-                ))
-              : visibleAll.slice(0, displayCount).map((show, index) => {
-                  const shouldAnimate =
-                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
-
-                  return (
-                    <div key={`tv-${show.id}`} className={shouldAnimate ? "animate-fly-in" : undefined}>
-                      <MovieCard
-                        movie={show}
-                        animationDelay={Math.min(index * 30, 300)}
-                        enableReveal={false}
-                        enableHoverPortal={false}
-                      />
+          <WindowVirtualizedPosterGrid
+            items={pageIsLoading ? [] : visibleAll.slice(0, displayCount)}
+            onEndReached={onEndReached}
+            onTopIndexChange={setTopIndex}
+            renderSkeleton={
+              pageIsLoading
+                ? () => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                      {Array.from({ length: BATCH_SIZE }).map((_, i) => (
+                        <div key={i}>
+                          <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                          <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                          <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-          </div>
+                  )
+                : undefined
+            }
+            renderItem={(show, index) => {
+              const shouldAnimate =
+                animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
+              return (
+                <div key={`tv-${(show as any).id}`} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                  <MovieCard
+                    movie={show as any}
+                    animationDelay={Math.min(index * 30, 300)}
+                    enableReveal={false}
+                    enableHoverPortal={false}
+                  />
+                </div>
+              );
+            }}
+          />
 
           {/* No results message */}
           {!pageIsLoading && visibleAll.length === 0 && (
@@ -406,7 +437,7 @@ const TVShows = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-6">
+          <div className="flex justify-center py-6">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
             {!hasMoreTmdb && displayCount >= visibleAll.length && visibleAll.length > 0 && (
               <p className="text-muted-foreground">You've reached the end</p>
