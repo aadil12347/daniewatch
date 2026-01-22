@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAdminStatus } from "@/contexts/AdminStatusContext";
+import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
@@ -67,6 +68,7 @@ export const MovieCard = ({
 
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
   const { isAdmin } = useAdminStatus();
+  const { isEditLinksMode, openEditorForTmdbId } = useEditLinksMode();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
   const { getAvailability, getHoverImageUrl } = useEntryAvailability();
   const { isPerformance } = usePerformanceMode();
@@ -263,6 +265,12 @@ export const MovieCard = ({
           state={{ backgroundLocation }}
           className="block"
           onClick={(e) => {
+            if (isAdmin && isEditLinksMode) {
+              e.preventDefault();
+              e.stopPropagation();
+              openEditorForTmdbId(String(movie.id));
+              return;
+            }
             if (shouldLetBrowserHandleLink(e)) return;
             if (!posterRef.current) return;
 
