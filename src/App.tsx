@@ -24,6 +24,8 @@ import { PerformanceModeSwitchOverlay } from "@/components/PerformanceModeSwitch
 import { InitialSplashOverlay, getShouldShowInitialSplash } from "@/components/InitialSplashOverlay";
 import { EditLinksModeIndicator } from "@/components/admin/EditLinksModeIndicator";
 import { EditLinksModal } from "@/components/admin/EditLinksModal";
+import { useServiceWorkerSync } from "@/hooks/useServiceWorkerSync";
+import { ServiceWorkerSyncBridge } from "@/components/ServiceWorkerSyncBridge";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -112,6 +114,9 @@ const App = () => {
   const [splashActive, setSplashActive] = useState(() => getShouldShowInitialSplash());
   const [justExitedSplash, setJustExitedSplash] = useState(false);
 
+  // Start listening to SW BroadcastChannel immediately (even during splash).
+  useServiceWorkerSync(true);
+
   useEffect(() => {
     const root = document.documentElement;
     if (!justExitedSplash) {
@@ -127,6 +132,7 @@ const App = () => {
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
+        <ServiceWorkerSyncBridge enabled />
         <AuthProvider>
           <AdminStatusProvider>
             <EditLinksModeProvider>
