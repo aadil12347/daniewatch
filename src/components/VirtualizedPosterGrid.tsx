@@ -110,9 +110,10 @@ export function VirtualizedPosterGrid({ items, isLoading, skeletonCount = 18, cl
             rowCount={rowCount}
             rowHeight={rowHeight}
             overscanCount={3}
-            onCellsRendered={({ visibleRowStopIndex }) => {
+            cellProps={{}}
+            onCellsRendered={({ rowStopIndex }) => {
               // Trigger a fetch when user is near the end.
-              const remainingRows = rowCount - 1 - visibleRowStopIndex;
+              const remainingRows = rowCount - 1 - rowStopIndex;
               if (remainingRows > 3) return;
               if (endReachedRef.current) return;
               endReachedRef.current = true;
