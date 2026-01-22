@@ -520,8 +520,9 @@ const Movies = () => {
         <meta name="description" content="Browse movies sorted by latest release date. Filter by genre and year." />
       </Helmet>
 
-      <main className="min-h-[100dvh] bg-background overflow-x-hidden flex flex-col">
-        <div className="w-full flex-1 flex flex-col px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
+      {/* Lock page scrolling on /movies so only the virtualized grid provides the single scrollbar */}
+      <main className="h-[100dvh] bg-background overflow-hidden flex flex-col">
+        <div className="w-full flex-1 min-h-0 flex flex-col px-3 sm:px-4 md:px-6 lg:px-8 pt-6 pb-4">
           <h1 className="sr-only">Movies</h1>
 
           {/* Category Navigation */}
@@ -537,7 +538,7 @@ const Movies = () => {
           </div>
 
           {/* Full-height container-scroll grid (fills remaining viewport, no black gaps) */}
-          <div className="relative flex-1 min-h-0">
+          <div className="relative flex-1 min-h-0 overflow-hidden">
             {/** Ensure we never render an empty non-loading grid (avoids blank first paint). */}
             <VirtualizedPosterGrid
               className="h-full"
