@@ -16,6 +16,7 @@ import { VirtualizedPosterGrid } from "@/components/VirtualizedPosterGrid";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
+const TMDB_MAX_PAGE = 500;
 
 const Movies = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -35,7 +36,6 @@ const Movies = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
@@ -273,12 +273,21 @@ const Movies = () => {
   // Try to restore from cache on mount
   useEffect(() => {
     const cached = getCache("default", selectedGenres);
-    if (cached && cached.items.length > 0) {
+    const cachedPage = cached?.page ?? 1;
+    const cacheLooksValid =
+      !!cached &&
+      Array.isArray(cached.items) &&
+      cached.items.length > 0 &&
+      Number.isFinite(cachedPage) &&
+      cachedPage >= 1 &&
+      cachedPage <= TMDB_MAX_PAGE;
+
+    if (cacheLooksValid) {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setMovies(cached.items);
       setDisplayCount(cached.items.length);
       setAnimateFromIndex(null);
-      setPage(cached.page);
+      setPage(cachedPage);
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
@@ -319,6 +328,14 @@ const Movies = () => {
 
   const fetchMovies = useCallback(
     async (pageNum: number, reset: boolean = false) => {
+      // TMDB hard limit: pages are 1..500
+      if (pageNum < 1 || pageNum > TMDB_MAX_PAGE) {
+        setHasMore(false);
+        setIsLoading(false);
+        setIsLoadingMore(false);
+        return;
+      }
+
       if (reset) {
         setIsLoading(true);
         setDbOnlyHydrated([]);
@@ -367,6 +384,12 @@ const Movies = () => {
         const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
         const response = await res.json();
 
+        // TMDB can return { success:false, ... } (sometimes with 200/400). Guard against it.
+        if (!response || response.success === false || !Array.isArray(response.results)) {
+          setHasMore(false);
+          return;
+        }
+
         const filteredResults = (filterAdultContent(response.results) as Movie[])
           .map((m) => ({ ...m, media_type: "movie" as const }))
           .filter(isAllowedOnMoviesPage);
@@ -389,9 +412,10 @@ const Movies = () => {
           }
         }
 
-        setHasMore(response.page < response.total_pages);
+        setHasMore(Number(response.page) < Number(response.total_pages));
       } catch (error) {
         console.error("Failed to fetch movies:", error);
+        setHasMore(false);
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -423,32 +447,17 @@ const Movies = () => {
   useRouteContentReady(routeReady);
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
-  useEffect(() => {
-    observerRef.current?.disconnect();
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0].isIntersecting) return;
-        if (isLoading || isLoadingMore || pendingLoadMore) return;
-
-        const hasBuffered = displayCount < visibleMovies.length;
-        if (!hasBuffered && !hasMore) return;
-
-        setPendingLoadMore(true);
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => observerRef.current?.disconnect();
-  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleMovies.length]);
+  // NOTE: load-more is driven by VirtualizedPosterGrid.onEndReached.
 
   // Resolve pending "load more": reveal from buffer first. Only fetch next TMDB page AFTER all DB items are revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
+
+    // Never paginate/reveal when we have nothing at all yet (prevents runaway loops).
+    if (visibleMovies.length === 0) {
+      setPendingLoadMore(false);
+      return;
+    }
 
     const hasBuffered = displayCount < visibleMovies.length;
     if (hasBuffered) {

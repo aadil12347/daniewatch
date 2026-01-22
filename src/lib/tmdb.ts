@@ -207,8 +207,9 @@ export const filterAdultContent = <T extends {
   title?: string; 
   name?: string; 
   overview?: string;
-}>(items: T[]): T[] => {
-  return items.filter(item => {
+}>(items?: T[] | null): T[] => {
+  const safeItems: T[] = Array.isArray(items) ? items : [];
+  return safeItems.filter(item => {
     // Check blocklist first
     if (BLOCKED_IDS.has(item.id)) return false;
     

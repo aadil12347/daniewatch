@@ -16,6 +16,7 @@ import { VirtualizedPosterGrid } from "@/components/VirtualizedPosterGrid";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
+const TMDB_MAX_PAGE = 500;
 
 const TVShows = () => {
   const [tmdbItems, setTmdbItems] = useState<Movie[]>([]);
@@ -171,6 +172,10 @@ const TVShows = () => {
 
   const fetchTmdbPage = useCallback(
     async (pageNum: number) => {
+      if (pageNum < 1 || pageNum > TMDB_MAX_PAGE) {
+        return { page: pageNum, totalPages: pageNum - 1, results: [] as Movie[] };
+      }
+
       const today = new Date().toISOString().split("T")[0];
 
       const params = new URLSearchParams({
@@ -196,6 +201,10 @@ const TVShows = () => {
 
       const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
       const response = await res.json();
+
+      if (!response || response.success === false || !Array.isArray(response.results)) {
+        return { page: pageNum, totalPages: pageNum - 1, results: [] as Movie[] };
+      }
 
       const scoped = (filterAdultContent(response.results) as Movie[])
         .map((m) => ({ ...m, media_type: "tv" as const }))

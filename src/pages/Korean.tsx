@@ -32,6 +32,7 @@ const TV_FANTASY_GENRE = 10765;
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
+const TMDB_MAX_PAGE = 500;
 
 // TMDB fetching for the Korean page excludes Turkish. We still allow Turkish DB entries
 // (manifest-driven) to appear if they exist in the database.
@@ -63,7 +64,6 @@ const Korean = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
@@ -311,12 +311,21 @@ const Korean = () => {
   // Try to restore from cache on mount
   useEffect(() => {
     const cached = getCache("default", selectedTags);
-    if (cached && cached.items.length > 0) {
+    const cachedPage = cached?.page ?? 1;
+    const cacheLooksValid =
+      !!cached &&
+      Array.isArray(cached.items) &&
+      cached.items.length > 0 &&
+      Number.isFinite(cachedPage) &&
+      cachedPage >= 1 &&
+      cachedPage <= TMDB_MAX_PAGE;
+
+    if (cacheLooksValid) {
       restoreScrollYRef.current = cached.scrollY ?? 0;
       setItems(cached.items);
       setDisplayCount(cached.items.length);
       setAnimateFromIndex(null);
-      setPage(cached.page);
+      setPage(cachedPage);
       setHasMore(cached.hasMore);
       setIsLoading(false);
       setIsRestoredFromCache(true);
@@ -357,6 +366,14 @@ const Korean = () => {
 
   const fetchKorean = useCallback(
     async (pageNum: number, reset: boolean = false) => {
+      // TMDB hard limit: pages are 1..500
+      if (pageNum < 1 || pageNum > TMDB_MAX_PAGE) {
+        setHasMore(false);
+        setIsLoading(false);
+        setIsLoadingMore(false);
+        return;
+      }
+
       if (reset) {
         setIsLoading(true);
         setDbOnlyHydrated([]);
@@ -447,6 +464,12 @@ const Korean = () => {
         const responses = await Promise.all([...movieUrls, ...tvUrls].map((u) => fetch(u)));
         const json = await Promise.all(responses.map((r) => r.json()));
 
+        // Any feed returning { success:false } should stop pagination to prevent runaway loops.
+        if (json.some((d: any) => d?.success === false || !Array.isArray(d?.results))) {
+          setHasMore(false);
+          return;
+        }
+
         const movieJson = json.slice(0, movieUrls.length);
         const tvJson = json.slice(movieUrls.length);
 
@@ -503,6 +526,7 @@ const Korean = () => {
         setHasMore(pageNum < maxPages);
       } catch (error) {
         console.error("Failed to fetch Korean content:", error);
+        setHasMore(false);
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -534,33 +558,17 @@ const Korean = () => {
     (filteredVisibleItems.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, filteredVisibleItems.length));
   useRouteContentReady(routeReady);
 
-  // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
-  useEffect(() => {
-    observerRef.current?.disconnect();
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0].isIntersecting) return;
-        if (isLoading || isLoadingMore || pendingLoadMore) return;
-
-        const hasBuffered = displayCount < filteredVisibleItems.length;
-        if (!hasBuffered && !hasMore) return;
-
-        setPendingLoadMore(true);
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => observerRef.current?.disconnect();
-  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, filteredVisibleItems.length]);
+  // NOTE: load-more is driven by VirtualizedPosterGrid.onEndReached.
 
   // Resolve pending "load more": reveal from buffer first; ONLY fetch TMDB after DB section is fully revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
+
+    // Never paginate/reveal when we have nothing at all yet (prevents runaway loops).
+    if (filteredVisibleItems.length === 0) {
+      setPendingLoadMore(false);
+      return;
+    }
 
     const hasBuffered = displayCount < filteredVisibleItems.length;
     if (hasBuffered) {
