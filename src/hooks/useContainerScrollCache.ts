@@ -1,17 +1,17 @@
-import React from "react";
 import { useEffect } from "react";
 
 type Options = {
   enabled?: boolean;
 };
 
-export function useContainerScrollCache(el: HTMLElement | null, key: string, options: Options = {}) {
+export function useContainerScrollCache(el: Element | null, key: string, options: Options = {}) {
   const enabled = options.enabled ?? true;
 
   // Restore.
   useEffect(() => {
     if (!enabled) return;
     if (!el) return;
+    if (!(el instanceof HTMLElement)) return;
     try {
       const raw = sessionStorage.getItem(key);
       if (!raw) return;
@@ -27,6 +27,7 @@ export function useContainerScrollCache(el: HTMLElement | null, key: string, opt
   useEffect(() => {
     if (!enabled) return;
     if (!el) return;
+    if (!(el instanceof HTMLElement)) return;
 
     let raf = 0;
     const onScroll = () => {
