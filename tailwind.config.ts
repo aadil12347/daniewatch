@@ -87,6 +87,10 @@ export default {
           from: { opacity: "0", transform: "translateY(3rem)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "inject-top": {
+          from: { opacity: "0", transform: "translateY(-0.75rem)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -94,6 +98,7 @@ export default {
         shimmer: "shimmer 2s infinite",
         pulse: "pulse 2s infinite",
         "fly-in": "fly-in 0.25s ease-in",
+        "inject-top": "inject-top 0.22s ease-out",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

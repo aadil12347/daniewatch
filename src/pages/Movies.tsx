@@ -14,6 +14,9 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { isAllowedOnMoviesPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { WindowVirtualizedPosterGrid } from "@/components/virtualization/WindowVirtualizedPosterGrid";
+import { getPosterUrl } from "@/lib/tmdb";
+import { queuePriorityCache } from "@/lib/priorityCacheBridge";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
@@ -36,9 +39,10 @@ const Movies = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
+
+  const [topIndex, setTopIndex] = useState(0);
+  const [injectedKeys, setInjectedKeys] = useState<Set<string>>(new Set());
 
   const dbHydrationCursorRef = useRef(0);
 
@@ -303,6 +307,66 @@ const Movies = () => {
     });
   }, [isRestoredFromCache, movies.length]);
 
+  // Delta sync: fetch page 1 in the background and prepend any NEW items.
+  useEffect(() => {
+    if (!isRestoredFromCache) return;
+    if (movies.length === 0) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const params = new URLSearchParams({
+          api_key: "fc6d85b3839330e3458701b975195487",
+          include_adult: "false",
+          page: "1",
+          sort_by: "primary_release_date.desc",
+          "vote_count.gte": "50",
+          "primary_release_date.lte": today,
+        });
+
+        if (selectedYear) {
+          if (selectedYear === "older") {
+            params.set("primary_release_date.lte", "2019-12-31");
+          } else {
+            params.set("primary_release_year", selectedYear);
+          }
+        }
+
+        if (selectedGenres.length > 0) {
+          params.set("with_genres", selectedGenres.join(","));
+        }
+
+        const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
+        const response = await res.json();
+        const filteredResults = (filterAdultContent(response.results) as Movie[])
+          .map((m) => ({ ...m, media_type: "movie" as const }))
+          .filter(isAllowedOnMoviesPage);
+
+        const currentKeys = new Set(movies.map((m) => getKey(m)));
+        const newOnes = filteredResults.filter((m) => !currentKeys.has(getKey(m)));
+
+        if (!cancelled && newOnes.length > 0) {
+          const newKeys = new Set(newOnes.map((m) => getKey(m)));
+          setInjectedKeys(newKeys);
+          setMovies((prev) => [...newOnes, ...prev]);
+
+          window.setTimeout(() => {
+            if (!cancelled) setInjectedKeys(new Set());
+          }, 550);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [getKey, isRestoredFromCache, movies, selectedGenres, selectedYear]);
+
   // Save cache before unmount
   useEffect(() => {
     return () => {
@@ -424,28 +488,51 @@ const Movies = () => {
   useRouteContentReady(routeReady);
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
-  useEffect(() => {
-    observerRef.current?.disconnect();
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0].isIntersecting) return;
-        if (isLoading || isLoadingMore || pendingLoadMore) return;
-
-        const hasBuffered = displayCount < visibleMovies.length;
-        if (!hasBuffered && !hasMore) return;
-
-        setPendingLoadMore(true);
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => observerRef.current?.disconnect();
+  const onEndReached = useCallback(() => {
+    if (isLoading || isLoadingMore || pendingLoadMore) return;
+    const hasBuffered = displayCount < visibleMovies.length;
+    if (!hasBuffered && !hasMore) return;
+    setPendingLoadMore(true);
   }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleMovies.length]);
+
+  // Priority cache: first 10 posters are treated as "permanent" for instant return visits.
+  useEffect(() => {
+    if (pageIsLoading) return;
+    const first = visibleMovies.slice(0, 10);
+    const posterUrls = first
+      .map((m) => getPosterUrl((m as any)?.poster_path ?? null, "w342"))
+      .filter(Boolean) as string[];
+    queuePriorityCache("/movies", posterUrls);
+  }, [pageIsLoading, visibleMovies]);
+
+  // RAM guard: prune deep TMDB-only cache on memory pressure, preserving top + current view.
+  useEffect(() => {
+    const mem = (performance as any)?.memory;
+    if (!mem?.usedJSHeapSize || !mem?.jsHeapSizeLimit) return;
+    const ratio = mem.usedJSHeapSize / mem.jsHeapSizeLimit;
+    if (ratio < 0.82) return;
+
+    const keepTop = 5 * BATCH_SIZE;
+    const center = Math.max(0, topIndex);
+    const keepStart = Math.max(0, center - 36);
+    const keepEnd = center + 72;
+
+    setMovies((prev) => {
+      if (prev.length <= keepTop) return prev;
+      const head = prev.slice(0, keepTop);
+      const mid = prev.slice(keepStart, Math.min(prev.length, keepEnd));
+      // de-dupe head+mid
+      const seen = new Set(head.map((m) => getKey(m)));
+      const merged = [...head];
+      for (const m of mid) {
+        const k = getKey(m);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        merged.push(m);
+      }
+      return merged;
+    });
+  }, [getKey, topIndex]);
 
   // Resolve pending "load more": reveal from buffer first. Only fetch next TMDB page AFTER all DB items are revealed.
   useEffect(() => {
@@ -531,31 +618,49 @@ const Movies = () => {
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            {pageIsLoading
-              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                  </div>
-                ))
-              : visibleMovies.slice(0, displayCount).map((movie, index) => {
-                  const shouldAnimate =
-                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
-
-                  return (
-                    <div key={`${movie.id}-movie`} className={shouldAnimate ? "animate-fly-in" : undefined}>
-                      <MovieCard
-                        movie={movie}
-                        animationDelay={Math.min(index * 30, 300)}
-                        enableReveal={false}
-                        enableHoverPortal={false}
-                      />
+          <WindowVirtualizedPosterGrid
+            items={pageIsLoading ? [] : visibleMovies.slice(0, displayCount)}
+            onEndReached={onEndReached}
+            onTopIndexChange={setTopIndex}
+            renderSkeleton={
+              pageIsLoading
+                ? () => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                      {Array.from({ length: BATCH_SIZE }).map((_, i) => (
+                        <div key={i}>
+                          <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                          <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                          <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-          </div>
+                  )
+                : undefined
+            }
+            renderItem={(movie, index) => {
+              const shouldAnimate =
+                animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
+              const k = getKey(movie as any);
+              const injected = injectedKeys.has(k);
+
+              return (
+                <div
+                  key={`${(movie as any).id}-${(movie as any).media_type ?? "movie"}`}
+                  className={
+                    injected ? "animate-inject-top" : shouldAnimate ? "animate-fly-in" : undefined
+                  }
+                >
+                  <MovieCard
+                    movie={movie as any}
+                    animationDelay={Math.min(index * 30, 300)}
+                    enableReveal={false}
+                    enableHoverPortal={false}
+                  />
+                </div>
+              );
+            }}
+          />
 
           {/* No results message */}
           {!pageIsLoading && visibleMovies.length === 0 && (
@@ -571,7 +676,7 @@ const Movies = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-6">
+          <div className="flex justify-center py-6">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
             {!hasMore && displayCount >= visibleMovies.length && visibleMovies.length > 0 && (
               <p className="text-muted-foreground">You've reached the end</p>
