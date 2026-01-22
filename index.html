@@ -35,10 +35,32 @@
     <meta name="twitter:title" content="DanieWatch" />
     <meta name="twitter:description" content="Stream Movies, TV Shows, Anime & Korean Dramas" />
     <meta name="twitter:image" content="/logo-512.png" />
+
+    <!-- Critical shell styles (instant first paint before JS loads) -->
+    <style>
+      html, body { height: 100%; }
+      body { margin: 0; background: #05060a; color: #e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+      .dw-shell { padding: 18px 16px 24px; }
+      .dw-shell__bar { height: 54px; border-radius: 14px; background: rgba(255,255,255,0.06); }
+      .dw-shell__hero { margin-top: 14px; height: 46vh; min-height: 280px; border-radius: 18px; background: rgba(255,255,255,0.06);
+        position: relative; overflow: hidden; }
+      .dw-skel { background: rgba(255,255,255,0.08); border-radius: 14px; }
+      .dw-shimmer::before { content: ""; position: absolute; inset: 0; transform: translateX(-40%);
+        background: linear-gradient(90deg, rgba(255,255,255,0.00), rgba(255,255,255,0.10), rgba(255,255,255,0.00));
+        animation: dw-shimmer 1.2s linear infinite; }
+      @keyframes dw-shimmer { 0% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
+      @media (prefers-reduced-motion: reduce) { .dw-shimmer::before { display: none; } }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Pre-React shell: replaced once JS hydrates -->
+      <div class="dw-shell" aria-hidden="true">
+        <div class="dw-shell__bar"></div>
+        <div class="dw-shell__hero dw-skel dw-shimmer"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     
     <!-- Firebase Analytics -->
