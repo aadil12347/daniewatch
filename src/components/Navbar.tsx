@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
 import { useAdminContentVisibility } from "@/contexts/AdminContentVisibilityContext";
 import { getSearchScopeForPathname, useSearchOverlay } from "@/contexts/SearchOverlayContext";
+import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -32,9 +33,10 @@ const setIsScrolled = (_next: boolean) => {};
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
-  const { isAdmin } = useAdmin();
+  const { isAdmin } = useAdminStatus();
   const { showBlockedPosts, setShowBlockedPosts } = useAdminContentVisibility();
   const { mode, setMode } = usePerformanceMode();
+  const { isEditLinksMode, setEditLinksMode } = useEditLinksMode();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
@@ -452,6 +454,18 @@ export const Navbar = () => {
                     <>
                       <DropdownMenuSeparator />
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Admin filters</div>
+
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="cursor-default flex items-center justify-between gap-3"
+                      >
+                        <span className="text-sm">Edit Links mode</span>
+                        <Switch
+                          checked={isEditLinksMode}
+                          onCheckedChange={(v) => setEditLinksMode(Boolean(v))}
+                          aria-label={isEditLinksMode ? "Disable Edit Links mode" : "Enable Edit Links mode"}
+                        />
+                      </DropdownMenuItem>
 
                       <DropdownMenuItem
                         onSelect={(e) => e.preventDefault()}

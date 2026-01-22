@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation, type Location } from "react-
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AdminStatusProvider } from "@/contexts/AdminStatusContext";
+import { EditLinksModeProvider } from "@/contexts/EditLinksModeContext";
 import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
 import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
@@ -21,6 +22,8 @@ import { SearchOverlay } from "@/components/SearchOverlay";
 import { PerformanceModeProvider } from "@/contexts/PerformanceModeContext";
 import { PerformanceModeSwitchOverlay } from "@/components/PerformanceModeSwitchOverlay";
 import { InitialSplashOverlay, getShouldShowInitialSplash } from "@/components/InitialSplashOverlay";
+import { EditLinksModeIndicator } from "@/components/admin/EditLinksModeIndicator";
+import { EditLinksModal } from "@/components/admin/EditLinksModal";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -125,44 +128,48 @@ const App = () => {
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-            <AdminStatusProvider>
-          <PerformanceModeProvider>
-            <TutorialProvider>
-              <MediaProvider>
-                <AdminContentVisibilityProvider>
-                  <SearchOverlayProvider>
-                    <TooltipProvider>
-                      <Toaster />
-                      <Sonner />
-                      <BrowserRouter>
-                        <ErrorBoundary>
-                          {splashActive ? (
-                            <InitialSplashOverlay
-                              onDone={() => {
-                                setSplashActive(false);
-                                setJustExitedSplash(true);
-                              }}
-                            />
-                          ) : (
-                            <>
-                              <Navbar />
-                              <SearchOverlay />
-                              <GlobalRouteLoader />
-                              <PerformanceModeSwitchOverlay />
-                              <AppContent />
-                              <FloatingRequestButton />
-                              <TutorialOverlay />
-                            </>
-                          )}
-                        </ErrorBoundary>
-                      </BrowserRouter>
-                    </TooltipProvider>
-                  </SearchOverlayProvider>
-                </AdminContentVisibilityProvider>
-              </MediaProvider>
-            </TutorialProvider>
-          </PerformanceModeProvider>
-            </AdminStatusProvider>
+          <AdminStatusProvider>
+            <EditLinksModeProvider>
+              <PerformanceModeProvider>
+                <TutorialProvider>
+                  <MediaProvider>
+                    <AdminContentVisibilityProvider>
+                      <SearchOverlayProvider>
+                        <TooltipProvider>
+                          <Toaster />
+                          <Sonner />
+                          <BrowserRouter>
+                            <ErrorBoundary>
+                              {splashActive ? (
+                                <InitialSplashOverlay
+                                  onDone={() => {
+                                    setSplashActive(false);
+                                    setJustExitedSplash(true);
+                                  }}
+                                />
+                              ) : (
+                                <>
+                                  <Navbar />
+                                  <SearchOverlay />
+                                  <GlobalRouteLoader />
+                                  <PerformanceModeSwitchOverlay />
+                                  <EditLinksModeIndicator />
+                                  <EditLinksModal />
+                                  <AppContent />
+                                  <FloatingRequestButton />
+                                  <TutorialOverlay />
+                                </>
+                              )}
+                            </ErrorBoundary>
+                          </BrowserRouter>
+                        </TooltipProvider>
+                      </SearchOverlayProvider>
+                    </AdminContentVisibilityProvider>
+                  </MediaProvider>
+                </TutorialProvider>
+              </PerformanceModeProvider>
+            </EditLinksModeProvider>
+          </AdminStatusProvider>
         </AuthProvider>
       </QueryClientProvider>
     </HelmetProvider>
