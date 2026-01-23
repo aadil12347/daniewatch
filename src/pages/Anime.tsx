@@ -7,7 +7,6 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Movie, filterAdultContent, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
-import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
@@ -576,13 +575,6 @@ const Anime = () => {
           <div className="relative">
             {/* Sentinel (observer watches this) */}
             <div ref={loadMoreRef} className="h-px w-full" />
-
-            {/* Sticky loader (no scroll-jank) */}
-            {isLoadingMore && (
-              <div className="sticky bottom-0 z-10 flex justify-center py-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <InlineDotsLoader ariaLabel="Loading more" />
-              </div>
-            )}
 
             {!isLoadingMore && !hasMore && visibleItems.length > 0 && (
               <div className="flex justify-center py-6">
