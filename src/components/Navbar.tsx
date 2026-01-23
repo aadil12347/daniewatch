@@ -112,6 +112,17 @@ export const Navbar = () => {
     return sp.get(key) || "";
   };
 
+  const scrollToTopInstant = () => {
+    // Force an immediate jump even if the app/theme enables smooth scrolling.
+    const root = document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo({ top: 0, left: 0 });
+    requestAnimationFrame(() => {
+      root.style.scrollBehavior = prev;
+    });
+  };
+
 
   // Sync search query from URL when navigating to search page
   useEffect(() => {
@@ -271,6 +282,7 @@ export const Navbar = () => {
                 isSearchOpen && "md:flex hidden"
               )}
               onClick={() => {
+                scrollToTopInstant();
                 clearSearchResults();
                 haptic("tap");
               }}
@@ -304,6 +316,7 @@ export const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   onClick={() => {
+                      scrollToTopInstant();
                     clearSearchResults();
                     haptic("tap");
                   }}
@@ -409,6 +422,7 @@ export const Navbar = () => {
                       to="/watchlist"
                       className="cursor-pointer"
                       onClick={() => {
+                        scrollToTopInstant();
                         clearSearchResults();
                         haptic("tap");
                       }}
@@ -424,6 +438,7 @@ export const Navbar = () => {
                         to="/requests"
                         className="cursor-pointer"
                         onClick={() => {
+                          scrollToTopInstant();
                           clearSearchResults();
                           haptic("tap");
                         }}
@@ -440,6 +455,7 @@ export const Navbar = () => {
                         to="/admin"
                         className="cursor-pointer"
                         onClick={() => {
+                          scrollToTopInstant();
                           clearSearchResults();
                           haptic("tap");
                         }}
@@ -498,6 +514,7 @@ export const Navbar = () => {
               <Link
                 to="/auth"
                 onClick={() => {
+                  scrollToTopInstant();
                   clearSearchResults();
                   haptic("tap");
                 }}
@@ -544,6 +561,7 @@ export const Navbar = () => {
             <Link
               to="/"
               onClick={() => {
+                scrollToTopInstant();
                 clearSearchResults();
                 haptic("tap");
                 setIsMenuOpen(false);
@@ -592,6 +610,7 @@ export const Navbar = () => {
                   <Link
                     to={link.to}
                     onClick={() => {
+                      scrollToTopInstant();
                       clearSearchResults();
                       haptic("tap");
                       setIsMenuOpen(false);
