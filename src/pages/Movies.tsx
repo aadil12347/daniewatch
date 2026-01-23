@@ -491,11 +491,6 @@ const Movies = () => {
     setAnimateFromIndex(displayCount);
     loadMoreFetchRequestedRef.current = true;
     setIsLoadingMore(true);
-    // Keep the small bottom loader in view (matches Korean “loader below” feel).
-    // This is UI-only; it does not change fetch/reveal logic.
-    requestAnimationFrame(() => {
-      loadMoreRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-    });
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
   }, [pendingLoadMore, displayCount, visibleMovies.length, filteredDbItems.length, hasMore, movies, getKey, hydrateDbOnly, setIsLoadingMore]);
@@ -587,10 +582,21 @@ const Movies = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div ref={loadMoreRef} className="flex justify-center py-6">
-            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
-            {!hasMore && displayCount >= visibleMovies.length && visibleMovies.length > 0 && (
-              <p className="text-muted-foreground">You've reached the end</p>
+          <div className="relative">
+            {/* Sentinel (observer watches this) */}
+            <div ref={loadMoreRef} className="h-px w-full" />
+
+            {/* Sticky loader (no scroll-jank) */}
+            {isLoadingMore && (
+              <div className="sticky bottom-0 z-10 flex justify-center py-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <InlineDotsLoader ariaLabel="Loading more" />
+              </div>
+            )}
+
+            {!isLoadingMore && !hasMore && displayCount >= visibleMovies.length && visibleMovies.length > 0 && (
+              <div className="flex justify-center py-6">
+                <p className="text-muted-foreground">You've reached the end</p>
+              </div>
             )}
           </div>
         </div>
