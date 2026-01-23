@@ -479,6 +479,10 @@ const Anime = () => {
     setAnimateFromIndex(displayCount);
     loadMoreFetchRequestedRef.current = true;
     setIsLoadingMore(true);
+    // Keep the small bottom loader in view (matches Korean “loader below” feel).
+    requestAnimationFrame(() => {
+      loadMoreRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    });
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
   }, [pendingLoadMore, displayCount, visibleItems.length, filteredDbItems.length, hasMore, items, getKey, hydrateDbOnly, setIsLoadingMore]);
