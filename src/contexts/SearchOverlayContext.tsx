@@ -91,6 +91,31 @@ export const SearchOverlayProvider = ({ children }: { children: React.ReactNode 
     }
   }, [isOpen, query, scope]);
 
+  // If the overlay is already open and the user changes the query/scope (runs another search),
+  // update the current history entry so returning from a detail modal restores the latest search,
+  // not the previous one.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    try {
+      const st = (window.history.state ?? {}) as SearchHistoryState;
+      if (!st.__searchOverlay) return;
+
+      window.history.replaceState(
+        {
+          ...st,
+          __searchOverlay: true,
+          query,
+          scope,
+        } satisfies SearchHistoryState,
+        "",
+        window.location.href
+      );
+    } catch {
+      // ignore
+    }
+  }, [isOpen, query, scope]);
+
   const open = useCallback(({ query: q, scope: s }: OpenArgs) => {
     setQuery(q);
     setScope(s);
