@@ -491,6 +491,11 @@ const Movies = () => {
     setAnimateFromIndex(displayCount);
     loadMoreFetchRequestedRef.current = true;
     setIsLoadingMore(true);
+    // Keep the small bottom loader in view (matches Korean “loader below” feel).
+    // This is UI-only; it does not change fetch/reveal logic.
+    requestAnimationFrame(() => {
+      loadMoreRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    });
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
   }, [pendingLoadMore, displayCount, visibleMovies.length, filteredDbItems.length, hasMore, movies, getKey, hydrateDbOnly, setIsLoadingMore]);

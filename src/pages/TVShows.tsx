@@ -269,6 +269,10 @@ const TVShows = () => {
 
     setAnimateFromIndex(displayCount);
     setIsLoadingMore(true);
+    // Keep the small bottom loader in view (matches Korean “loader below” feel).
+    requestAnimationFrame(() => {
+      loadMoreRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    });
     setPendingLoadMore(false);
 
     void (async () => {
