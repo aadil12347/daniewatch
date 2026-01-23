@@ -7,7 +7,6 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Movie, filterAdultContentStrict, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
-import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
@@ -688,7 +687,6 @@ const Korean = () => {
 
           {/* Loading More Indicator */}
           <div ref={loadMoreRef} className="flex justify-center py-6">
-            {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
             {!hasMore && filteredVisibleItems.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
         </div>
