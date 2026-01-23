@@ -361,7 +361,7 @@ export const Navbar = () => {
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     aria-label={searchQuery.trim() ? "Clear search" : "Search"}
                   >
-                    {searchQuery.trim() && isSearchResultsOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+                    {searchQuery.trim() ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
                   </button>
                 </div>
               ) : (
