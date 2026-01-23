@@ -53,6 +53,8 @@ export const SearchOverlay = () => {
     const run = async () => {
       setLoading(true);
       setError(null);
+      // Always clear previous results when starting a new search so we only show the latest.
+      setResults([]);
 
       try {
         let items: Movie[] = [];
