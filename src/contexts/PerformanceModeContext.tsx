@@ -43,29 +43,29 @@ const safeWrite = (key: string, value: string) => {
   }
 };
 
-const detectDefaultMode = (): PerformanceMode => {
-  // Default to Performance on constrained devices *unless* a saved preference already exists.
-  // (Saved mode is handled by the calling hydration logic; this only provides a fallback.)
-  try {
-    const reduceMotion =
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    const cores = typeof navigator !== "undefined" ? navigator.hardwareConcurrency : undefined;
-    const lowCores = typeof cores === "number" && cores > 0 && cores <= 4;
-
-    const saveData =
-      typeof navigator !== "undefined" &&
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      Boolean((navigator as any)?.connection?.saveData);
-
-    if (reduceMotion || lowCores || saveData) return "performance";
-  } catch {
-    // ignore
-  }
-
+const detectGuestDefaultMode = (): PerformanceMode => {
+  // Requested behavior: Quality is the default mode.
   return "quality";
+};
+
+const isProbablyMobile = (): boolean => {
+  // Lightweight heuristic (no hooks) to distinguish mobile vs desktop.
+  // Used only for first-time default selection for logged-in users.
+  try {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    // "coarse" pointer catches most touch devices; width fallback for small screens.
+    return (
+      window.matchMedia("(pointer: coarse)").matches ||
+      window.matchMedia("(max-width: 768px)").matches
+    );
+  } catch {
+    return false;
+  }
+};
+
+const detectLoggedInDeviceDefaultMode = (): PerformanceMode => {
+  // Requested behavior: when user logs in, default is Performance on mobile, Quality on desktop.
+  return isProbablyMobile() ? "performance" : "quality";
 };
 
 const loadDbMode = async (userId: string): Promise<PerformanceMode | null> => {
@@ -106,7 +106,7 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
     // Logged out => keep existing localStorage + detection behavior.
     if (!user?.id) {
       const stored = normalizeMode(safeRead(GUEST_KEY));
-      const next = stored ?? detectDefaultMode();
+      const next = stored ?? detectGuestDefaultMode();
       setModeState(next);
       safeWrite(GUEST_KEY, next);
       return () => {
@@ -119,7 +119,7 @@ export function PerformanceModeProvider({ children }: { children: React.ReactNod
     // Compute a local fallback (used if DB read fails OR for first-time seed)
     const storedUser = normalizeMode(safeRead(userKey(uid)));
     const storedGuest = normalizeMode(safeRead(GUEST_KEY));
-    const fallbackMode = storedUser ?? storedGuest ?? detectDefaultMode();
+    const fallbackMode = storedUser ?? storedGuest ?? detectLoggedInDeviceDefaultMode();
 
     (async () => {
       const dbMode = await loadDbMode(uid);
