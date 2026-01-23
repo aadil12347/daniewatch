@@ -21,11 +21,6 @@ interface MovieCardProps {
   animationDelay?: number;
   className?: string;
   /**
-   * Text-first hydration: render metadata immediately, but defer setting poster <img src>
-   * until the card is near the viewport (reduces decode/network work during fast scrolling).
-   */
-  deferPosterLoad?: boolean;
-  /**
    * Enables the staggered reveal animation (card-reveal).
    * Turn this off on grid pages to prevent re-triggered flashes on rerenders.
    */
@@ -57,7 +52,6 @@ export const MovieCard = ({
   size = "md",
   animationDelay = 0,
   className,
-  deferPosterLoad = false,
   enableReveal = true,
   // Defaults: no portal + contained mode everywhere.
   enableHoverPortal = false,
@@ -108,15 +102,6 @@ export const MovieCard = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
   const isNearViewport = useInViewport(cardRef, { rootMargin: isPerformance ? "80px" : "240px" });
-
-  // Layered Priority Hydration:
-  // - Metadata renders immediately.
-  // - Poster network + decode work is deferred until the card is near viewport.
-  // - Hover/focus can still force an eager mount for responsiveness.
-  const shouldMountPoster =
-    Boolean(posterUrl) &&
-    (!deferPosterLoad || isNearViewport || isPosterActive || isHovered);
-  const mountedPosterSrc = shouldMountPoster ? posterUrl : null;
 
   // Preload hover character image as the card gets near the viewport (so hover feels instant while scrolling)
   useEffect(() => {
@@ -325,14 +310,12 @@ export const MovieCard = ({
           >
             {/* Clip only the poster layers so the character can pop OUT of the card */}
             <div className="poster-3d-clip absolute inset-0 rounded-xl overflow-hidden">
-              {mountedPosterSrc ? (
+              {posterUrl ? (
                 <div className="poster-3d-wrapper">
                   <img
-                    src={mountedPosterSrc}
+                    src={posterUrl}
                     alt={title}
                     loading={isNearViewport ? "eager" : "lazy"}
-                    decoding="async"
-                    fetchPriority={isNearViewport ? "high" : "low"}
                     className={cn(
                       "poster-3d-cover poster-3d-cover--base",
                       isAdmin && blocked &&
@@ -343,12 +326,10 @@ export const MovieCard = ({
                   {/* Mild poster blur layer (kept subtle) */}
                   {!isPerformance && (
                     <img
-                      src={mountedPosterSrc}
+                      src={posterUrl}
                       alt=""
                       aria-hidden="true"
                       loading={isNearViewport ? "eager" : "lazy"}
-                      decoding="async"
-                      fetchPriority={"low"}
                       className={cn(
                         "poster-3d-cover poster-3d-cover--blur",
                         isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"

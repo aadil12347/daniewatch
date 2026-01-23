@@ -70,19 +70,6 @@ const AnimatedRoutes = () => {
   const state = location.state as { backgroundLocation?: Location } | null;
   const backgroundLocation = state?.backgroundLocation;
 
-  // Scroll Restoration Fix: when navigating to the homepage, hard reset scroll instantly.
-  // (Listing pages handle their own per-route restoration separately.)
-  useEffect(() => {
-    if ((backgroundLocation || location).pathname !== "/") return;
-    const root = document.documentElement;
-    const prev = root.style.scrollBehavior;
-    root.style.scrollBehavior = "auto";
-    window.scrollTo({ top: 0, left: 0 });
-    requestAnimationFrame(() => {
-      root.style.scrollBehavior = prev;
-    });
-  }, [backgroundLocation, location]);
-
   return (
     <>
       <PageTransition key={(backgroundLocation || location).pathname + (backgroundLocation || location).search}>

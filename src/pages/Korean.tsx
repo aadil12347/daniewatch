@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Movie, filterAdultContentStrict, getMovieDetails, getPosterUrl, getTVDetails } from "@/lib/tmdb";
+import { Movie, filterAdultContentStrict, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { InlineDotsLoader } from "@/components/InlineDotsLoader";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
@@ -14,8 +14,6 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { isKoreanScope, isAnimeScope, KOREAN_LANGS } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
-import { BiDirectionalRecyclingPosterGrid } from "@/components/virtualization/BiDirectionalRecyclingPosterGrid";
-import { queuePriorityCache } from "@/lib/priorityCacheBridge";
 
 // Korean content genres (for both movies and TV)
 const KOREAN_TAGS = [
@@ -64,9 +62,10 @@ const Korean = () => {
   const [isLoadingMore, setIsLoadingMore] = useMinDurationLoading(600);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [tmdbMaxPages, setTmdbMaxPages] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const restoreScrollYRef = useRef<number | null>(null);
 
   const dbHydrationCursorRef = useRef(0);
@@ -302,17 +301,6 @@ const Korean = () => {
     return [...filteredDbItems, ...filteredTmdbItems];
   }, [filteredDbItems, filteredTmdbItems]);
 
-  // Ensure the grid is never blank on initial load: reveal the first DB chunk
-  // as soon as manifest-derived DB items are available.
-  useEffect(() => {
-    if (isRestoredFromCache) return;
-    if (displayCount !== 0) return;
-    if (filteredDbItems.length <= 0) return;
-
-    setAnimateFromIndex(null);
-    setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
-  }, [displayCount, filteredDbItems.length, isRestoredFromCache]);
-
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(filteredVisibleItems, { enabled: !isLoading });
 
@@ -513,7 +501,6 @@ const Korean = () => {
           ...movieJson.map((d: any) => Number(d?.total_pages) || 0),
           ...tvJson.map((d: any) => Number(d?.total_pages) || 0)
         );
-        setTmdbMaxPages(maxPages);
         setHasMore(pageNum < maxPages);
       } catch (error) {
         console.error("Failed to fetch Korean content:", error);
@@ -548,14 +535,29 @@ const Korean = () => {
     (filteredVisibleItems.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, filteredVisibleItems.length));
   useRouteContentReady(routeReady);
 
-  const onNeedMoreData = useCallback(() => {
-    if (isLoading || isLoadingMore || pendingLoadMore) return;
+  // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
+  useEffect(() => {
+    observerRef.current?.disconnect();
 
-    const hasBuffered = displayCount < filteredVisibleItems.length;
-    if (!hasBuffered && !hasMore) return;
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        if (isLoading || isLoadingMore || pendingLoadMore) return;
 
-    setPendingLoadMore(true);
-  }, [displayCount, filteredVisibleItems.length, hasMore, isLoading, isLoadingMore, pendingLoadMore]);
+        const hasBuffered = displayCount < filteredVisibleItems.length;
+        if (!hasBuffered && !hasMore) return;
+
+        setPendingLoadMore(true);
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, filteredVisibleItems.length]);
 
   // Resolve pending "load more": reveal from buffer first; ONLY fetch TMDB after DB section is fully revealed.
   useEffect(() => {
@@ -602,30 +604,6 @@ const Korean = () => {
     }
   }, [page, fetchKorean, isRestoredFromCache]);
 
-  // Permanently cache the top posters for instant back-scroll/revisit.
-  useEffect(() => {
-    if (pageIsLoading) return;
-    const top = filteredVisibleItems.slice(0, 10);
-    const posterUrls = top
-      .map((m) => getPosterUrl((m as any)?.poster_path ?? null, "w342"))
-      .filter(Boolean) as string[];
-    queuePriorityCache("/korean", posterUrls);
-  }, [filteredVisibleItems, pageIsLoading]);
-
-  const shownItems = useMemo(() => {
-    return filteredVisibleItems.slice(0, Math.min(displayCount, filteredVisibleItems.length));
-  }, [displayCount, filteredVisibleItems]);
-
-  const totalItemCount = useMemo(() => {
-    // Hybrid: DB partition exact + TMDB partition upper-bound based on total_pages (across ko/zh and movie/tv).
-    const tmdbItemsPerPageUpper = 20 * TMDB_KOREAN_LANGS.length * 2;
-    const estimated = filteredDbItems.length + Math.max(0, tmdbMaxPages) * tmdbItemsPerPageUpper;
-
-    // Avoid trailing skeleton forever once we know we're done.
-    const clampTo = !hasMore ? filteredVisibleItems.length : estimated;
-    return Math.max(clampTo, shownItems.length);
-  }, [filteredDbItems.length, filteredVisibleItems.length, hasMore, shownItems.length, tmdbMaxPages]);
-
   const toggleTag = (genreId: number) => {
     setSelectedTags((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
   };
@@ -669,53 +647,31 @@ const Korean = () => {
           </div>
 
           {/* Grid */}
-          {pageIsLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                <div key={i}>
-                  <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                  <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                  <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <BiDirectionalRecyclingPosterGrid
-              items={shownItems}
-              totalItemCount={totalItemCount}
-              futureBufferPx={1000}
-              onNeedMoreData={onNeedMoreData}
-              renderItem={(item, index) => {
-                if (!item) {
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            {pageIsLoading
+              ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
+                  <div key={i}>
+                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                  </div>
+                ))
+              : filteredVisibleItems.slice(0, displayCount).map((item, index) => {
+                  const shouldAnimate =
+                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
                   return (
-                    <div>
-                      <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                      <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                      <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                    <div key={getKey(item)} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                      <MovieCard
+                        movie={item}
+                        animationDelay={Math.min(index * 30, 300)}
+                        enableReveal={false}
+                        enableHoverPortal={false}
+                      />
                     </div>
                   );
-                }
-
-                const shouldAnimate =
-                  animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
-
-                return (
-                  <div className={shouldAnimate ? "animate-fly-in" : undefined}>
-                    <MovieCard
-                      movie={item}
-                      animationDelay={Math.min(index * 30, 300)}
-                      enableReveal={false}
-                      enableHoverPortal={false}
-                      // Layered Priority Hydration: metadata first, defer poster media work.
-                      deferPosterLoad
-                      disableHoverCharacter
-                      disableHoverLogo
-                    />
-                  </div>
-                );
-              }}
-            />
-          )}
+                })}
+          </div>
 
           {/* No results message */}
           {!pageIsLoading && filteredVisibleItems.length === 0 && (
@@ -731,7 +687,7 @@ const Korean = () => {
           )}
 
           {/* Loading More Indicator */}
-          <div className="flex justify-center py-6">
+          <div ref={loadMoreRef} className="flex justify-center py-6">
             {isLoadingMore && <InlineDotsLoader ariaLabel="Loading more" />}
             {!hasMore && filteredVisibleItems.length > 0 && <p className="text-muted-foreground">You've reached the end</p>}
           </div>
