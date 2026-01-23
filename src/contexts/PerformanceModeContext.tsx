@@ -44,7 +44,27 @@ const safeWrite = (key: string, value: string) => {
 };
 
 const detectDefaultMode = (): PerformanceMode => {
-  // Site default: always start in Quality mode unless the user has explicitly chosen otherwise.
+  // Default to Performance on constrained devices *unless* a saved preference already exists.
+  // (Saved mode is handled by the calling hydration logic; this only provides a fallback.)
+  try {
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const cores = typeof navigator !== "undefined" ? navigator.hardwareConcurrency : undefined;
+    const lowCores = typeof cores === "number" && cores > 0 && cores <= 4;
+
+    const saveData =
+      typeof navigator !== "undefined" &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Boolean((navigator as any)?.connection?.saveData);
+
+    if (reduceMotion || lowCores || saveData) return "performance";
+  } catch {
+    // ignore
+  }
+
   return "quality";
 };
 
