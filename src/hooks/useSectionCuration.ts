@@ -12,6 +12,11 @@ interface CuratedItem {
   posterPath: string | null;
 }
 
+interface ReorderItem {
+  tmdbId: number;
+  mediaType: "movie" | "tv";
+}
+
 interface UseSectionCurationReturn {
   curatedItems: CuratedItem[];
   isLoading: boolean;
@@ -20,6 +25,7 @@ interface UseSectionCurationReturn {
   pinToTop: (tmdbId: number, mediaType: "movie" | "tv", metadata?: { title?: string; posterPath?: string }) => Promise<void>;
   unpinFromTop: (tmdbId: number, mediaType: "movie" | "tv") => Promise<void>;
   resetSection: () => Promise<void>;
+  reorderSection: (orderedItems: ReorderItem[]) => Promise<void>;
   getCuratedItems: (originalItems: Movie[]) => Movie[];
   hasCuration: boolean;
 }
@@ -257,6 +263,53 @@ export function useSectionCuration(sectionId: string | undefined): UseSectionCur
     }
   }, [sectionId, isAdmin]);
 
+  const reorderSection = useCallback(
+    async (orderedItems: ReorderItem[]) => {
+      if (!sectionId || !isAdmin) return;
+
+      // Optimistic update: reorder local state
+      setCuratedItems((prev) => {
+        const itemMap = new Map(prev.map((item) => [`${item.tmdbId}-${item.mediaType}`, item]));
+        const reordered: CuratedItem[] = [];
+
+        orderedItems.forEach((item, index) => {
+          const key = `${item.tmdbId}-${item.mediaType}`;
+          const existing = itemMap.get(key);
+          if (existing) {
+            reordered.push({ ...existing, sortOrder: index });
+          }
+        });
+
+        // Include any items not in the ordered list (shouldn't happen, but safety)
+        prev.forEach((item) => {
+          const key = `${item.tmdbId}-${item.mediaType}`;
+          if (!orderedItems.some((o) => `${o.tmdbId}-${o.mediaType}` === key)) {
+            reordered.push(item);
+          }
+        });
+
+        return reordered;
+      });
+
+      try {
+        // Batch update all sort_orders
+        const updates = orderedItems.map((item, index) =>
+          supabase
+            .from("section_curation")
+            .update({ sort_order: index })
+            .eq("section_id", sectionId)
+            .eq("tmdb_id", item.tmdbId)
+            .eq("media_type", item.mediaType)
+        );
+
+        await Promise.all(updates);
+      } catch (err) {
+        console.error("Failed to reorder section:", err);
+      }
+    },
+    [sectionId, isAdmin]
+  );
+
   const getCuratedItems = useCallback(
     (originalItems: Movie[]): Movie[] => {
       if (curatedItems.length === 0) return originalItems;
@@ -342,6 +395,7 @@ export function useSectionCuration(sectionId: string | undefined): UseSectionCur
     pinToTop,
     unpinFromTop,
     resetSection,
+    reorderSection,
     getCuratedItems,
     hasCuration,
   };
