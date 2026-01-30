@@ -5,16 +5,22 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageCurationControls } from "@/components/admin/PageCurationControls";
 
 import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
+import { useSectionCuration } from "@/hooks/useSectionCuration";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
+import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { getPosterUrl } from "@/lib/tmdb";
 import { queuePriorityCache } from "@/lib/priorityCacheBridge";
+
+const SECTION_ID = "page_tv";
 
 const BATCH_SIZE = 18;
 const INITIAL_REVEAL_COUNT = 24;
@@ -38,6 +44,9 @@ const TVShows = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
+  const { isAdmin } = useAdminStatus();
+  const { isEditLinksMode } = useEditLinksMode();
+  const { getCuratedItems } = useSectionCuration(SECTION_ID);
 
   // Use manifest for DB metadata (fast, cached)
   const { items: manifestItems, isLoading: isManifestLoading } = useDbManifest();
@@ -149,13 +158,21 @@ const TVShows = () => {
   const filteredTmdbItems = baseTmdbVisible;
 
   // Hide TMDB section until user exhausts the DB partition.
-  const visibleAll = useMemo(() => {
+  const baseVisibleAll = useMemo(() => {
     const dbKeys = new Set(filteredDbItems.map((m) => getKey(m)));
     const tmdbDeduped = filteredTmdbItems.filter((m) => !dbKeys.has(getKey(m)));
 
     const dbExhausted = displayCount >= filteredDbItems.length;
     return dbExhausted ? [...filteredDbItems, ...tmdbDeduped] : filteredDbItems;
   }, [displayCount, filteredDbItems, filteredTmdbItems, getKey]);
+
+  // Apply curation if in edit mode
+  const visibleAll = useMemo(() => {
+    if (isAdmin && isEditLinksMode) {
+      return getCuratedItems(baseVisibleAll);
+    }
+    return baseVisibleAll;
+  }, [baseVisibleAll, getCuratedItems, isAdmin, isEditLinksMode]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleAll, { enabled: displayCount > 0 });
@@ -373,6 +390,9 @@ const TVShows = () => {
             />
           </div>
 
+          {/* Admin Curation Controls */}
+          <PageCurationControls sectionId={SECTION_ID} sectionTitle="TV Shows" className="mb-6" />
+
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
@@ -394,6 +414,7 @@ const TVShows = () => {
                         animationDelay={Math.min(index * 30, 300)}
                         enableReveal={false}
                         enableHoverPortal={false}
+                        sectionId={SECTION_ID}
                       />
                     </div>
                   );

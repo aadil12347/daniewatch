@@ -5,16 +5,22 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageCurationControls } from "@/components/admin/PageCurationControls";
 import { Movie, filterAdultContent, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
+import { useSectionCuration } from "@/hooks/useSectionCuration";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
+import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { isAnimeScope } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { getPosterUrl } from "@/lib/tmdb";
 import { queuePriorityCache } from "@/lib/priorityCacheBridge";
+
+const SECTION_ID = "page_anime";
 
 const ANIME_GENRE_ID = 16; // Animation genre ID
 
@@ -35,6 +41,9 @@ const INITIAL_REVEAL_COUNT = 24;
 
 const Anime = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
+  const { isAdmin } = useAdminStatus();
+  const { isEditLinksMode } = useEditLinksMode();
+  const { getCuratedItems } = useSectionCuration(SECTION_ID);
   
   // Use manifest for DB metadata (fast, cached)
   const {
@@ -243,7 +252,15 @@ const Anime = () => {
   const filteredDbItems = baseDbVisible;
   const filteredTmdbItems = baseTmdbVisible;
 
-  const visibleItems = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
+  const baseVisibleItems = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
+  
+  // Apply curation if in edit mode
+  const visibleItems = useMemo(() => {
+    if (isAdmin && isEditLinksMode) {
+      return getCuratedItems(baseVisibleItems);
+    }
+    return baseVisibleItems;
+  }, [baseVisibleItems, getCuratedItems, isAdmin, isEditLinksMode]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleItems, { enabled: !isLoading });
@@ -528,6 +545,9 @@ const Anime = () => {
             />
           </div>
 
+          {/* Admin Curation Controls */}
+          <PageCurationControls sectionId={SECTION_ID} sectionTitle="Anime" className="mb-6" />
+
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
@@ -552,6 +572,7 @@ const Anime = () => {
                         animationDelay={Math.min(index * 30, 300)}
                         enableReveal={false}
                         enableHoverPortal={false}
+                        sectionId={SECTION_ID}
                       />
                     </div>
                   );
