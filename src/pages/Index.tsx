@@ -49,14 +49,15 @@ const Index = () => {
     const cached = getCache();
     console.log("[Index] useEffect ran, cache result:", cached ? "HIT" : "MISS");
     
-    if (cached) {
+    // Only use cache if it has the new structure (indianPopular exists)
+    if (cached && cached.indianPopular) {
       console.log("[Index] Loading from cache");
-      setTrending(cached.trending);
-      setIndianPopular(cached.indianPopular);
-      setKoreanPopular(cached.koreanPopular);
-      setAnimePopular(cached.animePopular);
-      setTopRatedMovies(cached.topRatedMovies);
-      setTopRatedTV(cached.topRatedTV);
+      setTrending(cached.trending || []);
+      setIndianPopular(cached.indianPopular || []);
+      setKoreanPopular(cached.koreanPopular || []);
+      setAnimePopular(cached.animePopular || []);
+      setTopRatedMovies(cached.topRatedMovies || []);
+      setTopRatedTV(cached.topRatedTV || []);
       setIsLoading(false);
       return;
     }
