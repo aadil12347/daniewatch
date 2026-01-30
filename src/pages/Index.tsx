@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 
-
 import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
@@ -11,6 +10,7 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { usePreloadImages } from "@/hooks/usePreloadImages";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
+import { useHomepageCache } from "@/hooks/useHomepageCache";
 import {
   getTrending,
   getPopularMovies,
@@ -28,6 +28,8 @@ const SHOW_THRESHOLD = 0.5; // show when 50% of those hover images are ready
 
 const Index = () => {
   const { isPerformance } = usePerformanceMode();
+  const { saveCache, getCache } = useHomepageCache();
+  
   const [trending, setTrending] = useState<Movie[]>([]);
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
@@ -41,7 +43,7 @@ const Index = () => {
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
   const { getHoverImageUrl, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
-  // Build an “above the fold” list of cards and preload their hover images first.
+  // Build an "above the fold" list of cards and preload their hover images first.
   const aboveFoldIds = useMemo(() => {
     const ids: number[] = [];
     const pushMany = (arr: Movie[]) => {
@@ -51,7 +53,7 @@ const Index = () => {
       }
     };
 
-    // Rough “what users see first” order
+    // Rough "what users see first" order
     pushMany(trending.slice(0, 10));
     pushMany(trending);
     pushMany(popularMovies);
@@ -77,6 +79,21 @@ const Index = () => {
   useRouteContentReady(!pageIsLoading && trending.length >= Math.min(10, trending.length || 10));
 
   useEffect(() => {
+    // Try loading from session cache first
+    const cached = getCache();
+    if (cached) {
+      setTrending(cached.trending);
+      setPopularMovies(cached.popularMovies);
+      setTopRatedMovies(cached.topRatedMovies);
+      setPopularTV(cached.popularTV);
+      setTopRatedTV(cached.topRatedTV);
+      setAnimePopular(cached.animePopular);
+      setKoreanPopular(cached.koreanPopular);
+      setIsLoading(false);
+      return;
+    }
+
+    // No cache, fetch fresh data
     const fetchData = async () => {
       try {
         const [
@@ -97,13 +114,32 @@ const Index = () => {
           getKoreanPopular(),
         ]);
 
-        setTrending(filterAdultContent(trendingRes.results));
-        setPopularMovies(filterAdultContent(popularMoviesRes.results));
-        setTopRatedMovies(filterAdultContent(topRatedMoviesRes.results));
-        setPopularTV(filterAdultContent(popularTVRes.results));
-        setTopRatedTV(filterAdultContent(topRatedTVRes.results));
-        setAnimePopular(filterAdultContent(animeRes.results));
-        setKoreanPopular(filterAdultContent(koreanRes.results));
+        const trendingData = filterAdultContent(trendingRes.results);
+        const popularMoviesData = filterAdultContent(popularMoviesRes.results);
+        const topRatedMoviesData = filterAdultContent(topRatedMoviesRes.results);
+        const popularTVData = filterAdultContent(popularTVRes.results);
+        const topRatedTVData = filterAdultContent(topRatedTVRes.results);
+        const animePopularData = filterAdultContent(animeRes.results);
+        const koreanPopularData = filterAdultContent(koreanRes.results);
+
+        setTrending(trendingData);
+        setPopularMovies(popularMoviesData);
+        setTopRatedMovies(topRatedMoviesData);
+        setPopularTV(popularTVData);
+        setTopRatedTV(topRatedTVData);
+        setAnimePopular(animePopularData);
+        setKoreanPopular(koreanPopularData);
+
+        // Save to session cache for instant loads on revisit
+        saveCache({
+          trending: trendingData,
+          popularMovies: popularMoviesData,
+          topRatedMovies: topRatedMoviesData,
+          popularTV: popularTVData,
+          topRatedTV: topRatedTVData,
+          animePopular: animePopularData,
+          koreanPopular: koreanPopularData,
+        });
       } catch (error) {
         console.error("Failed to fetch data:", error);
         setFetchError("Failed to load homepage content. Please try again.");
@@ -113,7 +149,7 @@ const Index = () => {
     };
 
     fetchData();
-  }, []);
+  }, [getCache, saveCache]);
 
   return (
     <>
