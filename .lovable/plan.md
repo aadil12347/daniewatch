@@ -1,123 +1,108 @@
 
 
-## Instant Homepage Loading
+## Homepage Sections - Simple, Attractive & Tempting
 
-### Problem
-The homepage is slow because it waits for **4 different conditions** before showing anything:
-1. TMDB data fetch (cached, fast)
-2. Supabase blocked posts query (network, slow)
-3. Supabase entries query (network, slow) 
-4. 50% of hover images preloaded (network, slow)
+### Final Section Layout
 
-Even with cached TMDB data, the page shows skeletons for 2-5 seconds waiting for Supabase queries and image preloading.
-
-### Solution: Progressive Rendering
-Show content **instantly** as data becomes available, in priority order:
-
-| Priority | Component | Data Source | Wait For |
-|----------|-----------|-------------|----------|
-| 1 (instant) | Hero Carousel | TMDB trending (cached) | Nothing - show immediately |
-| 2 (instant) | Top 10 Row | TMDB trending (cached) | Nothing - show immediately |
-| 3 (background) | Other Rows | TMDB (cached) | Nothing - render normally |
-| 4 (progressive) | Blocked post filtering | Supabase | Applied after load |
-| 5 (progressive) | Hover images | Supabase + CDN | Loaded on hover only |
-
----
-
-## Technical Changes
-
-### 1. Split Loading States in Index.tsx
-
-**Remove blocking dependencies from `pageIsLoading`:**
-
-```text
-Before:
-  pageIsLoading = isLoading || isModerationLoading || isAvailabilityLoading || !aboveFoldReady
-
-After:
-  // Primary content just needs TMDB data
-  primaryContentReady = !isLoading && trending.length > 0
-  
-  // Secondary features load progressively (don't block UI)
-  // Moderation and availability enhance but don't gate
-```
-
-### 2. Update HeroSection and ContentRow Props
-
-Pass `hasData` flag separately from `isLoading`:
-
-```text
-<HeroSection 
-  items={trending} 
-  isLoading={!primaryContentReady}  // Only waits for TMDB
-/>
-
-<ContentRow
-  title="Top 10 Today"
-  items={trending.slice(0, 10)}  
-  isLoading={!primaryContentReady}  // Show immediately with cache
-/>
-```
-
-### 3. Remove Hover Image Pre-blocking
-
-Hover images should preload in background, not block the page:
-
-```text
-Before:
-  const aboveFoldReady = hoverTotal === 0 ? true : hoverLoaded / hoverTotal >= SHOW_THRESHOLD;
-  const pageIsLoading = ... || !aboveFoldReady;
-
-After:
-  // Remove aboveFoldReady from blocking conditions
-  // Hover images preload naturally when MovieCard is visible
-```
-
-### 4. Progressive Post Moderation
-
-Apply blocked post filtering **after** content renders:
-
-```text
-// Initial render: show all items
-// After moderation loads: filter blocked posts (causes minimal re-render)
-const displayItems = isModerationLoading ? items : filterBlockedPosts(items);
-```
-
-### 5. Instant Route Ready Signal
-
-Report content ready as soon as TMDB data is available:
-
-```text
-useRouteContentReady(!isLoading && trending.length > 0);
-// Instead of waiting for all conditions
-```
+| Order | Section Name | Source | Appeal Factor |
+|-------|-------------|--------|---------------|
+| 1 | Hero Carousel | TMDB | Visual hook |
+| 2 | **Top 10 Today** | TMDB | Ranking creates curiosity |
+| 3 | **Trending Now** | TMDB | FOMO - what's hot |
+| 4 | **Indian Hits** | TMDB | Regional pride |
+| 5 | **Korean Wave** | TMDB | Cultural phenomenon |
+| 6 | **Anime Picks** | TMDB | Curated feel |
+| 7 | **Just Added** | DB | Fresh & new |
+| 8 | **Fan Favorites** | DB | Social proof |
+| 9 | **Action** | DB | Direct genre |
+| 10 | **Comedy** | DB | Direct genre |
+| 11 | **Thriller** | DB | Direct genre |
+| 12 | **Sci-Fi** | DB | Direct genre |
+| 13 | **Drama** | DB | Direct genre |
+| 14 | **Series to Binge** | DB | Suggests commitment |
+| 15 | **Movie Night** | DB | Cozy, inviting |
+| 16 | **Top Rated** | TMDB | Quality closer |
 
 ---
 
-## Cache-First Experience
+## Title Comparison
 
-### First Visit (new session)
-1. **0ms**: Page renders with skeletons
-2. **200-500ms**: TMDB data arrives → Hero + Top 10 appear
-3. **Background**: Other rows populate, moderation applies progressively
-
-### Return Visit (same session)
-1. **0ms**: Cache loaded → Hero + Top 10 appear **instantly**
-2. **Background**: Moderation/availability queries run, apply filtering if needed
+| Category | Too Complex | Too Plain | Just Right |
+|----------|-------------|-----------|------------|
+| New content | "Fresh Off The Screen" | "New" | **"Just Added"** |
+| High rated | "Critically Acclaimed" | "Best" | **"Fan Favorites"** |
+| Indian | "Bollywood & Beyond" | "Indian" | **"Indian Hits"** |
+| Korean | "K-Drama & Asian Hits" | "Korean" | **"Korean Wave"** |
+| Anime | "Anime Universe" | "Anime" | **"Anime Picks"** |
+| TV Shows | "Binge-Worthy Series" | "Series" | **"Series to Binge"** |
+| Movies | "Movie Marathon" | "Movies" | **"Movie Night"** |
 
 ---
 
-## Files to Modify
+## Implementation
+
+### 1. Section Generator Hook
+**New file:** `src/hooks/useDbSections.ts`
+
+```text
+const SECTION_CONFIGS = [
+  { id: "new", title: "Just Added", filter: year >= 2024, limit: 20 },
+  { id: "favorites", title: "Fan Favorites", filter: rating >= 8.0, limit: 20 },
+  { id: "action", title: "Action", filter: genres [28, 10759], limit: 15 },
+  { id: "comedy", title: "Comedy", filter: genre 35, limit: 15 },
+  { id: "thriller", title: "Thriller", filter: genres [53, 80, 9648], limit: 15 },
+  { id: "scifi", title: "Sci-Fi", filter: genres [878, 14, 10765], limit: 15 },
+  { id: "drama", title: "Drama", filter: genre 18, limit: 15 },
+  { id: "series", title: "Series to Binge", filter: media_type === "tv", limit: 15 },
+  { id: "movies", title: "Movie Night", filter: media_type === "movie", limit: 15 },
+];
+```
+
+### 2. Lazy DB Row Component
+**New file:** `src/components/DbContentRow.tsx`
+
+Uses IntersectionObserver to render only when near viewport.
+
+### 3. Update Index.tsx
+
+```text
+{/* Regional - Simple but appealing */}
+<TabbedContentRow title="Indian Hits" ... />
+<TabbedContentRow title="Korean Wave" ... />
+<TabbedContentRow title="Anime Picks" ... />
+
+{/* Database sections - Lazy loaded */}
+{dbSections.map(section => (
+  <DbContentRow key={section.id} title={section.title} items={section.items} />
+))}
+```
+
+### 4. Update Homepage Cache
+
+Add `indianPopular`, remove `popularMovies`/`popularTV`.
+
+---
+
+## Files to Create/Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Split loading states, remove hover preload blocking, show content instantly with cache |
-| `src/hooks/useRouteContentReady.ts` | No changes needed - just called earlier |
+| `src/hooks/useDbSections.ts` | NEW - Section generator |
+| `src/components/DbContentRow.tsx` | NEW - Lazy row component |
+| `src/pages/Index.tsx` | New layout with attractive titles |
+| `src/hooks/useHomepageCache.ts` | Update cache structure |
 
 ---
 
-## Expected Result
-- **Same session**: Homepage appears in <50ms (from cache)
-- **New session**: Hero + Top 10 appear in 200-500ms (TMDB response)
-- **Progressive enhancement**: Blocked posts filter, hover images load in background
+## Why These Names Work
+
+- **"Just Added"** - Creates urgency, implies fresh content
+- **"Fan Favorites"** - Social proof, trusted picks
+- **"Indian Hits"** - Pride + quality signal
+- **"Korean Wave"** - Trendy, cultural movement
+- **"Anime Picks"** - Curated, not random
+- **"Series to Binge"** - Action-oriented, suggests commitment
+- **"Movie Night"** - Cozy, inviting, emotional
+
+All titles are 1-3 words, easy to scan, and create emotional pull.
 
