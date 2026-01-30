@@ -4,16 +4,17 @@ import { Helmet } from "react-helmet-async";
 import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
+import { DbContentRow } from "@/components/DbContentRow";
 import { Footer } from "@/components/Footer";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 import { useHomepageCache } from "@/hooks/useHomepageCache";
+import { useDbSections } from "@/hooks/useDbSections";
 import {
   getTrending,
-  getPopularMovies,
+  getIndianPopular,
   getTopRatedMovies,
-  getPopularTV,
   getTopRatedTV,
   getAnimePopular,
   getKoreanPopular,
@@ -24,24 +25,23 @@ import {
 const Index = () => {
   const { isPerformance } = usePerformanceMode();
   const { saveCache, getCache } = useHomepageCache();
+  const { sections: dbSections } = useDbSections();
   
   const [trending, setTrending] = useState<Movie[]>([]);
-  const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
-  const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
-  const [popularTV, setPopularTV] = useState<Movie[]>([]);
-  const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
-  const [animePopular, setAnimePopular] = useState<Movie[]>([]);
+  const [indianPopular, setIndianPopular] = useState<Movie[]>([]);
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
+  const [animePopular, setAnimePopular] = useState<Movie[]>([]);
+  const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
+  const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
 
   // Primary content is ready as soon as TMDB data is available (from cache or network)
-  // Moderation filtering happens progressively after content renders
   const primaryContentReady = !isLoading && trending.length > 0;
 
-  // Signal route ready immediately when TMDB data is available - don't wait for Supabase
+  // Signal route ready immediately when TMDB data is available
   useRouteContentReady(primaryContentReady);
 
   useEffect(() => {
@@ -52,12 +52,11 @@ const Index = () => {
     if (cached) {
       console.log("[Index] Loading from cache");
       setTrending(cached.trending);
-      setPopularMovies(cached.popularMovies);
-      setTopRatedMovies(cached.topRatedMovies);
-      setPopularTV(cached.popularTV);
-      setTopRatedTV(cached.topRatedTV);
-      setAnimePopular(cached.animePopular);
+      setIndianPopular(cached.indianPopular);
       setKoreanPopular(cached.koreanPopular);
+      setAnimePopular(cached.animePopular);
+      setTopRatedMovies(cached.topRatedMovies);
+      setTopRatedTV(cached.topRatedTV);
       setIsLoading(false);
       return;
     }
@@ -68,47 +67,42 @@ const Index = () => {
       try {
         const [
           trendingRes,
-          popularMoviesRes,
-          topRatedMoviesRes,
-          popularTVRes,
-          topRatedTVRes,
-          animeRes,
+          indianRes,
           koreanRes,
+          animeRes,
+          topRatedMoviesRes,
+          topRatedTVRes,
         ] = await Promise.all([
           getTrending("day"),
-          getPopularMovies(),
-          getTopRatedMovies(),
-          getPopularTV(),
-          getTopRatedTV(),
-          getAnimePopular(),
+          getIndianPopular(),
           getKoreanPopular(),
+          getAnimePopular(),
+          getTopRatedMovies(),
+          getTopRatedTV(),
         ]);
 
         const trendingData = filterAdultContent(trendingRes.results);
-        const popularMoviesData = filterAdultContent(popularMoviesRes.results);
+        const indianData = filterAdultContent(indianRes.results);
+        const koreanData = filterAdultContent(koreanRes.results);
+        const animeData = filterAdultContent(animeRes.results);
         const topRatedMoviesData = filterAdultContent(topRatedMoviesRes.results);
-        const popularTVData = filterAdultContent(popularTVRes.results);
         const topRatedTVData = filterAdultContent(topRatedTVRes.results);
-        const animePopularData = filterAdultContent(animeRes.results);
-        const koreanPopularData = filterAdultContent(koreanRes.results);
 
         setTrending(trendingData);
-        setPopularMovies(popularMoviesData);
+        setIndianPopular(indianData);
+        setKoreanPopular(koreanData);
+        setAnimePopular(animeData);
         setTopRatedMovies(topRatedMoviesData);
-        setPopularTV(popularTVData);
         setTopRatedTV(topRatedTVData);
-        setAnimePopular(animePopularData);
-        setKoreanPopular(koreanPopularData);
 
         // Save to session cache for instant loads on revisit
         saveCache({
           trending: trendingData,
-          popularMovies: popularMoviesData,
+          indianPopular: indianData,
+          koreanPopular: koreanData,
+          animePopular: animeData,
           topRatedMovies: topRatedMoviesData,
-          popularTV: popularTVData,
           topRatedTV: topRatedTVData,
-          animePopular: animePopularData,
-          koreanPopular: koreanPopularData,
         });
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -151,6 +145,7 @@ const Index = () => {
         <HeroSection items={trending} isLoading={!primaryContentReady} />
 
         <div className="relative z-10 -mt-16">
+          {/* Top 10 Today */}
           <ContentRow
             title="Top 10 Today"
             items={isModerationLoading ? trending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
@@ -164,6 +159,7 @@ const Index = () => {
             disableHoverCharacter={isPerformance}
           />
 
+          {/* Trending Now */}
           <TabbedContentRow
             title="Trending Now"
             moviesItems={isModerationLoading 
@@ -177,32 +173,22 @@ const Index = () => {
             enableHoverPortal={false}
           />
 
+          {/* Regional Sections - Attractive Names */}
           <TabbedContentRow
-            title="Popular"
-            moviesItems={isModerationLoading ? popularMovies : filterBlockedPosts(popularMovies, "movie")}
-            tvItems={isModerationLoading ? popularTV : filterBlockedPosts(popularTV, "tv")}
-            isLoading={!primaryContentReady}
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
-
-          {/* Regional Popular Sections */}
-          <TabbedContentRow
-            title="Anime Popular"
+            title="Indian Hits"
             moviesItems={isModerationLoading
-              ? animePopular.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "movie"), "movie")}
+              ? indianPopular.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(indianPopular.filter((item) => item.media_type === "movie"), "movie")}
             tvItems={isModerationLoading
-              ? animePopular.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "tv"), "tv")}
+              ? indianPopular.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(indianPopular.filter((item) => item.media_type === "tv"), "tv")}
             isLoading={!primaryContentReady}
-            defaultTab="tv"
             hoverCharacterMode="contained"
             enableHoverPortal={false}
           />
 
           <TabbedContentRow
-            title="Korean Popular"
+            title="Korean Wave"
             moviesItems={isModerationLoading
               ? koreanPopular.filter((item) => item.media_type === "movie")
               : filterBlockedPosts(koreanPopular.filter((item) => item.media_type === "movie"), "movie")}
@@ -215,6 +201,30 @@ const Index = () => {
             enableHoverPortal={false}
           />
 
+          <TabbedContentRow
+            title="Anime Picks"
+            moviesItems={isModerationLoading
+              ? animePopular.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "movie"), "movie")}
+            tvItems={isModerationLoading
+              ? animePopular.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "tv"), "tv")}
+            isLoading={!primaryContentReady}
+            defaultTab="tv"
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
+          />
+
+          {/* Database Sections - Lazy Loaded */}
+          {dbSections.map((section) => (
+            <DbContentRow
+              key={section.id}
+              title={section.title}
+              items={section.items}
+            />
+          ))}
+
+          {/* Top Rated - Closing Section */}
           <TabbedContentRow
             title="Top Rated"
             moviesItems={isModerationLoading ? topRatedMovies : filterBlockedPosts(topRatedMovies, "movie")}

@@ -5,12 +5,11 @@ const CACHE_KEY = "dw_homepage_cache";
 
 interface HomepageCacheData {
   trending: Movie[];
-  popularMovies: Movie[];
-  topRatedMovies: Movie[];
-  popularTV: Movie[];
-  topRatedTV: Movie[];
-  animePopular: Movie[];
+  indianPopular: Movie[];
   koreanPopular: Movie[];
+  animePopular: Movie[];
+  topRatedMovies: Movie[];
+  topRatedTV: Movie[];
   timestamp: number;
 }
 
