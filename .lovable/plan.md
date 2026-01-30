@@ -1,320 +1,208 @@
 
+## Fix Curation Controls Visibility + Add Drag-and-Drop Reordering
 
-# Admin Content Curation System - IMPLEMENTED ✅
-
-This system integrates directly with the existing **Edit Links Mode** (Ctrl+Shift+E), adding full content curation capabilities to all sections across every page.
-
----
-
-### What Admins Will Be Able To Do
-
-| Action | How |
-|--------|-----|
-| **Add any post to any section** | Click [+] button → Search TMDB → Add |
-| **Pin post to top of section** | Click pin icon (📌) on any card |
-| **Rearrange posts** | Drag cards to new positions |
-| **Remove from section** | Click [×] on any card |
-| **Reset to default** | Click "Reset" button in section header |
+This plan addresses two issues:
+1. Curation controls not visible when expected
+2. Adding drag-and-drop reordering for curated items
 
 ---
 
-### Architecture Overview
+### Root Cause Analysis
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                     Edit Links Mode ON                       │
-│                      (Ctrl+Shift+E)                          │
-├─────────────────────────────────────────────────────────────┤
-│  Section Header                                              │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  "Trending Now"              [+ Add]  [↻ Reset]     │    │
-│  └─────────────────────────────────────────────────────┘    │
-├─────────────────────────────────────────────────────────────┤
-│  Cards with Curation Controls                               │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐               │
-│  │ POSTER │ │ POSTER │ │ POSTER │ │ POSTER │               │
-│  │  📌 ×  │ │  📌 ×  │ │  📌 ×  │ │  📌 ×  │               │
-│  └────────┘ └────────┘ └────────┘ └────────┘               │
-└─────────────────────────────────────────────────────────────┘
-```
+After investigation, I identified the following issues:
+
+| Issue | Location | Problem |
+|-------|----------|---------|
+| **Card overlay hidden** | `CurationCardOverlay.tsx` | Pin/Remove buttons have `opacity-0 group-hover:opacity-100` - only visible on hover, not always visible in Edit Mode |
+| **Section controls may render but not be noticeable** | `SectionCurationControls.tsx` | Controls are small and may blend with the UI |
+| **No visual indicators on curated/pinned items** | `MovieCard.tsx` | No badge or highlight to show which items are pinned or curated |
 
 ---
 
-### Files to Create
+### Part 1: Fix Curation Controls Visibility
 
-| File | Purpose |
-|------|---------|
-| `src/hooks/useSectionCuration.ts` | Fetch/mutate curation data from Supabase `section_curation` table |
-| `src/components/admin/SectionCurationControls.tsx` | Header controls: [+ Add] and [Reset] buttons |
-| `src/components/admin/PostSearchPicker.tsx` | Modal to search TMDB and add posts to sections |
-| `src/components/admin/CurationCardOverlay.tsx` | Pin (📌) and Remove (×) buttons overlay on cards |
+#### 1.1 Make CurationCardOverlay Always Visible in Edit Mode
 
----
+**File:** `src/components/admin/CurationCardOverlay.tsx`
 
-### Files to Modify
+**Current behavior:** Buttons have `opacity-0 group-hover:opacity-100` - only visible on hover
 
-| File | Change |
-|------|--------|
-| `src/contexts/EditLinksModeContext.tsx` | Add curation state (active section, picker open, target section) |
-| `src/components/ContentRow.tsx` | Accept `sectionId`, show curation header controls, apply curated order |
-| `src/components/TabbedContentRow.tsx` | Accept `sectionId` base, show curation controls per tab |
-| `src/components/DbContentRow.tsx` | Pass `sectionId` through to ContentRow |
-| `src/components/MovieCard.tsx` | Show CurationCardOverlay when in Edit Mode |
-| `src/components/admin/EditLinksModeIndicator.tsx` | Update text to "Edit Mode" (covers links + curation) |
-| `src/pages/Index.tsx` | Add `sectionId` props to all content rows |
-| `src/pages/Movies.tsx` | Add curation layer for grid |
-| `src/pages/TVShows.tsx` | Add curation layer for grid |
-| `src/pages/Anime.tsx` | Add curation layer for grid |
-| `src/pages/Korean.tsx` | Add curation layer for grid |
-
----
-
-### Section IDs
-
-Each section gets a unique identifier for curation:
-
-**Homepage:**
-| Section | ID |
-|---------|-----|
-| Top 10 Today | `home_top_10` |
-| Trending Movies | `home_trending_movies` |
-| Trending TV | `home_trending_tv` |
-| Indian Hits Movies | `home_indian_movies` |
-| Indian Hits TV | `home_indian_tv` |
-| Korean Wave Movies | `home_korean_movies` |
-| Korean Wave TV | `home_korean_tv` |
-| Anime Picks Movies | `home_anime_movies` |
-| Anime Picks TV | `home_anime_tv` |
-| Top Rated Movies | `home_toprated_movies` |
-| Top Rated TV | `home_toprated_tv` |
-| DB Dynamic Sections | `home_db_{section.id}` |
-
-**Listing Pages:**
-| Page | Section ID |
-|------|------------|
-| Movies | `page_movies` |
-| TV Shows | `page_tv` |
-| Anime | `page_anime` |
-| Korean | `page_korean` |
-
----
-
-### Technical Implementation
-
-#### 1. useSectionCuration Hook
+**Fixed behavior:** Remove hover-only opacity; buttons always visible in Edit Mode
 
 ```text
-function useSectionCuration(sectionId: string) {
-  // State
-  - curatedItems: Array of {tmdbId, mediaType, sortOrder, isPinned, title, posterPath}
-  - isLoading: boolean
+Change:
+- className="opacity-0 group-hover:opacity-100"
 
-  // Mutations (all save to Supabase + optimistic UI)
-  - addToSection(tmdbId, mediaType, metadata) → Insert at position 0
-  - removeFromSection(tmdbId, mediaType) → Delete row
-  - pinToTop(tmdbId, mediaType, metadata) → Set is_pinned=true, sortOrder=-1
-  - unpinFromTop(tmdbId, mediaType) → Set is_pinned=false
-  - reorderSection(orderedItems) → Update all sort_order values
-  - resetSection() → Delete all rows for sectionId
+To:
+- className="" (always visible when rendered)
 
-  // Merge helper
-  - getCuratedItems(originalItems):
-      1. Fetch pinned items (is_pinned=true) → first
-      2. Fetch added items (sortOrder >= 0) → next
-      3. Append original items not in curated set
-      4. Return merged array
-}
+Also add a visual "PINNED" badge for pinned items.
 ```
 
-#### 2. EditLinksModeContext Updates
+#### 1.2 Make SectionCurationControls More Prominent
+
+**File:** `src/components/admin/SectionCurationControls.tsx`
+
+**Current behavior:** Small outline buttons that may not stand out
+
+**Fixed behavior:** Add a visual indicator (badge/pill) showing "Curation Mode" active, with count of curated items
 
 ```text
-Add to existing context:
-- pickerOpen: boolean
-- pickerSectionId: string | null
-- openPicker(sectionId) → shows PostSearchPicker modal
-- closePicker()
+Add:
+- "Curation Mode" badge with primary color styling
+- Show count of curated items in section
+- More prominent button styling
 ```
 
-#### 3. SectionCurationControls Component
+#### 1.3 Add Visual Indicator for Pinned/Curated Items
+
+**File:** `src/components/MovieCard.tsx`
+
+**Add:** When in Edit Mode, show a small pin icon badge on cards that are pinned
 
 ```text
-Props: { sectionId: string; sectionTitle: string }
-
-Renders (only when isEditLinksMode=true):
-- [+ Add] button → calls openPicker(sectionId)
-- [Reset] button → calls resetSection() with confirmation
-
-Positioned: Right side of section header
-```
-
-#### 4. PostSearchPicker Modal
-
-```text
-Features:
-- Search input with debounced TMDB multi-search
-- Results grid: poster, title, year, rating, media type badge
-- "Add to Section" button per result
-- "Pin to Top" option (checkbox or separate button)
-- Closes after adding
-- Shows "Already in section" badge for duplicates
-```
-
-#### 5. CurationCardOverlay Component
-
-```text
-Props: { tmdbId, mediaType, sectionId, isPinned }
-
-Renders (only when isEditLinksMode=true):
-- Pin button (📌) → toggles pinToTop/unpinFromTop
-- Remove button (×) → calls removeFromSection
-
-Positioned: Top-left of MovieCard poster
-Visual: Semi-transparent overlay buttons
-```
-
-#### 6. ContentRow Updates
-
-```text
-New props:
-- sectionId?: string
-
-When sectionId provided AND isEditLinksMode:
-1. Render SectionCurationControls in header
-2. Use useSectionCuration(sectionId)
-3. Merge curated items with original items via getCuratedItems()
-4. Pass sectionId + isPinned to each MovieCard for overlay
+Add visual indicator when:
+- movie._isPinned = true → Show "📌" badge
+- movie._isCurated = true → Show subtle highlight border
 ```
 
 ---
 
-### Data Flow
+### Part 2: Add Drag-and-Drop Reordering
+
+#### 2.1 Install DnD Library
+
+**Package:** `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities`
+
+This is a lightweight, accessible, and performant drag-and-drop library for React.
+
+#### 2.2 Create Draggable Content Row Component
+
+**New File:** `src/components/admin/DraggableContentRow.tsx`
+
+This wrapper component enables reordering when in Edit Mode:
 
 ```text
-Page Load:
-1. Each section fetches curated items for its sectionId
-2. Merge with default TMDB/DB content
-3. Pinned items appear first, then added items, then original
-
-Admin Adds Post:
-1. Click [+ Add] on section header
-2. Search TMDB in modal
-3. Click "Add" (or "Pin to Top")
-4. Insert into section_curation table
-5. Optimistic update: item appears immediately
-6. Supabase sync in background
-
-Admin Pins Post:
-1. Click 📌 on any card (existing or in section)
-2. Upsert into section_curation with is_pinned=true
-3. Item moves to front of section
-
-Admin Removes Post:
-1. Click × on card in section
-2. Delete from section_curation
-3. Item returns to default position (or disappears if manually added)
-
-Admin Resets Section:
-1. Click [Reset] with confirmation
-2. Delete all section_curation rows for that sectionId
-3. Section reverts to default TMDB/DB ordering
+- Wraps existing ContentRow content
+- Uses @dnd-kit/sortable for reorder
+- Only enables drag when isAdmin && isEditLinksMode
+- On drop, calls reorderSection() from useSectionCuration
+- Shows drag handles on cards
 ```
+
+#### 2.3 Add Reorder Function to useSectionCuration Hook
+
+**File:** `src/hooks/useSectionCuration.ts`
+
+**Add:** `reorderSection(orderedItems)` function to persist new order:
+
+```text
+reorderSection(orderedItems: Array<{tmdbId, mediaType}>):
+1. Update local state with new order
+2. Batch update sort_order in section_curation table
+3. Handle optimistic updates for instant feedback
+```
+
+#### 2.4 Integrate into ContentRow
+
+**File:** `src/components/ContentRow.tsx`
+
+**Modify:**
+- When `isAdmin && isEditLinksMode && sectionId`, wrap cards in a sortable context
+- Add drag handle icon on each card
+- On drag end, call reorderSection
 
 ---
 
-### Supabase Table Usage
+### Part 3: Enhance Edit Mode Indicator
 
-The `section_curation` table you already created will be used as follows:
+**File:** `src/components/admin/EditLinksModeIndicator.tsx`
 
-| Column | Usage |
-|--------|-------|
-| `section_id` | Unique identifier per section (e.g., `home_top_10`) |
-| `tmdb_id` | The TMDB ID of the post |
-| `media_type` | `movie` or `tv` |
-| `sort_order` | Position in section (-1 for pinned items) |
-| `is_placeholder` | Reserved for future "skeleton slot" feature |
-| `title` | Cached title for display |
-| `poster_path` | Cached poster URL |
+**Add:** More prominent styling and status info:
 
-**Note:** I'll add an `is_pinned` column for the pin-to-top feature. Here's the migration SQL to run:
-
-```sql
--- Add is_pinned column for pin-to-top feature
-ALTER TABLE public.section_curation 
-ADD COLUMN IF NOT EXISTS is_pinned boolean DEFAULT false;
-
--- Create index for efficient pinned queries
-CREATE INDEX IF NOT EXISTS idx_section_curation_pinned 
-ON public.section_curation(section_id, is_pinned) 
-WHERE is_pinned = true;
-```
-
----
-
-### UI Preview in Edit Mode
-
-**Section Header:**
 ```text
-┌────────────────────────────────────────────────────────────┐
-│  Trending Now                           [+ Add]  [Reset]   │
-└────────────────────────────────────────────────────────────┘
+- Show "Curation + Links Mode Active"
+- Add subtle pulsing animation to draw attention
+- Show quick stats: "X sections have curation"
 ```
-
-**Card with Curation Controls:**
-```text
-┌────────────────┐
-│ [📌] [×]       │  ← Curation buttons (top-left)
-│                │
-│    POSTER      │
-│                │
-│           [⊕]  │  ← Existing admin controls (top-right)
-└────────────────┘
-```
-
-**Search Picker Modal:**
-```text
-┌─────────────────────────────────────────────────┐
-│  Add to "Trending Now"                    [×]   │
-├─────────────────────────────────────────────────┤
-│  🔍 Search movies or TV shows...                │
-├─────────────────────────────────────────────────┤
-│  ┌─────┐                                        │
-│  │     │ Inception (2010)        ★ 8.4  MOVIE   │
-│  └─────┘ [+ Add]  [📌 Pin to Top]               │
-├─────────────────────────────────────────────────┤
-│  ┌─────┐                                        │
-│  │     │ Breaking Bad (2008)     ★ 9.5  TV      │
-│  └─────┘ [+ Add]  [📌 Pin to Top]               │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-### No Conflicts with Existing Features
-
-| Existing Feature | This System | Interaction |
-|-----------------|-------------|-------------|
-| Edit Links Mode (Ctrl+Shift+E) | **Extended** | Same shortcut, additional controls |
-| Post Moderation (block/pin) | Separate | Different table (`post_moderation`), different purpose |
-| DB Manifest | Untouched | Curation overlays on top, doesn't modify source |
-| Entries table | Untouched | Links remain independent |
-| AdminPostControls (3-dot menu) | Unchanged | Coexists with curation overlay |
 
 ---
 
 ### Implementation Order
 
-1. Add `is_pinned` column to database (SQL above)
-2. Create `useSectionCuration.ts` hook
-3. Update `EditLinksModeContext.tsx` with picker state
-4. Create `PostSearchPicker.tsx` modal
-5. Create `SectionCurationControls.tsx` header buttons
-6. Create `CurationCardOverlay.tsx` for cards
-7. Update `ContentRow.tsx` with curation integration
-8. Update `TabbedContentRow.tsx` with curation integration
-9. Update `DbContentRow.tsx` to pass sectionId
-10. Update `MovieCard.tsx` with CurationCardOverlay
-11. Update `Index.tsx` with section IDs
-12. Update listing pages (Movies, TV, Anime, Korean)
-13. Update `EditLinksModeIndicator.tsx`
+1. **Fix CurationCardOverlay visibility** - Remove hover-only opacity
+2. **Enhance SectionCurationControls styling** - Add prominent badge
+3. **Add pinned item indicators** - Visual badges on MovieCard
+4. **Install @dnd-kit packages** - For drag-and-drop
+5. **Add reorderSection to hook** - Database persistence
+6. **Create DraggableContentRow** - Sortable wrapper
+7. **Integrate drag-and-drop into ContentRow** - Connect everything
+8. **Test end-to-end** - Verify all controls visible and functional
 
+---
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/admin/CurationCardOverlay.tsx` | Remove hover-only opacity, always visible in edit mode |
+| `src/components/admin/SectionCurationControls.tsx` | Add prominent "Curation Mode" badge |
+| `src/components/MovieCard.tsx` | Add pinned/curated visual indicators |
+| `src/hooks/useSectionCuration.ts` | Add `reorderSection()` function |
+| `src/components/ContentRow.tsx` | Integrate drag-and-drop when in edit mode |
+| `src/components/TabbedContentRow.tsx` | Same drag-and-drop integration |
+
+### New Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/admin/SortableCard.tsx` | Wrapper for draggable MovieCard |
+
+### Dependencies to Install
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@dnd-kit/core` | ^6.0.0 | Core drag-and-drop engine |
+| `@dnd-kit/sortable` | ^8.0.0 | Sortable list primitives |
+| `@dnd-kit/utilities` | ^3.0.0 | CSS transform utilities |
+
+---
+
+### Visual Preview
+
+**Section Header (Edit Mode ON):**
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│  Trending Now    🟣 Curation Mode (3 items)    [+ Add]  [Reset]   │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Card (Edit Mode ON - Always Visible Controls):**
+```text
+┌────────────────┐
+│ ≡ DRAG        │  ← Drag handle (always visible)
+│                │
+│    POSTER      │
+│      📌        │  ← Pin badge (if pinned)
+│ [📌] [×]       │  ← Curation buttons (always visible, not hover)
+└────────────────┘
+```
+
+**Edit Mode Indicator (Bottom Right):**
+```text
+┌─────────────────────────────────┐
+│  🟣 EDIT MODE                   │
+│  Ctrl+Shift+E to exit           │
+│  [Exit Mode]                    │
+└─────────────────────────────────┘
+```
+
+---
+
+### Technical Notes
+
+- Drag-and-drop only activates in Edit Mode
+- Reorder persists immediately to Supabase
+- Optimistic updates ensure instant visual feedback
+- Pin badge uses a simple icon overlay, not an extra component
+- All existing features (hover effects, click navigation) remain unchanged
