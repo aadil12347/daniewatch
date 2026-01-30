@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { HeroSection } from "@/components/HeroSection";
@@ -6,8 +6,6 @@ import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
 import { Footer } from "@/components/Footer";
 import { usePostModeration } from "@/hooks/usePostModeration";
-import { useEntryAvailability } from "@/hooks/useEntryAvailability";
-import { usePreloadImages } from "@/hooks/usePreloadImages";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 import { useHomepageCache } from "@/hooks/useHomepageCache";
@@ -22,9 +20,6 @@ import {
   filterAdultContent,
   Movie,
 } from "@/lib/tmdb";
-
-const ABOVE_FOLD_PRELOAD_COUNT = 20; // preload at least 20 hover images on initial load
-const SHOW_THRESHOLD = 0.5; // show when 50% of those hover images are ready
 
 const Index = () => {
   const { isPerformance } = usePerformanceMode();
@@ -41,42 +36,13 @@ const Index = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
-  const { getHoverImageUrl, isLoading: isAvailabilityLoading } = useEntryAvailability();
 
-  // Build an "above the fold" list of cards and preload their hover images first.
-  const aboveFoldIds = useMemo(() => {
-    const ids: number[] = [];
-    const pushMany = (arr: Movie[]) => {
-      for (const m of arr) {
-        if (ids.length >= ABOVE_FOLD_PRELOAD_COUNT) break;
-        ids.push(m.id);
-      }
-    };
+  // Primary content is ready as soon as TMDB data is available (from cache or network)
+  // Moderation filtering happens progressively after content renders
+  const primaryContentReady = !isLoading && trending.length > 0;
 
-    // Rough "what users see first" order
-    pushMany(trending.slice(0, 10));
-    pushMany(trending);
-    pushMany(popularMovies);
-    pushMany(popularTV);
-
-    return ids;
-  }, [popularMovies, popularTV, trending]);
-
-  const aboveFoldHoverUrls = useMemo(
-    () => aboveFoldIds.map((id) => getHoverImageUrl(id)).filter(Boolean),
-    [aboveFoldIds, getHoverImageUrl]
-  );
-
-  const { loaded: hoverLoaded, total: hoverTotal } = usePreloadImages(aboveFoldHoverUrls, {
-    enabled: !isLoading && !isAvailabilityLoading, // start once TMDB lists + entries map are ready
-    concurrency: 8,
-  });
-
-  const aboveFoldReady = hoverTotal === 0 ? true : hoverLoaded / hoverTotal >= SHOW_THRESHOLD;
-  const pageIsLoading = isLoading || isModerationLoading || isAvailabilityLoading || !aboveFoldReady;
-
-  // Home exception: keep loader until Hero + Top 10 are ready.
-  useRouteContentReady(!pageIsLoading && trending.length >= Math.min(10, trending.length || 10));
+  // Signal route ready immediately when TMDB data is available - don't wait for Supabase
+  useRouteContentReady(primaryContentReady);
 
   useEffect(() => {
     // Try loading from session cache first
@@ -167,7 +133,7 @@ const Index = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        {fetchError && !pageIsLoading && (
+        {fetchError && primaryContentReady && (
           <div className="container mx-auto px-4 pt-24">
             <div className="rounded-lg border bg-card p-4">
               <p className="text-sm text-muted-foreground">{fetchError}</p>
@@ -182,13 +148,13 @@ const Index = () => {
           </div>
         )}
 
-        <HeroSection items={trending} isLoading={pageIsLoading} />
+        <HeroSection items={trending} isLoading={!primaryContentReady} />
 
         <div className="relative z-10 -mt-16">
           <ContentRow
             title="Top 10 Today"
-            items={sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
-            isLoading={pageIsLoading}
+            items={isModerationLoading ? trending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
+            isLoading={!primaryContentReady}
             showRank
             size="lg"
             hoverCharacterMode="contained"
@@ -200,24 +166,22 @@ const Index = () => {
 
           <TabbedContentRow
             title="Trending Now"
-            moviesItems={filterBlockedPosts(
-              trending.filter((item) => item.media_type === "movie"),
-              "movie"
-            )}
-            tvItems={filterBlockedPosts(
-              trending.filter((item) => item.media_type === "tv"),
-              "tv"
-            )}
-            isLoading={pageIsLoading}
+            moviesItems={isModerationLoading 
+              ? trending.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(trending.filter((item) => item.media_type === "movie"), "movie")}
+            tvItems={isModerationLoading
+              ? trending.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(trending.filter((item) => item.media_type === "tv"), "tv")}
+            isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
           />
 
           <TabbedContentRow
             title="Popular"
-            moviesItems={filterBlockedPosts(popularMovies, "movie")}
-            tvItems={filterBlockedPosts(popularTV, "tv")}
-            isLoading={pageIsLoading}
+            moviesItems={isModerationLoading ? popularMovies : filterBlockedPosts(popularMovies, "movie")}
+            tvItems={isModerationLoading ? popularTV : filterBlockedPosts(popularTV, "tv")}
+            isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
           />
@@ -225,31 +189,13 @@ const Index = () => {
           {/* Regional Popular Sections */}
           <TabbedContentRow
             title="Anime Popular"
-            moviesItems={filterBlockedPosts(
-              animePopular.filter((item) => item.media_type === "movie"),
-              "movie"
-            )}
-            tvItems={filterBlockedPosts(
-              animePopular.filter((item) => item.media_type === "tv"),
-              "tv"
-            )}
-            isLoading={pageIsLoading}
-            defaultTab="tv"
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
-
-          <TabbedContentRow
-            title="Anime Popular"
-            moviesItems={filterBlockedPosts(
-              animePopular.filter((item) => item.media_type === "movie"),
-              "movie"
-            )}
-            tvItems={filterBlockedPosts(
-              animePopular.filter((item) => item.media_type === "tv"),
-              "tv"
-            )}
-            isLoading={pageIsLoading}
+            moviesItems={isModerationLoading
+              ? animePopular.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "movie"), "movie")}
+            tvItems={isModerationLoading
+              ? animePopular.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "tv"), "tv")}
+            isLoading={!primaryContentReady}
             defaultTab="tv"
             hoverCharacterMode="contained"
             enableHoverPortal={false}
@@ -257,15 +203,13 @@ const Index = () => {
 
           <TabbedContentRow
             title="Korean Popular"
-            moviesItems={filterBlockedPosts(
-              koreanPopular.filter((item) => item.media_type === "movie"),
-              "movie"
-            )}
-            tvItems={filterBlockedPosts(
-              koreanPopular.filter((item) => item.media_type === "tv"),
-              "tv"
-            )}
-            isLoading={pageIsLoading}
+            moviesItems={isModerationLoading
+              ? koreanPopular.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(koreanPopular.filter((item) => item.media_type === "movie"), "movie")}
+            tvItems={isModerationLoading
+              ? koreanPopular.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(koreanPopular.filter((item) => item.media_type === "tv"), "tv")}
+            isLoading={!primaryContentReady}
             defaultTab="tv"
             hoverCharacterMode="contained"
             enableHoverPortal={false}
@@ -273,9 +217,9 @@ const Index = () => {
 
           <TabbedContentRow
             title="Top Rated"
-            moviesItems={filterBlockedPosts(topRatedMovies, "movie")}
-            tvItems={filterBlockedPosts(topRatedTV, "tv")}
-            isLoading={pageIsLoading}
+            moviesItems={isModerationLoading ? topRatedMovies : filterBlockedPosts(topRatedMovies, "movie")}
+            tvItems={isModerationLoading ? topRatedTV : filterBlockedPosts(topRatedTV, "tv")}
+            isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
           />
