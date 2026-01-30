@@ -1,5 +1,6 @@
 import { Pin, X, PinOff } from "lucide-react";
 import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
 import { useSectionCuration } from "@/hooks/useSectionCuration";
 import { cn } from "@/lib/utils";
 
@@ -20,10 +21,11 @@ export function CurationCardOverlay({
   posterPath,
   className,
 }: CurationCardOverlayProps) {
+  const { isAdmin } = useAdminStatus();
   const { isEditLinksMode } = useEditLinksMode();
   const { curatedItems, pinToTop, unpinFromTop, removeFromSection } = useSectionCuration(sectionId);
 
-  if (!isEditLinksMode) return null;
+  if (!isAdmin || !isEditLinksMode) return null;
 
   const curatedItem = curatedItems.find((c) => c.tmdbId === tmdbId && c.mediaType === mediaType);
   const isPinned = curatedItem?.isPinned ?? false;
