@@ -35,6 +35,7 @@ interface Manifest {
 export function ManifestUpdateTool() {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [fetchProgress, setFetchProgress] = useState<string | null>(null);
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [itemCount, setItemCount] = useState<number | null>(null);
 
@@ -54,26 +55,49 @@ export function ManifestUpdateTool() {
 
   const handleGenerateManifest = async () => {
     setIsGenerating(true);
+    setFetchProgress(null);
 
     try {
-      // 1. Fetch all entries from DB
-      const { data: entries, error: fetchError } = await supabase
-        .from("entries")
-        .select(
-          "id, type, title, hover_image_url, genre_ids, release_year, original_language, origin_country, content, poster_url, backdrop_url, logo_url, vote_average, vote_count"
-        );
+      // 1. Fetch all entries from DB using pagination to bypass 1000 row limit
+      const BATCH_SIZE = 1000;
+      const allEntries: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (fetchError) throw fetchError;
+      while (hasMore) {
+        setFetchProgress(`Fetching ${from + BATCH_SIZE}...`);
+        
+        const { data, error: fetchError } = await supabase
+          .from("entries")
+          .select(
+            "id, type, title, hover_image_url, genre_ids, release_year, original_language, origin_country, content, poster_url, backdrop_url, logo_url, vote_average, vote_count"
+          )
+          .range(from, from + BATCH_SIZE - 1);
 
-      if (!entries || entries.length === 0) {
+        if (fetchError) throw fetchError;
+
+        if (data && data.length > 0) {
+          allEntries.push(...data);
+        }
+
+        hasMore = data?.length === BATCH_SIZE;
+        from += BATCH_SIZE;
+      }
+
+      setFetchProgress("Processing...");
+
+      if (allEntries.length === 0) {
         toast({
           title: "No entries found",
           description: "The database is empty. Add some entries first.",
           variant: "destructive",
         });
         setIsGenerating(false);
+        setFetchProgress(null);
         return;
       }
+
+      const entries = allEntries;
 
       // 2. Convert to manifest format
       const items: ManifestItem[] = entries.map((entry) => {
@@ -165,6 +189,7 @@ export function ManifestUpdateTool() {
       });
     } finally {
       setIsGenerating(false);
+      setFetchProgress(null);
     }
   };
 
@@ -187,7 +212,7 @@ export function ManifestUpdateTool() {
             ) : (
               <RefreshCw className="w-4 h-4 mr-2" />
             )}
-            {isGenerating ? "Generating..." : "Update Data"}
+            {isGenerating ? (fetchProgress || "Generating...") : "Update Data"}
           </Button>
         </div>
       </CardHeader>
