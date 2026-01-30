@@ -24,6 +24,7 @@ import { PerformanceModeSwitchOverlay } from "@/components/PerformanceModeSwitch
 import { InitialSplashOverlay, getShouldShowInitialSplash } from "@/components/InitialSplashOverlay";
 import { EditLinksModeIndicator } from "@/components/admin/EditLinksModeIndicator";
 import { EditLinksModal } from "@/components/admin/EditLinksModal";
+import { PostSearchPicker } from "@/components/admin/PostSearchPicker";
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
 import TVDetails from "./pages/TVDetails";
@@ -155,6 +156,7 @@ const App = () => {
                                   <PerformanceModeSwitchOverlay />
                                   <EditLinksModeIndicator />
                                   <EditLinksModal />
+                                  <PostSearchPicker />
                                   <AppContent />
                                   <FloatingRequestButton />
                                   <TutorialOverlay />
