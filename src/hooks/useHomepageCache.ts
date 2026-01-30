@@ -22,20 +22,23 @@ export const useHomepageCache = () => {
         timestamp: Date.now(),
       };
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+      console.log("[HomepageCache] Saved to cache, items:", data.trending?.length);
     } catch (error) {
-      console.warn("Failed to save homepage cache:", error);
+      console.warn("[HomepageCache] Failed to save:", error);
     }
   }, []);
 
   const getCache = useCallback((): HomepageCacheData | null => {
     try {
       const cached = sessionStorage.getItem(CACHE_KEY);
+      console.log("[HomepageCache] Checking cache, found:", !!cached);
       if (!cached) return null;
 
       const data: HomepageCacheData = JSON.parse(cached);
+      console.log("[HomepageCache] Cache hit! Items:", data.trending?.length);
       return data;
     } catch (error) {
-      console.warn("Failed to read homepage cache:", error);
+      console.warn("[HomepageCache] Failed to read:", error);
       return null;
     }
   }, []);

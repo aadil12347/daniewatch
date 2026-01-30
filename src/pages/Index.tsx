@@ -81,7 +81,10 @@ const Index = () => {
   useEffect(() => {
     // Try loading from session cache first
     const cached = getCache();
+    console.log("[Index] useEffect ran, cache result:", cached ? "HIT" : "MISS");
+    
     if (cached) {
+      console.log("[Index] Loading from cache");
       setTrending(cached.trending);
       setPopularMovies(cached.popularMovies);
       setTopRatedMovies(cached.topRatedMovies);
@@ -94,6 +97,7 @@ const Index = () => {
     }
 
     // No cache, fetch fresh data
+    console.log("[Index] Fetching fresh data from TMDB");
     const fetchData = async () => {
       try {
         const [
@@ -149,7 +153,8 @@ const Index = () => {
     };
 
     fetchData();
-  }, [getCache, saveCache]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
