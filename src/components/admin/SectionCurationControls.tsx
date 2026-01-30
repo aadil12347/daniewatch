@@ -1,6 +1,7 @@
 import { Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
 import { useSectionCuration } from "@/hooks/useSectionCuration";
 import { cn } from "@/lib/utils";
 
@@ -11,10 +12,11 @@ interface SectionCurationControlsProps {
 }
 
 export function SectionCurationControls({ sectionId, sectionTitle, className }: SectionCurationControlsProps) {
+  const { isAdmin } = useAdminStatus();
   const { isEditLinksMode, openPicker } = useEditLinksMode();
   const { resetSection, hasCuration } = useSectionCuration(sectionId);
 
-  if (!isEditLinksMode) return null;
+  if (!isAdmin || !isEditLinksMode) return null;
 
   const handleAdd = () => {
     openPicker(sectionId, sectionTitle);
