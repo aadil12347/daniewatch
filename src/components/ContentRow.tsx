@@ -4,6 +4,10 @@ import { Movie } from "@/lib/tmdb";
 import { MovieCard } from "./MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
+import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
+import { SectionCurationControls } from "@/components/admin/SectionCurationControls";
+import { useSectionCuration } from "@/hooks/useSectionCuration";
 
 interface ContentRowProps {
   title: string;
@@ -16,6 +20,7 @@ interface ContentRowProps {
   disableHoverCharacter?: boolean;
   disableHoverLogo?: boolean;
   disableRankFillHover?: boolean;
+  sectionId?: string;
 }
 
 export const ContentRow = ({
@@ -29,11 +34,23 @@ export const ContentRow = ({
   disableHoverCharacter,
   disableHoverLogo,
   disableRankFillHover,
+  sectionId,
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { filterBlockedPosts } = usePostModeration();
+  const { isAdmin } = useAdminStatus();
+  const { isEditLinksMode } = useEditLinksMode();
+  const { getCuratedItems } = useSectionCuration(sectionId);
 
-  const visibleItems = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
+  const baseVisibleItems = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
+  
+  // Apply curation if in edit mode and sectionId provided
+  const visibleItems = useMemo(() => {
+    if (isAdmin && isEditLinksMode && sectionId) {
+      return getCuratedItems(baseVisibleItems);
+    }
+    return baseVisibleItems;
+  }, [baseVisibleItems, getCuratedItems, isAdmin, isEditLinksMode, sectionId]);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -49,17 +66,22 @@ export const ContentRow = ({
     <section className="py-6 group/section">
       {/* Header */}
       <div className="container mx-auto px-4 flex items-center justify-between mb-4">
-        {showRank ? (
-          <h2 className="group/title cursor-default">
-            <span 
-              className="text-3xl md:text-4xl font-black text-foreground transition-all duration-300 group-hover/title:drop-shadow-[0_0_20px_hsl(var(--primary))] group-hover/title:text-primary"
-            >
-              {title}
-            </span>
-          </h2>
-        ) : (
-          <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
-        )}
+        <div className="flex items-center gap-4">
+          {showRank ? (
+            <h2 className="group/title cursor-default">
+              <span 
+                className="text-3xl md:text-4xl font-black text-foreground transition-all duration-300 group-hover/title:drop-shadow-[0_0_20px_hsl(var(--primary))] group-hover/title:text-primary"
+              >
+                {title}
+              </span>
+            </h2>
+          ) : (
+            <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
+          )}
+        </div>
+        
+        {/* Curation Controls - Admin only */}
+        {sectionId && <SectionCurationControls sectionId={sectionId} sectionTitle={title} />}
       </div>
 
       {/* Scrollable Content with Navigation Overlay */}
@@ -112,6 +134,7 @@ export const ContentRow = ({
                   disableHoverCharacter={disableHoverCharacter}
                   disableHoverLogo={disableHoverLogo}
                   disableRankFillHover={disableRankFillHover}
+                  sectionId={sectionId}
                 />
               ))}
         </div>

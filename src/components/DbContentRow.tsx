@@ -6,13 +6,14 @@ import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 interface DbContentRowProps {
   title: string;
   items: Movie[];
+  sectionId?: string;
 }
 
 /**
  * Lazy-loaded wrapper for ContentRow that only renders when near the viewport.
  * Uses IntersectionObserver for performance optimization.
  */
-export const DbContentRow = ({ title, items }: DbContentRowProps) => {
+export const DbContentRow = ({ title, items, sectionId }: DbContentRowProps) => {
   const { isPerformance } = usePerformanceMode();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -56,6 +57,7 @@ export const DbContentRow = ({ title, items }: DbContentRowProps) => {
           enableHoverPortal={false}
           disableHoverCharacter={isPerformance}
           disableHoverLogo={isPerformance}
+          sectionId={sectionId}
         />
       ) : (
         // Placeholder to maintain scroll height estimation

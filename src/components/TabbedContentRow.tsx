@@ -5,6 +5,10 @@ import { MovieCard } from "./MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { useAdminStatus } from "@/contexts/AdminStatusContext";
+import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
+import { SectionCurationControls } from "@/components/admin/SectionCurationControls";
+import { useSectionCuration } from "@/hooks/useSectionCuration";
 
 interface TabbedContentRowProps {
   title: string;
@@ -15,6 +19,8 @@ interface TabbedContentRowProps {
   defaultTab?: "movies" | "tv";
   hoverCharacterMode?: "popout" | "contained";
   enableHoverPortal?: boolean;
+  sectionIdMovies?: string;
+  sectionIdTv?: string;
 }
 
 export const TabbedContentRow = ({
@@ -26,12 +32,19 @@ export const TabbedContentRow = ({
   defaultTab = "movies",
   hoverCharacterMode,
   enableHoverPortal,
+  sectionIdMovies,
+  sectionIdTv,
 }: TabbedContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { filterBlockedPosts } = usePostModeration();
+  const { isAdmin } = useAdminStatus();
+  const { isEditLinksMode } = useEditLinksMode();
 
   const [activeTab, setActiveTab] = useState<"movies" | "tv">(defaultTab);
   const [animationKey, setAnimationKey] = useState(0);
+
+  const activeSectionId = activeTab === "movies" ? sectionIdMovies : sectionIdTv;
+  const { getCuratedItems } = useSectionCuration(activeSectionId);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -52,41 +65,56 @@ export const TabbedContentRow = ({
   };
 
   const items = activeTab === "movies" ? moviesItems : tvItems;
-  const visibleItems = useMemo(
+  const baseVisibleItems = useMemo(
     () => filterBlockedPosts(items, activeTab === "movies" ? "movie" : "tv"),
     [activeTab, filterBlockedPosts, items]
   );
+
+  // Apply curation if in edit mode and sectionId provided
+  const visibleItems = useMemo(() => {
+    if (isAdmin && isEditLinksMode && activeSectionId) {
+      return getCuratedItems(baseVisibleItems);
+    }
+    return baseVisibleItems;
+  }, [baseVisibleItems, getCuratedItems, isAdmin, isEditLinksMode, activeSectionId]);
 
   return (
     <section className="py-6 group/section">
       {/* Header */}
       <div className="container mx-auto px-4 flex items-center justify-between mb-4">
-        <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
-        
-        {/* Tab Buttons */}
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => handleTabChange("movies")}
-            className={cn(
-              "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
-              activeTab === "movies"
-                ? "text-foreground tab-glow-active"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Movies
-          </button>
-          <button
-            onClick={() => handleTabChange("tv")}
-            className={cn(
-              "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
-              activeTab === "tv"
-                ? "text-foreground tab-glow-active"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            TV Shows
-          </button>
+          <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          {/* Curation Controls - Admin only */}
+          {activeSectionId && <SectionCurationControls sectionId={activeSectionId} sectionTitle={`${title} - ${activeTab === "movies" ? "Movies" : "TV"}`} />}
+          
+          {/* Tab Buttons */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => handleTabChange("movies")}
+              className={cn(
+                "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
+                activeTab === "movies"
+                  ? "text-foreground tab-glow-active"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Movies
+            </button>
+            <button
+              onClick={() => handleTabChange("tv")}
+              className={cn(
+                "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
+                activeTab === "tv"
+                  ? "text-foreground tab-glow-active"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              TV Shows
+            </button>
+          </div>
         </div>
       </div>
 
@@ -140,6 +168,7 @@ export const TabbedContentRow = ({
                   size={size}
                   hoverCharacterMode={hoverCharacterMode}
                   enableHoverPortal={enableHoverPortal}
+                  sectionId={activeSectionId}
                 />
               ))}
         </div>
