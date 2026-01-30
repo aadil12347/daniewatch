@@ -1,5 +1,19 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { Movie } from "@/lib/tmdb";
 import { MovieCard } from "./MovieCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +22,7 @@ import { useAdminStatus } from "@/contexts/AdminStatusContext";
 import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { SectionCurationControls } from "@/components/admin/SectionCurationControls";
 import { useSectionCuration } from "@/hooks/useSectionCuration";
+import { SortableCard } from "@/components/admin/SortableCard";
 
 interface ContentRowProps {
   title: string;
@@ -40,7 +55,7 @@ export const ContentRow = ({
   const { filterBlockedPosts } = usePostModeration();
   const { isAdmin } = useAdminStatus();
   const { isEditLinksMode } = useEditLinksMode();
-  const { getCuratedItems } = useSectionCuration(sectionId);
+  const { getCuratedItems, reorderSection } = useSectionCuration(sectionId);
 
   const baseVisibleItems = useMemo(() => filterBlockedPosts(items), [filterBlockedPosts, items]);
   
@@ -52,6 +67,54 @@ export const ContentRow = ({
     return baseVisibleItems;
   }, [baseVisibleItems, getCuratedItems, isAdmin, isEditLinksMode, sectionId]);
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Generate sortable IDs
+  const sortableIds = useMemo(() => {
+    return visibleItems.map((movie) => {
+      const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
+      return `${movie.id}-${mediaType}`;
+    });
+  }, [visibleItems]);
+
+  // Handle drag end
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (over && active.id !== over.id) {
+        const oldIndex = sortableIds.indexOf(String(active.id));
+        const newIndex = sortableIds.indexOf(String(over.id));
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          // Create new order
+          const newIds = [...sortableIds];
+          const [removed] = newIds.splice(oldIndex, 1);
+          newIds.splice(newIndex, 0, removed);
+
+          // Convert back to items
+          const orderedItems = newIds.map((id) => {
+            const [tmdbId, mediaType] = id.split("-");
+            return { tmdbId: parseInt(tmdbId, 10), mediaType: mediaType as "movie" | "tv" };
+          });
+
+          reorderSection(orderedItems);
+        }
+      }
+    },
+    [sortableIds, reorderSection]
+  );
+
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
       const scrollAmount = scrollRef.current.clientWidth * 0.8;
@@ -60,6 +123,54 @@ export const ContentRow = ({
         behavior: "smooth",
       });
     }
+  };
+
+  const isDraggable = isAdmin && isEditLinksMode && sectionId;
+
+  const renderCards = () => {
+    if (isLoading) {
+      return Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex-shrink-0 w-40 sm:w-48">
+          <Skeleton className="aspect-[2/3] rounded-xl" />
+          <Skeleton className="h-4 w-3/4 mt-3" />
+          <Skeleton className="h-3 w-1/2 mt-2" />
+        </div>
+      ));
+    }
+
+    if (isDraggable) {
+      return visibleItems.map((movie, idx) => (
+        <SortableCard
+          key={`${movie.id}-${movie.media_type || (movie.first_air_date ? "tv" : "movie")}`}
+          movie={movie}
+          index={idx}
+          sectionId={sectionId!}
+          showRank={showRank}
+          size={size}
+          hoverCharacterMode={hoverCharacterMode}
+          enableHoverPortal={enableHoverPortal}
+          disableHoverCharacter={disableHoverCharacter}
+          disableHoverLogo={disableHoverLogo}
+          disableRankFillHover={disableRankFillHover}
+        />
+      ));
+    }
+
+    return visibleItems.map((movie, idx) => (
+      <MovieCard
+        key={movie.id}
+        movie={movie}
+        index={idx}
+        showRank={showRank}
+        size={size}
+        hoverCharacterMode={hoverCharacterMode}
+        enableHoverPortal={enableHoverPortal}
+        disableHoverCharacter={disableHoverCharacter}
+        disableHoverLogo={disableHoverLogo}
+        disableRankFillHover={disableRankFillHover}
+        sectionId={sectionId}
+      />
+    ));
   };
 
   return (
@@ -110,34 +221,29 @@ export const ContentRow = ({
           </div>
         </button>
 
-        <div
-          ref={scrollRef}
-          className="flex gap-4 overflow-x-auto overflow-y-visible hide-scrollbar px-4 pb-10 scroll-smooth"
-        >
-          {isLoading
-            ? Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-40 sm:w-48">
-                  <Skeleton className="aspect-[2/3] rounded-xl" />
-                  <Skeleton className="h-4 w-3/4 mt-3" />
-                  <Skeleton className="h-3 w-1/2 mt-2" />
-                </div>
-              ))
-            : visibleItems.map((movie, idx) => (
-                <MovieCard
-                  key={movie.id}
-                  movie={movie}
-                  index={idx}
-                  showRank={showRank}
-                  size={size}
-                  hoverCharacterMode={hoverCharacterMode}
-                  enableHoverPortal={enableHoverPortal}
-                  disableHoverCharacter={disableHoverCharacter}
-                  disableHoverLogo={disableHoverLogo}
-                  disableRankFillHover={disableRankFillHover}
-                  sectionId={sectionId}
-                />
-              ))}
-        </div>
+        {isDraggable ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto overflow-y-visible hide-scrollbar px-4 pb-10 scroll-smooth"
+              >
+                {renderCards()}
+              </div>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-auto overflow-y-visible hide-scrollbar px-4 pb-10 scroll-smooth"
+          >
+            {renderCards()}
+          </div>
+        )}
       </div>
     </section>
   );
