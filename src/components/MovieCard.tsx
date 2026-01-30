@@ -13,6 +13,8 @@ import { useEntryAvailability } from "@/hooks/useEntryAvailability";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
+import { CurationCardOverlay } from "./admin/CurationCardOverlay";
+
 interface MovieCardProps {
   movie: Movie;
   index?: number;
@@ -43,6 +45,8 @@ interface MovieCardProps {
   disableHoverLogo?: boolean;
   /** Disable the rank-number fill animation on hover (when showRank=true). */
   disableRankFillHover?: boolean;
+  /** Section ID for curation controls (admin only). */
+  sectionId?: string;
 }
 
 export const MovieCard = ({
@@ -61,6 +65,7 @@ export const MovieCard = ({
   disableHoverCharacter = false,
   disableHoverLogo = false,
   disableRankFillHover = false,
+  sectionId,
 }: MovieCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -531,6 +536,17 @@ export const MovieCard = ({
             />
           </div>
         </div>
+
+        {/* Curation Controls - Admin only, bottom-left */}
+        {sectionId && (
+          <CurationCardOverlay
+            tmdbId={movie.id}
+            mediaType={mediaType as "movie" | "tv"}
+            sectionId={sectionId}
+            title={title}
+            posterPath={movie.poster_path}
+          />
+        )}
       </div>
     </div>
   );
