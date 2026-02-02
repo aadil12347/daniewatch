@@ -1,114 +1,132 @@
 
-## Fix Drag-and-Drop + Move Pin to Left Side + Make Whole Card Draggable
+## Fix Manifest Cache and Admin Link Indicators Not Updating
 
-This plan fixes three issues:
-1. Drag and arrange not working (cards stay rigid when dragging)
-2. Move pin option to the left side of the poster (aligned with three-dots menu)
-3. Remove separate drag handle - make entire card draggable in Edit Mode
+This plan addresses two issues:
+1. New posts added to manifest not showing on website (24-hour aggressive cache)
+2. Admin dots not glowing for new posts (availability data also cached)
 
 ---
 
 ### Root Cause Analysis
 
-| Issue | Root Cause |
-|-------|------------|
-| **Cards don't move when dragging** | The `listeners` from `useSortable` are only applied to a small drag handle icon in `CurationCardOverlay`, not to the draggable wrapper. The handle is rendered separately and doesn't properly connect to the sortable system. |
-| **Pin button position** | Currently at `bottom-[4.5rem] right-10` - needs to move to left side |
-| **Separate drag handle** | User wants to remove the GripVertical icon and make the whole poster draggable |
+| Issue | Root Cause | Location |
+|-------|------------|----------|
+| **Manifest not updating** | 24-hour localStorage cache in `useDbManifest.ts`. When cache is valid, it never fetches new data. | `CACHE_DURATION = 24 * 60 * 60 * 1000` (line 48) |
+| **Dots not glowing** | `useEntryAvailability.ts` has a 5-minute stale time. More importantly, the `getAvailability()` function is used but React Query data may be stale. | `staleTime: 5 * 60 * 1000` (line 113) |
+| **No session invalidation** | When admin generates manifest, only `localStorage.removeItem("db_manifest_cache")` is called. But next visit still uses cache if session hasn't expired. | `ManifestUpdateTool.tsx` line 177 |
+| **Background refresh too slow** | 5-second delay on background refresh means stale data shows first | `setTimeout(checkForUpdates, 5000)` (line 141) |
 
 ---
 
-### Solution
-
-#### 1. Make Entire Card Draggable
-
-**File:** `src/components/admin/SortableCard.tsx`
-
-Apply `listeners` directly to the wrapper element instead of passing them to a separate drag handle:
+### Solution Overview
 
 ```text
-Current (broken):
-- listeners passed to CurationCardOverlay → drag handle div
-- Only small icon area is draggable
-
-Fixed:
-- listeners applied directly to the wrapper div
-- Entire card becomes draggable
-- Add visual feedback (cursor, ring) when hovering in edit mode
+┌─────────────────────────────────────────────────────────────────┐
+│                     BEFORE (broken)                             │
+├─────────────────────────────────────────────────────────────────┤
+│  localStorage cache: 24 hours                                   │
+│  Background refresh: 5 second delay                             │
+│  Session check: none                                            │
+│  Availability cache: 5 minutes (no refresh on manifest update)  │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                     AFTER (fixed)                               │
+├─────────────────────────────────────────────────────────────────┤
+│  localStorage cache: 30 minutes                                 │
+│  Session check: Always fetch fresh on new browser session       │
+│  Background refresh: Immediate (no delay)                       │
+│  Admin update: Invalidates both manifest AND availability cache │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-Key changes:
+---
+
+### Implementation Steps
+
+#### Step 1: Reduce Manifest Cache Duration + Add Session Check
+
+**File:** `src/hooks/useDbManifest.ts`
+
+**Changes:**
+1. Reduce `CACHE_DURATION` from 24 hours to 30 minutes
+2. Add `SESSION_CHECK_KEY` in sessionStorage - if new session, bypass localStorage cache
+3. Remove 5-second delay on background refresh - check immediately
+4. Add `refreshManifest()` function for manual refresh
+
 ```typescript
-return (
-  <div 
-    ref={setNodeRef} 
-    style={style} 
-    {...attributes} 
-    {...listeners}  // Apply listeners to ENTIRE card
-    className={cn(
-      "relative flex-shrink-0",
-      "cursor-grab active:cursor-grabbing",  // Visual feedback
-      isDragging && "ring-2 ring-primary/60 rounded-xl"
-    )}
-  >
-    <CurationCardOverlay ... />  // No more dragHandleProps
-    <MovieCard ... />
-  </div>
-);
+const CACHE_KEY = "db_manifest_cache";
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (was 24 hours)
+const SESSION_CHECK_KEY = "manifest_session_checked";
+
+// In load function:
+const load = async () => {
+  // Check if this is a new browser session
+  const sessionChecked = sessionStorage.getItem(SESSION_CHECK_KEY);
+  
+  // Only use cache if session already checked it
+  if (sessionChecked) {
+    const cached = localStorage.getItem(CACHE_KEY);
+    // ... existing cache logic
+  }
+  
+  // Mark session as checked after first load
+  sessionStorage.setItem(SESSION_CHECK_KEY, "1");
+  
+  // ... fetch from storage
+};
+
+// In background refresh effect:
+useEffect(() => {
+  if (!manifest || isFetching) return;
+
+  const checkForUpdates = async () => {
+    const fetched = await fetchManifest();
+    if (fetched && fetched.generated_at !== manifest.generated_at) {
+      console.log("[useDbManifest] New manifest version detected");
+      setManifest(fetched);
+    }
+  };
+
+  // Check immediately, no 5-second delay
+  checkForUpdates();
+}, [manifest?.generated_at, isFetching]);
 ```
 
 ---
 
-#### 2. Move Pin Button to Left Side
+#### Step 2: Clear Session Check After Admin Updates Manifest
 
-**File:** `src/components/admin/CurationCardOverlay.tsx`
+**File:** `src/components/admin/ManifestUpdateTool.tsx`
 
-```text
-Current position: bottom-[4.5rem] right-10 (bottom-right)
-New position: bottom-[4.5rem] left-2 (bottom-left, aligned with three-dots)
+After successful manifest upload, also:
+1. Clear the session check flag so next load fetches fresh
+2. Invalidate the React Query cache for entry availability
 
-Also remove:
-- GripVertical drag handle (no longer needed)
-- dragHandleProps prop (no longer needed)
+```typescript
+// After line 177 (localStorage.removeItem("db_manifest_cache"))
+localStorage.removeItem("db_manifest_cache");
+sessionStorage.removeItem("manifest_session_checked");
+
+// Invalidate availability cache so dots update
+queryClient.invalidateQueries({ queryKey: ["entry-availability"] });
 ```
 
-Visual layout after fix:
-```
-┌────────────────┐
-│ [≡3dots]       │  ← Admin three-dots menu (top-left)
-│                │
-│    POSTER      │
-│                │
-│ [📌][×]   [🔖]│  ← Pin/Remove left, Watchlist right
-└────────────────┘
-```
+This requires:
+- Import `useQueryClient` from React Query
+- Get `queryClient` in the component
 
 ---
 
-#### 3. Update CurationCardOverlay Props
+#### Step 3: Reduce Entry Availability Stale Time
 
-**File:** `src/components/admin/CurationCardOverlay.tsx`
+**File:** `src/hooks/useEntryAvailability.ts`
 
-Remove:
-- `dragHandleProps` prop (no longer used)
-- Drag handle div with `GripVertical` icon
+Reduce stale time from 5 minutes to 1 minute so availability data refreshes more frequently:
 
-Keep:
-- Pinned badge at top-center
-- Pin/Remove buttons (move to bottom-left)
-- Curated indicator border
-
----
-
-#### 4. Add Drag Visual Feedback to Card
-
-**File:** `src/components/admin/SortableCard.tsx`
-
-When in Edit Mode and hovering, show visual cues that the card is draggable:
-- `cursor-grab` on hover
-- `cursor-grabbing` while dragging
-- Subtle ring/border highlight while dragging
-- Scale up slightly when picked up
+```typescript
+staleTime: 1 * 60 * 1000, // 1 minute (was 5 minutes)
+```
 
 ---
 
@@ -116,172 +134,30 @@ When in Edit Mode and hovering, show visual cues that the card is draggable:
 
 | File | Changes |
 |------|---------|
-| `src/components/admin/SortableCard.tsx` | Apply `listeners` to wrapper, add cursor/ring styles |
-| `src/components/admin/CurationCardOverlay.tsx` | Remove drag handle, move buttons to bottom-left |
+| `src/hooks/useDbManifest.ts` | Reduce cache to 30 min, add session check, immediate background refresh |
+| `src/components/admin/ManifestUpdateTool.tsx` | Clear session flag + invalidate availability cache after update |
+| `src/hooks/useEntryAvailability.ts` | Reduce stale time to 1 minute |
 
 ---
 
-### Code Changes
+### Expected Behavior After Fix
 
-#### SortableCard.tsx
-
-```typescript
-export function SortableCard({
-  movie,
-  index,
-  sectionId,
-  // ... other props
-}: SortableCardProps) {
-  const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
-  const sortableId = `${movie.id}-${mediaType}`;
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: sortableId });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}  // ← APPLY LISTENERS TO ENTIRE CARD
-      className={cn(
-        "relative flex-shrink-0 touch-none",  // touch-none for mobile
-        "cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-90 scale-[1.02] ring-2 ring-primary/60 rounded-xl shadow-xl"
-      )}
-    >
-      <CurationCardOverlay
-        tmdbId={movie.id}
-        mediaType={mediaType}
-        sectionId={sectionId}
-        title={movie.title || movie.name}
-        posterPath={movie.poster_path}
-        isDragging={isDragging}
-        // No more dragHandleProps
-      />
-
-      <MovieCard
-        movie={movie}
-        // ... other props
-      />
-    </div>
-  );
-}
-```
-
-#### CurationCardOverlay.tsx
-
-```typescript
-interface CurationCardOverlayProps {
-  tmdbId: number;
-  mediaType: "movie" | "tv";
-  sectionId: string;
-  title?: string;
-  posterPath?: string | null;
-  className?: string;
-  isDragging?: boolean;
-  // REMOVED: dragHandleProps
-}
-
-export function CurationCardOverlay({
-  tmdbId,
-  mediaType,
-  sectionId,
-  title,
-  posterPath,
-  className,
-  isDragging,
-}: CurationCardOverlayProps) {
-  // ... existing logic ...
-
-  return (
-    <>
-      {/* Pinned badge - top center (unchanged) */}
-      {isPinned && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 ...">
-          <Pin className="w-3 h-3" />
-          Pinned
-        </div>
-      )}
-
-      {/* REMOVED: Drag handle div */}
-
-      {/* Action buttons - MOVED to bottom LEFT */}
-      <div
-        className={cn(
-          "absolute bottom-[4.5rem] left-2 z-40 flex items-center gap-1",
-          "transition-opacity duration-200",
-          className
-        )}
-      >
-        {/* Pin/Unpin button */}
-        <button onClick={handlePin} ...>
-          {isPinned ? <PinOff /> : <Pin />}
-        </button>
-
-        {/* Remove button */}
-        {isInSection && (
-          <button onClick={handleRemove} ...>
-            <X />
-          </button>
-        )}
-      </div>
-
-      {/* Curated indicator border (unchanged) */}
-      {isInSection && (
-        <div className="absolute inset-0 rounded-xl pointer-events-none z-30 ring-2 ring-inset ..." />
-      )}
-    </>
-  );
-}
-```
-
----
-
-### Visual Preview
-
-**Before (drag handle icon, pin on right):**
-```
-┌────────────────┐
-│ [⠿][3dots]    │  ← Drag handle next to three-dots
-│                │
-│    POSTER      │
-│                │
-│       [📌][×] │  ← Pin/Remove on right
-│           [🔖]│  ← Watchlist bottom-right
-└────────────────┘
-```
-
-**After (whole card draggable, pin on left):**
-```
-┌────────────────┐
-│ [3dots] [⭐]   │  ← Three-dots left, rating right
-│                │
-│    POSTER      │  ← ENTIRE POSTER IS DRAGGABLE
-│ cursor: grab   │
-│                │
-│ [📌][×]   [🔖]│  ← Pin/Remove left, Watchlist right
-└────────────────┘
-```
+| Scenario | Before | After |
+|----------|--------|-------|
+| **New visitor** | Uses 24-hour cache | Always fetches fresh on first visit |
+| **Same session, second page** | Uses cache | Uses cache (30 min) |
+| **Admin updates manifest** | Only admin sees update | All visitors get fresh data on next visit |
+| **Admin dots on new posts** | Don't glow (stale cache) | Glow correctly (1-min stale + invalidation) |
+| **Background refresh** | 5 second delay | Immediate check |
 
 ---
 
 ### Technical Notes
 
-1. **`touch-none` class**: Prevents default touch scrolling when dragging on mobile
-2. **`cursor-grab/grabbing`**: Visual feedback for draggable state
-3. **`isDragging` styles**: Scale, ring, and shadow make the picked-up card visually distinct
-4. **Listeners on wrapper**: The key fix - dnd-kit requires listeners on the element with `setNodeRef`
-5. **No navigation conflict**: The card still navigates to details page on click because dnd-kit uses a distance threshold (8px) before activating drag
+1. **Session check logic**: `sessionStorage` resets when browser tab closes. Each new session forces a fresh manifest fetch, ensuring users see recent updates.
+
+2. **Why 30 minutes?**: Balances performance (fewer fetches) with freshness. Most admins work in sessions, so updates propagate within reasonable time.
+
+3. **Invalidating availability cache**: When admin clicks "Update Data", we also invalidate the React Query cache for entry availability. This ensures the glowing dots update without requiring a page refresh.
+
+4. **Immediate background refresh**: By removing the `setTimeout`, the app checks for manifest updates as soon as the initial data is loaded. If a newer version exists on the server, it updates silently.
