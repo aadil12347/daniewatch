@@ -133,7 +133,7 @@ const TVShows = () => {
       const meta = manifestItemByKey.get(`${id}-tv`);
       const title = meta?.title ?? meta?.name ?? meta?.original_name ?? "Untitled";
       const genre_ids = (meta?.genre_ids ?? []) as number[];
-      const releaseYear = (meta?.release_year ?? 0) as number;
+      const releaseYear = (meta?.release_year ?? new Date().getFullYear()) as number;
 
       return {
         id,

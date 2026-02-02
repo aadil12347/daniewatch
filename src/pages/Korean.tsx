@@ -209,7 +209,7 @@ const Korean = () => {
       const key = `${c.id}-${c.mediaType}`;
       const meta = manifestMetaByKey.get(key);
       const title = meta?.title ?? "";
-      const releaseYear = meta?.releaseYear ?? null;
+      const releaseYear = meta?.releaseYear ?? new Date().getFullYear();
 
       const base: Partial<Movie> = {
         id: c.id,
