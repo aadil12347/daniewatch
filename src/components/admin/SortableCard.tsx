@@ -2,6 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { MovieCard } from "@/components/MovieCard";
 import { CurationCardOverlay } from "./CurationCardOverlay";
+import { cn } from "@/lib/utils";
 import type { Movie } from "@/lib/tmdb";
 
 interface SortableCardProps {
@@ -45,12 +46,21 @@ export function SortableCard({
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.8 : 1,
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="relative flex-shrink-0">
-      {/* Curation overlay with drag handle - rendered here, not in MovieCard */}
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "relative flex-shrink-0 touch-none",
+        "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-90 scale-[1.02] ring-2 ring-primary/60 rounded-xl shadow-xl"
+      )}
+    >
+      {/* Curation overlay - no drag handle, entire card is draggable */}
       <CurationCardOverlay
         tmdbId={movie.id}
         mediaType={mediaType as "movie" | "tv"}
@@ -58,10 +68,9 @@ export function SortableCard({
         title={movie.title || movie.name}
         posterPath={movie.poster_path}
         isDragging={isDragging}
-        dragHandleProps={listeners}
       />
 
-      {/* MovieCard handles the actual display - don't pass sectionId to avoid duplicate overlay */}
+      {/* MovieCard handles the actual display */}
       <MovieCard
         movie={movie}
         index={index}

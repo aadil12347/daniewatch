@@ -1,4 +1,4 @@
-import { Pin, X, PinOff, GripVertical } from "lucide-react";
+import { Pin, X, PinOff } from "lucide-react";
 import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { useAdminStatus } from "@/contexts/AdminStatusContext";
 import { useSectionCuration } from "@/hooks/useSectionCuration";
@@ -12,7 +12,6 @@ interface CurationCardOverlayProps {
   posterPath?: string | null;
   className?: string;
   isDragging?: boolean;
-  dragHandleProps?: Record<string, unknown>;
 }
 
 export function CurationCardOverlay({
@@ -23,7 +22,6 @@ export function CurationCardOverlay({
   posterPath,
   className,
   isDragging,
-  dragHandleProps,
 }: CurationCardOverlayProps) {
   const { isAdmin } = useAdminStatus();
   const { isEditLinksMode } = useEditLinksMode();
@@ -63,24 +61,10 @@ export function CurationCardOverlay({
         </div>
       )}
 
-      {/* Drag handle - top left, always visible in edit mode */}
-      <div
-        {...dragHandleProps}
-        className={cn(
-          "absolute top-2 left-10 z-40 p-1.5 rounded-md cursor-grab active:cursor-grabbing",
-          "bg-background/90 backdrop-blur-sm border border-border/50 shadow-md",
-          "transition-all duration-150 hover:bg-primary/20 hover:border-primary/50",
-          isDragging && "ring-2 ring-primary shadow-lg"
-        )}
-        title="Drag to reorder"
-      >
-        <GripVertical className="w-4 h-4 text-muted-foreground" />
-      </div>
-
-      {/* Action buttons - bottom RIGHT (opposite watchlist), ALWAYS visible */}
+      {/* Action buttons - bottom LEFT (aligned with three-dots menu) */}
       <div
         className={cn(
-          "absolute bottom-[4.5rem] right-10 z-40 flex items-center gap-1",
+          "absolute bottom-[4.5rem] left-2 z-40 flex items-center gap-1",
           "transition-opacity duration-200",
           className
         )}
