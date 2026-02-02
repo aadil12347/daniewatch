@@ -5,16 +5,12 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageCurationControls } from "@/components/admin/PageCurationControls";
 import { Movie, filterAdultContentStrict, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
-import { useSectionCuration } from "@/hooks/useSectionCuration";
-import { useAdminStatus } from "@/contexts/AdminStatusContext";
-import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { isKoreanScope, isAnimeScope, KOREAN_LANGS } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
@@ -45,9 +41,6 @@ const TMDB_KOREAN_LANGS = ["ko", "zh"] as const;
 
 const Korean = () => {
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
-  const { isAdmin } = useAdminStatus();
-  const { isEditLinksMode } = useEditLinksMode();
-  const { getCuratedItems } = useSectionCuration(SECTION_ID);
   
   // Use manifest for DB metadata (fast, cached)
   const {
@@ -305,17 +298,9 @@ const Korean = () => {
     });
   }, [normalizedDbGenreSet, selectedYear, tmdbOnlyVisibleItems]);
 
-  const baseFilteredVisibleItems = useMemo(() => {
+  const filteredVisibleItems = useMemo(() => {
     return [...filteredDbItems, ...filteredTmdbItems];
   }, [filteredDbItems, filteredTmdbItems]);
-
-  // Apply curation if in edit mode
-  const filteredVisibleItems = useMemo(() => {
-    if (isAdmin && isEditLinksMode) {
-      return getCuratedItems(baseFilteredVisibleItems);
-    }
-    return baseFilteredVisibleItems;
-  }, [baseFilteredVisibleItems, getCuratedItems, isAdmin, isEditLinksMode]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(filteredVisibleItems, { enabled: !isLoading });
@@ -662,9 +647,6 @@ const Korean = () => {
             />
           </div>
 
-          {/* Admin Curation Controls */}
-          <PageCurationControls sectionId={SECTION_ID} sectionTitle="Korean" className="mb-6" />
-
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
@@ -686,7 +668,6 @@ const Korean = () => {
                         animationDelay={Math.min(index * 30, 300)}
                         enableReveal={false}
                         enableHoverPortal={false}
-                        sectionId={SECTION_ID}
                       />
                     </div>
                   );

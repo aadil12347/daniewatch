@@ -158,7 +158,6 @@ const Index = () => {
             disableRankFillHover={isPerformance}
             disableHoverLogo={isPerformance}
             disableHoverCharacter={isPerformance}
-            sectionId="home_top_10"
           />
 
           {/* Trending Now */}
@@ -173,8 +172,6 @@ const Index = () => {
             isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
-            sectionIdMovies="home_trending_movies"
-            sectionIdTv="home_trending_tv"
           />
 
           {/* Regional Sections - Attractive Names */}
@@ -189,8 +186,6 @@ const Index = () => {
             isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
-            sectionIdMovies="home_indian_movies"
-            sectionIdTv="home_indian_tv"
           />
 
           <TabbedContentRow
@@ -205,8 +200,6 @@ const Index = () => {
             defaultTab="tv"
             hoverCharacterMode="contained"
             enableHoverPortal={false}
-            sectionIdMovies="home_korean_movies"
-            sectionIdTv="home_korean_tv"
           />
 
           <TabbedContentRow
@@ -221,8 +214,6 @@ const Index = () => {
             defaultTab="tv"
             hoverCharacterMode="contained"
             enableHoverPortal={false}
-            sectionIdMovies="home_anime_movies"
-            sectionIdTv="home_anime_tv"
           />
 
           {/* Database Sections - Lazy Loaded */}
@@ -231,7 +222,6 @@ const Index = () => {
               key={section.id}
               title={section.title}
               items={section.items}
-              sectionId={`home_db_${section.id}`}
             />
           ))}
 
@@ -243,8 +233,6 @@ const Index = () => {
             isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
-            sectionIdMovies="home_toprated_movies"
-            sectionIdTv="home_toprated_tv"
           />
         </div>
 

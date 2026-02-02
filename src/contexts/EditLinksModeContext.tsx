@@ -10,13 +10,6 @@ type EditLinksModeContextValue = {
   editorTmdbId: string | null;
   openEditorForTmdbId: (tmdbId: string) => void;
   closeEditor: () => void;
-
-  // Curation picker
-  pickerOpen: boolean;
-  pickerSectionId: string | null;
-  pickerSectionTitle: string | null;
-  openPicker: (sectionId: string, sectionTitle: string) => void;
-  closePicker: () => void;
 };
 
 const EditLinksModeContext = createContext<EditLinksModeContextValue | undefined>(undefined);
@@ -38,11 +31,6 @@ export function EditLinksModeProvider({ children }: { children: ReactNode }) {
   const [isEditLinksMode, _setEditLinksMode] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editorTmdbId, setEditorTmdbId] = useState<string | null>(null);
-
-  // Curation picker state
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerSectionId, setPickerSectionId] = useState<string | null>(null);
-  const [pickerSectionTitle, setPickerSectionTitle] = useState<string | null>(null);
 
   const hydratedRef = useRef(false);
 
@@ -125,20 +113,6 @@ export function EditLinksModeProvider({ children }: { children: ReactNode }) {
     setIsEditorOpen(false);
   }, []);
 
-  const openPicker = useCallback(
-    (sectionId: string, sectionTitle: string) => {
-      if (!isAdmin) return;
-      setPickerSectionId(sectionId);
-      setPickerSectionTitle(sectionTitle);
-      setPickerOpen(true);
-    },
-    [isAdmin],
-  );
-
-  const closePicker = useCallback(() => {
-    setPickerOpen(false);
-  }, []);
-
   const value = useMemo<EditLinksModeContextValue>(
     () => ({
       isEditLinksMode,
@@ -149,14 +123,8 @@ export function EditLinksModeProvider({ children }: { children: ReactNode }) {
       editorTmdbId,
       openEditorForTmdbId,
       closeEditor,
-
-      pickerOpen,
-      pickerSectionId,
-      pickerSectionTitle,
-      openPicker,
-      closePicker,
     }),
-    [closeEditor, closePicker, editorTmdbId, isEditLinksMode, isEditorOpen, openEditorForTmdbId, openPicker, pickerOpen, pickerSectionId, pickerSectionTitle, setEditLinksMode, toggleEditLinksMode],
+    [closeEditor, editorTmdbId, isEditLinksMode, isEditorOpen, openEditorForTmdbId, setEditLinksMode, toggleEditLinksMode],
   );
 
   return <EditLinksModeContext.Provider value={value}>{children}</EditLinksModeContext.Provider>;
