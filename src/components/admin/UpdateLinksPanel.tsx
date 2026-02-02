@@ -13,13 +13,24 @@ import {
   Link2,
   ClipboardPaste,
   Wrench,
+  RefreshCw,
+  Settings2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { useEntries } from "@/hooks/useEntries";
 import { useEntriesTrash, TrashedEntry } from "@/hooks/useEntriesTrash";
+import { useEntryMetadata } from "@/hooks/useEntryMetadata";
 import { useToast } from "@/hooks/use-toast";
-import { getMovieDetails, getMovieImages, getTVDetails, getTVImages, getImageUrl } from "@/lib/tmdb";
+import {
+  getMovieDetails,
+  getMovieImages,
+  getTVDetails,
+  getTVImages,
+  getTVSeasonDetails,
+  getImageUrl,
+} from "@/lib/tmdb";
 import { supabase } from "@/integrations/supabase/client";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,9 +53,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { MetadataBackfillTool } from "@/components/admin/MetadataBackfillTool";
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
-import { ArtworkBackfillTool } from "@/components/admin/ArtworkBackfillTool";
+import { MetadataPrefillTool } from "@/components/admin/MetadataPrefillTool";
+import { EpisodeMetadataEditor } from "@/components/admin/EpisodeMetadataEditor";
 
 const UPDATE_LINKS_CACHE_KEY = "updateLinksPanelState_v1";
 const UPDATE_LINKS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -72,6 +84,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const { toast } = useToast();
   const { fetchEntry, saveMovieEntry, saveSeriesSeasonEntry, deleteEntry, deleteSeasonFromEntry } = useEntries();
   const { trashedEntries, moveToTrash, restoreFromTrash, permanentlyDelete, emptyTrash } = useEntriesTrash();
+  const { saveEpisodeMetadata, markEntryAdminEdited } = useEntryMetadata();
   const [searchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<"update" | "trash" | "tools">("update");
@@ -102,6 +115,15 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   // Series inputs
   const [seriesWatchLinks, setSeriesWatchLinks] = useState("");
   const [seriesDownloadLinks, setSeriesDownloadLinks] = useState("");
+
+  // NEW: Editable metadata fields
+  const [posterUrl, setPosterUrl] = useState("");
+  const [backdropUrl, setBackdropUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [overview, setOverview] = useState("");
+  const [adminEdited, setAdminEdited] = useState(false);
+  const [showEpisodeEditor, setShowEpisodeEditor] = useState(false);
+  const [isRefreshingTmdb, setIsRefreshingTmdb] = useState(false);
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
@@ -236,12 +258,22 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       setSeriesWatchLinks("");
       setSeriesDownloadLinks("");
       setHoverImageUrl("");
+      setPosterUrl("");
+      setBackdropUrl("");
+      setLogoUrl("");
+      setOverview("");
+      setAdminEdited(false);
       setEntryExists(false);
 
       const entry = await fetchEntry(String(result.id));
       if (entry && entry.type === result.type) {
         setEntryExists(true);
         setHoverImageUrl(entry.hover_image_url || "");
+        setPosterUrl(entry.poster_url || "");
+        setBackdropUrl(entry.backdrop_url || "");
+        setLogoUrl(entry.logo_url || "");
+        setOverview(entry.overview || "");
+        setAdminEdited(entry.admin_edited || false);
 
         if (entry.type === "movie") {
           const content = entry.content as { watch_link?: string; download_link?: string };
@@ -254,6 +286,58 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     },
     [fetchEntry, loadSeasonData]
   );
+
+  // Refresh metadata from TMDB
+  const handleRefreshFromTmdb = async () => {
+    if (!tmdbResult) return;
+    setIsRefreshingTmdb(true);
+
+    try {
+      if (tmdbResult.type === "movie") {
+        const [details, images] = await Promise.all([
+          getMovieDetails(tmdbResult.id),
+          getMovieImages(tmdbResult.id),
+        ]);
+
+        const logoPath = images.logos?.find((l) => l.iso_639_1 === "en")?.file_path ||
+          images.logos?.find((l) => l.iso_639_1 == null)?.file_path ||
+          images.logos?.[0]?.file_path;
+
+        setPosterUrl(getImageUrl(details.poster_path, "w342") || "");
+        setBackdropUrl(getImageUrl(details.backdrop_path, "original") || "");
+        setLogoUrl(logoPath ? getImageUrl(logoPath, "w500") || "" : "");
+        setOverview(details.overview || "");
+      } else {
+        const [details, images] = await Promise.all([
+          getTVDetails(tmdbResult.id),
+          getTVImages(tmdbResult.id),
+        ]);
+
+        const logoPath = images.logos?.find((l) => l.iso_639_1 === "en")?.file_path ||
+          images.logos?.find((l) => l.iso_639_1 == null)?.file_path ||
+          images.logos?.[0]?.file_path;
+
+        setPosterUrl(getImageUrl(details.poster_path, "w342") || "");
+        setBackdropUrl(getImageUrl(details.backdrop_path, "original") || "");
+        setLogoUrl(logoPath ? getImageUrl(logoPath, "w500") || "" : "");
+        setOverview(details.overview || "");
+      }
+
+      toast({
+        title: "Refreshed",
+        description: "Metadata fetched from TMDB. Click Save to persist.",
+      });
+    } catch (error) {
+      console.error("Error refreshing from TMDB:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch from TMDB.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshingTmdb(false);
+    }
+  };
 
   const handleSearch = useCallback(
     async (idOverride?: string) => {
@@ -433,10 +517,15 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         // Fetch full TMDB details + images to capture artwork + rating.
         const [details, images] = await Promise.all([getMovieDetails(tmdbResult.id), getMovieImages(tmdbResult.id)]);
 
+        // Use custom URLs if provided, otherwise use TMDB
+        const customPoster = posterUrl.trim();
+        const customBackdrop = backdropUrl.trim();
+        const customLogo = logoUrl.trim();
+
         const media = {
-          poster_url: getImageUrl(details.poster_path, "w342"),
-          backdrop_url: getImageUrl(details.backdrop_path, "original"),
-          logo_url: pickLogoUrl(images.logos),
+          poster_url: customPoster || getImageUrl(details.poster_path, "w342"),
+          backdrop_url: customBackdrop || getImageUrl(details.backdrop_path, "original"),
+          logo_url: customLogo || pickLogoUrl(images.logos),
           vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
           vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
           media_updated_at,
@@ -456,6 +545,10 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         );
         if (result.success) {
           setEntryExists(true);
+          // Update admin_edited flag if needed
+          if (adminEdited) {
+            await markEntryAdminEdited(String(tmdbResult.id), true);
+          }
         }
       } else {
         // Fetch full TMDB details + images to capture artwork + rating.
@@ -464,10 +557,15 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
         const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
 
+        // Use custom URLs if provided, otherwise use TMDB
+        const customPoster = posterUrl.trim();
+        const customBackdrop = backdropUrl.trim();
+        const customLogo = logoUrl.trim();
+
         const media = {
-          poster_url: getImageUrl(details.poster_path, "w342"),
-          backdrop_url: getImageUrl(details.backdrop_path, "original"),
-          logo_url: pickLogoUrl(images.logos),
+          poster_url: customPoster || getImageUrl(details.poster_path, "w342"),
+          backdrop_url: customBackdrop || getImageUrl(details.backdrop_path, "original"),
+          logo_url: customLogo || pickLogoUrl(images.logos),
           vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
           vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
           media_updated_at,
@@ -488,6 +586,34 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         );
         if (result.success) {
           setEntryExists(true);
+
+          // Auto-fetch and save episode metadata for the selected season if not admin-edited
+          if (!adminEdited) {
+            try {
+              const seasonRes = await getTVSeasonDetails(tmdbResult.id, selectedSeason);
+              if (seasonRes?.episodes?.length) {
+                const episodeRecords = seasonRes.episodes.map((ep) => ({
+                  episode_number: ep.episode_number,
+                  name: ep.name || null,
+                  overview: ep.overview || null,
+                  still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
+                  air_date: ep.air_date || null,
+                  runtime: ep.runtime || null,
+                  vote_average: ep.vote_average ?? null,
+                  admin_edited: false,
+                }));
+
+                await saveEpisodeMetadata(String(tmdbResult.id), selectedSeason, episodeRecords);
+              }
+            } catch (err) {
+              console.error("Error saving episode metadata:", err);
+            }
+          }
+
+          // Update admin_edited flag if needed
+          if (adminEdited) {
+            await markEntryAdminEdited(String(tmdbResult.id), true);
+          }
         }
       }
     } catch (error) {
@@ -915,6 +1041,142 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
             </Card>
           )}
 
+          {/* Metadata Editing Section */}
+          {tmdbResult && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-primary" />
+                    <CardTitle className="text-lg">Metadata</CardTitle>
+                    {adminEdited && (
+                      <Badge variant="secondary" className="text-xs">
+                        Admin Edited
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefreshFromTmdb}
+                    disabled={isRefreshingTmdb}
+                  >
+                    {isRefreshingTmdb ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    <span className="ml-1">Refresh TMDB</span>
+                  </Button>
+                </div>
+                <CardDescription>
+                  Edit poster, backdrop, logo URLs and description. Changes are saved with the entry.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Poster URL */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Poster URL</Label>
+                  <div className="flex gap-3 items-start">
+                    <Input
+                      value={posterUrl}
+                      onChange={(e) => setPosterUrl(e.target.value)}
+                      className="flex-1 font-mono text-xs"
+                      placeholder="https://..."
+                    />
+                    {posterUrl && /^https?:\/\//i.test(posterUrl) && (
+                      <img
+                        src={posterUrl}
+                        alt="Poster preview"
+                        className="w-10 h-14 object-cover rounded border"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Backdrop URL */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Backdrop URL</Label>
+                  <div className="flex gap-3 items-start">
+                    <Input
+                      value={backdropUrl}
+                      onChange={(e) => setBackdropUrl(e.target.value)}
+                      className="flex-1 font-mono text-xs"
+                      placeholder="https://..."
+                    />
+                    {backdropUrl && /^https?:\/\//i.test(backdropUrl) && (
+                      <img
+                        src={backdropUrl}
+                        alt="Backdrop preview"
+                        className="w-20 h-11 object-cover rounded border"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Logo URL */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Logo URL</Label>
+                  <div className="flex gap-3 items-start">
+                    <Input
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      className="flex-1 font-mono text-xs"
+                      placeholder="https://..."
+                    />
+                    {logoUrl && /^https?:\/\//i.test(logoUrl) && (
+                      <img
+                        src={logoUrl}
+                        alt="Logo preview"
+                        className="h-8 object-contain"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Overview */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Overview / Description</Label>
+                  <Textarea
+                    value={overview}
+                    onChange={(e) => setOverview(e.target.value)}
+                    rows={3}
+                    placeholder="Description..."
+                  />
+                </div>
+
+                {/* Admin Edited Toggle */}
+                <div className="flex items-center gap-3 pt-2 border-t">
+                  <Switch
+                    id="admin-edited"
+                    checked={adminEdited}
+                    onCheckedChange={setAdminEdited}
+                  />
+                  <Label htmlFor="admin-edited" className="text-sm cursor-pointer">
+                    Mark as Admin Edited (skips auto-prefill)
+                  </Label>
+                </div>
+
+                {/* Episode Editor Button (series only) */}
+                {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
+                  <div className="pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowEpisodeEditor(true)}
+                      className="w-full"
+                    >
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      Manage Episode Metadata
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Action Buttons */}
           {tmdbResult && (
             <div className="flex flex-wrap gap-2">
@@ -1099,10 +1361,20 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
         <TabsContent value="tools" className="space-y-4">
           <ManifestUpdateTool />
-          <ArtworkBackfillTool />
-          <MetadataBackfillTool />
+          <MetadataPrefillTool />
         </TabsContent>
       </Tabs>
+
+      {/* Episode Metadata Editor Modal */}
+      {tmdbResult && tmdbResult.type === "series" && (
+        <EpisodeMetadataEditor
+          open={showEpisodeEditor}
+          onOpenChange={setShowEpisodeEditor}
+          entryId={String(tmdbResult.id)}
+          entryTitle={tmdbResult.title}
+          seasonDetails={tmdbResult.seasonDetails}
+        />
+      )}
     </div>
   );
 }

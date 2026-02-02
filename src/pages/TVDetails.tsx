@@ -47,6 +47,7 @@ import {
   getYear,
 } from "@/lib/tmdb";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { supabase } from "@/integrations/supabase/client";
 
 type TVDetailsProps = {
   modal?: boolean;
@@ -228,9 +229,34 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           const firstSeason = showRes.seasons?.find((s) => s.season_number > 0)?.season_number || 1;
           setSelectedSeason(firstSeason);
 
-          // Fetch first season episodes
-          const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
-          const baseEpisodes = seasonRes.episodes || [];
+          // First, check for stored episode metadata in database
+          const { data: storedEpisodes } = await supabase
+            .from("entry_metadata")
+            .select("*")
+            .eq("entry_id", String(id))
+            .eq("season_number", firstSeason)
+            .order("episode_number", { ascending: true });
+
+          let baseEpisodes: Episode[];
+
+          if (storedEpisodes && storedEpisodes.length > 0) {
+            // Use stored episode data from database
+            baseEpisodes = storedEpisodes.map((ep) => ({
+              id: ep.episode_number,
+              name: ep.name || `Episode ${ep.episode_number}`,
+              episode_number: ep.episode_number,
+              season_number: ep.season_number,
+              overview: ep.overview || "",
+              still_path: ep.still_path,
+              air_date: ep.air_date,
+              runtime: ep.runtime,
+              vote_average: ep.vote_average || 0,
+            }));
+          } else {
+            // Fall back to TMDB
+            const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
+            baseEpisodes = seasonRes.episodes || [];
+          }
 
           // Fetch links and extend episode list if DB has more links than TMDB
           const mediaRes = await getMediaLinks(Number(id), "tv", firstSeason);
@@ -271,9 +297,34 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), partOrSeasonNumber));
         }
       } else {
-        // Use standard seasons
-        const seasonRes = await getTVSeasonDetails(Number(id), partOrSeasonNumber);
-        const baseEpisodes = seasonRes.episodes || [];
+        // Use standard seasons - check database first
+        const { data: storedEpisodes } = await supabase
+          .from("entry_metadata")
+          .select("*")
+          .eq("entry_id", String(id))
+          .eq("season_number", partOrSeasonNumber)
+          .order("episode_number", { ascending: true });
+
+        let baseEpisodes: Episode[];
+
+        if (storedEpisodes && storedEpisodes.length > 0) {
+          // Use stored episode data from database
+          baseEpisodes = storedEpisodes.map((ep) => ({
+            id: ep.episode_number,
+            name: ep.name || `Episode ${ep.episode_number}`,
+            episode_number: ep.episode_number,
+            season_number: ep.season_number,
+            overview: ep.overview || "",
+            still_path: ep.still_path,
+            air_date: ep.air_date,
+            runtime: ep.runtime,
+            vote_average: ep.vote_average || 0,
+          }));
+        } else {
+          // Fall back to TMDB
+          const seasonRes = await getTVSeasonDetails(Number(id), partOrSeasonNumber);
+          baseEpisodes = seasonRes.episodes || [];
+        }
 
         const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
         setMediaResult(mediaRes);
