@@ -41,6 +41,12 @@ interface EntryData {
   vote_count?: number | null;
   media_updated_at?: string | null;
   created_at?: string;
+  // New metadata fields
+  overview?: string | null;
+  tagline?: string | null;
+  runtime?: number | null;
+  number_of_seasons?: number | null;
+  admin_edited?: boolean;
 }
 
 export const useEntries = () => {
