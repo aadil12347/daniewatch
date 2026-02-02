@@ -122,7 +122,7 @@ const Anime = () => {
       // Anime page scope requires Japanese language
       if (item.original_language !== "ja") continue;
 
-      const sortYear = item.release_year ?? 0;
+      const sortYear = item.release_year ?? new Date().getFullYear();
       const hasLinks = item.hasWatch || item.hasDownload;
 
       out.push({ id, sortYear, hasLinks });

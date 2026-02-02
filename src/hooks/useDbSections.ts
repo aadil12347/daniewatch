@@ -112,6 +112,14 @@ export const useDbSections = () => {
           if (usedIds.has(key)) return false;
           return config.filter(item);
         })
+        .sort((a, b) => {
+          // Sort by release year descending (newest first)
+          const yearA = a.release_year ?? new Date().getFullYear();
+          const yearB = b.release_year ?? new Date().getFullYear();
+          if (yearB !== yearA) return yearB - yearA;
+          // Secondary sort by rating
+          return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+        })
         .slice(0, config.limit);
 
       // Mark as used
