@@ -34,8 +34,10 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getMovieDetails,
   getMovieImages,
+  getMovieCredits,
   getTVDetails,
   getTVImages,
+  getTVCredits,
   getTVSeasonDetails,
   getImageUrl,
 } from "@/lib/tmdb";
@@ -248,12 +250,21 @@ export function MetadataPrefillTool() {
   };
 
   const prefillMovieEntry = async (entryId: string): Promise<{ success: boolean; message: string }> => {
-    const [details, images] = await Promise.all([
+    const [details, images, credits] = await Promise.all([
       fetchWithRetry(() => getMovieDetails(Number(entryId))),
       fetchWithRetry(() => getMovieImages(Number(entryId))),
+      fetchWithRetry(() => getMovieCredits(Number(entryId))),
     ]);
 
     if (!details) return { success: false, message: "TMDB not found" };
+
+    // Extract top 12 cast members
+    const topCast = credits?.cast?.slice(0, 12).map((c) => ({
+      id: c.id,
+      name: c.name,
+      character: c.character,
+      profile_path: c.profile_path,
+    })) || null;
 
     const { error } = await supabase
       .from("entries")
@@ -267,6 +278,9 @@ export function MetadataPrefillTool() {
         overview: details.overview || null,
         tagline: details.tagline || null,
         runtime: details.runtime || null,
+        status: details.status || null,
+        genres: details.genres || null,
+        cast_data: topCast,
         genre_ids: details.genres?.map((g) => g.id) || null,
         release_year: details.release_date ? Number(details.release_date.split("-")[0]) : null,
         original_language: details.original_language || null,
@@ -276,16 +290,25 @@ export function MetadataPrefillTool() {
       .eq("id", entryId);
 
     if (error) return { success: false, message: error.message };
-    return { success: true, message: "Updated poster, backdrop, logo" };
+    return { success: true, message: "Updated all metadata + cast" };
   };
 
   const prefillSeriesEntry = async (entryId: string): Promise<{ success: boolean; message: string }> => {
-    const [details, images] = await Promise.all([
+    const [details, images, credits] = await Promise.all([
       fetchWithRetry(() => getTVDetails(Number(entryId))),
       fetchWithRetry(() => getTVImages(Number(entryId))),
+      fetchWithRetry(() => getTVCredits(Number(entryId))),
     ]);
 
     if (!details) return { success: false, message: "TMDB not found" };
+
+    // Extract top 12 cast members
+    const topCast = credits?.cast?.slice(0, 12).map((c) => ({
+      id: c.id,
+      name: c.name,
+      character: c.character,
+      profile_path: c.profile_path,
+    })) || null;
 
     const { error: entryError } = await supabase
       .from("entries")
@@ -299,6 +322,10 @@ export function MetadataPrefillTool() {
         overview: details.overview || null,
         tagline: details.tagline || null,
         number_of_seasons: details.number_of_seasons || null,
+        number_of_episodes: details.number_of_episodes || null,
+        status: details.status || null,
+        genres: details.genres || null,
+        cast_data: topCast,
         genre_ids: details.genres?.map((g) => g.id) || null,
         release_year: details.first_air_date ? Number(details.first_air_date.split("-")[0]) : null,
         original_language: details.original_language || null,
