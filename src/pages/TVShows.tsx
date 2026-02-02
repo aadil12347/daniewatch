@@ -108,10 +108,11 @@ const TVShows = () => {
       out.push({ id, sortYear, hasLinks });
     }
 
-    // Sort: items with links first, then by year descending
+    // Sort: newest first (so future-dated/new posts rise to the top), then items with links.
     out.sort((a, b) => {
+      if (b.sortYear !== a.sortYear) return b.sortYear - a.sortYear;
       if (a.hasLinks !== b.hasLinks) return a.hasLinks ? -1 : 1;
-      return b.sortYear - a.sortYear;
+      return 0;
     });
 
     return out;
