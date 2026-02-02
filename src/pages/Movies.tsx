@@ -113,7 +113,7 @@ const Movies = () => {
 
       if (isAnime || isIndian || isKorean) continue;
 
-      const sortYear = item.release_year ?? 0;
+      const sortYear = item.release_year ?? new Date().getFullYear();
       const hasLinks = item.hasWatch || item.hasDownload;
 
       out.push({ id, mediaType: "movie", sortYear, hasLinks });

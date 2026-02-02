@@ -116,7 +116,7 @@ const Korean = () => {
       if (!(inLang || inCountry)) continue;
       if (lang === "ja" && item.genre_ids?.includes(16)) continue;
 
-      const sortYear = item.release_year ?? 0;
+      const sortYear = item.release_year ?? new Date().getFullYear();
       const hasLinks = item.hasWatch || item.hasDownload;
 
       out.push({ id, mediaType, sortYear, hasLinks });
