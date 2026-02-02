@@ -1,34 +1,19 @@
 
-## Complete Post Data Saving System
 
-This plan ensures that when admin saves links, ALL data displayed on the detail page is captured and stored in the database - including complete episode metadata for ALL seasons.
+## Complete Post Data Saving System - Implementation Plan
+
+Now that the database schema has been updated, I'll implement the code changes to save ALL metadata when admin saves links, including complete episode data for ALL seasons.
 
 ---
 
 ### Summary of Changes
 
-| Feature | Implementation |
-|---------|----------------|
-| Save complete movie metadata | Add tagline, runtime, overview to entries table |
-| Save complete series metadata | Add tagline, number_of_episodes, overview |
-| Save ALL seasons' episode data | Auto-fetch and save ALL seasons on series save |
-| Use DB data on detail pages | Prioritize stored data over TMDB fetches |
-| Cast storage (optional) | Store top cast in JSONB column for offline display |
-
----
-
-### Database Schema Changes Required
-
-Before implementation, add these columns to the `entries` table:
-
-```sql
--- Add missing columns to entries table
-ALTER TABLE entries ADD COLUMN IF NOT EXISTS tagline TEXT;
-ALTER TABLE entries ADD COLUMN IF NOT EXISTS number_of_episodes INTEGER;
-ALTER TABLE entries ADD COLUMN IF NOT EXISTS status TEXT;
-ALTER TABLE entries ADD COLUMN IF NOT EXISTS genres JSONB; -- [{id: 1, name: "Action"}]
-ALTER TABLE entries ADD COLUMN IF NOT EXISTS cast_data JSONB; -- Top 12 cast members
-```
+| Change | Description |
+|--------|-------------|
+| Update `useEntries.ts` | Add new fields (tagline, status, genres, cast_data, number_of_episodes) to interface and save functions |
+| Enhance `UpdateLinksPanel.tsx` handleSave | Fetch credits, save ALL seasons' episodes, add progress indicator |
+| Update `MetadataPrefillTool.tsx` | Add cast_data and genres to prefill operations |
+| Improve data completeness | Ensure every save captures everything shown on detail pages |
 
 ---
 
@@ -36,26 +21,46 @@ ALTER TABLE entries ADD COLUMN IF NOT EXISTS cast_data JSONB; -- Top 12 cast mem
 
 #### 1. `src/hooks/useEntries.ts`
 
-**Expand EntryData interface:**
+**Expand EntryData interface with all new fields:**
 
 ```typescript
 interface EntryData {
   // Existing fields...
   
-  // Complete metadata (what's shown on detail page)
+  // New complete metadata fields
   overview?: string | null;
   tagline?: string | null;
-  runtime?: number | null;           // For movies
-  number_of_seasons?: number | null; // For series
-  number_of_episodes?: number | null; // For series
-  status?: string | null;            // Released, Ended, Returning
-  genres?: { id: number; name: string }[] | null;
-  cast_data?: { id: number; name: string; character: string; profile_path: string | null }[] | null;
+  runtime?: number | null;
+  number_of_seasons?: number | null;
+  number_of_episodes?: number | null;  // NEW
+  status?: string | null;               // NEW
+  genres?: { id: number; name: string }[] | null;  // NEW
+  cast_data?: { id: number; name: string; character: string; profile_path: string | null }[] | null;  // NEW
   admin_edited?: boolean;
 }
 ```
 
-**Update save functions to include all metadata fields.**
+**Extend EntryMediaFields to include all metadata:**
+
+```typescript
+type EntryMediaFields = {
+  poster_url?: string | null;
+  backdrop_url?: string | null;
+  logo_url?: string | null;
+  vote_average?: number | null;
+  vote_count?: number | null;
+  media_updated_at?: string | null;
+  // New fields
+  overview?: string | null;
+  tagline?: string | null;
+  runtime?: number | null;
+  number_of_seasons?: number | null;
+  number_of_episodes?: number | null;
+  status?: string | null;
+  genres?: { id: number; name: string }[] | null;
+  cast_data?: { id: number; name: string; character: string; profile_path: string | null }[] | null;
+};
+```
 
 ---
 
@@ -63,26 +68,33 @@ interface EntryData {
 
 **Major enhancement to `handleSave`:**
 
-When saving a movie:
-1. Fetch `getMovieDetails()` and `getMovieCredits()` 
-2. Save all fields: overview, tagline, runtime, status, genres, cast (top 12)
-3. Store poster, backdrop, logo URLs
+For **Movies**:
+1. Fetch `getMovieDetails()`, `getMovieImages()`, AND `getMovieCredits()`
+2. Extract top 12 cast members
+3. Save ALL fields: overview, tagline, runtime, status, genres, cast_data, images
 
-When saving a series:
-1. Fetch `getTVDetails()`, `getTVCredits()`, and `getTVImages()`
-2. Save all fields: overview, tagline, status, genres, number_of_seasons, number_of_episodes, cast
-3. **Fetch ALL seasons' episodes** in sequence with rate-limiting
-4. Save each season's episode data to `entry_metadata` table
+For **Series**:
+1. Fetch `getTVDetails()`, `getTVImages()`, AND `getTVCredits()`
+2. Save ALL metadata fields
+3. **Fetch ALL seasons' episodes** (not just selected season)
+4. Show progress indicator: "Saving Season X of Y..."
+5. Respect episode-level admin_edited flags
 
-**New save flow for series:**
-
+**New imports needed:**
 ```typescript
-// After saving main entry data...
-if (tmdbResult.type === "series" && !adminEdited) {
-  // Fetch and save ALL seasons
-  const validSeasons = details.seasons?.filter(s => s.season_number > 0) || [];
+import { getMovieCredits, getTVCredits } from "@/lib/tmdb";
+```
+
+**Enhanced save flow for series:**
+```typescript
+// After saving main entry...
+if (!adminEdited) {
+  const validSeasons = tmdbResult.seasonDetails?.filter(s => s.season_number > 0) || [];
   
-  for (const season of validSeasons) {
+  for (let i = 0; i < validSeasons.length; i++) {
+    const season = validSeasons[i];
+    setSeasonSaveProgress(`Saving Season ${season.season_number} of ${validSeasons.length}...`);
+    
     const seasonDetails = await getTVSeasonDetails(tmdbResult.id, season.season_number);
     
     // Check existing admin-edited episodes
@@ -99,209 +111,170 @@ if (tmdbResult.type === "series" && !adminEdited) {
     // Only update non-admin-edited episodes
     const episodesToSave = seasonDetails.episodes
       .filter(ep => !adminEditedSet.has(ep.episode_number))
-      .map(ep => ({
-        episode_number: ep.episode_number,
-        name: ep.name || null,
-        overview: ep.overview || null,
-        still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
-        air_date: ep.air_date || null,
-        runtime: ep.runtime || null,
-        vote_average: ep.vote_average ?? null,
-        admin_edited: false,
-      }));
+      .map(ep => ({...}));
     
     if (episodesToSave.length > 0) {
       await saveEpisodeMetadata(String(tmdbResult.id), season.season_number, episodesToSave);
     }
     
-    // Rate limit: 300ms between season fetches
-    await new Promise(r => setTimeout(r, 300));
+    await delay(300); // Rate limit
   }
 }
 ```
 
-**Add progress indicator** when saving series with many seasons.
-
----
-
-#### 3. `src/pages/MovieDetails.tsx`
-
-**Add database-first data loading:**
-
+**New state for progress:**
 ```typescript
-// In fetchData:
-// 1. First check if entry exists in database with complete data
-const { data: dbEntry } = await supabase
-  .from("entries")
-  .select("*")
-  .eq("id", id)
-  .maybeSingle();
-
-if (dbEntry && dbEntry.overview && dbEntry.poster_url) {
-  // Use database data (faster, works offline)
-  setMovie({
-    id: Number(dbEntry.id),
-    title: dbEntry.title,
-    overview: dbEntry.overview,
-    poster_path: dbEntry.poster_url,
-    backdrop_path: dbEntry.backdrop_url,
-    vote_average: dbEntry.vote_average,
-    runtime: dbEntry.runtime,
-    tagline: dbEntry.tagline,
-    genres: dbEntry.genres || [],
-    // ... map other fields
-  });
-  setCast(dbEntry.cast_data || []);
-} else {
-  // Fall back to TMDB API
-  const [movieRes, creditsRes] = await Promise.all([...]);
-}
+const [seasonSaveProgress, setSeasonSaveProgress] = useState<string | null>(null);
 ```
 
 ---
 
-#### 4. `src/pages/TVDetails.tsx`
+#### 3. `src/components/admin/MetadataPrefillTool.tsx`
 
-**Already partially implemented** - enhance to use all stored fields:
+**Enhance both prefillMovieEntry and prefillSeriesEntry to include cast data:**
 
-- Check `entries` table for series metadata (already done partially)
-- Check `entry_metadata` for ALL seasons' episodes (already done)
-- Fall back to TMDB only when data is missing
-
----
-
-#### 5. `src/components/admin/MetadataPrefillTool.tsx`
-
-**Enhance `prefillSeriesEntry` to save cast data:**
-
+For **Movies**:
 ```typescript
-// After fetching details, also fetch credits
-const credits = await getTVCredits(Number(entryId));
-const topCast = credits.cast.slice(0, 12).map(c => ({
-  id: c.id,
-  name: c.name,
-  character: c.character,
-  profile_path: c.profile_path,
-}));
+const prefillMovieEntry = async (entryId: string) => {
+  const [details, images, credits] = await Promise.all([
+    fetchWithRetry(() => getMovieDetails(Number(entryId))),
+    fetchWithRetry(() => getMovieImages(Number(entryId))),
+    fetchWithRetry(() => getMovieCredits(Number(entryId))),
+  ]);
 
-// Include in update
-await supabase.from("entries").update({
-  // ... existing fields
-  cast_data: topCast,
-  genres: details.genres,
-  tagline: details.tagline,
-  status: details.status,
-});
+  const topCast = credits?.cast?.slice(0, 12).map(c => ({
+    id: c.id,
+    name: c.name,
+    character: c.character,
+    profile_path: c.profile_path,
+  })) || null;
+
+  const { error } = await supabase.from("entries").update({
+    // Existing fields...
+    genres: details.genres,
+    status: details.status,
+    cast_data: topCast,
+  }).eq("id", entryId);
+};
+```
+
+For **Series**:
+```typescript
+const prefillSeriesEntry = async (entryId: string) => {
+  const [details, images, credits] = await Promise.all([
+    fetchWithRetry(() => getTVDetails(Number(entryId))),
+    fetchWithRetry(() => getTVImages(Number(entryId))),
+    fetchWithRetry(() => getTVCredits(Number(entryId))),
+  ]);
+
+  const topCast = credits?.cast?.slice(0, 12).map(c => ({
+    id: c.id,
+    name: c.name,
+    character: c.character,
+    profile_path: c.profile_path,
+  })) || null;
+
+  const { error } = await supabase.from("entries").update({
+    // Existing fields...
+    number_of_episodes: details.number_of_episodes || null,
+    status: details.status || null,
+    genres: details.genres,
+    cast_data: topCast,
+  }).eq("id", entryId);
+};
+```
+
+**Add new imports:**
+```typescript
+import { getMovieCredits, getTVCredits } from "@/lib/tmdb";
 ```
 
 ---
 
-### Complete Data Mapping
+### Data Saved Per Entry Type
 
-| Detail Page Field | DB Column | Source |
-|-------------------|-----------|--------|
-| Title | `title` | entries |
-| Poster | `poster_url` | entries |
-| Backdrop | `backdrop_url` | entries |
-| Logo | `logo_url` | entries |
-| Rating | `vote_average` | entries |
-| Vote Count | `vote_count` | entries |
-| Overview | `overview` | entries |
-| Tagline | `tagline` | entries |
-| Runtime | `runtime` | entries |
-| Genres | `genres` (JSONB) | entries |
-| Release Year | `release_year` | entries |
-| Status | `status` | entries |
-| Cast | `cast_data` (JSONB) | entries |
-| Number of Seasons | `number_of_seasons` | entries |
-| Number of Episodes | `number_of_episodes` | entries |
-| Episode Names | `name` | entry_metadata |
-| Episode Overview | `overview` | entry_metadata |
-| Episode Thumbnail | `still_path` | entry_metadata |
-| Episode Air Date | `air_date` | entry_metadata |
-| Episode Runtime | `runtime` | entry_metadata |
-| Episode Rating | `vote_average` | entry_metadata |
+| Field | Movie | Series | Episode |
+|-------|-------|--------|---------|
+| title | Yes | Yes | - |
+| poster_url | Yes | Yes | - |
+| backdrop_url | Yes | Yes | - |
+| logo_url | Yes | Yes | - |
+| vote_average | Yes | Yes | Yes |
+| vote_count | Yes | Yes | - |
+| overview | Yes | Yes | Yes |
+| tagline | Yes | Yes | - |
+| runtime | Yes | - | Yes |
+| genres | Yes | Yes | - |
+| status | Yes | Yes | - |
+| cast_data (top 12) | Yes | Yes | - |
+| release_year | Yes | Yes | - |
+| number_of_seasons | - | Yes | - |
+| number_of_episodes | - | Yes | - |
+| name | - | - | Yes |
+| still_path | - | - | Yes |
+| air_date | - | - | Yes |
+| admin_edited | Yes | Yes | Yes |
 
 ---
 
-### Save Flow Diagram
+### Save Flow for Series (Enhanced)
 
 ```text
-Admin clicks SAVE
-       │
-       ▼
-┌──────────────────────────────────────────┐
-│ Fetch TMDB data:                         │
-│ - Details (overview, tagline, runtime)   │
-│ - Images (poster, backdrop, logo)        │
-│ - Credits (top 12 cast)                  │
-└──────────────────────────────────────────┘
-       │
-       ▼
-┌──────────────────────────────────────────┐
-│ Save to entries table:                   │
-│ - All metadata fields                    │
-│ - Watch/download links                   │
-│ - poster_url, backdrop_url, logo_url     │
-│ - genres, cast_data (JSONB)              │
-└──────────────────────────────────────────┘
-       │
-       ▼ (if Series)
-┌──────────────────────────────────────────┐
-│ For EACH season (with rate limiting):    │
-│ 1. Fetch season details from TMDB        │
-│ 2. Check existing admin_edited episodes  │
-│ 3. Save non-edited episodes to           │
-│    entry_metadata table                  │
-└──────────────────────────────────────────┘
-       │
-       ▼
-┌──────────────────────────────────────────┐
-│ Show success toast with summary:         │
-│ "Saved 5 seasons, 62 episodes"           │
-└──────────────────────────────────────────┘
+Admin clicks SAVE for Series
+       |
+       v
++------------------------------------------+
+| 1. Fetch TMDB data:                      |
+|    - getTVDetails()                      |
+|    - getTVImages()                       |
+|    - getTVCredits() (top 12 cast)        |
++------------------------------------------+
+       |
+       v
++------------------------------------------+
+| 2. Save to entries table:                |
+|    - All metadata fields                 |
+|    - Watch/download links (season)       |
+|    - poster_url, backdrop_url, logo_url  |
+|    - genres, cast_data (JSONB)           |
+|    - status, number_of_episodes          |
++------------------------------------------+
+       |
+       v (if not admin_edited)
++------------------------------------------+
+| 3. For EACH season:                      |
+|    - Show "Saving Season X of Y..."      |
+|    - Fetch getTVSeasonDetails()          |
+|    - Check existing admin_edited eps     |
+|    - Upsert non-edited episodes to       |
+|      entry_metadata table                |
+|    - 300ms delay between seasons         |
++------------------------------------------+
+       |
+       v
++------------------------------------------+
+| 4. Show success toast:                   |
+|    "Saved 5 seasons, 62 episodes"        |
++------------------------------------------+
 ```
 
 ---
 
-### Implementation Order
+### Estimated Code Changes
 
-1. **Database Schema**: Add new columns (tagline, number_of_episodes, status, genres, cast_data)
-2. **useEntries.ts**: Update interfaces and save functions
-3. **UpdateLinksPanel.tsx**: Enhance handleSave to fetch ALL data and ALL seasons
-4. **MetadataPrefillTool.tsx**: Update prefill to include all fields
-5. **MovieDetails.tsx**: Add DB-first loading (optional enhancement)
-6. **TVDetails.tsx**: Ensure all stored data is used (mostly done)
+| File | Lines Modified/Added |
+|------|---------------------|
+| `src/hooks/useEntries.ts` | ~30 lines (interface expansion) |
+| `src/components/admin/UpdateLinksPanel.tsx` | ~80 lines (enhanced save + progress) |
+| `src/components/admin/MetadataPrefillTool.tsx` | ~40 lines (add credits fetch) |
 
 ---
 
-### Rate Limiting Strategy
+### Rate Limiting
 
 For series with many seasons (e.g., 15 seasons):
 - 300ms delay between season fetches
-- Show progress: "Saving Season 3 of 15..."
-- Allow abort if needed
-- Total time for 15 seasons: ~4.5 seconds
+- Progress indicator: "Saving Season 3 of 15..."
+- Total time for 15 seasons: ~5 seconds
+- Existing retry logic handles TMDB 429 errors
 
----
-
-### Files Summary
-
-| File | Action | Changes |
-|------|--------|---------|
-| `src/hooks/useEntries.ts` | Modify | Add new fields to interface and save functions |
-| `src/components/admin/UpdateLinksPanel.tsx` | Modify | Enhance handleSave to fetch ALL seasons' episodes |
-| `src/components/admin/MetadataPrefillTool.tsx` | Modify | Add cast_data and genres to prefill |
-| `src/pages/MovieDetails.tsx` | Modify | Add DB-first loading (optional) |
-| `src/pages/TVDetails.tsx` | Minor | Already uses DB data |
-
----
-
-### Estimated Changes
-
-| File | Lines Modified |
-|------|----------------|
-| `useEntries.ts` | ~40 lines |
-| `UpdateLinksPanel.tsx` | ~80 lines |
-| `MetadataPrefillTool.tsx` | ~30 lines |
-| `MovieDetails.tsx` | ~50 lines (optional) |
