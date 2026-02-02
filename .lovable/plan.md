@@ -1,163 +1,122 @@
 
-## Fix Manifest Cache and Admin Link Indicators Not Updating
 
-This plan addresses two issues:
-1. New posts added to manifest not showing on website (24-hour aggressive cache)
-2. Admin dots not glowing for new posts (availability data also cached)
+## Fix New Posts Not Showing at Top of Pages
+
+New 2026/2025 posts are being added to the manifest but not appearing at the top of listing pages. This plan fixes the sorting logic to ensure newest items always appear first.
 
 ---
 
 ### Root Cause Analysis
 
-| Issue | Root Cause | Location |
-|-------|------------|----------|
-| **Manifest not updating** | 24-hour localStorage cache in `useDbManifest.ts`. When cache is valid, it never fetches new data. | `CACHE_DURATION = 24 * 60 * 60 * 1000` (line 48) |
-| **Dots not glowing** | `useEntryAvailability.ts` has a 5-minute stale time. More importantly, the `getAvailability()` function is used but React Query data may be stale. | `staleTime: 5 * 60 * 1000` (line 113) |
-| **No session invalidation** | When admin generates manifest, only `localStorage.removeItem("db_manifest_cache")` is called. But next visit still uses cache if session hasn't expired. | `ManifestUpdateTool.tsx` line 177 |
-| **Background refresh too slow** | 5-second delay on background refresh means stale data shows first | `setTimeout(checkForUpdates, 5000)` (line 141) |
+| Issue | Root Cause | Impact |
+|-------|------------|--------|
+| **Many items not on Movies page** | Indian content (`hi`, `ta`, `te` languages) is correctly filtered to show only on the dedicated category pages | Expected behavior - not a bug |
+| **Items with null year sort to bottom** | `sortYear = item.release_year ?? 0` makes null years become year 0 | New items without release_year appear at bottom instead of top |
+| **Homepage sections not sorted** | `useDbSections.ts` filters items but doesn't sort by year before slicing | "Just Added" section shows items in random order, not newest-first |
 
 ---
 
-### Solution Overview
+### Solution
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     BEFORE (broken)                             │
-├─────────────────────────────────────────────────────────────────┤
-│  localStorage cache: 24 hours                                   │
-│  Background refresh: 5 second delay                             │
-│  Session check: none                                            │
-│  Availability cache: 5 minutes (no refresh on manifest update)  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                     AFTER (fixed)                               │
-├─────────────────────────────────────────────────────────────────┤
-│  localStorage cache: 30 minutes                                 │
-│  Session check: Always fetch fresh on new browser session       │
-│  Background refresh: Immediate (no delay)                       │
-│  Admin update: Invalidates both manifest AND availability cache │
-└─────────────────────────────────────────────────────────────────┘
-```
+#### 1. Fix Null Year Sorting
 
----
+**Files:** `Movies.tsx`, `TVShows.tsx`, `Anime.tsx`, `Korean.tsx`
 
-### Implementation Steps
-
-#### Step 1: Reduce Manifest Cache Duration + Add Session Check
-
-**File:** `src/hooks/useDbManifest.ts`
-
-**Changes:**
-1. Reduce `CACHE_DURATION` from 24 hours to 30 minutes
-2. Add `SESSION_CHECK_KEY` in sessionStorage - if new session, bypass localStorage cache
-3. Remove 5-second delay on background refresh - check immediately
-4. Add `refreshManifest()` function for manual refresh
+Change the fallback for null release years from `0` to current year:
 
 ```typescript
-const CACHE_KEY = "db_manifest_cache";
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (was 24 hours)
-const SESSION_CHECK_KEY = "manifest_session_checked";
+// Before:
+const sortYear = item.release_year ?? 0;
 
-// In load function:
-const load = async () => {
-  // Check if this is a new browser session
-  const sessionChecked = sessionStorage.getItem(SESSION_CHECK_KEY);
-  
-  // Only use cache if session already checked it
-  if (sessionChecked) {
-    const cached = localStorage.getItem(CACHE_KEY);
-    // ... existing cache logic
-  }
-  
-  // Mark session as checked after first load
-  sessionStorage.setItem(SESSION_CHECK_KEY, "1");
-  
-  // ... fetch from storage
-};
-
-// In background refresh effect:
-useEffect(() => {
-  if (!manifest || isFetching) return;
-
-  const checkForUpdates = async () => {
-    const fetched = await fetchManifest();
-    if (fetched && fetched.generated_at !== manifest.generated_at) {
-      console.log("[useDbManifest] New manifest version detected");
-      setManifest(fetched);
-    }
-  };
-
-  // Check immediately, no 5-second delay
-  checkForUpdates();
-}, [manifest?.generated_at, isFetching]);
+// After:
+const sortYear = item.release_year ?? new Date().getFullYear();
 ```
+
+This ensures newly added items without release year metadata appear at the **top** (treated as "this year") rather than the bottom (treated as year 0).
 
 ---
 
-#### Step 2: Clear Session Check After Admin Updates Manifest
+#### 2. Sort Homepage Sections by Year
 
-**File:** `src/components/admin/ManifestUpdateTool.tsx`
+**File:** `src/hooks/useDbSections.ts`
 
-After successful manifest upload, also:
-1. Clear the session check flag so next load fetches fresh
-2. Invalidate the React Query cache for entry availability
+Add sorting before slicing to ensure newest items appear first:
 
 ```typescript
-// After line 177 (localStorage.removeItem("db_manifest_cache"))
-localStorage.removeItem("db_manifest_cache");
-sessionStorage.removeItem("manifest_session_checked");
+// Before (line 109-115):
+const filtered = items
+  .filter((item) => {
+    const key = `${item.id}-${item.media_type}`;
+    if (usedIds.has(key)) return false;
+    return config.filter(item);
+  })
+  .slice(0, config.limit);
 
-// Invalidate availability cache so dots update
-queryClient.invalidateQueries({ queryKey: ["entry-availability"] });
-```
-
-This requires:
-- Import `useQueryClient` from React Query
-- Get `queryClient` in the component
-
----
-
-#### Step 3: Reduce Entry Availability Stale Time
-
-**File:** `src/hooks/useEntryAvailability.ts`
-
-Reduce stale time from 5 minutes to 1 minute so availability data refreshes more frequently:
-
-```typescript
-staleTime: 1 * 60 * 1000, // 1 minute (was 5 minutes)
+// After:
+const filtered = items
+  .filter((item) => {
+    const key = `${item.id}-${item.media_type}`;
+    if (usedIds.has(key)) return false;
+    return config.filter(item);
+  })
+  .sort((a, b) => {
+    // Sort by release year descending (newest first)
+    const yearA = a.release_year ?? new Date().getFullYear();
+    const yearB = b.release_year ?? new Date().getFullYear();
+    if (yearB !== yearA) return yearB - yearA;
+    // Secondary sort by rating
+    return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+  })
+  .slice(0, config.limit);
 ```
 
 ---
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/hooks/useDbManifest.ts` | Reduce cache to 30 min, add session check, immediate background refresh |
-| `src/components/admin/ManifestUpdateTool.tsx` | Clear session flag + invalidate availability cache after update |
-| `src/hooks/useEntryAvailability.ts` | Reduce stale time to 1 minute |
+| File | Change |
+|------|--------|
+| `src/pages/Movies.tsx` | Line 116: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
+| `src/pages/TVShows.tsx` | Line 105: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
+| `src/pages/Anime.tsx` | Line 125: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
+| `src/pages/Korean.tsx` | Line 119: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
+| `src/hooks/useDbSections.ts` | Lines 109-115: Add `.sort()` before `.slice()` |
 
 ---
 
 ### Expected Behavior After Fix
 
-| Scenario | Before | After |
-|----------|--------|-------|
-| **New visitor** | Uses 24-hour cache | Always fetches fresh on first visit |
-| **Same session, second page** | Uses cache | Uses cache (30 min) |
-| **Admin updates manifest** | Only admin sees update | All visitors get fresh data on next visit |
-| **Admin dots on new posts** | Don't glow (stale cache) | Glow correctly (1-min stale + invalidation) |
-| **Background refresh** | 5 second delay | Immediate check |
+| Page | Before | After |
+|------|--------|-------|
+| **Movies** | 2026 items may appear after older items | 2026 items appear first |
+| **TV Shows** | Same issue | 2026 items appear first |
+| **Anime** | Same issue | 2026 items appear first |
+| **Korean** | Same issue | 2026 items appear first |
+| **Homepage "Just Added"** | Random order within 2024+ items | Sorted by year desc, then rating |
+| **Items with null year** | Sort to bottom (year = 0) | Sort to top (year = current) |
+
+---
+
+### Important Note About Content Scoping
+
+Many of your newly added posts are Indian content (Hindi, Telugu languages). These are **correctly** filtered to only appear on the dedicated category pages:
+
+| Content | Language | Where It Appears |
+|---------|----------|------------------|
+| "Mrs. Deshpande" | Hindi (`hi`) | Indian category page |
+| "The Girlfriend" | Telugu (`te`) | Indian category page |
+| "Haq" | Hindi (`hi`) | Indian category page |
+| "HIM" | English (`en`) | Movies page (main) |
+
+This is expected behavior - content is scoped to prevent overlap between category pages. To see Indian content, users should navigate to the Indian category page.
 
 ---
 
 ### Technical Notes
 
-1. **Session check logic**: `sessionStorage` resets when browser tab closes. Each new session forces a fresh manifest fetch, ensuring users see recent updates.
+1. **`new Date().getFullYear()`** returns 2026 for the current date, ensuring newly added items with missing years sort to the very top
 
-2. **Why 30 minutes?**: Balances performance (fewer fetches) with freshness. Most admins work in sessions, so updates propagate within reasonable time.
+2. **Stable sorting** - JavaScript's sort is stable in modern engines, so items with the same year maintain their relative order
 
-3. **Invalidating availability cache**: When admin clicks "Update Data", we also invalidate the React Query cache for entry availability. This ensures the glowing dots update without requiring a page refresh.
+3. **Performance** - The sort operation is O(n log n) but operates on small arrays (typically <100 items per section), so no performance impact
 
-4. **Immediate background refresh**: By removing the `setTimeout`, the app checks for manifest updates as soon as the initial data is loaded. If a newer version exists on the server, it updates silently.
