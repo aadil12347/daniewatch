@@ -1,143 +1,149 @@
 
-## Fix Curation Controls Visibility + Add Drag-and-Drop Reordering
+## Fix Drag-and-Drop, Instant Updates, and Pin Button Positioning
 
-This plan addresses two issues:
-1. Curation controls not visible when expected
-2. Adding drag-and-drop reordering for curated items
+This plan addresses three issues:
+1. Drag-and-drop reordering not working
+2. Admin actions (pin, add, remove) not updating instantly
+3. Pin button should be at bottom-right opposite the watchlist button
 
 ---
 
 ### Root Cause Analysis
 
-After investigation, I identified the following issues:
-
-| Issue | Location | Problem |
-|-------|----------|---------|
-| **Card overlay hidden** | `CurationCardOverlay.tsx` | Pin/Remove buttons have `opacity-0 group-hover:opacity-100` - only visible on hover, not always visible in Edit Mode |
-| **Section controls may render but not be noticeable** | `SectionCurationControls.tsx` | Controls are small and may blend with the UI |
-| **No visual indicators on curated/pinned items** | `MovieCard.tsx` | No badge or highlight to show which items are pinned or curated |
+| Issue | Root Cause |
+|-------|------------|
+| **Drag-and-drop not working** | `TabbedContentRow` renders plain `MovieCard` components without DnD context. `ContentRow` has DnD but may not be triggering correctly. |
+| **Updates not instant** | Each component (ContentRow, TabbedContentRow, CurationCardOverlay, SectionCurationControls) calls `useSectionCuration(sectionId)` independently, creating separate local state instances. When one updates, others don't see changes. |
+| **Pin button wrong position** | Currently in `CurationCardOverlay` at bottom-left (`bottom-2 left-2`). Should be at bottom-right to match watchlist button position on opposite side. |
 
 ---
 
-### Part 1: Fix Curation Controls Visibility
+### Solution Architecture
 
-#### 1.1 Make CurationCardOverlay Always Visible in Edit Mode
-
-**File:** `src/components/admin/CurationCardOverlay.tsx`
-
-**Current behavior:** Buttons have `opacity-0 group-hover:opacity-100` - only visible on hover
-
-**Fixed behavior:** Remove hover-only opacity; buttons always visible in Edit Mode
+**Migrate curation state to React Query** for automatic cache synchronization across all components using the same query key.
 
 ```text
-Change:
-- className="opacity-0 group-hover:opacity-100"
-
-To:
-- className="" (always visible when rendered)
-
-Also add a visual "PINNED" badge for pinned items.
-```
-
-#### 1.2 Make SectionCurationControls More Prominent
-
-**File:** `src/components/admin/SectionCurationControls.tsx`
-
-**Current behavior:** Small outline buttons that may not stand out
-
-**Fixed behavior:** Add a visual indicator (badge/pill) showing "Curation Mode" active, with count of curated items
-
-```text
-Add:
-- "Curation Mode" badge with primary color styling
-- Show count of curated items in section
-- More prominent button styling
-```
-
-#### 1.3 Add Visual Indicator for Pinned/Curated Items
-
-**File:** `src/components/MovieCard.tsx`
-
-**Add:** When in Edit Mode, show a small pin icon badge on cards that are pinned
-
-```text
-Add visual indicator when:
-- movie._isPinned = true → Show "📌" badge
-- movie._isCurated = true → Show subtle highlight border
+┌─────────────────────────────────────────────────────────────────────┐
+│                        React Query Cache                           │
+│  Key: ["section_curation", sectionId]                              │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  Data: CuratedItem[]                                         │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+         ▲                    ▲                    ▲
+         │                    │                    │
+    useSectionCuration   useSectionCuration   useSectionCuration
+         │                    │                    │
+   ContentRow        CurationCardOverlay   SectionCurationControls
+         │                    │                    │
+         └────────────────────┼────────────────────┘
+                              │
+                    Instant sync via queryClient.setQueryData()
 ```
 
 ---
 
-### Part 2: Add Drag-and-Drop Reordering
+### Implementation Steps
 
-#### 2.1 Install DnD Library
-
-**Package:** `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities`
-
-This is a lightweight, accessible, and performant drag-and-drop library for React.
-
-#### 2.2 Create Draggable Content Row Component
-
-**New File:** `src/components/admin/DraggableContentRow.tsx`
-
-This wrapper component enables reordering when in Edit Mode:
-
-```text
-- Wraps existing ContentRow content
-- Uses @dnd-kit/sortable for reorder
-- Only enables drag when isAdmin && isEditLinksMode
-- On drop, calls reorderSection() from useSectionCuration
-- Shows drag handles on cards
-```
-
-#### 2.3 Add Reorder Function to useSectionCuration Hook
+#### Step 1: Refactor `useSectionCuration` to Use React Query
 
 **File:** `src/hooks/useSectionCuration.ts`
 
-**Add:** `reorderSection(orderedItems)` function to persist new order:
+**Current:** Uses `useState` for local state - changes don't propagate
+**New:** Use `useQuery` for data fetching and `useMutation` with optimistic updates
 
 ```text
-reorderSection(orderedItems: Array<{tmdbId, mediaType}>):
-1. Update local state with new order
-2. Batch update sort_order in section_curation table
-3. Handle optimistic updates for instant feedback
+Changes:
+1. Replace useState(curatedItems) with useQuery(["section_curation", sectionId])
+2. Add mutations for addToSection, removeFromSection, pinToTop, unpinFromTop, reorderSection
+3. Use queryClient.setQueryData for instant optimistic updates
+4. Use queryClient.invalidateQueries to refetch after mutations
 ```
 
-#### 2.4 Integrate into ContentRow
+Key code pattern:
+```typescript
+const queryClient = useQueryClient();
 
-**File:** `src/components/ContentRow.tsx`
+const { data: curatedItems = [] } = useQuery({
+  queryKey: ["section_curation", sectionId],
+  queryFn: async () => {
+    const { data } = await supabase
+      .from("section_curation")
+      .select("...")
+      .eq("section_id", sectionId);
+    return data || [];
+  },
+  enabled: !!sectionId,
+  staleTime: Infinity, // Don't auto-refetch
+});
 
-**Modify:**
-- When `isAdmin && isEditLinksMode && sectionId`, wrap cards in a sortable context
-- Add drag handle icon on each card
-- On drag end, call reorderSection
+const pinMutation = useMutation({
+  mutationFn: async ({ tmdbId, mediaType, metadata }) => {
+    // Supabase upsert
+  },
+  onMutate: async (vars) => {
+    // Cancel outgoing refetches
+    await queryClient.cancelQueries(["section_curation", sectionId]);
+    
+    // Snapshot previous value
+    const previous = queryClient.getQueryData(["section_curation", sectionId]);
+    
+    // Optimistically update
+    queryClient.setQueryData(["section_curation", sectionId], (old) => {
+      // Update logic
+    });
+    
+    return { previous };
+  },
+  onError: (err, vars, context) => {
+    // Rollback on error
+    queryClient.setQueryData(["section_curation", sectionId], context.previous);
+  },
+});
+```
 
 ---
 
-### Part 3: Enhance Edit Mode Indicator
+#### Step 2: Add Drag-and-Drop to TabbedContentRow
 
-**File:** `src/components/admin/EditLinksModeIndicator.tsx`
+**File:** `src/components/TabbedContentRow.tsx`
 
-**Add:** More prominent styling and status info:
+**Current:** Renders plain `MovieCard` without DnD context
+**New:** Wrap with DndContext and SortableContext when in edit mode
 
 ```text
-- Show "Curation + Links Mode Active"
-- Add subtle pulsing animation to draw attention
-- Show quick stats: "X sections have curation"
+Changes:
+1. Import DndContext, SortableContext, useSensors from @dnd-kit
+2. Add handleDragEnd callback that calls reorderSection
+3. Conditionally render SortableCard wrapper when isDraggable
+4. Generate sortable IDs from visible items
 ```
 
 ---
 
-### Implementation Order
+#### Step 3: Move Pin Button to Bottom-Right
 
-1. **Fix CurationCardOverlay visibility** - Remove hover-only opacity
-2. **Enhance SectionCurationControls styling** - Add prominent badge
-3. **Add pinned item indicators** - Visual badges on MovieCard
-4. **Install @dnd-kit packages** - For drag-and-drop
-5. **Add reorderSection to hook** - Database persistence
-6. **Create DraggableContentRow** - Sortable wrapper
-7. **Integrate drag-and-drop into ContentRow** - Connect everything
-8. **Test end-to-end** - Verify all controls visible and functional
+**File:** `src/components/admin/CurationCardOverlay.tsx`
+
+**Current position:** `bottom-2 left-2`
+**New position:** `bottom-2 right-2`
+
+```text
+Changes:
+1. Change action buttons container from "bottom-2 left-2" to "bottom-2 right-2"
+2. Adjust positioning to not overlap with watchlist button
+3. Keep drag handle at top-left for easy grabbing
+```
+
+---
+
+#### Step 4: Remove Duplicate CurationCardOverlay from SortableCard
+
+**File:** `src/components/admin/SortableCard.tsx`
+
+**Issue:** SortableCard renders its own CurationCardOverlay, but MovieCard also renders one when sectionId is provided. This causes duplicate overlays.
+
+**Fix:** Only render CurationCardOverlay in SortableCard (with drag handle props), and pass a prop to MovieCard to skip its own overlay.
 
 ---
 
@@ -145,64 +151,46 @@ reorderSection(orderedItems: Array<{tmdbId, mediaType}>):
 
 | File | Changes |
 |------|---------|
-| `src/components/admin/CurationCardOverlay.tsx` | Remove hover-only opacity, always visible in edit mode |
-| `src/components/admin/SectionCurationControls.tsx` | Add prominent "Curation Mode" badge |
-| `src/components/MovieCard.tsx` | Add pinned/curated visual indicators |
-| `src/hooks/useSectionCuration.ts` | Add `reorderSection()` function |
-| `src/components/ContentRow.tsx` | Integrate drag-and-drop when in edit mode |
-| `src/components/TabbedContentRow.tsx` | Same drag-and-drop integration |
-
-### New Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/admin/SortableCard.tsx` | Wrapper for draggable MovieCard |
-
-### Dependencies to Install
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `@dnd-kit/core` | ^6.0.0 | Core drag-and-drop engine |
-| `@dnd-kit/sortable` | ^8.0.0 | Sortable list primitives |
-| `@dnd-kit/utilities` | ^3.0.0 | CSS transform utilities |
+| `src/hooks/useSectionCuration.ts` | Refactor to use React Query with optimistic updates |
+| `src/components/TabbedContentRow.tsx` | Add DnD context and SortableCard rendering |
+| `src/components/admin/CurationCardOverlay.tsx` | Move buttons to bottom-right |
+| `src/components/admin/SortableCard.tsx` | Remove duplicate overlay, pass skipOverlay to MovieCard |
+| `src/components/MovieCard.tsx` | Add skipCurationOverlay prop to prevent duplicate |
 
 ---
 
 ### Visual Preview
 
-**Section Header (Edit Mode ON):**
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│  Trending Now    🟣 Curation Mode (3 items)    [+ Add]  [Reset]   │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-**Card (Edit Mode ON - Always Visible Controls):**
+**Before (Pin at bottom-left):**
 ```text
 ┌────────────────┐
-│ ≡ DRAG        │  ← Drag handle (always visible)
+│ [Block] [⭐]   │  ← Admin controls top-right
 │                │
 │    POSTER      │
-│      📌        │  ← Pin badge (if pinned)
-│ [📌] [×]       │  ← Curation buttons (always visible, not hover)
+│                │
+│ [📌] [×]       │  ← Curation at bottom-left (WRONG)
+│                │
+│    [🔖]        │  ← Watchlist at bottom-right
 └────────────────┘
 ```
 
-**Edit Mode Indicator (Bottom Right):**
+**After (Pin at bottom-right, opposite watchlist):**
 ```text
-┌─────────────────────────────────┐
-│  🟣 EDIT MODE                   │
-│  Ctrl+Shift+E to exit           │
-│  [Exit Mode]                    │
-└─────────────────────────────────┘
+┌────────────────┐
+│ [⠿] [Block]   │  ← Drag handle + Block at top-left
+│                │
+│    POSTER      │
+│                │
+│                │
+│ [🔖]    [📌][×]│  ← Watchlist left, Curation right
+└────────────────┘
 ```
 
 ---
 
 ### Technical Notes
 
-- Drag-and-drop only activates in Edit Mode
-- Reorder persists immediately to Supabase
-- Optimistic updates ensure instant visual feedback
-- Pin badge uses a simple icon overlay, not an extra component
-- All existing features (hover effects, click navigation) remain unchanged
+1. **React Query Cache Key**: `["section_curation", sectionId]` ensures all components watching the same section share identical data
+2. **Optimistic Updates**: UI updates instantly before server confirms, rollback on error
+3. **Drag-and-Drop Sensors**: PointerSensor with 8px distance constraint prevents accidental drags during clicks
+4. **No Page Refresh**: All changes propagate automatically through React Query's cache invalidation
