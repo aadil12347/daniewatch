@@ -1,122 +1,161 @@
 
+## Comprehensive Fix: Manifest Fetching, Sorting, Curation Removal, and Admin Dots
 
-## Fix New Posts Not Showing at Top of Pages
-
-New 2026/2025 posts are being added to the manifest but not appearing at the top of listing pages. This plan fixes the sorting logic to ensure newest items always appear first.
-
----
-
-### Root Cause Analysis
-
-| Issue | Root Cause | Impact |
-|-------|------------|--------|
-| **Many items not on Movies page** | Indian content (`hi`, `ta`, `te` languages) is correctly filtered to show only on the dedicated category pages | Expected behavior - not a bug |
-| **Items with null year sort to bottom** | `sortYear = item.release_year ?? 0` makes null years become year 0 | New items without release_year appear at bottom instead of top |
-| **Homepage sections not sorted** | `useDbSections.ts` filters items but doesn't sort by year before slicing | "Just Added" section shows items in random order, not newest-first |
+This plan addresses all 5 requirements in a single implementation:
 
 ---
 
-### Solution
+### Summary of Changes
 
-#### 1. Fix Null Year Sorting
+| Issue | Solution |
+|-------|----------|
+| 1. Fetch all posts on every new session | Already implemented - but add explicit sort after fetch |
+| 2. Sort by year (2026→2025→2024) with newest-added first | Sort manifest items by `release_year` desc, then by manifest array order (which reflects DB insertion order) |
+| 3. New posts in manifest appear in correct order | Manifest generator will sort items before saving |
+| 4. Remove curation completely, restore old Edit Mode | Remove all curation-related code, keep simple Edit Mode with click-to-edit |
+| 5. Admin dots not glowing | MovieCard uses `useEntryAvailability` (DB query). Switch to use manifest's `availabilityById` instead |
 
-**Files:** `Movies.tsx`, `TVShows.tsx`, `Anime.tsx`, `Korean.tsx`
+---
 
-Change the fallback for null release years from `0` to current year:
+### Implementation Details
+
+#### Part 1: Sort Manifest Items During Generation
+
+**File:** `src/components/admin/ManifestUpdateTool.tsx`
+
+Sort items by `release_year` descending before saving to manifest. This ensures the manifest itself is always in "newest first" order:
+
+```typescript
+// After building items array, sort before creating manifest
+items.sort((a, b) => {
+  const yearA = a.release_year ?? new Date().getFullYear();
+  const yearB = b.release_year ?? new Date().getFullYear();
+  if (yearB !== yearA) return yearB - yearA;
+  // Secondary: by vote_average
+  return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+});
+```
+
+---
+
+#### Part 2: Fix Admin Dots to Use Manifest
+
+**File:** `src/components/MovieCard.tsx`
+
+The glowing dots currently use `useEntryAvailability` which queries the database. Change to use `useDbManifest` which reads from the cached manifest:
 
 ```typescript
 // Before:
-const sortYear = item.release_year ?? 0;
+const { getAvailability, getHoverImageUrl } = useEntryAvailability();
+const { hasWatch, hasDownload } = getAvailability(movie.id);
 
 // After:
-const sortYear = item.release_year ?? new Date().getFullYear();
+const { availabilityById } = useDbManifest();
+const manifestAvailability = availabilityById.get(movie.id);
+const hasWatch = manifestAvailability?.hasWatch ?? false;
+const hasDownload = manifestAvailability?.hasDownload ?? false;
 ```
 
-This ensures newly added items without release year metadata appear at the **top** (treated as "this year") rather than the bottom (treated as year 0).
+This ensures dots glow immediately after manifest is fetched on session start.
 
 ---
 
-#### 2. Sort Homepage Sections by Year
+#### Part 3: Remove Curation System Completely
 
-**File:** `src/hooks/useDbSections.ts`
+**Files to modify:**
 
-Add sorting before slicing to ensure newest items appear first:
+| File | Changes |
+|------|---------|
+| `src/components/ContentRow.tsx` | Remove all curation imports, DnD context, SortableContext, curation logic |
+| `src/components/admin/SectionCurationControls.tsx` | Delete file |
+| `src/components/admin/CurationCardOverlay.tsx` | Delete file |
+| `src/components/admin/SortableCard.tsx` | Delete file |
+| `src/components/admin/PostSearchPicker.tsx` | Delete file |
+| `src/hooks/useSectionCuration.ts` | Delete file |
+| `src/contexts/EditLinksModeContext.tsx` | Remove picker-related state (pickerOpen, openPicker, closePicker) |
+| `src/components/admin/EditLinksModeIndicator.tsx` | Remove PostSearchPicker import |
+| `src/pages/Movies.tsx` | Remove curation imports and getCuratedItems usage |
+| `src/pages/TVShows.tsx` | Remove curation imports and getCuratedItems usage |
+| `src/pages/Anime.tsx` | Remove curation imports and getCuratedItems usage |
+| `src/pages/Korean.tsx` | Remove curation imports and getCuratedItems usage |
+| `src/pages/Index.tsx` | Curation was only passed as sectionId, which will be ignored |
+| `src/components/MovieCard.tsx` | Remove CurationCardOverlay import and usage, remove sectionId prop |
+
+**Simplified Edit Mode behavior:**
+- Ctrl+Shift+E toggles Edit Mode
+- In Edit Mode, clicking a card opens the Edit Links modal (existing)
+- No drag-and-drop, no pinning, no section curation
+
+---
+
+#### Part 4: Ensure Manifest is Fetched Fresh Each Session
+
+**File:** `src/hooks/useDbManifest.ts` (already implemented)
+
+The current logic is correct:
+- `SESSION_CHECK_KEY` in `sessionStorage` forces fresh fetch on new session
+- Background refresh checks for newer `generated_at` timestamp
+
+No changes needed, but add an explicit sort after fetching to ensure order:
 
 ```typescript
-// Before (line 109-115):
-const filtered = items
-  .filter((item) => {
-    const key = `${item.id}-${item.media_type}`;
-    if (usedIds.has(key)) return false;
-    return config.filter(item);
-  })
-  .slice(0, config.limit);
-
-// After:
-const filtered = items
-  .filter((item) => {
-    const key = `${item.id}-${item.media_type}`;
-    if (usedIds.has(key)) return false;
-    return config.filter(item);
-  })
-  .sort((a, b) => {
-    // Sort by release year descending (newest first)
-    const yearA = a.release_year ?? new Date().getFullYear();
-    const yearB = b.release_year ?? new Date().getFullYear();
-    if (yearB !== yearA) return yearB - yearA;
-    // Secondary sort by rating
-    return (b.vote_average ?? 0) - (a.vote_average ?? 0);
-  })
-  .slice(0, config.limit);
+// After parsing manifest, sort items
+parsed.items.sort((a, b) => {
+  const yearA = a.release_year ?? new Date().getFullYear();
+  const yearB = b.release_year ?? new Date().getFullYear();
+  if (yearB !== yearA) return yearB - yearA;
+  return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+});
 ```
+
+---
+
+### Files to Delete
+
+- `src/components/admin/SectionCurationControls.tsx`
+- `src/components/admin/CurationCardOverlay.tsx`
+- `src/components/admin/SortableCard.tsx`
+- `src/components/admin/PostSearchPicker.tsx`
+- `src/hooks/useSectionCuration.ts`
 
 ---
 
 ### Files to Modify
 
-| File | Change |
-|------|--------|
-| `src/pages/Movies.tsx` | Line 116: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
-| `src/pages/TVShows.tsx` | Line 105: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
-| `src/pages/Anime.tsx` | Line 125: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
-| `src/pages/Korean.tsx` | Line 119: `release_year ?? 0` → `release_year ?? new Date().getFullYear()` |
-| `src/hooks/useDbSections.ts` | Lines 109-115: Add `.sort()` before `.slice()` |
+| File | Changes |
+|------|---------|
+| `src/hooks/useDbManifest.ts` | Add sorting after fetch |
+| `src/components/admin/ManifestUpdateTool.tsx` | Sort items before saving manifest |
+| `src/components/MovieCard.tsx` | Use manifest for availability, remove CurationCardOverlay |
+| `src/components/ContentRow.tsx` | Remove all DnD/curation code, simplify to basic rendering |
+| `src/contexts/EditLinksModeContext.tsx` | Remove picker-related state |
+| `src/components/admin/EditLinksModeIndicator.tsx` | Remove PostSearchPicker |
+| `src/pages/Movies.tsx` | Remove curation imports/usage |
+| `src/pages/TVShows.tsx` | Remove curation imports/usage |
+| `src/pages/Anime.tsx` | Remove curation imports/usage |
+| `src/pages/Korean.tsx` | Remove curation imports/usage |
 
 ---
 
-### Expected Behavior After Fix
+### Expected Behavior After Implementation
 
-| Page | Before | After |
-|------|--------|-------|
-| **Movies** | 2026 items may appear after older items | 2026 items appear first |
-| **TV Shows** | Same issue | 2026 items appear first |
-| **Anime** | Same issue | 2026 items appear first |
-| **Korean** | Same issue | 2026 items appear first |
-| **Homepage "Just Added"** | Random order within 2024+ items | Sorted by year desc, then rating |
-| **Items with null year** | Sort to bottom (year = 0) | Sort to top (year = current) |
-
----
-
-### Important Note About Content Scoping
-
-Many of your newly added posts are Indian content (Hindi, Telugu languages). These are **correctly** filtered to only appear on the dedicated category pages:
-
-| Content | Language | Where It Appears |
-|---------|----------|------------------|
-| "Mrs. Deshpande" | Hindi (`hi`) | Indian category page |
-| "The Girlfriend" | Telugu (`te`) | Indian category page |
-| "Haq" | Hindi (`hi`) | Indian category page |
-| "HIM" | English (`en`) | Movies page (main) |
-
-This is expected behavior - content is scoped to prevent overlap between category pages. To see Indian content, users should navigate to the Indian category page.
+| Scenario | Result |
+|----------|--------|
+| **New session** | Fresh manifest fetched, items sorted by year (2026 first) |
+| **Admin updates manifest** | Items sorted before save, caches cleared |
+| **Movies/TV page** | Posts appear in year order (newest first), no curation buttons |
+| **Edit Mode** | Only shows Edit Links modal on card click, no drag-and-drop |
+| **Admin dots** | Glow immediately based on manifest data (hasWatch/hasDownload) |
+| **Homepage sections** | Still show DB sections, but without curation controls |
 
 ---
 
 ### Technical Notes
 
-1. **`new Date().getFullYear()`** returns 2026 for the current date, ensuring newly added items with missing years sort to the very top
+1. **Why use manifest for availability?** The manifest already contains `hasWatch` and `hasDownload` booleans. Using it instead of the separate `entry-availability` query eliminates the stale cache issue and reduces database queries.
 
-2. **Stable sorting** - JavaScript's sort is stable in modern engines, so items with the same year maintain their relative order
+2. **Sorting order**: Primary sort by `release_year` descending (2026 → 2025 → 2024). Items with null years are treated as current year. Secondary sort by `vote_average` to rank popular content higher within the same year.
 
-3. **Performance** - The sort operation is O(n log n) but operates on small arrays (typically <100 items per section), so no performance impact
+3. **Database insertion order**: When multiple items have the same year and rating, they maintain their manifest array order, which reflects the order they were added to the database.
 
+4. **Edit Mode simplified**: The old behavior where clicking a card opens the Edit Links modal is preserved. Only the curation features (drag-and-drop, pinning, section add/remove) are removed.
