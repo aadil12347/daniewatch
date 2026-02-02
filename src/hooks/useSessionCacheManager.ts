@@ -1,36 +1,60 @@
- import { useEffect } from "react";
- 
- const SESSION_ACTIVE_KEY = "dw_cache_session_active";
- 
- export function useSessionCacheManager() {
-   useEffect(() => {
-     // When the app mounts, check if we need to clear old cache
-     const sessionActive = sessionStorage.getItem(SESSION_ACTIVE_KEY);
-     
-     if (!sessionActive) {
-       // New session - mark it as active
-       sessionStorage.setItem(SESSION_ACTIVE_KEY, "1");
-     }
- 
-     // Listen for when the user is about to leave the page
-     const handleBeforeUnload = () => {
-       // sessionStorage automatically clears when the tab closes
-     };
- 
-     // Listen for visibility changes (tab switching)
-     const handleVisibilityChange = () => {
-       if (!document.hidden) {
-         // Tab became visible again - refresh session timestamp
-         sessionStorage.setItem(SESSION_ACTIVE_KEY, "1");
-       }
-     };
- 
-     window.addEventListener("beforeunload", handleBeforeUnload);
-     document.addEventListener("visibilitychange", handleVisibilityChange);
- 
-     return () => {
-       window.removeEventListener("beforeunload", handleBeforeUnload);
-       document.removeEventListener("visibilitychange", handleVisibilityChange);
-     };
-   }, []);
- }
+import { useEffect } from "react";
+
+const SESSION_ACTIVE_KEY = "dw_cache_session_active";
+const ADMIN_SESSION_KEY = "admin_session_active";
+const USER_MANIFEST_CACHE_KEY = "db_manifest_cache";
+const HOMEPAGE_CACHE_KEY = "dw_homepage_cache";
+
+/**
+ * Manages session-based caching with different behavior for admin vs user:
+ * - Admin: uses sessionStorage exclusively (auto-clears on browser close)
+ * - User: refreshes localStorage cache on each new session
+ */
+export function useSessionCacheManager() {
+  useEffect(() => {
+    const sessionActive = sessionStorage.getItem(SESSION_ACTIVE_KEY);
+    const isAdminSession = sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+
+    if (!sessionActive) {
+      // New session detected
+      sessionStorage.setItem(SESSION_ACTIVE_KEY, "1");
+
+      // For regular users: clear old localStorage cache so they get fresh data
+      if (!isAdminSession) {
+        localStorage.removeItem(USER_MANIFEST_CACHE_KEY);
+        console.log("[SessionCache] New user session - cleared localStorage manifest cache");
+      }
+      // Admin sessions use sessionStorage which auto-clears on browser close
+    }
+
+    // Listen for visibility changes (tab switching)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Tab became visible again - refresh session timestamp
+        sessionStorage.setItem(SESSION_ACTIVE_KEY, "1");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+}
+
+/**
+ * Mark the current session as an admin session.
+ * Call this when admin pages are accessed.
+ */
+export function markAdminSession() {
+  sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+}
+
+/**
+ * Clear admin session marker.
+ * Call this when admin logs out.
+ */
+export function clearAdminSession() {
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { formatDistanceToNow } from "date-fns";
@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Footer } from "@/components/Footer";
 import { useAdmin, AdminRequest } from "@/hooks/useAdmin";
 import { useAdminTrash, TrashedRequest } from "@/hooks/useAdminTrash";
+import { markAdminSession } from "@/hooks/useSessionCacheManager";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -447,6 +448,11 @@ const AdminDashboard = () => {
     deleteRequests,
     refetchRequests,
   } = useAdmin();
+
+  // Mark this as an admin session for cache management
+  useEffect(() => {
+    markAdminSession();
+  }, []);
 
   useRouteContentReady(!user || !isLoading);
 
