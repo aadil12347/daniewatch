@@ -49,7 +49,19 @@ export function SortableCard({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div ref={setNodeRef} style={style} {...attributes} className="relative flex-shrink-0">
+      {/* Curation overlay with drag handle - rendered here, not in MovieCard */}
+      <CurationCardOverlay
+        tmdbId={movie.id}
+        mediaType={mediaType as "movie" | "tv"}
+        sectionId={sectionId}
+        title={movie.title || movie.name}
+        posterPath={movie.poster_path}
+        isDragging={isDragging}
+        dragHandleProps={listeners}
+      />
+
+      {/* MovieCard handles the actual display - don't pass sectionId to avoid duplicate overlay */}
       <MovieCard
         movie={movie}
         index={index}
@@ -60,17 +72,6 @@ export function SortableCard({
         disableHoverCharacter={disableHoverCharacter}
         disableHoverLogo={disableHoverLogo}
         disableRankFillHover={disableRankFillHover}
-        sectionId={sectionId}
-      />
-      {/* Overlay with drag handle */}
-      <CurationCardOverlay
-        tmdbId={movie.id}
-        mediaType={mediaType as "movie" | "tv"}
-        sectionId={sectionId}
-        title={movie.title || movie.name}
-        posterPath={movie.poster_path}
-        isDragging={isDragging}
-        dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
   );

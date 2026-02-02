@@ -77,10 +77,10 @@ export function CurationCardOverlay({
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </div>
 
-      {/* Action buttons - bottom left, ALWAYS visible (no hover required) */}
+      {/* Action buttons - bottom RIGHT (opposite watchlist), ALWAYS visible */}
       <div
         className={cn(
-          "absolute bottom-2 left-2 z-40 flex items-center gap-1",
+          "absolute bottom-[4.5rem] right-10 z-40 flex items-center gap-1",
           "transition-opacity duration-200",
           className
         )}
