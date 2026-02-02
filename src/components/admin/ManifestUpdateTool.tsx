@@ -141,6 +141,14 @@ export function ManifestUpdateTool() {
         };
       });
 
+      // Sort items: newest first (by release_year desc), then by rating
+      items.sort((a, b) => {
+        const yearA = a.release_year ?? new Date().getFullYear();
+        const yearB = b.release_year ?? new Date().getFullYear();
+        if (yearB !== yearA) return yearB - yearA;
+        return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+      });
+
       // 3. Build manifest object
       const manifest: Manifest = {
         version: 1,

@@ -5,16 +5,12 @@ import { Footer } from "@/components/Footer";
 import { MovieCard } from "@/components/MovieCard";
 import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageCurationControls } from "@/components/admin/PageCurationControls";
 import { getMovieGenres, filterAdultContent, getMovieDetails, Movie, Genre } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
-import { useSectionCuration } from "@/hooks/useSectionCuration";
-import { useAdminStatus } from "@/contexts/AdminStatusContext";
-import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
 import { isAllowedOnMoviesPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { getPosterUrl } from "@/lib/tmdb";
@@ -52,9 +48,6 @@ const Movies = () => {
 
   const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
-  const { isAdmin } = useAdminStatus();
-  const { isEditLinksMode } = useEditLinksMode();
-  const { getCuratedItems } = useSectionCuration(SECTION_ID);
   
   // Use manifest for DB metadata (fast, cached)
   const {
@@ -251,15 +244,7 @@ const Movies = () => {
   const filteredDbItems = dbSorted;
   const filteredTmdbItems = tmdbSorted;
 
-  const baseVisibleMovies = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
-  
-  // Apply curation if in edit mode
-  const visibleMovies = useMemo(() => {
-    if (isAdmin && isEditLinksMode) {
-      return getCuratedItems(baseVisibleMovies);
-    }
-    return baseVisibleMovies;
-  }, [baseVisibleMovies, getCuratedItems, isAdmin, isEditLinksMode]);
+  const visibleMovies = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
   usePageHoverPreload(visibleMovies, { enabled: !isLoading });
@@ -558,8 +543,8 @@ const Movies = () => {
             />
           </div>
 
-          {/* Admin Curation Controls */}
-          <PageCurationControls sectionId={SECTION_ID} sectionTitle="Movies" className="mb-6" />
+
+          {/* Grid */}
 
           {/* Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
@@ -582,7 +567,6 @@ const Movies = () => {
                         animationDelay={Math.min(index * 30, 300)}
                         enableReveal={false}
                         enableHoverPortal={false}
-                        sectionId={SECTION_ID}
                       />
                     </div>
                   );

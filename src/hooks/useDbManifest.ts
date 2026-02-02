@@ -66,6 +66,14 @@ export const useDbManifest = () => {
       const text = await data.text();
       const parsed: Manifest = JSON.parse(text);
 
+      // Sort items: newest first (by release_year desc), then by rating
+      parsed.items.sort((a, b) => {
+        const yearA = a.release_year ?? new Date().getFullYear();
+        const yearB = b.release_year ?? new Date().getFullYear();
+        if (yearB !== yearA) return yearB - yearA;
+        return (b.vote_average ?? 0) - (a.vote_average ?? 0);
+      });
+
       // Cache it
       localStorage.setItem(
         CACHE_KEY,

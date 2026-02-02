@@ -9,11 +9,10 @@ import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAdminStatus } from "@/contexts/AdminStatusContext";
 import { useEditLinksMode } from "@/contexts/EditLinksModeContext";
-import { useEntryAvailability } from "@/hooks/useEntryAvailability";
+import { useDbManifest } from "@/hooks/useDbManifest";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
-import { CurationCardOverlay } from "./admin/CurationCardOverlay";
 
 interface MovieCardProps {
   movie: Movie;
@@ -45,8 +44,6 @@ interface MovieCardProps {
   disableHoverLogo?: boolean;
   /** Disable the rank-number fill animation on hover (when showRank=true). */
   disableRankFillHover?: boolean;
-  /** Section ID for curation controls (admin only). */
-  sectionId?: string;
 }
 
 export const MovieCard = ({
@@ -65,7 +62,6 @@ export const MovieCard = ({
   disableHoverCharacter = false,
   disableHoverLogo = false,
   disableRankFillHover = false,
-  sectionId,
 }: MovieCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,7 +71,7 @@ export const MovieCard = ({
   const { isAdmin } = useAdminStatus();
   const { isEditLinksMode, openEditorForTmdbId } = useEditLinksMode();
   const { isBlocked, blockPost, unblockPost } = usePostModeration();
-  const { getAvailability, getHoverImageUrl } = useEntryAvailability();
+  const { availabilityById } = useDbManifest();
   const { isPerformance } = usePerformanceMode();
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as "movie" | "tv");
@@ -85,8 +81,11 @@ export const MovieCard = ({
   const rating = movie.vote_average?.toFixed(1);
 
   const blocked = isBlocked(movie.id, mediaType as "movie" | "tv");
-  const { hasWatch, hasDownload } = getAvailability(movie.id);
-  const hoverImageUrl = disableHoverCharacter || isPerformance ? null : getHoverImageUrl(movie.id);
+  // Use manifest for link availability (fast, cached from session start)
+  const manifestAvailability = availabilityById.get(movie.id);
+  const hasWatch = manifestAvailability?.hasWatch ?? false;
+  const hasDownload = manifestAvailability?.hasDownload ?? false;
+  const hoverImageUrl = disableHoverCharacter || isPerformance ? null : (manifestAvailability?.hoverImageUrl ?? null);
 
   const [optimisticInWatchlist, setOptimisticInWatchlist] = useState<boolean | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -537,16 +536,6 @@ export const MovieCard = ({
           </div>
         </div>
 
-        {/* Curation Controls - Admin only, bottom-left */}
-        {sectionId && (
-          <CurationCardOverlay
-            tmdbId={movie.id}
-            mediaType={mediaType as "movie" | "tv"}
-            sectionId={sectionId}
-            title={title}
-            posterPath={movie.poster_path}
-          />
-        )}
       </div>
     </div>
   );
