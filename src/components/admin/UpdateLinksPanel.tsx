@@ -26,8 +26,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   getMovieDetails,
   getMovieImages,
+  getMovieCredits,
   getTVDetails,
   getTVImages,
+  getTVCredits,
   getTVSeasonDetails,
   getImageUrl,
 } from "@/lib/tmdb";
@@ -56,6 +58,7 @@ import {
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
 import { MetadataPrefillTool } from "@/components/admin/MetadataPrefillTool";
 import { EpisodeMetadataEditor } from "@/components/admin/EpisodeMetadataEditor";
+import { Progress } from "@/components/ui/progress";
 
 const UPDATE_LINKS_CACHE_KEY = "updateLinksPanelState_v1";
 const UPDATE_LINKS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -129,6 +132,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
+  const [seasonSaveProgress, setSeasonSaveProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
   // Restore panel state if the page is temporarily unmounted (e.g. admin check reruns)
   // and there is no explicit TMDB id coming from URL/prop.
@@ -503,6 +507,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     }
 
     setIsSaving(true);
+    setSeasonSaveProgress(null);
 
     try {
       const media_updated_at = new Date().toISOString();
@@ -514,8 +519,20 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       };
 
       if (tmdbResult.type === "movie") {
-        // Fetch full TMDB details + images to capture artwork + rating.
-        const [details, images] = await Promise.all([getMovieDetails(tmdbResult.id), getMovieImages(tmdbResult.id)]);
+        // Fetch full TMDB details + images + credits to capture all metadata
+        const [details, images, credits] = await Promise.all([
+          getMovieDetails(tmdbResult.id),
+          getMovieImages(tmdbResult.id),
+          getMovieCredits(tmdbResult.id),
+        ]);
+
+        // Extract top 12 cast members
+        const topCast = credits?.cast?.slice(0, 12).map((c) => ({
+          id: c.id,
+          name: c.name,
+          character: c.character,
+          profile_path: c.profile_path,
+        })) || null;
 
         // Use custom URLs if provided, otherwise use TMDB
         const customPoster = posterUrl.trim();
@@ -529,6 +546,13 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
           vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
           media_updated_at,
+          // Extended metadata
+          overview: overview.trim() || details.overview || null,
+          tagline: details.tagline || null,
+          runtime: details.runtime || null,
+          status: details.status || null,
+          genres: details.genres || null,
+          cast_data: topCast,
         };
 
         const result = await saveMovieEntry(
@@ -551,8 +575,20 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           }
         }
       } else {
-        // Fetch full TMDB details + images to capture artwork + rating.
-        const [details, images] = await Promise.all([getTVDetails(tmdbResult.id), getTVImages(tmdbResult.id)]);
+        // Fetch full TMDB details + images + credits to capture all metadata
+        const [details, images, credits] = await Promise.all([
+          getTVDetails(tmdbResult.id),
+          getTVImages(tmdbResult.id),
+          getTVCredits(tmdbResult.id),
+        ]);
+
+        // Extract top 12 cast members
+        const topCast = credits?.cast?.slice(0, 12).map((c) => ({
+          id: c.id,
+          name: c.name,
+          character: c.character,
+          profile_path: c.profile_path,
+        })) || null;
 
         const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
         const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
@@ -569,6 +605,14 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
           vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
           media_updated_at,
+          // Extended metadata
+          overview: overview.trim() || details.overview || null,
+          tagline: details.tagline || null,
+          number_of_seasons: details.number_of_seasons || null,
+          number_of_episodes: details.number_of_episodes || null,
+          status: details.status || null,
+          genres: details.genres || null,
+          cast_data: topCast,
         };
 
         const result = await saveSeriesSeasonEntry(
@@ -587,26 +631,68 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         if (result.success) {
           setEntryExists(true);
 
-          // Auto-fetch and save episode metadata for the selected season if not admin-edited
+          // Auto-fetch and save episode metadata for ALL seasons if not admin-edited
           if (!adminEdited) {
-            try {
-              const seasonRes = await getTVSeasonDetails(tmdbResult.id, selectedSeason);
-              if (seasonRes?.episodes?.length) {
-                const episodeRecords = seasonRes.episodes.map((ep) => ({
-                  episode_number: ep.episode_number,
-                  name: ep.name || null,
-                  overview: ep.overview || null,
-                  still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
-                  air_date: ep.air_date || null,
-                  runtime: ep.runtime || null,
-                  vote_average: ep.vote_average ?? null,
-                  admin_edited: false,
-                }));
+            const validSeasons = details.seasons?.filter((s) => s.season_number > 0) || [];
+            let totalEpisodesSaved = 0;
 
-                await saveEpisodeMetadata(String(tmdbResult.id), selectedSeason, episodeRecords);
+            for (let i = 0; i < validSeasons.length; i++) {
+              const season = validSeasons[i];
+              setSeasonSaveProgress({
+                current: i + 1,
+                total: validSeasons.length,
+                message: `Saving Season ${season.season_number} of ${validSeasons.length}...`,
+              });
+
+              try {
+                const seasonRes = await getTVSeasonDetails(tmdbResult.id, season.season_number);
+                if (seasonRes?.episodes?.length) {
+                  // Check which episodes already have admin_edited = true
+                  const { data: existingEpisodes } = await supabase
+                    .from("entry_metadata")
+                    .select("episode_number, admin_edited")
+                    .eq("entry_id", String(tmdbResult.id))
+                    .eq("season_number", season.season_number);
+
+                  const adminEditedEpisodes = new Set(
+                    (existingEpisodes || []).filter((e) => e.admin_edited).map((e) => e.episode_number)
+                  );
+
+                  // Only save episodes that are NOT admin-edited
+                  const episodesToSave = seasonRes.episodes
+                    .filter((ep) => !adminEditedEpisodes.has(ep.episode_number))
+                    .map((ep) => ({
+                      episode_number: ep.episode_number,
+                      name: ep.name || null,
+                      overview: ep.overview || null,
+                      still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
+                      air_date: ep.air_date || null,
+                      runtime: ep.runtime || null,
+                      vote_average: ep.vote_average ?? null,
+                      admin_edited: false,
+                    }));
+
+                  if (episodesToSave.length > 0) {
+                    await saveEpisodeMetadata(String(tmdbResult.id), season.season_number, episodesToSave);
+                    totalEpisodesSaved += episodesToSave.length;
+                  }
+                }
+              } catch (err) {
+                console.error(`Error saving season ${season.season_number} metadata:`, err);
               }
-            } catch (err) {
-              console.error("Error saving episode metadata:", err);
+
+              // Rate limit: 300ms between season fetches
+              if (i < validSeasons.length - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 300));
+              }
+            }
+
+            setSeasonSaveProgress(null);
+            if (totalEpisodesSaved > 0) {
+              toast({
+                title: "Episodes Saved",
+                description: `Saved ${validSeasons.length} seasons (${totalEpisodesSaved} episodes).`,
+              });
             }
           }
 
@@ -620,6 +706,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       console.error("Error in handleSave:", error);
     } finally {
       setIsSaving(false);
+      setSeasonSaveProgress(null);
     }
   };
 
@@ -1182,8 +1269,23 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
             <div className="flex flex-wrap gap-2">
               <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                {tmdbResult.type === "series" ? `Save Season ${selectedSeason}` : "Save Entry"}
+                {tmdbResult.type === "series" 
+                  ? (seasonSaveProgress ? seasonSaveProgress.message : "Save Entry + All Seasons")
+                  : "Save Entry"}
               </Button>
+
+              {/* Season save progress indicator */}
+              {seasonSaveProgress && (
+                <div className="flex items-center gap-3 flex-1 ml-2">
+                  <Progress 
+                    value={(seasonSaveProgress.current / seasonSaveProgress.total) * 100} 
+                    className="flex-1 h-2"
+                  />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {seasonSaveProgress.current}/{seasonSaveProgress.total}
+                  </span>
+                </div>
+              )}
 
               {entryExists && tmdbResult.type === "series" && (
                 <AlertDialog>

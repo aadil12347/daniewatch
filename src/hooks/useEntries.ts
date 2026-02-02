@@ -15,16 +15,38 @@ interface SeriesContent {
   [key: string]: SeriesSeasonContent;
 }
 
-type EntryMediaFields = {
+// Extended metadata fields for entries table
+export type EntryMediaFields = {
   poster_url?: string | null;
   backdrop_url?: string | null;
   logo_url?: string | null;
   vote_average?: number | null;
   vote_count?: number | null;
   media_updated_at?: string | null;
+  // Extended metadata
+  overview?: string | null;
+  tagline?: string | null;
+  runtime?: number | null;
+  number_of_seasons?: number | null;
+  number_of_episodes?: number | null;
+  status?: string | null;
+  genres?: { id: number; name: string }[] | null;
+  cast_data?: { id: number; name: string; character: string; profile_path: string | null }[] | null;
 };
 
-interface EntryData {
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+}
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+export interface EntryData {
   id: string;
   type: "movie" | "series";
   content: MovieContent | SeriesContent;
@@ -41,11 +63,15 @@ interface EntryData {
   vote_count?: number | null;
   media_updated_at?: string | null;
   created_at?: string;
-  // New metadata fields
+  // Complete metadata fields
   overview?: string | null;
   tagline?: string | null;
   runtime?: number | null;
   number_of_seasons?: number | null;
+  number_of_episodes?: number | null;
+  status?: string | null;
+  genres?: Genre[] | null;
+  cast_data?: CastMember[] | null;
   admin_edited?: boolean;
 }
 
