@@ -47,7 +47,7 @@ const Search = () => {
       .map((it) => {
         const isTv = it.media_type === "tv";
         const title = it.title ?? "Untitled";
-        const releaseYear = it.release_year ?? null;
+        const releaseYear = it.release_year ?? new Date().getFullYear();
 
         return {
           id: it.id,

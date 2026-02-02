@@ -203,7 +203,7 @@ const Movies = () => {
       const meta = manifestItemByKey.get(`${id}-movie`);
       const title = meta?.title ?? meta?.name ?? meta?.original_title ?? "Untitled";
       const genre_ids = (meta?.genre_ids ?? []) as number[];
-      const releaseYear = (meta?.release_year ?? 0) as number;
+      const releaseYear = (meta?.release_year ?? new Date().getFullYear()) as number;
 
       return {
         id,

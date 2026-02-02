@@ -211,7 +211,7 @@ const Anime = () => {
       const meta = manifestItemByKey.get(`${id}-tv`);
       const title = meta?.title ?? meta?.name ?? meta?.original_name ?? "Untitled";
       const genre_ids = (meta?.genre_ids ?? [ANIME_GENRE_ID]) as number[];
-      const releaseYear = (meta?.release_year ?? 0) as number;
+      const releaseYear = (meta?.release_year ?? new Date().getFullYear()) as number;
 
       return {
         id,
