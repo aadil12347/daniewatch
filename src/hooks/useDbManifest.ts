@@ -44,14 +44,24 @@ export interface ManifestAvailability {
   hoverImageUrl: string | null;
 }
 
-const CACHE_KEY = "db_manifest_cache";
+// Cache keys
+const USER_CACHE_KEY = "db_manifest_cache";
+const ADMIN_CACHE_KEY = "admin_db_manifest_cache";
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 const SESSION_CHECK_KEY = "manifest_session_checked";
+const ADMIN_SESSION_KEY = "admin_session_active";
 
 export const useDbManifest = () => {
   const [manifest, setManifest] = useState<Manifest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
+
+  // Detect if user is admin (check sessionStorage flag set by admin pages)
+  const isAdminSession = typeof window !== "undefined" && sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+
+  // Get appropriate cache key and storage
+  const getCacheKey = () => (isAdminSession ? ADMIN_CACHE_KEY : USER_CACHE_KEY);
+  const getCacheStorage = () => (isAdminSession ? sessionStorage : localStorage);
 
   // Fetch manifest from Supabase Storage
   const fetchManifest = async () => {
@@ -74,9 +84,10 @@ export const useDbManifest = () => {
         return (b.vote_average ?? 0) - (a.vote_average ?? 0);
       });
 
-      // Cache it
-      localStorage.setItem(
-        CACHE_KEY,
+      // Cache it in appropriate storage
+      const storage = getCacheStorage();
+      storage.setItem(
+        getCacheKey(),
         JSON.stringify({
           timestamp: Date.now(),
           data: parsed,
@@ -95,35 +106,40 @@ export const useDbManifest = () => {
     let mounted = true;
 
     const load = async () => {
-      // Check if this is a new browser session
-      const sessionChecked = sessionStorage.getItem(SESSION_CHECK_KEY);
-      
-      // 1. Try localStorage cache (only if session already checked)
-      if (sessionChecked) {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          try {
-            const { timestamp, data } = JSON.parse(cached);
-            const age = Date.now() - timestamp;
+      const storage = getCacheStorage();
+      const cacheKey = getCacheKey();
 
-            if (age < CACHE_DURATION) {
-              // Cache is fresh, use it immediately
-              if (mounted) {
-                setManifest(data);
-                setIsLoading(false);
-              }
-              return;
-            }
-          } catch {
-            // Ignore cache parse errors
-          }
+      // For admin: always use sessionStorage (fresh per browser session)
+      // For user: check session flag, refresh if new session
+      if (!isAdminSession) {
+        const sessionChecked = sessionStorage.getItem(SESSION_CHECK_KEY);
+        if (!sessionChecked) {
+          // New user session - clear old cache
+          localStorage.removeItem(USER_CACHE_KEY);
+          sessionStorage.setItem(SESSION_CHECK_KEY, "1");
         }
       }
 
-      // Mark session as checked after first load attempt
-      sessionStorage.setItem(SESSION_CHECK_KEY, "1");
+      // Try cache
+      const cached = storage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const { timestamp, data } = JSON.parse(cached);
+          const age = Date.now() - timestamp;
 
-      // 2. No valid cache or new session, fetch from storage
+          if (age < CACHE_DURATION) {
+            if (mounted) {
+              setManifest(data);
+              setIsLoading(false);
+            }
+            return;
+          }
+        } catch {
+          // Ignore cache parse errors
+        }
+      }
+
+      // No valid cache, fetch from storage
       setIsFetching(true);
       const fetched = await fetchManifest();
 
@@ -141,7 +157,7 @@ export const useDbManifest = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isAdminSession]);
 
   // Background refresh - check for updates immediately after initial load
   useEffect(() => {
