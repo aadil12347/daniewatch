@@ -45,7 +45,8 @@ export interface ManifestAvailability {
 }
 
 const CACHE_KEY = "db_manifest_cache";
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const SESSION_CHECK_KEY = "manifest_session_checked";
 
 export const useDbManifest = () => {
   const [manifest, setManifest] = useState<Manifest | null>(null);
@@ -86,27 +87,35 @@ export const useDbManifest = () => {
     let mounted = true;
 
     const load = async () => {
-      // 1. Try localStorage cache first
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        try {
-          const { timestamp, data } = JSON.parse(cached);
-          const age = Date.now() - timestamp;
+      // Check if this is a new browser session
+      const sessionChecked = sessionStorage.getItem(SESSION_CHECK_KEY);
+      
+      // 1. Try localStorage cache (only if session already checked)
+      if (sessionChecked) {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          try {
+            const { timestamp, data } = JSON.parse(cached);
+            const age = Date.now() - timestamp;
 
-          if (age < CACHE_DURATION) {
-            // Cache is fresh, use it immediately
-            if (mounted) {
-              setManifest(data);
-              setIsLoading(false);
+            if (age < CACHE_DURATION) {
+              // Cache is fresh, use it immediately
+              if (mounted) {
+                setManifest(data);
+                setIsLoading(false);
+              }
+              return;
             }
-            return;
+          } catch {
+            // Ignore cache parse errors
           }
-        } catch {
-          // Ignore cache parse errors
         }
       }
 
-      // 2. No valid cache, fetch from storage
+      // Mark session as checked after first load attempt
+      sessionStorage.setItem(SESSION_CHECK_KEY, "1");
+
+      // 2. No valid cache or new session, fetch from storage
       setIsFetching(true);
       const fetched = await fetchManifest();
 
@@ -126,21 +135,21 @@ export const useDbManifest = () => {
     };
   }, []);
 
-  // Background refresh if cache is stale (optional, runs after initial load)
+  // Background refresh - check for updates immediately after initial load
   useEffect(() => {
-    if (!manifest) return;
+    if (!manifest || isFetching) return;
 
     const checkForUpdates = async () => {
       const fetched = await fetchManifest();
       if (fetched && fetched.generated_at !== manifest.generated_at) {
+        console.log("[useDbManifest] New manifest version detected, updating...");
         setManifest(fetched);
       }
     };
 
-    // Check for updates after 5 seconds (won't block initial render)
-    const timer = setTimeout(checkForUpdates, 5000);
-    return () => clearTimeout(timer);
-  }, [manifest]);
+    // Check immediately, no delay
+    checkForUpdates();
+  }, [manifest?.generated_at, isFetching]);
 
   // Build lookup maps from manifest
   const { metaByKey, availabilityById, items } = useMemo(() => {

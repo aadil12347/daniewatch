@@ -110,7 +110,7 @@ export const useEntryAvailability = () => {
       return { availabilityById, metaByKey, entries };
     },
     enabled: true,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute
     refetchOnWindowFocus: false,
   });
 
