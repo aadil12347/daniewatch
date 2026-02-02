@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RefreshCw, Database, CheckCircle, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ interface Manifest {
 
 export function ManifestUpdateTool() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState(false);
   const [fetchProgress, setFetchProgress] = useState<string | null>(null);
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
@@ -173,8 +175,12 @@ export function ManifestUpdateTool() {
         })
       );
 
-      // Clear the actual manifest cache so it will be re-fetched on next page load
+      // Clear both caches so manifest will be re-fetched
       localStorage.removeItem("db_manifest_cache");
+      sessionStorage.removeItem("manifest_session_checked");
+
+      // Invalidate availability cache so admin dots update immediately
+      queryClient.invalidateQueries({ queryKey: ["entry-availability"] });
 
       toast({
         title: "Manifest updated successfully",
