@@ -104,18 +104,33 @@ interface SearchResult {
   posterUrl: string | null;
   year: string;
   inDb: boolean;
+  hasLinks: boolean;
   missingFields?: string[];
   adminEdited?: boolean;
+  // Full metadata from DB (for entries with links)
+  backdropUrl?: string | null;
+  logoUrl?: string | null;
+  overview?: string | null;
+  tagline?: string | null;
+  status?: string | null;
+  voteAverage?: number | null;
+  runtime?: number | null;
+  numberOfSeasons?: number | null;
+  numberOfEpisodes?: number | null;
+  genres?: Genre[];
+  castData?: CastMember[];
 }
 
 type FilterType = "all" | "movie" | "series";
 type SortBy = "recent" | "year_desc" | "year_asc" | "name" | "rating" | "missing";
 type RecentlyEditedFilter = "all" | "24h" | "7d" | "30d";
+type LinksFilter = "all" | "with_links" | "without_links";
 
 interface FilterState {
   type: FilterType;
   sortBy: SortBy;
   recentlyEdited: RecentlyEditedFilter;
+  linksFilter: LinksFilter;
   missingPoster: boolean;
   missingBackdrop: boolean;
   missingLogo: boolean;
@@ -154,7 +169,8 @@ export function PostMetadataEditor() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]); // DB results
+  const [tmdbResults, setTmdbResults] = useState<SearchResult[]>([]); // TMDB results (separate)
   const [isSearchingDb, setIsSearchingDb] = useState(false);
   const [isSearchingTmdb, setIsSearchingTmdb] = useState(false);
 
@@ -163,6 +179,7 @@ export function PostMetadataEditor() {
     type: "all",
     sortBy: "recent",
     recentlyEdited: "all",
+    linksFilter: "all",
     missingPoster: false,
     missingBackdrop: false,
     missingLogo: false,
@@ -257,6 +274,7 @@ export function PostMetadataEditor() {
           posterUrl: cached.posterUrl || null,
           year: cached.releaseYear?.toString() || "",
           inDb: true,
+          hasLinks: true, // Assume from cache
         });
       }
     } catch (e) {
@@ -384,7 +402,7 @@ export function PostMetadataEditor() {
 
       let query = supabase
         .from("entries")
-        .select("id, type, title, poster_url, backdrop_url, logo_url, overview, genres, cast_data, release_year, admin_edited, media_updated_at, vote_average")
+        .select("id, type, title, content, poster_url, backdrop_url, logo_url, overview, tagline, status, genres, cast_data, release_year, admin_edited, media_updated_at, vote_average, runtime, number_of_seasons, number_of_episodes")
         .limit(50);
 
       if (isNumeric) {
@@ -449,16 +467,59 @@ export function PostMetadataEditor() {
 
       if (error) throw error;
 
-      let results: SearchResult[] = (data || []).map((entry) => ({
-        id: entry.id,
-        type: entry.type as "movie" | "series",
-        title: entry.title || `ID: ${entry.id}`,
-        posterUrl: entry.poster_url,
-        year: entry.release_year?.toString() || "N/A",
-        inDb: true,
-        missingFields: calculateMissingFields(entry),
-        adminEdited: entry.admin_edited || false,
-      }));
+      // Helper to check if entry has links
+      const checkHasLinks = (entry: any): boolean => {
+        const content = entry.content;
+        if (!content) return false;
+        if (entry.type === "movie") {
+          return !!(content.watch_link || content.download_link);
+        } else {
+          // Series: check if any season has links
+          for (const key of Object.keys(content)) {
+            if (key.startsWith("season_")) {
+              const season = content[key];
+              if (season?.watch_links?.length > 0 || season?.download_links?.length > 0) {
+                return true;
+              }
+            }
+          }
+          return false;
+        }
+      };
+
+      let results: SearchResult[] = (data || []).map((entry) => {
+        const entryHasLinks = checkHasLinks(entry);
+        return {
+          id: entry.id,
+          type: entry.type as "movie" | "series",
+          title: entry.title || `ID: ${entry.id}`,
+          posterUrl: entry.poster_url,
+          year: entry.release_year?.toString() || "N/A",
+          inDb: true,
+          hasLinks: entryHasLinks,
+          missingFields: calculateMissingFields(entry),
+          adminEdited: entry.admin_edited || false,
+          // Full metadata for DB entries
+          backdropUrl: entry.backdrop_url,
+          logoUrl: entry.logo_url,
+          overview: entry.overview,
+          tagline: entry.tagline,
+          status: entry.status,
+          voteAverage: entry.vote_average,
+          runtime: entry.runtime,
+          numberOfSeasons: entry.number_of_seasons,
+          numberOfEpisodes: entry.number_of_episodes,
+          genres: entry.genres,
+          castData: entry.cast_data,
+        };
+      });
+
+      // Filter by links
+      if (filterState.linksFilter === "with_links") {
+        results = results.filter((r) => r.hasLinks);
+      } else if (filterState.linksFilter === "without_links") {
+        results = results.filter((r) => !r.hasLinks);
+      }
 
       // Filter by missing genres/cast client-side (JSONB is harder to query)
       if (filterState.missingGenres) {
@@ -502,22 +563,47 @@ export function PostMetadataEditor() {
     try {
       const response = await searchMergedGlobal(searchQuery.trim());
 
-      // Check which results exist in DB
+      // Check which results exist in DB and get their link status
       const ids = response.results.map((r) => String(r.id));
-      const { data: existingEntries } = await supabase.from("entries").select("id").in("id", ids);
+      const { data: existingEntries } = await supabase
+        .from("entries")
+        .select("id, content, type")
+        .in("id", ids);
 
-      const existingIds = new Set((existingEntries || []).map((e) => e.id));
+      const existingMap = new Map<string, { hasLinks: boolean }>();
+      (existingEntries || []).forEach((e) => {
+        let entryHasLinks = false;
+        const content = e.content as Record<string, any>;
+        if (e.type === "movie") {
+          entryHasLinks = !!(content?.watch_link || content?.download_link);
+        } else {
+          for (const key of Object.keys(content || {})) {
+            if (key.startsWith("season_")) {
+              const season = content[key];
+              if (season?.watch_links?.length > 0 || season?.download_links?.length > 0) {
+                entryHasLinks = true;
+                break;
+              }
+            }
+          }
+        }
+        existingMap.set(e.id, { hasLinks: entryHasLinks });
+      });
 
-      const results: SearchResult[] = response.results.slice(0, 20).map((item: Movie) => ({
-        id: String(item.id),
-        type: item.media_type === "tv" ? "series" : "movie",
-        title: item.title || item.name || `ID: ${item.id}`,
-        posterUrl: getImageUrl(item.poster_path, "w185"),
-        year: (item.release_date || item.first_air_date)?.split("-")[0] || "N/A",
-        inDb: existingIds.has(String(item.id)),
-      }));
+      const results: SearchResult[] = response.results.slice(0, 20).map((item: Movie) => {
+        const existing = existingMap.get(String(item.id));
+        return {
+          id: String(item.id),
+          type: item.media_type === "tv" ? "series" : "movie",
+          title: item.title || item.name || `ID: ${item.id}`,
+          posterUrl: getImageUrl(item.poster_path, "w185"),
+          year: (item.release_date || item.first_air_date)?.split("-")[0] || "N/A",
+          inDb: !!existing,
+          hasLinks: existing?.hasLinks || false,
+        };
+      });
 
-      setSearchResults(results);
+      setTmdbResults(results);
 
       if (results.length === 0) {
         toast({
@@ -544,14 +630,30 @@ export function PostMetadataEditor() {
     setEpisodes([]);
 
     try {
-      // Try loading from DB first
-      const { data: dbEntry, error } = await supabase.from("entries").select("*").eq("id", result.id).maybeSingle();
+      // If result has full metadata from DB search (entries with links), use it directly
+      if (result.inDb && result.hasLinks && result.backdropUrl !== undefined) {
+        // Create entry from cached result data
+        const entry: EntryData = {
+          id: result.id,
+          type: result.type,
+          content: {}, // Content not needed for metadata editing
+          title: result.title,
+          poster_url: result.posterUrl,
+          backdrop_url: result.backdropUrl,
+          logo_url: result.logoUrl,
+          overview: result.overview,
+          tagline: result.tagline,
+          status: result.status,
+          vote_average: result.voteAverage ?? null,
+          runtime: result.runtime,
+          release_year: result.year ? parseInt(result.year, 10) : null,
+          number_of_seasons: result.numberOfSeasons,
+          number_of_episodes: result.numberOfEpisodes,
+          genres: result.genres || [],
+          cast_data: result.castData || [],
+          admin_edited: result.adminEdited || false,
+        };
 
-      if (error) throw error;
-
-      if (dbEntry) {
-        // Entry exists in DB
-        const entry = dbEntry as EntryData;
         setSelectedEntry(entry);
         populateFormFromEntry(entry);
 
@@ -560,23 +662,46 @@ export function PostMetadataEditor() {
           const allEpisodes = await fetchAllEpisodeMetadata(entry.id);
           setEpisodes(allEpisodes);
 
-          // Set initial season
-          const content = entry.content as Record<string, any>;
-          const seasons = Object.keys(content)
-            .filter((k) => k.startsWith("season_"))
-            .map((k) => parseInt(k.replace("season_", ""), 10))
-            .filter((n) => !isNaN(n))
-            .sort((a, b) => a - b);
-
-          if (seasons.length > 0) {
-            setSelectedSeason(seasons[0]);
-          } else if (entry.number_of_seasons && entry.number_of_seasons > 0) {
+          // Set initial season from number_of_seasons
+          if (entry.number_of_seasons && entry.number_of_seasons > 0) {
             setSelectedSeason(1);
           }
         }
       } else {
-        // Entry not in DB - fetch from TMDB and create stub
-        await loadFromTmdb(result.id, result.type);
+        // Standard DB fetch for full data
+        const { data: dbEntry, error } = await supabase.from("entries").select("*").eq("id", result.id).maybeSingle();
+
+        if (error) throw error;
+
+        if (dbEntry) {
+          // Entry exists in DB
+          const entry = dbEntry as EntryData;
+          setSelectedEntry(entry);
+          populateFormFromEntry(entry);
+
+          // Load episodes if series
+          if (entry.type === "series") {
+            const allEpisodes = await fetchAllEpisodeMetadata(entry.id);
+            setEpisodes(allEpisodes);
+
+            // Set initial season
+            const content = entry.content as Record<string, any>;
+            const seasons = Object.keys(content)
+              .filter((k) => k.startsWith("season_"))
+              .map((k) => parseInt(k.replace("season_", ""), 10))
+              .filter((n) => !isNaN(n))
+              .sort((a, b) => a - b);
+
+            if (seasons.length > 0) {
+              setSelectedSeason(seasons[0]);
+            } else if (entry.number_of_seasons && entry.number_of_seasons > 0) {
+              setSelectedSeason(1);
+            }
+          }
+        } else {
+          // Entry not in DB - fetch from TMDB and create stub
+          await loadFromTmdb(result.id, result.type);
+        }
       }
     } catch (error) {
       console.error("Error loading entry:", error);
@@ -1191,7 +1316,7 @@ export function PostMetadataEditor() {
           {/* Filters Panel */}
           {showFilters && (
             <div className="border rounded-md p-4 space-y-4 bg-muted/30">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="space-y-1">
                   <Label className="text-xs">Type</Label>
                   <Select value={filterState.type} onValueChange={(v) => setFilterState((s) => ({ ...s, type: v as FilterType }))}>
@@ -1202,6 +1327,19 @@ export function PostMetadataEditor() {
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="movie">Movies</SelectItem>
                       <SelectItem value="series">Series</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Links</Label>
+                  <Select value={filterState.linksFilter} onValueChange={(v) => setFilterState((s) => ({ ...s, linksFilter: v as LinksFilter }))}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="with_links">With Links</SelectItem>
+                      <SelectItem value="without_links">Without Links</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1290,52 +1428,113 @@ export function PostMetadataEditor() {
             </div>
           )}
 
-          {/* Search Results */}
+          {/* Database Results Section */}
           {searchResults.length > 0 && (
-            <ScrollArea className="h-64 border rounded-md p-2">
-              <div className="space-y-2">
-                {searchResults.map((result) => (
-                  <div
-                    key={`${result.id}-${result.type}`}
-                    className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary cursor-pointer transition-colors"
-                    onClick={() => handleSelectEntry(result)}
-                  >
-                    {result.posterUrl ? (
-                      <img src={result.posterUrl} alt={result.title} className="w-10 h-14 object-cover rounded" />
-                    ) : (
-                      <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
-                        {result.type === "movie" ? (
-                          <Film className="w-4 h-4 text-muted-foreground" />
-                        ) : (
-                          <Tv className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{result.title}</p>
-                      <div className="flex gap-2 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs">
-                          {result.type === "movie" ? "Movie" : "Series"}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {result.year}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          ID: {result.id}
-                        </Badge>
-                        {result.inDb && <Badge className="text-xs bg-green-600">In DB</Badge>}
-                        {result.adminEdited && <Badge className="text-xs bg-amber-600">Admin Edited</Badge>}
-                        {result.missingFields && result.missingFields.length > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            Missing: {result.missingFields.join(", ")}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-primary" />
+                <h4 className="font-medium text-sm">Database Results ({searchResults.length})</h4>
+              </div>
+              <ScrollArea className="h-48 border rounded-md p-2">
+                <div className="space-y-2">
+                  {searchResults.map((result) => (
+                    <div
+                      key={`db-${result.id}-${result.type}`}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary cursor-pointer transition-colors"
+                      onClick={() => handleSelectEntry(result)}
+                    >
+                      {result.posterUrl ? (
+                        <img src={result.posterUrl} alt={result.title} className="w-10 h-14 object-cover rounded" />
+                      ) : (
+                        <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
+                          {result.type === "movie" ? (
+                            <Film className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <Tv className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{result.title}</p>
+                        <div className="flex gap-2 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {result.type === "movie" ? "Movie" : "Series"}
                           </Badge>
-                        )}
+                          <Badge variant="secondary" className="text-xs">
+                            {result.year}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            ID: {result.id}
+                          </Badge>
+                          {result.hasLinks && <Badge className="text-xs bg-emerald-600">Has Links</Badge>}
+                          {result.adminEdited && <Badge className="text-xs bg-amber-600">Admin Edited</Badge>}
+                          {result.missingFields && result.missingFields.length > 0 && (
+                            <Badge variant="destructive" className="text-xs">
+                              Missing: {result.missingFields.join(", ")}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* TMDB Results Section (Separate) */}
+          {tmdbResults.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-blue-500" />
+                <h4 className="font-medium text-sm">TMDB Results ({tmdbResults.length})</h4>
               </div>
-            </ScrollArea>
+              <ScrollArea className="h-48 border rounded-md p-2 border-blue-500/30">
+                <div className="space-y-2">
+                  {tmdbResults.map((result) => (
+                    <div
+                      key={`tmdb-${result.id}-${result.type}`}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary cursor-pointer transition-colors"
+                      onClick={() => handleSelectEntry(result)}
+                    >
+                      {result.posterUrl ? (
+                        <img src={result.posterUrl} alt={result.title} className="w-10 h-14 object-cover rounded" />
+                      ) : (
+                        <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
+                          {result.type === "movie" ? (
+                            <Film className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <Tv className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{result.title}</p>
+                        <div className="flex gap-2 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {result.type === "movie" ? "Movie" : "Series"}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {result.year}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            ID: {result.id}
+                          </Badge>
+                          {result.inDb ? (
+                            <>
+                              <Badge className="text-xs bg-green-600">In DB</Badge>
+                              {result.hasLinks && <Badge className="text-xs bg-emerald-600">Has Links</Badge>}
+                            </>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">Not in DB</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
           )}
         </div>
 
