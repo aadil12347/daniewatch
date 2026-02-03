@@ -1244,21 +1244,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           </div>
         </TabsContent>
 
-        <TabsContent value="tools" className="animate-in slide-in-from-bottom-4 duration-500">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="bg-black/40 border-white/10">
-              <CardHeader><CardTitle>Manifest Update</CardTitle></CardHeader>
-              <CardContent>
-                <ManifestUpdateTool />
-              </CardContent>
-            </Card>
-            <Card className="bg-black/40 border-white/10">
-              <CardHeader><CardTitle>Post Metadata</CardTitle></CardHeader>
-              <CardContent>
-                <PostMetadataEditor />
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="tools" className="animate-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto space-y-8">
+          <ManifestUpdateTool />
+          <PostMetadataEditor />
         </TabsContent>
       </Tabs>
 

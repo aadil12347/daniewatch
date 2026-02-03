@@ -1287,13 +1287,15 @@ export function PostMetadataEditor() {
   }, []);
 
   return (
-    <Card>
+    <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Edit3 className="w-5 h-5" />
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <Edit3 className="w-5 h-5 text-primary" />
           Post Metadata Editor
         </CardTitle>
-        <CardDescription>Search and edit complete metadata for any post in the database.</CardDescription>
+        <CardDescription className="text-muted-foreground">
+          Search and edit metadata for any entry, or import new items from TMDB.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Search Section */}
@@ -1306,7 +1308,7 @@ export function PostMetadataEditor() {
               onKeyDown={(e) => e.key === "Enter" && handleSearchDb()}
               className="flex-1"
             />
-            <Button onClick={handleSearchDb} disabled={isSearchingDb || !searchQuery.trim()} className="gap-1">
+            <Button onClick={handleSearchDb} disabled={isSearchingDb || !searchQuery.trim()} className="gap-1 bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
               {isSearchingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
               Search DB
             </Button>
@@ -1583,7 +1585,7 @@ export function PostMetadataEditor() {
                   {isSyncing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
                   Sync from TMDB
                 </Button>
-                <Button onClick={handleSave} disabled={isSaving}>
+                <Button onClick={handleSave} disabled={isSaving} className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
                   Save Changes
                 </Button>

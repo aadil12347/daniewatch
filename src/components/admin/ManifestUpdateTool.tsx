@@ -68,7 +68,7 @@ export function ManifestUpdateTool() {
 
       while (hasMore) {
         setFetchProgress(`Fetching ${from + BATCH_SIZE}...`);
-        
+
         const { data, error: fetchError } = await supabase
           .from("entries")
           .select(
@@ -208,19 +208,24 @@ export function ManifestUpdateTool() {
   };
 
   return (
-    <Card>
+    <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-xl">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Database className="w-5 h-5 text-cinema-red" />
               Update Data
             </CardTitle>
-            <CardDescription className="mt-1">
+            <CardDescription className="mt-1 text-muted-foreground">
               Generate a manifest file containing all database entries for faster page loading
             </CardDescription>
           </div>
-          <Button onClick={handleGenerateManifest} disabled={isGenerating} size="sm">
+          <Button
+            onClick={handleGenerateManifest}
+            disabled={isGenerating}
+            size="sm"
+            className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20"
+          >
             {isGenerating ? (
               <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
             ) : (
@@ -235,26 +240,26 @@ export function ManifestUpdateTool() {
         <div className="flex flex-wrap gap-2">
           {lastGenerated ? (
             <>
-              <Badge variant="outline" className="gap-1">
+              <Badge variant="outline" className="gap-1 border-green-500/30 bg-green-500/10 text-green-400">
                 <CheckCircle className="w-3 h-3" />
                 Last updated: {formatDistanceToNow(new Date(lastGenerated), { addSuffix: true })}
               </Badge>
               {itemCount !== null && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 bg-white/10 hover:bg-white/20">
                   <Database className="w-3 h-3" />
                   {itemCount} entries
                 </Badge>
               )}
             </>
           ) : (
-            <Badge variant="outline" className="gap-1">
+            <Badge variant="outline" className="gap-1 border-yellow-500/30 bg-yellow-500/10 text-yellow-400">
               <AlertCircle className="w-3 h-3" />
               Never generated
             </Badge>
           )}
         </div>
 
-        <div className="text-sm text-muted-foreground space-y-1">
+        <div className="text-sm text-muted-foreground space-y-1 bg-white/5 p-4 rounded-lg border border-white/5">
           <p>• This tool exports all database entries into a single JSON file stored in Supabase Storage</p>
           <p>• The website will cache this file locally to display DB items first without querying the database</p>
           <p>• Click "Update Data" after adding/editing entries to refresh the manifest</p>
