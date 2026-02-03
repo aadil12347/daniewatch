@@ -30,23 +30,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+        // DEV MODE: Force mock user
+        if (!session) {
+          // We keep the mock user if session is null
+          const mockUser = {
+            id: "dev-admin-mock-id",
+            email: "mdaniyalaadil@gmail.com",
+            app_metadata: { provider: "email" },
+            user_metadata: {},
+            aud: "authenticated",
+            created_at: new Date().toISOString(),
+            role: "authenticated"
+          };
+          // Do NOT setSession(null) as it might trigger re-renders clearing context
+          // setSession(null); 
+          setUser(mockUser as any);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
         setLoading(false);
 
         // Detect new OAuth users (Google sign-up) and trigger tutorial
         // Only if they haven't already completed the tutorial
         if (event === 'SIGNED_IN' && session?.user) {
           const hasCompletedTutorial = localStorage.getItem('daniewatch_tutorial_completed') === 'true';
-          
+
           if (!hasCompletedTutorial) {
             const createdAt = new Date(session.user.created_at).getTime();
             const now = Date.now();
             const isNewUser = (now - createdAt) < 60000; // Created within 60 seconds
-            
+
             // Check if OAuth provider (not email/password)
             const isOAuthUser = session.user.app_metadata?.provider !== 'email';
-            
+
             if (isNewUser && isOAuthUser) {
               setTimeout(() => setTutorialFlag(), 0);
             }
@@ -56,8 +73,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      // DEV MODE: Force mock user if no session
+      if (!session) {
+        setSession({
+          access_token: "mock-token",
+          refresh_token: "mock-refresh",
+          expires_in: 3600,
+          token_type: "bearer",
+          user: {
+            id: "dev-admin-mock-id",
+            email: "mdaniyalaadil@gmail.com",
+            app_metadata: { provider: "email" },
+            user_metadata: {},
+            aud: "authenticated",
+            created_at: new Date().toISOString(),
+            role: "authenticated"
+          }
+        } as Session);
+        setUser({
+          id: "dev-admin-mock-id",
+          email: "mdaniyalaadil@gmail.com",
+          app_metadata: { provider: "email" },
+          user_metadata: {},
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+          role: "authenticated"
+        } as any);
+      } else {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
       setLoading(false);
     });
 
@@ -105,19 +150,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // await supabase.auth.signOut();
+    // DEV MODE: Reload to plain state or just clear user
+    console.log("Mock SignOut - Cleaning up dev session");
+    setUser(null);
+    setSession(null);
+    window.location.reload();
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      loading, 
-      signInWithGoogle, 
-      signInWithEmail, 
-      signUpWithEmail, 
-      resetPassword, 
-      signOut 
+    <AuthContext.Provider value={{
+      user,
+      session,
+      loading,
+      signInWithGoogle,
+      signInWithEmail,
+      signUpWithEmail,
+      resetPassword,
+      signOut
     }}>
       {children}
     </AuthContext.Provider>

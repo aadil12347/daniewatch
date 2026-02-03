@@ -85,14 +85,14 @@ const getStatusBadge = (status: AdminRequest['status']) => {
   }
 };
 
-const RequestCard = ({ 
-  request, 
+const RequestCard = ({
+  request,
   onUpdateStatus,
   onDelete,
   isSelected,
   onSelectChange,
   showCheckbox
-}: { 
+}: {
   request: AdminRequest;
   onUpdateStatus: (id: string, status: AdminRequest['status'], response?: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -128,7 +128,7 @@ const RequestCard = ({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             {showCheckbox && (
-              <Checkbox 
+              <Checkbox
                 checked={isSelected}
                 onCheckedChange={onSelectChange}
                 className="mt-1"
@@ -170,7 +170,7 @@ const RequestCard = ({
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-3">{request.message}</p>
-        
+
         {request.admin_response && (
           <div className="p-3 rounded-md bg-primary/10 border border-primary/20 mb-3">
             <p className="text-xs font-medium text-primary mb-1">Your Response:</p>
@@ -182,7 +182,7 @@ const RequestCard = ({
           <p className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
           </p>
-          
+
           <div className="flex items-center gap-2">
             {request.request_type !== 'general' && (
               <Button
@@ -235,7 +235,7 @@ const RequestCard = ({
                     Update the status and send a response to the user.
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Status</label>
@@ -296,7 +296,7 @@ const AdminManagement = () => {
 
   const handleAddAdmin = async () => {
     if (!newAdminEmail.trim()) return;
-    
+
     setIsAdding(true);
     const { error } = await addAdmin(newAdminEmail.trim());
     setIsAdding(false);
@@ -381,8 +381,8 @@ const AdminManagement = () => {
           ) : (
             <div className="space-y-2">
               {admins.map((admin) => (
-                <div 
-                  key={admin.id} 
+                <div
+                  key={admin.id}
                   className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"
                 >
                   <div className="flex items-center gap-3">
@@ -400,7 +400,7 @@ const AdminManagement = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   {isOwner && !admin.is_owner && (
                     <Button
                       size="sm"
@@ -471,7 +471,7 @@ const AdminDashboard = () => {
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   const [isClearingCategory, setIsClearingCategory] = useState(false);
   const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done' | 'trash'>('new');
-  
+
   // Bulk update state
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<AdminRequest['status']>('completed');
@@ -481,11 +481,11 @@ const AdminDashboard = () => {
   // Handle bulk status update
   const handleBulkUpdateStatus = async () => {
     if (selectedIds.length === 0) return;
-    
+
     setIsUpdatingBulk(true);
     const { error, count } = await updateMultipleRequestsStatus(
-      selectedIds, 
-      bulkStatus, 
+      selectedIds,
+      bulkStatus,
       bulkResponse.trim() || undefined
     );
     setIsUpdatingBulk(false);
@@ -535,7 +535,7 @@ const AdminDashboard = () => {
       else if (request.status === 'pending') category = 'pending';
       else if (request.status === 'in_progress') category = 'in_progress';
       else if (request.status === 'completed' || request.status === 'rejected') category = 'done';
-      
+
       // Move to trash first
       moveToTrash(request, category);
     }
@@ -558,21 +558,21 @@ const AdminDashboard = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-    
+
     // If in trash tab, permanently delete
     if (requestsTab === 'trash') {
       handlePermanentDeleteMultiple();
       return;
     }
-    
+
     setIsDeletingSelected(true);
-    
+
     // Move selected requests to trash first
     const selectedRequests = allRequests.filter(r => selectedIds.includes(r.id));
     if (selectedRequests.length > 0) {
       moveMultipleToTrash(selectedRequests, requestsTab as 'new' | 'pending' | 'in_progress' | 'done');
     }
-    
+
     const { error } = await deleteRequests(selectedIds);
     setIsDeletingSelected(false);
 
@@ -620,10 +620,10 @@ const AdminDashboard = () => {
     if (requestsToClear.length === 0) return;
 
     setIsClearingCategory(true);
-    
+
     // Move to trash first
     moveMultipleToTrash(requestsToClear, requestsTab as TrashedRequest['originalCategory']);
-    
+
     // Then delete from database
     const { error } = await deleteRequests(requestsToClear.map(r => r.id));
     setIsClearingCategory(false);
@@ -776,7 +776,7 @@ const AdminDashboard = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
+
 
         <div className="container mx-auto px-4 pt-24 pb-12">
           <div className="flex items-center gap-3 mb-2">
@@ -859,40 +859,40 @@ const AdminDashboard = () => {
             <TabsContent value="requests">
               {/* Request category tabs */}
               <div className="flex flex-wrap items-center gap-2 mb-4">
-                <Button 
-                  variant={requestsTab === 'new' ? 'default' : 'outline'} 
+                <Button
+                  variant={requestsTab === 'new' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setRequestsTab('new')}
                   className="gap-1"
                 >
                   <Sparkles className="w-4 h-4" /> New ({newRequests.length})
                 </Button>
-                <Button 
-                  variant={requestsTab === 'pending' ? 'default' : 'outline'} 
+                <Button
+                  variant={requestsTab === 'pending' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setRequestsTab('pending')}
                   className="gap-1"
                 >
                   <Clock className="w-4 h-4" /> Pending ({pendingRequests.length})
                 </Button>
-                <Button 
-                  variant={requestsTab === 'in_progress' ? 'default' : 'outline'} 
+                <Button
+                  variant={requestsTab === 'in_progress' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setRequestsTab('in_progress')}
                   className="gap-1"
                 >
                   <AlertCircle className="w-4 h-4" /> In Progress ({inProgressRequests.length})
                 </Button>
-                <Button 
-                  variant={requestsTab === 'done' ? 'default' : 'outline'} 
+                <Button
+                  variant={requestsTab === 'done' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setRequestsTab('done')}
                   className="gap-1"
                 >
                   <CheckCircle className="w-4 h-4" /> Done ({doneRequests.length})
                 </Button>
-                <Button 
-                  variant={requestsTab === 'trash' ? 'default' : 'outline'} 
+                <Button
+                  variant={requestsTab === 'trash' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setRequestsTab('trash')}
                   className="gap-1"
@@ -903,8 +903,8 @@ const AdminDashboard = () => {
 
               {/* Bulk actions */}
               <div className="flex flex-wrap items-center gap-2 mb-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     setIsSelectionMode(!isSelectionMode);
@@ -916,15 +916,15 @@ const AdminDashboard = () => {
 
                 {isSelectionMode && (
                   <>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => selectAll(currentRequests)}
                     >
                       <CheckCheck className="w-4 h-4 mr-1" /> Select All
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={deselectAll}
                     >
@@ -945,7 +945,7 @@ const AdminDashboard = () => {
                               Change the status and optionally send a message to all selected users.
                             </DialogDescription>
                           </DialogHeader>
-                          
+
                           <div className="space-y-4 py-4">
                             <div className="space-y-2">
                               <label className="text-sm font-medium">New Status</label>
@@ -1009,7 +1009,7 @@ const AdminDashboard = () => {
                               {requestsTab === 'trash' ? 'Permanently Delete Selected' : 'Delete Selected Requests'}
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                              {requestsTab === 'trash' 
+                              {requestsTab === 'trash'
                                 ? `Are you sure you want to permanently delete ${selectedIds.length} selected requests? This cannot be undone.`
                                 : `Are you sure you want to move ${selectedIds.length} selected requests to trash?`
                               }
@@ -1045,7 +1045,7 @@ const AdminDashboard = () => {
                           {requestsTab === 'trash' ? 'Empty Trash' : `Clear ${getCategoryLabel()} Requests`}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          {requestsTab === 'trash' 
+                          {requestsTab === 'trash'
                             ? `Are you sure you want to permanently delete ${trashedRequests.length} trashed requests? This cannot be undone.`
                             : `Are you sure you want to move ${currentRequests.length} ${getCategoryLabel().toLowerCase()} requests to trash?`
                           }
@@ -1099,7 +1099,7 @@ const AdminDashboard = () => {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3">
                             {isSelectionMode && (
-                              <Checkbox 
+                              <Checkbox
                                 checked={selectedIds.includes(request.id)}
                                 onCheckedChange={(checked) => toggleSelection(request.id, !!checked)}
                                 className="mt-1"
@@ -1127,10 +1127,10 @@ const AdminDashboard = () => {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-muted-foreground mb-3">{request.message}</p>
-                        
+
                         <div className="flex items-center justify-end gap-2 mt-4">
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             onClick={() => handleRestoreFromTrash(request.id)}
                             className="gap-1"

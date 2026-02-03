@@ -1,63 +1,44 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
-    <title>DanieWatch - Stream Movies, TV Shows, Anime & Korean Dramas</title>
-    <meta name="description" content="DanieWatch - Your ultimate destination for streaming movies, TV shows, anime and Korean dramas. Watch free online." />
-    <meta name="author" content="Daniyal" />
-    <meta name="keywords" content="movies, tv shows, anime, korean dramas, streaming, watch online, free movies" />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="512x512" href="/logo-512.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/logo-192.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/logo-192.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="/logo-512.png" />
-    
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#ef4444" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="DanieWatch" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="DanieWatch - Stream Movies, TV Shows, Anime & Korean Dramas" />
-    <meta property="og:description" content="Your ultimate destination for streaming movies, TV shows, anime and Korean dramas." />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="/logo-512.png" />
-    <meta property="og:site_name" content="DanieWatch" />
+  <title>DanieWatch - Stream Movies, TV Shows, Anime & Korean Dramas</title>
+  <meta name="description"
+    content="DanieWatch - Your ultimate destination for streaming movies, TV shows, anime and Korean dramas. Watch free online." />
+  <meta name="author" content="Daniyal" />
+  <meta name="keywords" content="movies, tv shows, anime, korean dramas, streaming, watch online, free movies" />
 
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="DanieWatch" />
-    <meta name="twitter:description" content="Stream Movies, TV Shows, Anime & Korean Dramas" />
-    <meta name="twitter:image" content="/logo-512.png" />
-  </head>
+  <link rel="icon" type="image/png" sizes="512x512" href="./logo-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./logo-192.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./logo-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="./logo-512.png" />
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Firebase Analytics -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-      import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#ef4444" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="DanieWatch" />
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyBlBAHLfy9txHoDUNPruWxW1RpNo0fVfls",
-        authDomain: "daniewatch-2026.firebaseapp.com",
-        projectId: "daniewatch-2026",
-        storageBucket: "daniewatch-2026.firebasestorage.app",
-        messagingSenderId: "150686032824",
-        appId: "1:150686032824:web:33eb34b86513724b2ce54d",
-        measurementId: "G-1S4MET0TTS"
-      };
+  <meta property="og:title" content="DanieWatch - Stream Movies, TV Shows, Anime & Korean Dramas" />
+  <meta property="og:description"
+    content="Your ultimate destination for streaming movies, TV shows, anime and Korean dramas." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="./logo-512.png" />
+  <meta property="og:site_name" content="DanieWatch" />
 
-      const app = initializeApp(firebaseConfig);
-      const analytics = getAnalytics(app);
-    </script>
-  </body>
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="DanieWatch" />
+  <meta name="twitter:description" content="Stream Movies, TV Shows, Anime & Korean Dramas" />
+  <meta name="twitter:image" content="./logo-512.png" />
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="./src/main.tsx"></script>
+</body>
+
 </html>

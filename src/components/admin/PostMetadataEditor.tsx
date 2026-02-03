@@ -214,6 +214,8 @@ export function PostMetadataEditor() {
   const [episodes, setEpisodes] = useState<EpisodeMetadata[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [expandedEpisode, setExpandedEpisode] = useState<number | null>(null);
+  const [isMainMetadataOpen, setIsMainMetadataOpen] = useState(true);
+  const [expandedSeasons, setExpandedSeasons] = useState<number[]>([1]);
 
   // Season/Episode management
   const [showAddSeasonDialog, setShowAddSeasonDialog] = useState(false);
@@ -831,6 +833,13 @@ export function PostMetadataEditor() {
     }
   };
 
+  // Toggle Season Expansion
+  const toggleSeasonExpansion = (seasonNum: number) => {
+    setExpandedSeasons(prev =>
+      prev.includes(seasonNum) ? prev.filter(s => s !== seasonNum) : [...prev, seasonNum]
+    );
+  };
+
   // Sync entry metadata from TMDB (clears admin_edited)
   const handleSyncFromTmdb = async () => {
     if (!selectedEntry) return;
@@ -1291,12 +1300,16 @@ export function PostMetadataEditor() {
         <div className="space-y-3">
           <div className="flex gap-2">
             <Input
-              placeholder="Search by title or TMDB ID (Enter = DB search)..."
+              placeholder="Search by title or TMDB ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearchDb()}
               className="flex-1"
             />
+            <Button onClick={handleSearchDb} disabled={isSearchingDb || !searchQuery.trim()} className="gap-1">
+              {isSearchingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+              Search DB
+            </Button>
             <Button onClick={handleSearchTmdb} disabled={isSearchingTmdb || !searchQuery.trim()} variant="outline" className="gap-1">
               {isSearchingTmdb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
               Search TMDB
@@ -1590,166 +1603,190 @@ export function PostMetadataEditor() {
               </div>
             )}
 
-            {/* Basic Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+            {/* Main Metadata Collapsible Card */}
+            <Collapsible open={isMainMetadataOpen} onOpenChange={setIsMainMetadataOpen} className="border rounded-md bg-card">
+              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setIsMainMetadataOpen(!isMainMetadataOpen)}>
+                <div className="flex items-center gap-2 font-semibold">
+                  <Edit3 className="w-5 h-5" />
+                  Main Metadata
+                  {!isMainMetadataOpen && <span className="text-sm font-normal text-muted-foreground ml-2">Click to expand</span>}
+                </div>
+                {isMainMetadataOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="year">Year</Label>
-                  <Input
-                    id="year"
-                    type="number"
-                    value={releaseYear ?? ""}
-                    onChange={(e) => setReleaseYear(e.target.value ? Number(e.target.value) : null)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Input id="status" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="Released" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rating">Rating</Label>
-                  <Input
-                    id="rating"
-                    type="number"
-                    step="0.1"
-                    value={voteAverage ?? ""}
-                    onChange={(e) => setVoteAverage(e.target.value ? Number(e.target.value) : null)}
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* Series-specific fields */}
-            {selectedEntry.type === "series" && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="seasons">Seasons</Label>
-                  <Input
-                    id="seasons"
-                    type="number"
-                    value={numberOfSeasons ?? ""}
-                    onChange={(e) => setNumberOfSeasons(e.target.value ? Number(e.target.value) : null)}
-                  />
+              <CollapsibleContent className="p-4 pt-0 space-y-6">
+                {/* Basic Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="year">Year</Label>
+                      <Input
+                        id="year"
+                        type="number"
+                        value={releaseYear ?? ""}
+                        onChange={(e) => setReleaseYear(e.target.value ? Number(e.target.value) : null)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Input id="status" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="Released" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rating">Rating</Label>
+                      <Input
+                        id="rating"
+                        type="number"
+                        step="0.1"
+                        value={voteAverage ?? ""}
+                        onChange={(e) => setVoteAverage(e.target.value ? Number(e.target.value) : null)}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="episodes">Total Episodes</Label>
-                  <Input
-                    id="episodes"
-                    type="number"
-                    value={numberOfEpisodes ?? ""}
-                    onChange={(e) => setNumberOfEpisodes(e.target.value ? Number(e.target.value) : null)}
-                  />
-                </div>
-              </div>
-            )}
 
-            {/* Movie-specific fields */}
-            {selectedEntry.type === "movie" && (
-              <div className="space-y-2">
-                <Label htmlFor="runtime">Runtime (minutes)</Label>
-                <Input
-                  id="runtime"
-                  type="number"
-                  value={runtime ?? ""}
-                  onChange={(e) => setRuntime(e.target.value ? Number(e.target.value) : null)}
-                  className="w-32"
-                />
-              </div>
-            )}
-
-            {/* Image URLs */}
-            <div className="space-y-4">
-              <h4 className="font-medium flex items-center gap-2">
-                <ImageIcon className="w-4 h-4" /> Images
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="poster">Poster URL</Label>
-                  <Input id="poster" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} placeholder="https://..." />
-                  {posterUrl && <img src={posterUrl} alt="Poster" className="w-20 h-30 object-cover rounded mt-1" />}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="backdrop">Backdrop URL</Label>
-                  <Input id="backdrop" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} placeholder="https://..." />
-                  {backdropUrl && <img src={backdropUrl} alt="Backdrop" className="w-32 h-18 object-cover rounded mt-1" />}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="logo">Logo URL</Label>
-                  <Input id="logo" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
-                  {logoUrl && <img src={logoUrl} alt="Logo" className="w-24 h-12 object-contain rounded mt-1 bg-black/50 p-1" />}
-                </div>
-              </div>
-            </div>
-
-            {/* Overview & Tagline */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="overview">Overview</Label>
-                <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} rows={4} placeholder="Enter overview..." />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tagline">Tagline</Label>
-                <Input id="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Enter tagline..." />
-              </div>
-            </div>
-
-            {/* Genres */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Genres</Label>
-                <Button variant="outline" size="sm" onClick={openGenreModal} className="gap-1">
-                  <Edit3 className="w-3 h-3" /> Edit Genres
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {genres.length === 0 ? (
-                  <span className="text-muted-foreground text-sm">No genres selected</span>
-                ) : (
-                  genres.map((genre) => (
-                    <Badge key={genre.id} variant="secondary" className="gap-1">
-                      {genre.name}
-                      <button onClick={() => handleRemoveGenre(genre.id)} className="ml-1 hover:text-destructive">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))
+                {/* Series-specific fields */}
+                {selectedEntry.type === "series" && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="seasons">Seasons</Label>
+                      <Input
+                        id="seasons"
+                        type="number"
+                        value={numberOfSeasons ?? ""}
+                        onChange={(e) => setNumberOfSeasons(e.target.value ? Number(e.target.value) : null)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="episodes">Total Episodes</Label>
+                      <Input
+                        id="episodes"
+                        type="number"
+                        value={numberOfEpisodes ?? ""}
+                        onChange={(e) => setNumberOfEpisodes(e.target.value ? Number(e.target.value) : null)}
+                      />
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
 
-            {/* Cast */}
-            <div className="space-y-2">
-              <Label>Cast (Top 12)</Label>
-              <div className="flex flex-wrap gap-2">
-                {castData.length === 0 ? (
-                  <span className="text-muted-foreground text-sm">No cast data</span>
-                ) : (
-                  castData.map((member) => (
-                    <Badge key={member.id} variant="outline" className="gap-1">
-                      {member.name}
-                      {member.character && <span className="text-muted-foreground">as {member.character}</span>}
-                      <button onClick={() => handleRemoveCast(member.id)} className="ml-1 hover:text-destructive">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))
+                {/* Movie-specific fields */}
+                {selectedEntry.type === "movie" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="runtime">Runtime (minutes)</Label>
+                    <Input
+                      id="runtime"
+                      type="number"
+                      value={runtime ?? ""}
+                      onChange={(e) => setRuntime(e.target.value ? Number(e.target.value) : null)}
+                      className="w-32"
+                    />
+                  </div>
                 )}
-              </div>
-            </div>
+
+                {/* Image URLs */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" /> Images
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="poster">Poster URL</Label>
+                      <Input id="poster" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} placeholder="https://..." />
+                      {posterUrl && <img src={posterUrl} alt="Poster" className="w-20 h-30 object-cover rounded mt-1" />}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="backdrop">Backdrop URL</Label>
+                      <Input id="backdrop" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} placeholder="https://..." />
+                      {backdropUrl && <img src={backdropUrl} alt="Backdrop" className="w-32 h-18 object-cover rounded mt-1" />}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="logo">Logo URL</Label>
+                      <Input id="logo" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
+                      {logoUrl && <img src={logoUrl} alt="Logo" className="w-24 h-12 object-contain rounded mt-1 bg-black/50 p-1" />}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Overview & Tagline */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="overview">Overview</Label>
+                    <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} rows={4} placeholder="Enter overview..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tagline">Tagline</Label>
+                    <Input id="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Enter tagline..." />
+                  </div>
+                </div>
+
+                {/* Genres */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Genres</Label>
+                    <Button variant="outline" size="sm" onClick={openGenreModal} className="gap-1">
+                      <Edit3 className="w-3 h-3" /> Edit Genres
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {genres.length === 0 ? (
+                      <span className="text-muted-foreground text-sm">No genres selected</span>
+                    ) : (
+                      genres.map((genre) => (
+                        <Badge key={genre.id} variant="secondary" className="gap-1">
+                          {genre.name}
+                          <button onClick={() => handleRemoveGenre(genre.id)} className="ml-1 hover:text-destructive">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Cast */}
+                <div className="space-y-2">
+                  <Label>Cast (Top 12)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {castData.length === 0 ? (
+                      <span className="text-muted-foreground text-sm">No cast data</span>
+                    ) : (
+                      castData.map((member) => (
+                        <Badge key={member.id} variant="outline" className="gap-1">
+                          {member.name}
+                          {member.character && <span className="text-muted-foreground">as {member.character}</span>}
+                          <button onClick={() => handleRemoveCast(member.id)} className="ml-1 hover:text-destructive">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Episode Metadata Section (Series Only) */}
             {selectedEntry.type === "series" && (
-              <div className="border-t pt-6 space-y-4">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h4 className="font-medium">Episode Metadata</h4>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={() => handleSyncSeason(selectedSeason)} disabled={isSyncing}>
-                      <RefreshCw className="w-4 h-4 mr-1" />
-                      Sync Season {selectedSeason}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Tv className="w-5 h-5" />
+                    Seasons & Episodes
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const nextSeason = Math.max(...availableSeasons, 0) + 1;
+                        setNewSeasonNumber(nextSeason);
+                        setShowAddSeasonDialog(true);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Add Season
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleSyncAllSeasons} disabled={isSyncing}>
                       <RefreshCw className="w-4 h-4 mr-1" />
@@ -1758,173 +1795,185 @@ export function PostMetadataEditor() {
                   </div>
                 </div>
 
-                {/* Season Selector */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Label>Season:</Label>
-                  <Select value={String(selectedSeason)} onValueChange={(v) => setSelectedSeason(Number(v))}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSeasons.map((s) => (
-                        <SelectItem key={s} value={String(s)}>
-                          Season {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const nextSeason = Math.max(...availableSeasons, 0) + 1;
-                      setNewSeasonNumber(nextSeason);
-                      setShowAddSeasonDialog(true);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Add Season
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowDeleteSeasonConfirm(true)} className="text-destructive">
-                    <Trash2 className="w-4 h-4 mr-1" /> Delete Season
-                  </Button>
-                </div>
+                {availableSeasons.map(seasonNum => {
+                  const seasonEps = episodes.filter(ep => ep.season_number === seasonNum).sort((a, b) => a.episode_number - b.episode_number);
+                  const isExpanded = expandedSeasons.includes(seasonNum);
 
-                {/* Episode count and add button */}
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">Episodes in Season {selectedSeason}: {seasonEpisodes.length}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const maxEp = seasonEpisodes.length > 0 ? Math.max(...seasonEpisodes.map((e) => e.episode_number)) : 0;
-                      setNewEpisodeNumber(maxEp + 1);
-                      setShowAddEpisodeDialog(true);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Add Episode
-                  </Button>
-                </div>
-
-                {/* Episodes List */}
-                <ScrollArea className="h-80 border rounded-md p-2">
-                  {seasonEpisodes.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No episodes found for Season {selectedSeason}. Click "Sync Season" to fetch from TMDB or "Add Episode" to create manually.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {seasonEpisodes.map((ep) => (
-                        <Collapsible
-                          key={ep.episode_number}
-                          open={expandedEpisode === ep.episode_number}
-                          onOpenChange={(open) => setExpandedEpisode(open ? ep.episode_number : null)}
-                        >
-                          <div className="border rounded-md">
-                            <CollapsibleTrigger className="w-full p-3 flex items-center gap-3 hover:bg-secondary/50 transition-colors">
-                              {ep.still_path ? (
-                                <img src={ep.still_path} alt={ep.name || `Episode ${ep.episode_number}`} className="w-16 h-9 object-cover rounded" />
-                              ) : (
-                                <div className="w-16 h-9 bg-muted rounded flex items-center justify-center">
-                                  <Film className="w-4 h-4 text-muted-foreground" />
-                                </div>
-                              )}
-                              <div className="flex-1 text-left">
-                                <p className="font-medium">
-                                  E{ep.episode_number}: {ep.name || "Untitled"}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate max-w-md">{ep.overview || "No description"}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {ep.admin_edited && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    Edited
-                                  </Badge>
-                                )}
-                                {expandedEpisode === ep.episode_number ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                              </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="p-3 border-t space-y-3">
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Episode Number</Label>
-                                  <Input
-                                    type="number"
-                                    value={ep.episode_number}
-                                    onChange={(e) =>
-                                      updateEpisodeField(ep.season_number, ep.episode_number, "episode_number", Number(e.target.value))
-                                    }
-                                    className="h-8 text-sm"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Name</Label>
-                                  <Input
-                                    value={ep.name || ""}
-                                    onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "name", e.target.value || null)}
-                                    className="h-8 text-sm"
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Air Date</Label>
-                                  <Input
-                                    value={ep.air_date || ""}
-                                    onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "air_date", e.target.value || null)}
-                                    className="h-8 text-sm"
-                                    placeholder="YYYY-MM-DD"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Runtime (min)</Label>
-                                  <Input
-                                    type="number"
-                                    value={ep.runtime ?? ""}
-                                    onChange={(e) =>
-                                      updateEpisodeField(ep.season_number, ep.episode_number, "runtime", e.target.value ? Number(e.target.value) : null)
-                                    }
-                                    className="h-8 text-sm"
-                                  />
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Thumbnail URL</Label>
-                                <Input
-                                  value={ep.still_path || ""}
-                                  onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "still_path", e.target.value || null)}
-                                  className="h-8 text-sm"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Overview</Label>
-                                <Textarea
-                                  value={ep.overview || ""}
-                                  onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "overview", e.target.value || null)}
-                                  rows={2}
-                                  className="text-sm"
-                                />
-                              </div>
-                              <div className="flex gap-2 pt-2 flex-wrap">
-                                <Button size="sm" variant="outline" onClick={() => handleSyncSingleEpisode(ep)}>
-                                  <RefreshCw className="w-3 h-3 mr-1" />
-                                  Sync from TMDB
-                                </Button>
-                                <Button size="sm" onClick={() => handleSaveEpisode(ep)}>
-                                  <Save className="w-3 h-3 mr-1" />
-                                  Save Episode
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => setShowDeleteEpisodeConfirm(ep)}>
-                                  <Trash2 className="w-3 h-3 mr-1" />
-                                  Delete
-                                </Button>
-                              </div>
-                            </CollapsibleContent>
+                  return (
+                    <Collapsible
+                      key={seasonNum}
+                      open={isExpanded}
+                      onOpenChange={() => toggleSeasonExpansion(seasonNum)}
+                      className="border rounded-md bg-card"
+                    >
+                      <div className="flex items-center justify-between p-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center gap-4 flex-1">
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            <h4 className="font-medium text-base">Season {seasonNum}</h4>
+                            <Badge variant="secondary" className="text-xs">{seasonEps.length} Episodes</Badge>
                           </div>
-                        </Collapsible>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
+                        </CollapsibleTrigger>
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm" onClick={() => handleSyncSeason(seasonNum)} disabled={isSyncing} title="Sync Season">
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary"
+                            onClick={() => {
+                              setSelectedSeason(seasonNum);
+                              const maxEp = seasonEps.length > 0 ? Math.max(...seasonEps.map((e) => e.episode_number)) : 0;
+                              setNewEpisodeNumber(maxEp + 1);
+                              setShowAddEpisodeDialog(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => {
+                              setSelectedSeason(seasonNum);
+                              setShowDeleteSeasonConfirm(true);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <CollapsibleContent className="p-4 pt-0 border-t">
+                        {seasonEps.length === 0 ? (
+                          <div className="text-center py-6 text-muted-foreground text-sm">
+                            No episodes. Sync from TMDB or add manually.
+                          </div>
+                        ) : (
+                          <div className="space-y-2 mt-4">
+                            {seasonEps.map((ep) => (
+                              <Collapsible
+                                key={ep.episode_number}
+                                open={expandedEpisode === ep.episode_number && selectedSeason === seasonNum} // Keep existing logic or adapt unique ID
+                                onOpenChange={(open) => {
+                                  if (open) {
+                                    setSelectedSeason(seasonNum);
+                                    setExpandedEpisode(ep.episode_number);
+                                  } else {
+                                    setExpandedEpisode(null);
+                                  }
+                                }}
+                              >
+                                <div className="border rounded-md">
+                                  <CollapsibleTrigger className="w-full p-3 flex items-center gap-3 hover:bg-secondary/50 transition-colors">
+                                    {ep.still_path ? (
+                                      <img src={ep.still_path} alt={ep.name || `Episode ${ep.episode_number}`} className="w-16 h-9 object-cover rounded" />
+                                    ) : (
+                                      <div className="w-16 h-9 bg-muted rounded flex items-center justify-center">
+                                        <Film className="w-4 h-4 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <div className="flex-1 text-left">
+                                      <p className="font-medium">
+                                        E{ep.episode_number}: {ep.name || "Untitled"}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground truncate max-w-md">{ep.overview || "No description"}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {ep.admin_edited && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          Edited
+                                        </Badge>
+                                      )}
+                                      {expandedEpisode === ep.episode_number ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    </div>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="p-3 border-t space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <Label className="text-xs">Episode Number</Label>
+                                        <Input
+                                          type="number"
+                                          value={ep.episode_number}
+                                          onChange={(e) =>
+                                            updateEpisodeField(ep.season_number, ep.episode_number, "episode_number", Number(e.target.value))
+                                          }
+                                          className="h-8 text-sm"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <Label className="text-xs">Name</Label>
+                                        <Input
+                                          value={ep.name || ""}
+                                          onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "name", e.target.value || null)}
+                                          className="h-8 text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <Label className="text-xs">Air Date</Label>
+                                        <Input
+                                          value={ep.air_date || ""}
+                                          onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "air_date", e.target.value || null)}
+                                          className="h-8 text-sm"
+                                          placeholder="YYYY-MM-DD"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <Label className="text-xs">Runtime (min)</Label>
+                                        <Input
+                                          type="number"
+                                          value={ep.runtime ?? ""}
+                                          onChange={(e) =>
+                                            updateEpisodeField(ep.season_number, ep.episode_number, "runtime", e.target.value ? Number(e.target.value) : null)
+                                          }
+                                          className="h-8 text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Thumbnail URL</Label>
+                                      <Input
+                                        value={ep.still_path || ""}
+                                        onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "still_path", e.target.value || null)}
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Overview</Label>
+                                      <Textarea
+                                        value={ep.overview || ""}
+                                        onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "overview", e.target.value || null)}
+                                        rows={2}
+                                        className="text-sm"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2 pt-2 flex-wrap">
+                                      <Button size="sm" variant="outline" onClick={() => handleSyncSingleEpisode(ep)}>
+                                        <RefreshCw className="w-3 h-3 mr-1" />
+                                        Sync from TMDB
+                                      </Button>
+                                      <Button size="sm" onClick={() => handleSaveEpisode(ep)}>
+                                        <Save className="w-3 h-3 mr-1" />
+                                        Save Episode
+                                      </Button>
+                                      <Button size="sm" variant="destructive" onClick={() => setShowDeleteEpisodeConfirm(ep)}>
+                                        <Trash2 className="w-3 h-3 mr-1" />
+                                        Delete
+                                      </Button>
+                                    </div>
+                                  </CollapsibleContent>
+                                </div>
+                              </Collapsible>
+                            ))}
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1945,9 +1994,8 @@ export function PostMetadataEditor() {
                     return (
                       <label
                         key={genre.id}
-                        className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
-                          isSelected ? "bg-primary/20" : "hover:bg-secondary"
-                        }`}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${isSelected ? "bg-primary/20" : "hover:bg-secondary"
+                          }`}
                       >
                         <Checkbox checked={isSelected} onCheckedChange={() => toggleGenre(genre)} />
                         <span className="text-sm">{genre.name}</span>

@@ -29,7 +29,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isScrolled = false;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const setIsScrolled = (_next: boolean) => {};
+const setIsScrolled = (_next: boolean) => { };
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -245,6 +245,7 @@ export const Navbar = () => {
     { to: "/", label: "Home", icon: Home },
     ...navLinks,
     ...(user && !isAdmin ? [{ to: "/requests", label: "My Requests", icon: FileText }] : []),
+    ...(user && !isAdmin ? [{ to: "/requests", label: "My Requests", icon: FileText }] : []),
     ...(user && isAdmin ? [{ to: "/admin", label: "Admin Panel", icon: Shield }] : []),
   ];
 
@@ -261,7 +262,7 @@ export const Navbar = () => {
         <div className="absolute inset-0 pointer-events-none navbar-tint-layer" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
         <div className="absolute bottom-0 left-1/4 right-1/4 h-8 bg-gradient-to-t from-primary/10 to-transparent blur-xl pointer-events-none" />
-        
+
         <div className="container mx-auto h-16 px-4 flex items-center justify-between relative">
           {/* Left side: Menu toggle + Logo for mobile */}
           <div className="flex items-center gap-2 shrink-0">
@@ -273,10 +274,10 @@ export const Navbar = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            
+
             {/* Logo - Always visible on left */}
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className={cn(
                 "flex items-center gap-2 group transition-all duration-300",
                 isSearchOpen && "md:flex hidden"
@@ -316,7 +317,7 @@ export const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   onClick={() => {
-                      scrollToTopInstant();
+                    scrollToTopInstant();
                     clearSearchResults();
                     haptic("tap");
                   }}
@@ -382,7 +383,7 @@ export const Navbar = () => {
 
             {/* Notification Bell & User Menu */}
             {user && <NotificationBell />}
-            
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -537,20 +538,20 @@ export const Navbar = () => {
       )}
 
       {/* Mobile Menu Overlay */}
-      <div 
+      <div
         className={cn(
           "md:hidden fixed inset-0 z-[100] transition-opacity duration-300",
           isMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
       >
         {/* Backdrop */}
-        <div 
+        <div
           className="absolute inset-0 bg-background/80 backdrop-blur-md"
           onClick={() => setIsMenuOpen(false)}
         />
 
         {/* Menu Panel */}
-        <div 
+        <div
           className={cn(
             "absolute top-0 left-0 h-full w-72 bg-card/95 backdrop-blur-xl border-r border-border shadow-2xl transform transition-transform duration-300 ease-out will-change-transform",
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
@@ -598,9 +599,9 @@ export const Navbar = () => {
           <nav className="p-4">
             <ul className="space-y-1">
               {mobileNavLinks.map((link, index) => (
-                <li 
+                <li
                   key={link.to}
-                  style={{ 
+                  style={{
                     animationDelay: `${index * 50}ms`,
                     opacity: isMenuOpen ? 1 : 0,
                     transform: isMenuOpen ? 'translateX(0)' : 'translateX(-20px)',
