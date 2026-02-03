@@ -56,7 +56,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
-import { MetadataPrefillTool } from "@/components/admin/MetadataPrefillTool";
+
 import { EpisodeMetadataEditor } from "@/components/admin/EpisodeMetadataEditor";
 import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
 import { Progress } from "@/components/ui/progress";
@@ -1464,7 +1464,6 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
         <TabsContent value="tools" className="space-y-4">
           <ManifestUpdateTool />
-          <MetadataPrefillTool />
           <PostMetadataEditor />
         </TabsContent>
       </Tabs>
