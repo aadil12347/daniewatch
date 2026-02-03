@@ -64,7 +64,13 @@ import {
   Link2,
   ExternalLink,
   Ban,
+  ChevronDown,
+  ChevronUp,
+  Film,
+  Tv,
 } from "lucide-react";
+
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 
 import { useToast } from "@/hooks/use-toast";
 import { BlockedPostsPanel } from "@/components/admin/BlockedPostsPanel";
@@ -105,10 +111,12 @@ const RequestCard = ({
   const [selectedStatus, setSelectedStatus] = useState(request.status);
   const [adminResponse, setAdminResponse] = useState(request.admin_response || '');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
   const meta = request.request_meta ?? null;
+
   const handleUpdate = async () => {
     setIsUpdating(true);
     await onUpdateStatus(request.id, selectedStatus, adminResponse);
@@ -123,167 +131,167 @@ const RequestCard = ({
   };
 
   return (
-    <Card className={isSelected ? "ring-2 ring-primary" : ""}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+    <div className={`transition-all duration-300 border rounded-xl overflow-hidden ${isSelected ? "ring-2 ring-primary border-primary/50" : "border-white/10"}`}>
+      <div
+        className={`bg-black/40 backdrop-blur-md p-4 cursor-pointer hover:bg-white/5 transition-colors ${isOpen ? 'bg-white/5' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
             {showCheckbox && (
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={onSelectChange}
-                className="mt-1"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-0.5"
               />
             )}
-            <div>
-              <CardTitle className="text-lg">{request.title}</CardTitle>
-              <CardDescription className="mt-1 space-y-1">
-                <div>
-                  {request.request_type === 'movie' && 'Movie Request'}
-                  {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
-                  {request.request_type === 'general' && 'General Request'}
-                </div>
-
-                {meta?.tmdb_id ? (
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-medium">Post Code:</span>{" "}
-                    <span className="font-mono">{meta.tmdb_id}</span>{" "}
-                    <span className="text-muted-foreground">({meta.media_type})</span>
-                  </div>
-                ) : request.request_type !== 'general' ? (
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-medium">Post Code:</span>{" "}
-                    <span className="font-mono">missing</span>
-                  </div>
-                ) : null}
-
-
-                {request.user_email && (
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-medium">From:</span> {request.user_email}
-                  </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-1">
+                <h3 className="text-lg font-semibold truncate text-white">{request.title}</h3>
+                {getStatusBadge(request.status)}
+                {request.is_hidden_from_user && (
+                  <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-500">Hidden from User</Badge>
                 )}
-              </CardDescription>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  {request.request_type === 'movie' ? <Film className="w-3 h-3" /> : request.request_type === 'tv_season' ? <Tv className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                  {request.request_type === 'movie' && 'Movie'}
+                  {request.request_type === 'tv_season' && `Season ${request.season_number}`}
+                  {request.request_type === 'general' && 'General'}
+                </span>
+                <span>•</span>
+                <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
+                {request.user_email && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {request.user_email}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          {getStatusBadge(request.status)}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mb-3">{request.message}</p>
-
-        {request.admin_response && (
-          <div className="p-3 rounded-md bg-primary/10 border border-primary/20 mb-3">
-            <p className="text-xs font-medium text-primary mb-1">Your Response:</p>
-            <p className="text-sm">{request.admin_response}</p>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-          </p>
-
           <div className="flex items-center gap-2">
-            {request.request_type !== 'general' && (
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={!meta?.tmdb_id}
-                onClick={() => {
-                  if (!meta?.tmdb_id) return;
-                  const path = meta.media_type === 'movie' ? `/movie/${meta.tmdb_id}` : `/tv/${meta.tmdb_id}`;
-                  navigate(path, { state: { backgroundLocation: location } });
-                }}
-              >
-                <Link2 className="w-4 h-4 mr-2" />
-                Open Post
-              </Button>
-            )}
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Request</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this request? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  Update Status
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Update Request</DialogTitle>
-                  <DialogDescription>
-                    Update the status and send a response to the user.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Status</label>
-                    <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Response to User (optional)</label>
-                    <Textarea
-                      placeholder="Add a message for the user..."
-                      value={adminResponse}
-                      onChange={(e) => setAdminResponse(e.target.value)}
-                      className="min-h-[100px]"
-                    />
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleUpdate} disabled={isUpdating}>
-                    {isUpdating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      'Update & Notify User'
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            {isOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <Collapsible open={isOpen} className="border-t border-white/10 bg-black/20">
+        <CollapsibleContent className="p-4 space-y-4">
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-muted-foreground">User Message</h4>
+            <div className="p-3 rounded-lg bg-white/5 text-sm leading-relaxed">
+              {request.message}
+            </div>
+          </div>
+
+          {request.admin_response && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-primary">Your Response</h4>
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm leading-relaxed">
+                {request.admin_response}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-4 border-t border-white/10">
+            <div className="flex gap-2">
+              {request.request_type !== 'general' && meta?.tmdb_id && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="bg-white/10 hover:bg-white/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const path = meta.media_type === 'movie' ? `/movie/${meta.tmdb_id}` : `/tv/${meta.tmdb_id}`;
+                    navigate(path, { state: { backgroundLocation: location } });
+                  }}
+                >
+                  <Link2 className="w-4 h-4 mr-2" />
+                  View Post
+                </Button>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
+                    Update Status
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                  <DialogHeader>
+                    <DialogTitle>Update Request</DialogTitle>
+                    <DialogDescription>
+                      Update status and reply to the user.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Status</label>
+                      <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
+                        <SelectTrigger className="bg-white/5 border-white/10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Response (optional)</label>
+                      <Textarea
+                        placeholder="Type your message..."
+                        value={adminResponse}
+                        onChange={(e) => setAdminResponse(e.target.value)}
+                        className="min-h-[100px] bg-white/5 border-white/10"
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleUpdate} disabled={isUpdating} className="bg-cinema-red hover:bg-cinema-red/90">
+                      {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Update & Notify'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Request?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. User will lose this request from their history.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-white">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 };
 
@@ -778,19 +786,15 @@ const AdminDashboard = () => {
       <div className="min-h-screen bg-background">
 
 
-        <div className="container mx-auto px-4 pt-24 pb-12">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <div className="container mx-auto px-4 pt-14 pb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cinema-red to-red-500">Admin Dashboard</h1>
             {isOwner && (
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="outline" className="gap-1 border-yellow-500/50 text-yellow-500">
                 <Crown className="w-3 h-3" /> Owner
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground mb-8">
-            Manage user requests and admin access
-          </p>
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -857,49 +861,8 @@ const AdminDashboard = () => {
             </TabsList>
 
             <TabsContent value="requests">
-              {/* Request category tabs */}
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <Button
-                  variant={requestsTab === 'new' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setRequestsTab('new')}
-                  className="gap-1"
-                >
-                  <Sparkles className="w-4 h-4" /> New ({newRequests.length})
-                </Button>
-                <Button
-                  variant={requestsTab === 'pending' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setRequestsTab('pending')}
-                  className="gap-1"
-                >
-                  <Clock className="w-4 h-4" /> Pending ({pendingRequests.length})
-                </Button>
-                <Button
-                  variant={requestsTab === 'in_progress' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setRequestsTab('in_progress')}
-                  className="gap-1"
-                >
-                  <AlertCircle className="w-4 h-4" /> In Progress ({inProgressRequests.length})
-                </Button>
-                <Button
-                  variant={requestsTab === 'done' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setRequestsTab('done')}
-                  className="gap-1"
-                >
-                  <CheckCircle className="w-4 h-4" /> Done ({doneRequests.length})
-                </Button>
-                <Button
-                  variant={requestsTab === 'trash' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setRequestsTab('trash')}
-                  className="gap-1"
-                >
-                  <Archive className="w-4 h-4" /> Trash ({trashedRequests.length})
-                </Button>
-              </div>
+              {/* Request category tabs - REMOVED (Use Filters at top) */}
+
 
               {/* Bulk actions */}
               <div className="flex flex-wrap items-center gap-2 mb-4">

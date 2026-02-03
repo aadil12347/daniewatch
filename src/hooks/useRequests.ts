@@ -23,13 +23,14 @@ export const useRequests = () => {
 
   const fetchRequests = async () => {
     if (!user || !isSupabaseConfigured) return;
-    
+
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('requests')
         .select('*')
         .eq('user_id', user.id)
+        .eq('is_hidden_from_user', false) // Only fetch non-hidden requests
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -100,13 +101,15 @@ export const useRequests = () => {
     if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
 
     try {
+      // Soft delete: just hide it from the user
       const { error } = await supabase
         .from('requests')
-        .delete()
+        .update({ is_hidden_from_user: true })
         .eq('id', requestId)
         .eq('user_id', user.id);
 
       if (error) throw error;
+
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
       return { error: null };
     } catch (error) {
@@ -121,7 +124,7 @@ export const useRequests = () => {
     try {
       const { error } = await supabase
         .from('requests')
-        .delete()
+        .update({ is_hidden_from_user: true })
         .eq('user_id', user.id);
 
       if (error) throw error;

@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2 } from "lucide-react";
+import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2, Shield } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
@@ -42,10 +42,10 @@ const getStatusBadge = (status: Request['status']) => {
   }
 };
 
-const RequestCard = ({ 
-  request, 
-  onDelete 
-}: { 
+const RequestCard = ({
+  request,
+  onDelete
+}: {
   request: Request;
   onDelete: (id: string) => Promise<void>;
 }) => {
@@ -58,52 +58,57 @@ const RequestCard = ({
   };
 
   return (
-    <Card>
+    <Card className="bg-black/40 backdrop-blur-md border-white/10 hover:bg-white/5 transition-all duration-300">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle className="text-lg">{request.title}</CardTitle>
-            <CardDescription className="mt-1">
-              {request.request_type === 'movie' && 'Movie Request'}
-              {request.request_type === 'tv_season' && `TV Season ${request.season_number || ''} Request`}
-              {request.request_type === 'general' && 'General Request'}
+            <CardTitle className="text-lg text-white">{request.title}</CardTitle>
+            <CardDescription className="mt-1 flex items-center gap-2 text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/5">
+                {request.request_type === 'movie' && 'Movie'}
+                {request.request_type === 'tv_season' && `Season ${request.season_number}`}
+                {request.request_type === 'general' && 'General'}
+              </span>
+              <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
             </CardDescription>
           </div>
           {getStatusBadge(request.status)}
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground mb-3">{request.message}</p>
-        
+        <p className="text-sm text-gray-300 mb-4 bg-white/5 p-3 rounded-lg border border-white/5">
+          {request.message}
+        </p>
+
         {request.admin_response && (
-          <div className="p-3 rounded-md bg-secondary/50 border border-border mb-3">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Admin Response:</p>
-            <p className="text-sm">{request.admin_response}</p>
+          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 mb-4">
+            <div className="flex items-center gap-2 mb-2 text-primary">
+              <Shield className="w-4 h-4" />
+              <p className="text-xs font-bold uppercase tracking-wider">Admin Response</p>
+            </div>
+            <p className="text-sm text-white/90 leading-relaxed">{request.admin_response}</p>
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Submitted {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-          </p>
-          
+        <div className="flex items-center justify-end">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 -mr-2">
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Remove
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Request</AlertDialogTitle>
+                <AlertDialogTitle>Remove from History?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete this request? This action cannot be undone.
+                  This will hide this request from your view. The admin will still have a record of it.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Delete
+                <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90">
+                  Remove
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -181,9 +186,9 @@ const Requests = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
 
-        <div className="container mx-auto px-4 pt-24 pb-12">
+
+        <div className="container mx-auto px-4 pt-14 pb-12">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="sr-only">My Requests</h1>
@@ -191,7 +196,7 @@ const Requests = () => {
                 Track the status of your movie and TV show requests
               </p>
             </div>
-            
+
             {requests.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
