@@ -16,6 +16,9 @@ import {
   RefreshCw,
   Settings2,
   Image as ImageIcon,
+  Sparkles,
+  FileVideo,
+  Download
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -60,6 +63,7 @@ import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
 import { EpisodeMetadataEditor } from "@/components/admin/EpisodeMetadataEditor";
 import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 const UPDATE_LINKS_CACHE_KEY = "updateLinksPanelState_v1";
 const UPDATE_LINKS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -853,622 +857,412 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   };
 
   return (
-    <div className={className}>
+    <div className={cn("relative min-h-screen", className)}>
       {!embedded && (
-        <div className="flex items-start gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link to="/admin">
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-            </Button>
-            <div>
-              <div className="flex items-center gap-3">
-                <Link2 className="w-8 h-8 text-primary" />
-                <h1 className="text-3xl font-bold">Update Links</h1>
+        <div className="flex items-start gap-4 mb-8 pt-4">
+          <Button variant="ghost" size="icon" asChild className="hover:bg-white/10 text-muted-foreground hover:text-white transition-colors">
+            <Link to="/admin">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+          </Button>
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-cinema-red/20 text-cinema-red">
+                <Link2 className="w-6 h-6" />
               </div>
-              <p className="text-muted-foreground mt-1">Manage watch and download links for movies and series</p>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Update Links</h1>
             </div>
+            <p className="text-muted-foreground mt-1 text-sm font-medium">Manage watch and download links for movies and series</p>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Modern Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "update" | "trash" | "tools")} className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="update" className="gap-2">
-            <Link2 className="w-4 h-4" />
-            Update Links
-          </TabsTrigger>
-          <TabsTrigger value="trash" className="gap-2">
-            <Archive className="w-4 h-4" />
-            Trash ({trashedEntries.length})
-          </TabsTrigger>
-          <TabsTrigger value="tools" className="gap-2">
-            <Wrench className="w-4 h-4" />
-            Tools
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex justify-center mb-8">
+          <TabsList className="bg-black/40 border border-white/10 p-1 rounded-full backdrop-blur-md">
+            <TabsTrigger
+              value="update"
+              className="rounded-full px-6 py-2 data-[state=active]:bg-cinema-red data-[state=active]:text-white transition-all duration-300"
+            >
+              <Link2 className="w-4 h-4 mr-2" />
+              Update Links
+            </TabsTrigger>
+            <TabsTrigger
+              value="trash"
+              className="rounded-full px-6 py-2 data-[state=active]:bg-cinema-red data-[state=active]:text-white transition-all duration-300"
+            >
+              <Archive className="w-4 h-4 mr-2" />
+              Trash ({trashedEntries.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="tools"
+              className="rounded-full px-6 py-2 data-[state=active]:bg-cinema-red data-[state=active]:text-white transition-all duration-300"
+            >
+              <Wrench className="w-4 h-4 mr-2" />
+              Tools
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="update" className="space-y-4">
-          {/* Search Section */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Search by TMDB ID</CardTitle>
-              <CardDescription>Enter the TMDB ID and press Search or Enter</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Enter TMDB ID (e.g., 93405)"
-                    value={tmdbId}
-                    onChange={(e) => setTmdbId(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                </div>
-                <Button onClick={() => handleSearch()} disabled={isSearching || !tmdbId.trim()}>
-                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  <span className="ml-2">Search</span>
-                </Button>
+        <TabsContent value="update" className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+          {/* Hero Search Section */}
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-cinema-red/50 to-purple-500/50 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur-lg" />
+            <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-xl p-2 sm:p-4 flex gap-4 shadow-2xl">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  className="w-full bg-white/5 border-white/10 pl-12 h-14 text-lg rounded-lg focus:ring-cinema-red/50 transition-all placeholder:text-muted-foreground/50"
+                  placeholder="Enter TMDB ID to start editing..."
+                  value={tmdbId}
+                  onChange={(e) => setTmdbId(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
               </div>
-
-              {searchError && <p className="text-sm text-destructive mt-2">{searchError}</p>}
-            </CardContent>
-          </Card>
-
-          {/* Links Form - Always visible */}
-          <Card>
-            <CardContent className="pt-4 space-y-4">
-              {/* Hover character image */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Hover character image (optional)</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText();
-                        setHoverImageUrl(text);
-                        toast({ title: "Pasted", description: "Hover image URL replaced from clipboard." });
-                      } catch {
-                        toast({ title: "Error", description: "Failed to read clipboard.", variant: "destructive" });
-                      }
-                    }}
-                    className="gap-1 h-7 px-2"
-                    disabled={!tmdbResult}
-                  >
-                    <ClipboardPaste className="w-3 h-3" />
-                    Paste
-                  </Button>
-                </div>
-
-                <div className="flex gap-3 items-start">
-                  <div className="flex-1">
-                    <Input
-                      value={hoverImageUrl}
-                      onChange={(e) => setHoverImageUrl(e.target.value)}
-                      className="font-mono text-sm"
-                      placeholder="https://... (PNG/WebP/JPG recommended)"
-                      disabled={!tmdbResult}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Shown to everyone on card hover.</p>
-                  </div>
-
-                  {/^https?:\/\//i.test(hoverImageUrl.trim()) && (
-                    <img
-                      src={hoverImageUrl.trim()}
-                      alt="Hover character preview"
-                      loading="lazy"
-                      className="w-12 h-12 rounded-md object-cover border"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Watch Online */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Watch Online</Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {getWatchLinkCount()} links
-                      {tmdbResult && tmdbResult.type === "series" && ` / ${getExpectedEpisodeCount()} ep`}
-                    </span>
-                    <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="gap-1 h-7 px-2">
-                      <ClipboardPaste className="w-3 h-3" />
-                      Paste
-                    </Button>
-                  </div>
-                </div>
-                {tmdbResult?.type === "movie" ? (
-                  <Textarea
-                    value={movieWatchLink}
-                    onChange={(e) => setMovieWatchLink(e.target.value)}
-                    className="min-h-[80px] font-mono text-sm"
-                    placeholder="Paste watch link here..."
-                  />
-                ) : (
-                  <Textarea
-                    value={seriesWatchLinks}
-                    onChange={(e) => setSeriesWatchLinks(e.target.value)}
-                    className="font-mono text-sm"
-                    style={{ minHeight: Math.max(80, Math.min(300, getWatchLinkCount() * 24 + 40)) }}
-                    placeholder="Paste episode links here (one per line)..."
-                  />
-                )}
-              </div>
-
-              {/* Download Links */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Download Links</Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{getDownloadLinkCount()} links</span>
-                    <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="gap-1 h-7 px-2">
-                      <ClipboardPaste className="w-3 h-3" />
-                      Paste
-                    </Button>
-                  </div>
-                </div>
-                {tmdbResult?.type === "movie" ? (
-                  <Input
-                    value={movieDownloadLink}
-                    onChange={(e) => setMovieDownloadLink(e.target.value)}
-                    className="font-mono text-sm"
-                    placeholder="Paste download link here..."
-                  />
-                ) : (
-                  <Textarea
-                    value={seriesDownloadLinks}
-                    onChange={(e) => setSeriesDownloadLinks(e.target.value)}
-                    className="font-mono text-sm"
-                    style={{ minHeight: Math.max(80, Math.min(300, getDownloadLinkCount() * 24 + 40)) }}
-                    placeholder="Paste download links here (one per line)..."
-                  />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Result Card with Type Toggle */}
-          {tmdbResult && (
-            <Card>
-              <CardContent className="pt-4">
-                {/* Manual Toggle Buttons */}
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    variant={tmdbResult.type === "movie" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleManualSwitch("movie")}
-                    disabled={!candidates.movie}
-                    className="flex-1"
-                  >
-                    <Film className="w-4 h-4 mr-2" />
-                    Movie {candidates.movie ? "" : "(N/A)"}
-                  </Button>
-                  <Button
-                    variant={tmdbResult.type === "series" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleManualSwitch("series")}
-                    disabled={!candidates.series}
-                    className="flex-1"
-                  >
-                    <Tv className="w-4 h-4 mr-2" />
-                    Series {candidates.series ? "" : "(N/A)"}
-                  </Button>
-                </div>
-
-                <div className="flex gap-4 items-start">
-                  {/* Small Poster */}
-                  <div className="flex-shrink-0">
-                    {tmdbResult.posterUrl ? (
-                      <img
-                        src={tmdbResult.posterUrl}
-                        alt={tmdbResult.title}
-                        className="w-16 h-24 object-cover rounded-lg shadow-md"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-16 h-24 bg-secondary rounded-lg flex items-center justify-center">
-                        {tmdbResult.type === "movie" ? (
-                          <Film className="w-6 h-6 text-muted-foreground" />
-                        ) : (
-                          <Tv className="w-6 h-6 text-muted-foreground" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold truncate">{tmdbResult.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {tmdbResult.year} • {tmdbResult.type === "movie" ? "Movie" : "Series"}
-                    </p>
-
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      <Badge variant="outline" className="text-xs">
-                        TMDB: {tmdbResult.id}
-                      </Badge>
-                      {entryExists ? (
-                        <Badge variant="default" className="bg-green-500 text-xs">
-                          Exists
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          New
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Season selector for series */}
-                    {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
-                      <div className="mt-2">
-                        <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
-                          <SelectTrigger className="w-full h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {tmdbResult.seasonDetails.map((s) => (
-                              <SelectItem key={s.season_number} value={String(s.season_number)}>
-                                S{s.season_number} ({s.episode_count} ep)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Metadata Editing Section */}
-          {tmdbResult && (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Settings2 className="w-4 h-4 text-primary" />
-                    <CardTitle className="text-lg">Metadata</CardTitle>
-                    {adminEdited && (
-                      <Badge variant="secondary" className="text-xs">
-                        Admin Edited
-                      </Badge>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefreshFromTmdb}
-                    disabled={isRefreshingTmdb}
-                  >
-                    {isRefreshingTmdb ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    <span className="ml-1">Refresh TMDB</span>
-                  </Button>
-                </div>
-                <CardDescription>
-                  Edit poster, backdrop, logo URLs and description. Changes are saved with the entry.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Poster URL */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Poster URL</Label>
-                  <div className="flex gap-3 items-start">
-                    <Input
-                      value={posterUrl}
-                      onChange={(e) => setPosterUrl(e.target.value)}
-                      className="flex-1 font-mono text-xs"
-                      placeholder="https://..."
-                    />
-                    {posterUrl && /^https?:\/\//i.test(posterUrl) && (
-                      <img
-                        src={posterUrl}
-                        alt="Poster preview"
-                        className="w-10 h-14 object-cover rounded border"
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Backdrop URL */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Backdrop URL</Label>
-                  <div className="flex gap-3 items-start">
-                    <Input
-                      value={backdropUrl}
-                      onChange={(e) => setBackdropUrl(e.target.value)}
-                      className="flex-1 font-mono text-xs"
-                      placeholder="https://..."
-                    />
-                    {backdropUrl && /^https?:\/\//i.test(backdropUrl) && (
-                      <img
-                        src={backdropUrl}
-                        alt="Backdrop preview"
-                        className="w-20 h-11 object-cover rounded border"
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Logo URL */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Logo URL</Label>
-                  <div className="flex gap-3 items-start">
-                    <Input
-                      value={logoUrl}
-                      onChange={(e) => setLogoUrl(e.target.value)}
-                      className="flex-1 font-mono text-xs"
-                      placeholder="https://..."
-                    />
-                    {logoUrl && /^https?:\/\//i.test(logoUrl) && (
-                      <img
-                        src={logoUrl}
-                        alt="Logo preview"
-                        className="h-8 object-contain"
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Overview */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Overview / Description</Label>
-                  <Textarea
-                    value={overview}
-                    onChange={(e) => setOverview(e.target.value)}
-                    rows={3}
-                    placeholder="Description..."
-                  />
-                </div>
-
-                {/* Admin Edited Toggle */}
-                <div className="flex items-center gap-3 pt-2 border-t">
-                  <Switch
-                    id="admin-edited"
-                    checked={adminEdited}
-                    onCheckedChange={setAdminEdited}
-                  />
-                  <Label htmlFor="admin-edited" className="text-sm cursor-pointer">
-                    Mark as Admin Edited (skips auto-prefill)
-                  </Label>
-                </div>
-
-                {/* Episode Editor Button (series only) */}
-                {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
-                  <div className="pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowEpisodeEditor(true)}
-                      className="w-full"
-                    >
-                      <ImageIcon className="w-4 h-4 mr-2" />
-                      Manage Episode Metadata
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Action Buttons */}
-          {tmdbResult && (
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                {tmdbResult.type === "series" 
-                  ? (seasonSaveProgress ? seasonSaveProgress.message : "Save Entry + All Seasons")
-                  : "Save Entry"}
+              <Button
+                onClick={() => handleSearch()}
+                disabled={isSearching || !tmdbId.trim()}
+                className="h-14 px-8 bg-cinema-red hover:bg-cinema-red/90 text-white rounded-lg font-semibold shadow-lg shadow-cinema-red/20 transition-all hover:scale-105"
+              >
+                {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                <span className="ml-2 hidden sm:inline">Search</span>
               </Button>
-
-              {/* Season save progress indicator */}
-              {seasonSaveProgress && (
-                <div className="flex items-center gap-3 flex-1 ml-2">
-                  <Progress 
-                    value={(seasonSaveProgress.current / seasonSaveProgress.total) * 100} 
-                    className="flex-1 h-2"
-                  />
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {seasonSaveProgress.current}/{seasonSaveProgress.total}
-                  </span>
-                </div>
-              )}
-
-              {entryExists && tmdbResult.type === "series" && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="text-destructive" disabled={isDeletingSeason}>
-                      {isDeletingSeason ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                      Delete Season {selectedSeason}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Season {selectedSeason}?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will delete all watch and download links for Season {selectedSeason}.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteSeason}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete Season
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-
-              {entryExists && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" disabled={isDeleting}>
-                      {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                      Delete Entire Entry
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will move all watch and download links for "{tmdbResult.title}" to trash.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteEntry}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Move to Trash
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="trash" className="space-y-6">
-          {/* Trash Actions */}
-          <div className="flex justify-end">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  disabled={trashedEntries.length === 0}
-                >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Empty Trash
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Empty Trash?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to permanently delete {trashedEntries.length} entries? This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleEmptyTrash}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Empty Trash
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {searchError && (
+              <div className="absolute -bottom-8 left-4 text-sm text-red-400 font-medium flex items-center animate-in slide-in-from-left-2">
+                <X className="w-4 h-4 mr-1" /> {searchError}
+              </div>
+            )}
           </div>
 
-          {/* Trash List */}
-          {trashedEntries.length === 0 ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <Archive className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Trash is empty</h2>
-                <p className="text-muted-foreground">Deleted entries will appear here for recovery.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {trashedEntries.map((entry) => (
-                <Card key={entry.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex gap-4 items-start">
-                      {entry.posterUrl ? (
-                        <img
-                          src={entry.posterUrl}
-                          alt={entry.title}
-                          className="w-16 h-24 object-cover rounded-lg"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-16 h-24 bg-secondary rounded-lg flex items-center justify-center">
-                          {entry.type === "movie" ? (
-                            <Film className="w-6 h-6 text-muted-foreground" />
-                          ) : (
-                            <Tv className="w-6 h-6 text-muted-foreground" />
-                          )}
-                        </div>
+          {/* Main Content Area */}
+          {tmdbResult && (
+            <div className="grid grid-cols-1 lg:grid-cols-[350px,1fr] gap-6 items-start animate-in fade-in duration-500">
+
+              {/* Left Column: Poster & Quick Info */}
+              <div className="space-y-6">
+                <div className="relative bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden p-4 shadow-xl">
+                  {/* Poster Image */}
+                  <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-2xl mb-4 group">
+                    <img
+                      src={tmdbResult.posterUrl || ""}
+                      alt={tmdbResult.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                      <Badge className={entryExists ? "bg-green-500/90" : "bg-cinema-red/90"}>
+                        {entryExists ? "In Database" : "New Entry"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Title & Meta */}
+                  <div className="space-y-3">
+                    <h2 className="text-2xl font-bold leading-tight">{tmdbResult.title}</h2>
+                    <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                      <Badge variant="outline" className="border-white/10 bg-white/5">
+                        {tmdbResult.year}
+                      </Badge>
+                      <Badge variant="outline" className="border-white/10 bg-white/5">
+                        {tmdbResult.type === "movie" ? "Movie" : "Series"}
+                      </Badge>
+                      <Badge variant="secondary" className="bg-white/10">TMDB: {tmdbResult.id}</Badge>
+                    </div>
+                  </div>
+
+                  {/* Type Switcher */}
+                  <div className="flex gap-2 mt-6 p-1 bg-black/40 rounded-lg">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleManualSwitch("movie")}
+                      disabled={!candidates.movie}
+                      className={cn(
+                        "flex-1 rounded-md transition-all",
+                        tmdbResult.type === "movie" ? "bg-cinema-red text-white shadow-md" : "text-muted-foreground hover:text-white"
                       )}
+                    >
+                      <Film className="w-4 h-4 mr-2" />
+                      Movie
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleManualSwitch("series")}
+                      disabled={!candidates.series}
+                      className={cn(
+                        "flex-1 rounded-md transition-all",
+                        tmdbResult.type === "series" ? "bg-cinema-red text-white shadow-md" : "text-muted-foreground hover:text-white"
+                      )}
+                    >
+                      <Tv className="w-4 h-4 mr-2" />
+                      Series
+                    </Button>
+                  </div>
+                </div>
 
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{entry.title}</h3>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline">{entry.type === "movie" ? "Movie" : "Series"}</Badge>
-                          <Badge variant="secondary">ID: {entry.id}</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Deleted {formatDistanceToNow(new Date(entry.deletedAt), { addSuffix: true })}
-                        </p>
-                      </div>
+                {/* Series Season Selector */}
+                {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
+                  <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-4">
+                    <Label className="text-sm text-muted-foreground mb-2 block">Active Season</Label>
+                    <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
+                      <SelectTrigger className="w-full bg-white/5 border-white/10 h-12">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tmdbResult.seasonDetails.map((s) => (
+                          <SelectItem key={s.season_number} value={String(s.season_number)}>
+                            Season {s.season_number} <span className="text-muted-foreground ml-2">({s.episode_count} eps)</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
 
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleRestoreEntry(entry)} className="gap-1">
-                          <RotateCcw className="w-4 h-4" /> Restore
+              {/* Right Column: Forms */}
+              <div className="space-y-6">
+
+                {/* 1. Links Management */}
+                <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
+                  <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+                    <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                      <FileVideo className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-xl font-semibold">Streaming Links</h3>
+                  </div>
+
+                  {/* Watch Links */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-muted-foreground">Stream URLs</Label>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={cn("border-white/10", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                          {getWatchLinkCount()} added
+                        </Badge>
+                        <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-6 px-2 text-xs hover:bg-white/10">
+                          <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive gap-1">
-                              <Trash2 className="w-4 h-4" /> Delete Forever
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Permanently Delete</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to permanently delete "{entry.title}"? This cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handlePermanentDelete(entry.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete Forever
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    {tmdbResult.type === "movie" ? (
+                      <Textarea
+                        value={movieWatchLink}
+                        onChange={(e) => setMovieWatchLink(e.target.value)}
+                        className="min-h-[100px] bg-black/20 border-white/10 font-mono text-sm focus:ring-blue-500/50"
+                        placeholder="https://..."
+                      />
+                    ) : (
+                      <Textarea
+                        value={seriesWatchLinks}
+                        onChange={(e) => setSeriesWatchLinks(e.target.value)}
+                        className="bg-black/20 border-white/10 font-mono text-sm focus:ring-blue-500/50"
+                        style={{ minHeight: "200px" }}
+                        placeholder="One link per line..."
+                      />
+                    )}
+                  </div>
+
+                  {/* Download Links */}
+                  <div className="space-y-3 pt-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-muted-foreground">Download URLs</Label>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={cn("border-white/10", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                          {getDownloadLinkCount()} added
+                        </Badge>
+                        <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-6 px-2 text-xs hover:bg-white/10">
+                          <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
+                        </Button>
+                      </div>
+                    </div>
+                    {tmdbResult.type === "movie" ? (
+                      <Input
+                        value={movieDownloadLink}
+                        onChange={(e) => setMovieDownloadLink(e.target.value)}
+                        className="bg-black/20 border-white/10 font-mono text-sm focus:ring-green-500/50"
+                        placeholder="https://..."
+                      />
+                    ) : (
+                      <Textarea
+                        value={seriesDownloadLinks}
+                        onChange={(e) => setSeriesDownloadLinks(e.target.value)}
+                        className="bg-black/20 border-white/10 font-mono text-sm focus:ring-green-500/50"
+                        style={{ minHeight: "150px" }}
+                        placeholder="One link per line..."
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Metadata Editor */}
+                <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-xl font-semibold">Metadata & Assets</h3>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRefreshFromTmdb}
+                      disabled={isRefreshingTmdb}
+                      className="hover:bg-white/5"
+                    >
+                      {isRefreshingTmdb ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Poster URL</Label>
+                      <Input value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Backdrop URL</Label>
+                      <Input value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Hover Image (Optional)</Label>
+                    <div className="flex gap-2">
+                      <Input value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs flex-1" placeholder="https://..." />
+                      {hoverImageUrl && <img src={hoverImageUrl} className="w-10 h-10 rounded object-cover border border-white/10" />}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label className="text-base">Admin Locked</Label>
+                        <p className="text-xs text-muted-foreground">Prevent auto-updates from overriding these changes</p>
+                      </div>
+                      <Switch checked={adminEdited} onCheckedChange={setAdminEdited} />
+                    </div>
+
+                    {tmdbResult.type === "series" && (
+                      <Button variant="outline" onClick={() => setShowEpisodeEditor(true)} className="w-full border-white/10 hover:bg-white/5">
+                        <ImageIcon className="w-4 h-4 mr-2" /> Manage Episode Thumbnails
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Bar */}
+                <div className="sticky bottom-6 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-4 z-50">
+                  <div className="flex items-center gap-2">
+                    {seasonSaveProgress && (
+                      <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full">
+                        <Loader2 className="w-4 h-4 animate-spin text-cinema-red" />
+                        <span className="text-xs font-medium">{seasonSaveProgress.message}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {entryExists && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="hover:bg-red-500/20 text-muted-foreground hover:text-red-400 rounded-full w-10 h-10">
+                            <Trash2 className="w-5 h-5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
+                            <AlertDialogDescription>This will move existing links to trash.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteEntry} className="bg-red-500 hover:bg-red-600">Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+
+                    <Button onClick={handleSave} disabled={isSaving} className="bg-white text-black hover:bg-white/90 px-8 rounded-full font-bold shadow-lg shadow-white/10">
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+
+              </div>
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="tools" className="space-y-4">
-          <ManifestUpdateTool />
-          <PostMetadataEditor />
+        {/* Trash Content */}
+        <TabsContent value="trash" className="animate-in slide-in-from-bottom-4 duration-500">
+          {/* Trash Logic (Restyled) */}
+          <div className="space-y-6">
+            <div className="flex justify-end">
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={trashedEntries.length === 0}
+                onClick={() => {
+                  if (confirm("Empty trash?")) handleEmptyTrash();
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Empty Trash
+              </Button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {trashedEntries.map((entry) => (
+                <div key={entry.id} className="bg-black/40 border border-white/10 rounded-xl overflow-hidden group">
+                  <div className="flex gap-4 p-4">
+                    <img src={entry.posterUrl || ""} className="w-16 h-24 object-cover rounded-md bg-white/5" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold truncate">{entry.title}</h4>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Deleted {formatDistanceToNow(new Date(entry.deletedAt), { addSuffix: true })}
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="secondary" className="h-7 text-xs bg-white/10 hover:bg-white/20" onClick={() => handleRestoreEntry(entry)}>
+                          Restore
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {trashedEntries.length === 0 && (
+                <div className="col-span-full py-20 text-center text-muted-foreground bg-white/5 rounded-2xl border border-dashed border-white/10">
+                  <Archive className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Trash is empty</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="tools" className="animate-in slide-in-from-bottom-4 duration-500">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="bg-black/40 border-white/10">
+              <CardHeader><CardTitle>Manifest Update</CardTitle></CardHeader>
+              <CardContent>
+                <ManifestUpdateTool />
+              </CardContent>
+            </Card>
+            <Card className="bg-black/40 border-white/10">
+              <CardHeader><CardTitle>Post Metadata</CardTitle></CardHeader>
+              <CardContent>
+                <PostMetadataEditor />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
-      {/* Episode Metadata Editor Modal */}
+      {/* Episode Modal */}
       {tmdbResult && tmdbResult.type === "series" && (
         <EpisodeMetadataEditor
           open={showEpisodeEditor}
