@@ -102,6 +102,8 @@ const RequestCard = ({
   request: AdminRequest;
   onUpdateStatus: (id: string, status: AdminRequest['status'], response?: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onCloseChat: (id: string) => Promise<void>;
+  onReopenChat: (id: string) => Promise<void>;
   isSelected: boolean;
   onSelectChange: (checked: boolean) => void;
   showCheckbox: boolean;
@@ -215,80 +217,116 @@ const RequestCard = ({
               )}
             </div>
 
-            <div className="flex gap-2">
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
-                    Update Status
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-                  <DialogHeader>
-                    <DialogTitle>Update Request</DialogTitle>
-                    <DialogDescription>
-                      Update status and reply to the user.
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Status</label>
-                      <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
-                        <SelectTrigger className="bg-white/5 border-white/10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Response (optional)</label>
-                      <Textarea
-                        placeholder="Type your message..."
-                        value={adminResponse}
-                        onChange={(e) => setAdminResponse(e.target.value)}
-                        className="min-h-[100px] bg-white/5 border-white/10"
-                      />
-                    </div>
+            {/* Actions */}
+            <div className="flex flex-col gap-2 pt-4 border-t border-white/10 mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</p>
+                {request.closed_by && (
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded border ${request.closed_by === 'admin'
+                      ? 'bg-destructive/10 text-destructive border-destructive/20'
+                      : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                      }`}>
+                      Chat Closed by {request.closed_by === 'admin' ? 'Admin' : 'User'}
+                    </span>
                   </div>
+                )}
+              </div>
 
-                  <DialogFooter>
-                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleUpdate} disabled={isUpdating} className="bg-cinema-red hover:bg-cinema-red/90">
-                      {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Update & Notify'}
+              <div className="flex flex-wrap gap-2">
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
+                      Update Status
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                    <DialogHeader>
+                      <DialogTitle>Update Request</DialogTitle>
+                      <DialogDescription>
+                        Update status and reply to the user.
+                      </DialogDescription>
+                    </DialogHeader>
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Status</label>
+                        <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
+                          <SelectTrigger className="bg-white/5 border-white/10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Response (optional)</label>
+                        <Textarea
+                          placeholder="Type your message..."
+                          value={adminResponse}
+                          onChange={(e) => setAdminResponse(e.target.value)}
+                          className="min-h-[100px] bg-white/5 border-white/10"
+                        />
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleUpdate} disabled={isUpdating} className="bg-cinema-red hover:bg-cinema-red/90">
+                        {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Update & Notify'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {request.closed_by ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onReopenChat(request.id)}
+                    className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20"
+                  >
+                    <CheckCircle className="w-3 h-3 mr-1" /> Reopen Chat
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Request?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. User will lose this request from their history.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-white">
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onCloseChat(request.id)}
+                    className="bg-white/5 border-white/10 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                  >
+                    <XCircle className="w-3 h-3 mr-1" /> Close Chat
+                  </Button>
+                )}
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto">
+                      {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Request?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. User will lose this request from their history.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-white">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
-          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>
@@ -798,7 +836,10 @@ const AdminDashboard = () => {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('new')}>
+            <Card
+              className={`cursor-pointer transition-all duration-300 ${requestsTab === 'new' ? 'ring-2 ring-cinema-red shadow-[0_0_20px_rgba(220,38,38,0.5)] bg-white/5' : 'hover:ring-2 hover:ring-primary/50 hover:bg-white/5'}`}
+              onClick={() => setRequestsTab('new')}
+            >
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-primary">{newRequests.length}</div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -806,7 +847,10 @@ const AdminDashboard = () => {
                 </p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('pending')}>
+            <Card
+              className={`cursor-pointer transition-all duration-300 ${requestsTab === 'pending' ? 'ring-2 ring-cinema-red shadow-[0_0_20px_rgba(220,38,38,0.5)] bg-white/5' : 'hover:ring-2 hover:ring-primary/50 hover:bg-white/5'}`}
+              onClick={() => setRequestsTab('pending')}
+            >
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-yellow-500">{pendingRequests.length}</div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -814,7 +858,10 @@ const AdminDashboard = () => {
                 </p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('in_progress')}>
+            <Card
+              className={`cursor-pointer transition-all duration-300 ${requestsTab === 'in_progress' ? 'ring-2 ring-cinema-red shadow-[0_0_20px_rgba(220,38,38,0.5)] bg-white/5' : 'hover:ring-2 hover:ring-primary/50 hover:bg-white/5'}`}
+              onClick={() => setRequestsTab('in_progress')}
+            >
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-blue-500">{inProgressRequests.length}</div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -822,7 +869,10 @@ const AdminDashboard = () => {
                 </p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all" onClick={() => setRequestsTab('done')}>
+            <Card
+              className={`cursor-pointer transition-all duration-300 ${requestsTab === 'done' ? 'ring-2 ring-cinema-red shadow-[0_0_20px_rgba(220,38,38,0.5)] bg-white/5' : 'hover:ring-2 hover:ring-primary/50 hover:bg-white/5'}`}
+              onClick={() => setRequestsTab('done')}
+            >
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold text-green-500">{doneRequests.length}</div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -1134,6 +1184,8 @@ const AdminDashboard = () => {
                       request={request}
                       onUpdateStatus={handleUpdateStatus}
                       onDelete={handleDeleteRequest}
+                      onCloseChat={(id) => closeRequestChat(id).then(res => { if (res.error) toast({ title: "Error", description: "Failed to close chat", variant: "destructive" }) })}
+                      onReopenChat={(id) => reopenRequestChat(id).then(res => { if (res.error) toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" }) })}
                       isSelected={selectedIds.includes(request.id)}
                       onSelectChange={(checked) => toggleSelection(request.id, checked)}
                       showCheckbox={isSelectionMode}

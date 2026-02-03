@@ -44,17 +44,35 @@ const getStatusBadge = (status: Request['status']) => {
 
 const RequestCard = ({
   request,
-  onDelete
+  onDelete,
+  onCloseChat,
+  onReopenChat
 }: {
   request: Request;
   onDelete: (id: string) => Promise<void>;
+  onCloseChat: (id: string) => Promise<void>;
+  onReopenChat: (id: string) => Promise<void>;
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
     await onDelete(request.id);
     setIsDeleting(false);
+  };
+
+  const handleCloseChat = async () => {
+    setIsClosing(true);
+    await onCloseChat(request.id);
+    setIsClosing(false);
+  };
+
+  const handleReopenChat = async () => {
+    setIsReopening(true);
+    await onReopenChat(request.id);
+    setIsReopening(false);
   };
 
   return (
@@ -90,7 +108,37 @@ const RequestCard = ({
           </div>
         )}
 
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between mt-4 border-t border-white/10 pt-4">
+          <div className="flex items-center gap-2">
+            {request.closed_by === 'admin' ? (
+              <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20 gap-1 rounded-md px-2 py-1">
+                <Shield className="w-3 h-3" /> Chat Closed by Admin
+              </Badge>
+            ) : request.closed_by === 'user' ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleReopenChat}
+                disabled={isReopening}
+                className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/10"
+              >
+                {isReopening ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                Reopen Chat
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCloseChat}
+                disabled={isClosing}
+                className="h-8 text-xs text-muted-foreground hover:text-white hover:bg-white/10"
+              >
+                {isClosing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                Close Chat
+              </Button>
+            )}
+          </div>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 -mr-2">
@@ -121,7 +169,7 @@ const RequestCard = ({
 
 const Requests = () => {
   const { user } = useAuth();
-  const { requests, isLoading, deleteRequest, clearAllRequests } = useRequests();
+  const { requests, isLoading, deleteRequest, clearAllRequests, closeRequestChat, reopenRequestChat } = useRequests();
   const { toast } = useToast();
   const [isClearing, setIsClearing] = useState(false);
 
@@ -255,7 +303,19 @@ const Requests = () => {
           ) : (
             <div className="space-y-4">
               {requests.map((request) => (
-                <RequestCard key={request.id} request={request} onDelete={handleDelete} />
+                <RequestCard
+                  key={request.id}
+                  request={request}
+                  onDelete={handleDelete}
+                  onCloseChat={async (id) => {
+                    const { error } = await closeRequestChat(id);
+                    if (error) { toast({ title: "Error", description: "Failed to close chat", variant: "destructive" }); }
+                  }}
+                  onReopenChat={async (id) => {
+                    const { error } = await reopenRequestChat(id);
+                    if (error) { toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" }); }
+                  }}
+                />
               ))}
             </div>
           )}

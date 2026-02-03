@@ -33,6 +33,8 @@ type AdminRequestRow = {
   admin_response: string | null;
   created_at: string;
   updated_at: string;
+  is_hidden_from_user?: boolean;
+  closed_by?: 'user' | 'admin' | null;
   request_meta?: RequestMeta | RequestMeta[] | null;
 };
 
@@ -309,6 +311,46 @@ export const useAdmin = () => {
     }
   };
 
+  // Close Chat (Admin Permanent)
+  const closeRequestChat = async (requestId: string) => {
+    if (!user || !isSupabaseConfigured || !isAdmin) return { error: new Error('Not authorized') };
+
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({ closed_by: 'admin' }) // Permanent close
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      setAllRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: 'admin' } : r));
+      return { error: null };
+    } catch (error) {
+      console.error('Error closing chat (admin):', error);
+      return { error };
+    }
+  };
+
+  // Reopen Chat
+  const reopenRequestChat = async (requestId: string) => {
+    if (!user || !isSupabaseConfigured || !isAdmin) return { error: new Error('Not authorized') };
+
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({ closed_by: null })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      setAllRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: null } : r));
+      return { error: null };
+    } catch (error) {
+      console.error('Error reopening chat (admin):', error);
+      return { error };
+    }
+  };
+
   // Clear all requests
   const clearAllRequests = async () => {
     if (!user || !isSupabaseConfigured || !isAdmin) {
@@ -413,109 +455,14 @@ export const useAdmin = () => {
   }, [isAdmin]);
 
   // Real-time subscription for requests
+  // Real-time subscription - DISABLED per user request to stop auto-refreshing
+  /* 
   useEffect(() => {
     if (!isAdmin || !isSupabaseConfigured) return;
-
-    const selectWithMeta = '*, request_meta ( tmdb_id, media_type )';
-
-    const channel = supabase
-      .channel('admin-requests-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'requests' },
-        (payload) => {
-          const insertedId = (payload.new as { id?: string } | null)?.id;
-          console.log('New request received:', payload.new);
-
-          setRequestsError(null);
-
-          // payload.new does NOT include joined request_meta; fetch the joined row so admins can see Post Code.
-          if (!insertedId) {
-            setAllRequests((prev) => [normalizeAdminRequest(payload.new as AdminRequestRow), ...prev]);
-            return;
-          }
-
-          void (async () => {
-            const { data, error } = await supabase
-              .from('requests')
-              .select(selectWithMeta)
-              .eq('id', insertedId)
-              .maybeSingle();
-
-            if (error) {
-              console.error('Error fetching request with meta (INSERT):', error);
-              setAllRequests((prev) => {
-                if (prev.some((r) => r.id === insertedId)) return prev;
-                return [normalizeAdminRequest(payload.new as AdminRequestRow), ...prev];
-              });
-              return;
-            }
-
-            if (data) {
-              const normalized = normalizeAdminRequest(data as AdminRequestRow);
-              setAllRequests((prev) => [normalized, ...prev.filter((r) => r.id !== insertedId)]);
-            }
-          })();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'requests' },
-        (payload) => {
-          const updatedId = (payload.new as { id?: string } | null)?.id;
-          console.log('Request updated:', payload.new);
-
-          if (!updatedId) return;
-
-          // Same issue as INSERT: UPDATE payload won't include joined request_meta.
-          void (async () => {
-            const { data, error } = await supabase
-              .from('requests')
-              .select(selectWithMeta)
-              .eq('id', updatedId)
-              .maybeSingle();
-
-            if (error) {
-              console.error('Error fetching request with meta (UPDATE):', error);
-              setAllRequests((prev) =>
-                prev.map((r) => {
-                  if (r.id !== updatedId) return r;
-                  const nextRow = payload.new as AdminRequestRow;
-                  const normalizedNext = normalizeAdminRequest(nextRow);
-                  return {
-                    ...r,
-                    ...normalizedNext,
-                    // keep existing joined meta if the refetch failed
-                    request_meta: r.request_meta ?? normalizedNext.request_meta ?? null,
-                  };
-                })
-              );
-              return;
-            }
-
-            if (data) {
-              const normalized = normalizeAdminRequest(data as AdminRequestRow);
-              setAllRequests((prev) => prev.map((r) => (r.id === updatedId ? normalized : r)));
-            }
-          })();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'requests' },
-        (payload) => {
-          console.log('Request deleted:', payload.old);
-          setAllRequests((prev) => prev.filter((r) => r.id !== (payload.old as { id: string }).id));
-        }
-      )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isAdmin]);
+    
+    // ... code disabled ...
+  }, [isAdmin]); 
+  */
 
   return {
     isAdmin,
@@ -529,6 +476,8 @@ export const useAdmin = () => {
     deleteRequest,
     deleteRequests,
     clearAllRequests,
+    closeRequestChat,
+    reopenRequestChat,
     addAdmin,
     removeAdmin,
     refetchRequests: fetchAllRequests,

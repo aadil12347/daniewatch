@@ -14,6 +14,8 @@ export interface Request {
   admin_response: string | null;
   created_at: string;
   updated_at: string;
+  is_hidden_from_user?: boolean;
+  closed_by?: 'user' | 'admin' | null;
 }
 
 export const useRequests = () => {
@@ -118,6 +120,48 @@ export const useRequests = () => {
     }
   };
 
+  const closeRequestChat = async (requestId: string) => {
+    if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
+
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({ closed_by: 'user' }) // User closes chat
+        .eq('id', requestId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: 'user' } : r));
+      return { error: null };
+    } catch (error) {
+      console.error('Error closing chat:', error);
+      return { error };
+    }
+  };
+
+  const reopenRequestChat = async (requestId: string) => {
+    if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
+
+    try {
+      // Users can only reopen if THEY closed it (not admin closed)
+      const { error } = await supabase
+        .from('requests')
+        .update({ closed_by: null })
+        .eq('id', requestId)
+        .eq('user_id', user.id)
+        .neq('closed_by', 'admin'); // Prevent reopening admin-closed chats
+
+      if (error) throw error;
+
+      setRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: null } : r));
+      return { error: null };
+    } catch (error) {
+      console.error('Error reopening chat:', error);
+      return { error };
+    }
+  };
+
   const clearAllRequests = async () => {
     if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
 
@@ -146,6 +190,8 @@ export const useRequests = () => {
     createRequest,
     deleteRequest,
     clearAllRequests,
+    closeRequestChat,
+    reopenRequestChat,
     refetch: fetchRequests,
   };
 };
