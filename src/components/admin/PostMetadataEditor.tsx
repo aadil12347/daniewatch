@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import {
   Search,
   Loader2,
@@ -14,6 +14,12 @@ import {
   Globe,
   Edit3,
   Image as ImageIcon,
+  Filter,
+  Plus,
+  Trash2,
+  SortAsc,
+  SortDesc,
+  Clock,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +49,53 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Standard TMDB Genres
+const TMDB_GENRES: Genre[] = [
+  { id: 28, name: "Action" },
+  { id: 12, name: "Adventure" },
+  { id: 16, name: "Animation" },
+  { id: 35, name: "Comedy" },
+  { id: 80, name: "Crime" },
+  { id: 99, name: "Documentary" },
+  { id: 18, name: "Drama" },
+  { id: 10751, name: "Family" },
+  { id: 14, name: "Fantasy" },
+  { id: 36, name: "History" },
+  { id: 27, name: "Horror" },
+  { id: 10402, name: "Music" },
+  { id: 9648, name: "Mystery" },
+  { id: 10749, name: "Romance" },
+  { id: 878, name: "Science Fiction" },
+  { id: 53, name: "Thriller" },
+  { id: 10752, name: "War" },
+  { id: 37, name: "Western" },
+  // TV-specific
+  { id: 10759, name: "Action & Adventure" },
+  { id: 10762, name: "Kids" },
+  { id: 10763, name: "News" },
+  { id: 10764, name: "Reality" },
+  { id: 10765, name: "Sci-Fi & Fantasy" },
+  { id: 10766, name: "Soap" },
+  { id: 10767, name: "Talk" },
+  { id: 10768, name: "War & Politics" },
+];
+
+// Cache keys and TTL
+const EDITOR_CACHE_KEY = "postMetadataEditorState_v2";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface SearchResult {
   id: string;
@@ -51,17 +104,73 @@ interface SearchResult {
   posterUrl: string | null;
   year: string;
   inDb: boolean;
+  missingFields?: string[];
+  adminEdited?: boolean;
+}
+
+type FilterType = "all" | "movie" | "series";
+type SortBy = "recent" | "year_desc" | "year_asc" | "name" | "rating" | "missing";
+type RecentlyEditedFilter = "all" | "24h" | "7d" | "30d";
+
+interface FilterState {
+  type: FilterType;
+  sortBy: SortBy;
+  recentlyEdited: RecentlyEditedFilter;
+  missingPoster: boolean;
+  missingBackdrop: boolean;
+  missingLogo: boolean;
+  missingOverview: boolean;
+  missingGenres: boolean;
+  missingCast: boolean;
+}
+
+interface EditorCacheState {
+  timestamp: number;
+  searchQuery: string;
+  searchResults: SearchResult[];
+  selectedEntryId: string | null;
+  selectedEntryType: "movie" | "series" | null;
+  title: string;
+  posterUrl: string;
+  backdropUrl: string;
+  logoUrl: string;
+  overview: string;
+  tagline: string;
+  status: string;
+  voteAverage: number | null;
+  runtime: number | null;
+  releaseYear: number | null;
+  numberOfSeasons: number | null;
+  numberOfEpisodes: number | null;
+  genres: Genre[];
+  selectedSeason: number;
+  filterState: FilterState;
 }
 
 export function PostMetadataEditor() {
   const { toast } = useToast();
   const { fetchAllEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode } = useEntryMetadata();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
   const [isSearchingTmdb, setIsSearchingTmdb] = useState(false);
+
+  // Filter state
+  const [filterState, setFilterState] = useState<FilterState>({
+    type: "all",
+    sortBy: "recent",
+    recentlyEdited: "all",
+    missingPoster: false,
+    missingBackdrop: false,
+    missingLogo: false,
+    missingOverview: false,
+    missingGenres: false,
+    missingCast: false,
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   // Selected entry state
   const [selectedEntry, setSelectedEntry] = useState<EntryData | null>(null);
@@ -89,16 +198,144 @@ export function PostMetadataEditor() {
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const [expandedEpisode, setExpandedEpisode] = useState<number | null>(null);
 
+  // Season/Episode management
+  const [showAddSeasonDialog, setShowAddSeasonDialog] = useState(false);
+  const [newSeasonNumber, setNewSeasonNumber] = useState<number>(1);
+  const [showDeleteSeasonConfirm, setShowDeleteSeasonConfirm] = useState(false);
+  const [showAddEpisodeDialog, setShowAddEpisodeDialog] = useState(false);
+  const [newEpisodeNumber, setNewEpisodeNumber] = useState<number>(1);
+  const [showDeleteEpisodeConfirm, setShowDeleteEpisodeConfirm] = useState<EpisodeMetadata | null>(null);
+
+  // Genre modal state
+  const [showGenreModal, setShowGenreModal] = useState(false);
+  const [genreSearch, setGenreSearch] = useState("");
+  const [newCustomGenre, setNewCustomGenre] = useState("");
+  const [tempSelectedGenres, setTempSelectedGenres] = useState<Genre[]>([]);
+
   // Saving state
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
-  // New genre input
-  const [newGenreName, setNewGenreName] = useState("");
+  // Restore state from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(EDITOR_CACHE_KEY);
+      if (!raw) return;
+
+      const cached: EditorCacheState = JSON.parse(raw);
+      if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
+        sessionStorage.removeItem(EDITOR_CACHE_KEY);
+        return;
+      }
+
+      // Restore state
+      if (cached.searchQuery) setSearchQuery(cached.searchQuery);
+      if (cached.searchResults) setSearchResults(cached.searchResults);
+      if (cached.title) setTitle(cached.title);
+      if (cached.posterUrl) setPosterUrl(cached.posterUrl);
+      if (cached.backdropUrl) setBackdropUrl(cached.backdropUrl);
+      if (cached.logoUrl) setLogoUrl(cached.logoUrl);
+      if (cached.overview) setOverview(cached.overview);
+      if (cached.tagline) setTagline(cached.tagline);
+      if (cached.status) setStatus(cached.status);
+      if (cached.voteAverage !== undefined) setVoteAverage(cached.voteAverage);
+      if (cached.runtime !== undefined) setRuntime(cached.runtime);
+      if (cached.releaseYear !== undefined) setReleaseYear(cached.releaseYear);
+      if (cached.numberOfSeasons !== undefined) setNumberOfSeasons(cached.numberOfSeasons);
+      if (cached.numberOfEpisodes !== undefined) setNumberOfEpisodes(cached.numberOfEpisodes);
+      if (cached.genres) setGenres(cached.genres);
+      if (cached.selectedSeason) setSelectedSeason(cached.selectedSeason);
+      if (cached.filterState) setFilterState(cached.filterState);
+
+      // Restore selected entry if present
+      if (cached.selectedEntryId && cached.selectedEntryType) {
+        handleSelectEntry({
+          id: cached.selectedEntryId,
+          type: cached.selectedEntryType,
+          title: cached.title || "",
+          posterUrl: cached.posterUrl || null,
+          year: cached.releaseYear?.toString() || "",
+          inDb: true,
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to restore editor state:", e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save state to sessionStorage on changes (debounced)
+  useEffect(() => {
+    if (isSearchingDb || isSearchingTmdb || isLoadingEntry || isSaving || isSyncing) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      try {
+        const stateToSave: EditorCacheState = {
+          timestamp: Date.now(),
+          searchQuery,
+          searchResults,
+          selectedEntryId: selectedEntry?.id || null,
+          selectedEntryType: selectedEntry?.type || null,
+          title,
+          posterUrl,
+          backdropUrl,
+          logoUrl,
+          overview,
+          tagline,
+          status,
+          voteAverage,
+          runtime,
+          releaseYear,
+          numberOfSeasons,
+          numberOfEpisodes,
+          genres,
+          selectedSeason,
+          filterState,
+        };
+        sessionStorage.setItem(EDITOR_CACHE_KEY, JSON.stringify(stateToSave));
+      } catch (e) {
+        console.warn("Failed to save editor state:", e);
+      }
+    }, 300);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [
+    searchQuery,
+    searchResults,
+    selectedEntry,
+    title,
+    posterUrl,
+    backdropUrl,
+    logoUrl,
+    overview,
+    tagline,
+    status,
+    voteAverage,
+    runtime,
+    releaseYear,
+    numberOfSeasons,
+    numberOfEpisodes,
+    genres,
+    selectedSeason,
+    filterState,
+    isSearchingDb,
+    isSearchingTmdb,
+    isLoadingEntry,
+    isSaving,
+    isSyncing,
+  ]);
 
   // Get available seasons from entry content
-  const getAvailableSeasons = (): number[] => {
+  const availableSeasons = useMemo(() => {
     if (!selectedEntry || selectedEntry.type !== "series") return [];
     const content = selectedEntry.content as Record<string, any>;
     const seasons = Object.keys(content)
@@ -106,32 +343,49 @@ export function PostMetadataEditor() {
       .map((k) => parseInt(k.replace("season_", ""), 10))
       .filter((n) => !isNaN(n))
       .sort((a, b) => a - b);
-    
+
+    // Also include seasons from episodes
+    const episodeSeasons = [...new Set(episodes.map((ep) => ep.season_number))];
+    episodeSeasons.forEach((s) => {
+      if (!seasons.includes(s)) seasons.push(s);
+    });
+
     // Also include seasons from number_of_seasons if higher
-    if (selectedEntry.number_of_seasons) {
-      for (let i = 1; i <= selectedEntry.number_of_seasons; i++) {
+    if (numberOfSeasons) {
+      for (let i = 1; i <= numberOfSeasons; i++) {
         if (!seasons.includes(i)) seasons.push(i);
       }
-      seasons.sort((a, b) => a - b);
     }
-    
+
+    seasons.sort((a, b) => a - b);
     return seasons.length > 0 ? seasons : [1];
+  }, [selectedEntry, episodes, numberOfSeasons]);
+
+  // Calculate missing fields for an entry
+  const calculateMissingFields = (entry: any): string[] => {
+    const missing: string[] = [];
+    if (!entry.poster_url) missing.push("Poster");
+    if (!entry.backdrop_url) missing.push("Backdrop");
+    if (!entry.logo_url) missing.push("Logo");
+    if (!entry.overview) missing.push("Overview");
+    if (!entry.genres || entry.genres.length === 0) missing.push("Genres");
+    if (!entry.cast_data || entry.cast_data.length === 0) missing.push("Cast");
+    return missing;
   };
 
-  // Search DB entries
+  // Search DB entries with filters
   const handleSearchDb = async () => {
     if (!searchQuery.trim()) return;
     setIsSearchingDb(true);
     setSearchResults([]);
 
     try {
-      // Try exact ID match first
       const isNumeric = /^\d+$/.test(searchQuery.trim());
-      
+
       let query = supabase
         .from("entries")
-        .select("id, type, title, poster_url, release_year, admin_edited")
-        .limit(20);
+        .select("id, type, title, poster_url, backdrop_url, logo_url, overview, genres, cast_data, release_year, admin_edited, media_updated_at, vote_average")
+        .limit(50);
 
       if (isNumeric) {
         query = query.eq("id", searchQuery.trim());
@@ -139,25 +393,92 @@ export function PostMetadataEditor() {
         query = query.ilike("title", `%${searchQuery.trim()}%`);
       }
 
+      // Apply type filter
+      if (filterState.type !== "all") {
+        query = query.eq("type", filterState.type);
+      }
+
+      // Apply missing filters
+      if (filterState.missingPoster) query = query.is("poster_url", null);
+      if (filterState.missingBackdrop) query = query.is("backdrop_url", null);
+      if (filterState.missingLogo) query = query.is("logo_url", null);
+      if (filterState.missingOverview) query = query.is("overview", null);
+
+      // Apply recently edited filter
+      if (filterState.recentlyEdited !== "all") {
+        const now = new Date();
+        let cutoff: Date;
+        switch (filterState.recentlyEdited) {
+          case "24h":
+            cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+          case "7d":
+            cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case "30d":
+            cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            cutoff = new Date(0);
+        }
+        query = query.gte("media_updated_at", cutoff.toISOString());
+      }
+
+      // Apply sorting
+      switch (filterState.sortBy) {
+        case "recent":
+          query = query.order("media_updated_at", { ascending: false, nullsFirst: false });
+          break;
+        case "year_desc":
+          query = query.order("release_year", { ascending: false, nullsFirst: false });
+          break;
+        case "year_asc":
+          query = query.order("release_year", { ascending: true, nullsFirst: false });
+          break;
+        case "name":
+          query = query.order("title", { ascending: true });
+          break;
+        case "rating":
+          query = query.order("vote_average", { ascending: false, nullsFirst: false });
+          break;
+        default:
+          break;
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
 
-      const results: SearchResult[] = (data || []).map((entry) => ({
+      let results: SearchResult[] = (data || []).map((entry) => ({
         id: entry.id,
         type: entry.type as "movie" | "series",
         title: entry.title || `ID: ${entry.id}`,
         posterUrl: entry.poster_url,
         year: entry.release_year?.toString() || "N/A",
         inDb: true,
+        missingFields: calculateMissingFields(entry),
+        adminEdited: entry.admin_edited || false,
       }));
+
+      // Filter by missing genres/cast client-side (JSONB is harder to query)
+      if (filterState.missingGenres) {
+        results = results.filter((r) => r.missingFields?.includes("Genres"));
+      }
+      if (filterState.missingCast) {
+        results = results.filter((r) => r.missingFields?.includes("Cast"));
+      }
+
+      // Sort by missing count if selected
+      if (filterState.sortBy === "missing") {
+        results.sort((a, b) => (b.missingFields?.length || 0) - (a.missingFields?.length || 0));
+      }
 
       setSearchResults(results);
 
       if (results.length === 0) {
         toast({
           title: "No Results",
-          description: "No entries found in the database.",
+          description: "No entries found matching your criteria.",
         });
       }
     } catch (error) {
@@ -172,7 +493,7 @@ export function PostMetadataEditor() {
     }
   };
 
-  // Search TMDB
+  // Search TMDB (secondary)
   const handleSearchTmdb = async () => {
     if (!searchQuery.trim()) return;
     setIsSearchingTmdb(true);
@@ -183,10 +504,7 @@ export function PostMetadataEditor() {
 
       // Check which results exist in DB
       const ids = response.results.map((r) => String(r.id));
-      const { data: existingEntries } = await supabase
-        .from("entries")
-        .select("id")
-        .in("id", ids);
+      const { data: existingEntries } = await supabase.from("entries").select("id").in("id", ids);
 
       const existingIds = new Set((existingEntries || []).map((e) => e.id));
 
@@ -227,11 +545,7 @@ export function PostMetadataEditor() {
 
     try {
       // Try loading from DB first
-      const { data: dbEntry, error } = await supabase
-        .from("entries")
-        .select("*")
-        .eq("id", result.id)
-        .maybeSingle();
+      const { data: dbEntry, error } = await supabase.from("entries").select("*").eq("id", result.id).maybeSingle();
 
       if (error) throw error;
 
@@ -245,11 +559,19 @@ export function PostMetadataEditor() {
         if (entry.type === "series") {
           const allEpisodes = await fetchAllEpisodeMetadata(entry.id);
           setEpisodes(allEpisodes);
-          
+
           // Set initial season
-          const seasons = getAvailableSeasonsFromEntry(entry);
+          const content = entry.content as Record<string, any>;
+          const seasons = Object.keys(content)
+            .filter((k) => k.startsWith("season_"))
+            .map((k) => parseInt(k.replace("season_", ""), 10))
+            .filter((n) => !isNaN(n))
+            .sort((a, b) => a - b);
+
           if (seasons.length > 0) {
             setSelectedSeason(seasons[0]);
+          } else if (entry.number_of_seasons && entry.number_of_seasons > 0) {
+            setSelectedSeason(1);
           }
         }
       } else {
@@ -266,25 +588,6 @@ export function PostMetadataEditor() {
     } finally {
       setIsLoadingEntry(false);
     }
-  };
-
-  const getAvailableSeasonsFromEntry = (entry: EntryData): number[] => {
-    if (entry.type !== "series") return [];
-    const content = entry.content as Record<string, any>;
-    const seasons = Object.keys(content)
-      .filter((k) => k.startsWith("season_"))
-      .map((k) => parseInt(k.replace("season_", ""), 10))
-      .filter((n) => !isNaN(n))
-      .sort((a, b) => a - b);
-    
-    if (entry.number_of_seasons) {
-      for (let i = 1; i <= entry.number_of_seasons; i++) {
-        if (!seasons.includes(i)) seasons.push(i);
-      }
-      seasons.sort((a, b) => a - b);
-    }
-    
-    return seasons.length > 0 ? seasons : [1];
   };
 
   // Populate form fields from entry
@@ -321,12 +624,13 @@ export function PostMetadataEditor() {
           images.logos?.find((l) => l.iso_639_1 == null)?.file_path ||
           images.logos?.[0]?.file_path;
 
-        const topCast = credits.cast?.slice(0, 12).map((c) => ({
-          id: c.id,
-          name: c.name,
-          character: c.character,
-          profile_path: c.profile_path,
-        })) || [];
+        const topCast =
+          credits.cast?.slice(0, 12).map((c) => ({
+            id: c.id,
+            name: c.name,
+            character: c.character,
+            profile_path: c.profile_path,
+          })) || [];
 
         const entry: EntryData = {
           id,
@@ -361,12 +665,13 @@ export function PostMetadataEditor() {
           images.logos?.find((l) => l.iso_639_1 == null)?.file_path ||
           images.logos?.[0]?.file_path;
 
-        const topCast = credits.cast?.slice(0, 12).map((c) => ({
-          id: c.id,
-          name: c.name,
-          character: c.character,
-          profile_path: c.profile_path,
-        })) || [];
+        const topCast =
+          credits.cast?.slice(0, 12).map((c) => ({
+            id: c.id,
+            name: c.name,
+            character: c.character,
+            profile_path: c.profile_path,
+          })) || [];
 
         const entry: EntryData = {
           id,
@@ -401,13 +706,14 @@ export function PostMetadataEditor() {
     }
   };
 
-  // Sync entry metadata from TMDB (override admin_edited)
+  // Sync entry metadata from TMDB (clears admin_edited)
   const handleSyncFromTmdb = async () => {
     if (!selectedEntry) return;
     setIsSyncing(true);
 
     try {
       await loadFromTmdb(selectedEntry.id, selectedEntry.type);
+      setAdminEdited(false); // Clear admin_edited on sync
       toast({
         title: "Synced",
         description: "Metadata refreshed from TMDB. Click Save to persist.",
@@ -523,7 +829,7 @@ export function PostMetadataEditor() {
     }
   };
 
-  // Save entry metadata to DB
+  // Save entry metadata to DB (auto-sets admin_edited = true)
   const handleSave = async () => {
     if (!selectedEntry) return;
     setIsSaving(true);
@@ -544,16 +850,15 @@ export function PostMetadataEditor() {
         number_of_episodes: numberOfEpisodes,
         genres: genres.length > 0 ? genres : null,
         cast_data: castData.length > 0 ? castData : null,
-        admin_edited: adminEdited,
+        admin_edited: true, // Auto-set on save
         media_updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from("entries")
-        .update(updateData)
-        .eq("id", selectedEntry.id);
+      const { error } = await supabase.from("entries").update(updateData).eq("id", selectedEntry.id);
 
       if (error) throw error;
+
+      setAdminEdited(true);
 
       toast({
         title: "Saved",
@@ -572,18 +877,9 @@ export function PostMetadataEditor() {
   };
 
   // Update episode field
-  const updateEpisodeField = (
-    seasonNum: number,
-    epNum: number,
-    field: keyof EpisodeMetadata,
-    value: any
-  ) => {
+  const updateEpisodeField = (seasonNum: number, epNum: number, field: keyof EpisodeMetadata, value: any) => {
     setEpisodes((prev) =>
-      prev.map((ep) =>
-        ep.season_number === seasonNum && ep.episode_number === epNum
-          ? { ...ep, [field]: value }
-          : ep
-      )
+      prev.map((ep) => (ep.season_number === seasonNum && ep.episode_number === epNum ? { ...ep, [field]: value } : ep))
     );
   };
 
@@ -599,7 +895,7 @@ export function PostMetadataEditor() {
       air_date: ep.air_date,
       runtime: ep.runtime,
       vote_average: ep.vote_average,
-      admin_edited: ep.admin_edited,
+      admin_edited: true, // Auto-set on save
     });
 
     if (!result.success) {
@@ -607,6 +903,11 @@ export function PostMetadataEditor() {
         title: "Error",
         description: result.error || "Failed to save episode.",
         variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Saved",
+        description: `Episode ${ep.episode_number} saved.`,
       });
     }
   };
@@ -639,6 +940,7 @@ export function PostMetadataEditor() {
       updateEpisodeField(ep.season_number, ep.episode_number, "air_date", tmdbEp.air_date || null);
       updateEpisodeField(ep.season_number, ep.episode_number, "runtime", tmdbEp.runtime || null);
       updateEpisodeField(ep.season_number, ep.episode_number, "vote_average", tmdbEp.vote_average ?? null);
+      updateEpisodeField(ep.season_number, ep.episode_number, "admin_edited", false);
 
       toast({
         title: "Episode Synced",
@@ -654,15 +956,123 @@ export function PostMetadataEditor() {
     }
   };
 
-  // Add genre
-  const handleAddGenre = () => {
-    if (!newGenreName.trim()) return;
-    const newGenre: Genre = {
-      id: Date.now(), // Temporary ID
-      name: newGenreName.trim(),
+  // Add new season
+  const handleAddSeason = async () => {
+    if (!selectedEntry || selectedEntry.type !== "series") return;
+
+    // Create empty episode for the new season
+    const newEpisode: EpisodeMetadata = {
+      entry_id: selectedEntry.id,
+      season_number: newSeasonNumber,
+      episode_number: 1,
+      name: "Episode 1",
+      overview: null,
+      still_path: null,
+      air_date: null,
+      runtime: null,
+      vote_average: null,
+      admin_edited: true,
     };
-    setGenres([...genres, newGenre]);
-    setNewGenreName("");
+
+    setEpisodes((prev) => [...prev, newEpisode]);
+    setSelectedSeason(newSeasonNumber);
+    setShowAddSeasonDialog(false);
+
+    // Update number_of_seasons if needed
+    if (!numberOfSeasons || newSeasonNumber > numberOfSeasons) {
+      setNumberOfSeasons(newSeasonNumber);
+    }
+
+    toast({
+      title: "Season Added",
+      description: `Season ${newSeasonNumber} created. Don't forget to save.`,
+    });
+  };
+
+  // Delete season
+  const handleDeleteSeason = async () => {
+    if (!selectedEntry || selectedEntry.type !== "series") return;
+
+    // Remove episodes for this season from local state
+    setEpisodes((prev) => prev.filter((ep) => ep.season_number !== selectedSeason));
+
+    // Delete from database
+    try {
+      await supabase
+        .from("entry_metadata")
+        .delete()
+        .eq("entry_id", selectedEntry.id)
+        .eq("season_number", selectedSeason);
+    } catch (e) {
+      console.warn("Failed to delete season from DB:", e);
+    }
+
+    // Select another season
+    const remaining = availableSeasons.filter((s) => s !== selectedSeason);
+    if (remaining.length > 0) {
+      setSelectedSeason(remaining[0]);
+    }
+
+    setShowDeleteSeasonConfirm(false);
+
+    toast({
+      title: "Season Deleted",
+      description: `Season ${selectedSeason} removed.`,
+    });
+  };
+
+  // Add new episode
+  const handleAddEpisode = async () => {
+    if (!selectedEntry || selectedEntry.type !== "series") return;
+
+    const newEpisode: EpisodeMetadata = {
+      entry_id: selectedEntry.id,
+      season_number: selectedSeason,
+      episode_number: newEpisodeNumber,
+      name: `Episode ${newEpisodeNumber}`,
+      overview: null,
+      still_path: null,
+      air_date: null,
+      runtime: null,
+      vote_average: null,
+      admin_edited: true,
+    };
+
+    setEpisodes((prev) => [...prev, newEpisode].sort((a, b) => a.episode_number - b.episode_number));
+    setShowAddEpisodeDialog(false);
+
+    toast({
+      title: "Episode Added",
+      description: `Episode ${newEpisodeNumber} created. Don't forget to save.`,
+    });
+  };
+
+  // Delete episode
+  const handleDeleteEpisode = async (ep: EpisodeMetadata) => {
+    if (!selectedEntry) return;
+
+    setEpisodes((prev) =>
+      prev.filter((e) => !(e.season_number === ep.season_number && e.episode_number === ep.episode_number))
+    );
+
+    // Delete from database
+    try {
+      await supabase
+        .from("entry_metadata")
+        .delete()
+        .eq("entry_id", selectedEntry.id)
+        .eq("season_number", ep.season_number)
+        .eq("episode_number", ep.episode_number);
+    } catch (e) {
+      console.warn("Failed to delete episode from DB:", e);
+    }
+
+    setShowDeleteEpisodeConfirm(null);
+
+    toast({
+      title: "Episode Deleted",
+      description: `Episode ${ep.episode_number} removed.`,
+    });
   };
 
   // Remove genre
@@ -675,10 +1085,49 @@ export function PostMetadataEditor() {
     setCastData(castData.filter((c) => c.id !== id));
   };
 
+  // Open genre modal
+  const openGenreModal = () => {
+    setTempSelectedGenres([...genres]);
+    setGenreSearch("");
+    setNewCustomGenre("");
+    setShowGenreModal(true);
+  };
+
+  // Toggle genre in temp selection
+  const toggleGenre = (genre: Genre) => {
+    const exists = tempSelectedGenres.some((g) => g.id === genre.id);
+    if (exists) {
+      setTempSelectedGenres(tempSelectedGenres.filter((g) => g.id !== genre.id));
+    } else {
+      setTempSelectedGenres([...tempSelectedGenres, genre]);
+    }
+  };
+
+  // Add custom genre
+  const handleAddCustomGenre = () => {
+    if (!newCustomGenre.trim()) return;
+    const customGenre: Genre = {
+      id: Date.now(),
+      name: newCustomGenre.trim(),
+    };
+    setTempSelectedGenres([...tempSelectedGenres, customGenre]);
+    setNewCustomGenre("");
+  };
+
+  // Apply genre selection
+  const applyGenreSelection = () => {
+    setGenres(tempSelectedGenres);
+    setShowGenreModal(false);
+  };
+
+  // Filter genres by search
+  const filteredGenres = useMemo(() => {
+    if (!genreSearch.trim()) return TMDB_GENRES;
+    return TMDB_GENRES.filter((g) => g.name.toLowerCase().includes(genreSearch.toLowerCase()));
+  }, [genreSearch]);
+
   // Get episodes for selected season
-  const seasonEpisodes = episodes
-    .filter((ep) => ep.season_number === selectedSeason)
-    .sort((a, b) => a.episode_number - b.episode_number);
+  const seasonEpisodes = episodes.filter((ep) => ep.season_number === selectedSeason).sort((a, b) => a.episode_number - b.episode_number);
 
   // Clear selection
   const handleClearSelection = useCallback(() => {
@@ -710,44 +1159,140 @@ export function PostMetadataEditor() {
           <Edit3 className="w-5 h-5" />
           Post Metadata Editor
         </CardTitle>
-        <CardDescription>
-          Search and edit complete metadata for any post in the database.
-        </CardDescription>
+        <CardDescription>Search and edit complete metadata for any post in the database.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Search Section */}
         <div className="space-y-3">
           <div className="flex gap-2">
             <Input
-              placeholder="Search by title or TMDB ID..."
+              placeholder="Search by title or TMDB ID (Enter = DB search)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearchDb()}
               className="flex-1"
             />
-            <Button
-              onClick={handleSearchDb}
-              disabled={isSearchingDb || !searchQuery.trim()}
-              variant="outline"
-              className="gap-1"
-            >
-              {isSearchingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-              Search DB
-            </Button>
-            <Button
-              onClick={handleSearchTmdb}
-              disabled={isSearchingTmdb || !searchQuery.trim()}
-              variant="outline"
-              className="gap-1"
-            >
+            <Button onClick={handleSearchTmdb} disabled={isSearchingTmdb || !searchQuery.trim()} variant="outline" className="gap-1">
               {isSearchingTmdb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
               Search TMDB
             </Button>
           </div>
 
+          {/* Filter Toggle */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowFilters(!showFilters)} className="gap-1">
+              <Filter className="w-4 h-4" />
+              Filters
+              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+            {isSearchingDb && <Loader2 className="w-4 h-4 animate-spin" />}
+          </div>
+
+          {/* Filters Panel */}
+          {showFilters && (
+            <div className="border rounded-md p-4 space-y-4 bg-muted/30">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs">Type</Label>
+                  <Select value={filterState.type} onValueChange={(v) => setFilterState((s) => ({ ...s, type: v as FilterType }))}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="movie">Movies</SelectItem>
+                      <SelectItem value="series">Series</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Sort By</Label>
+                  <Select value={filterState.sortBy} onValueChange={(v) => setFilterState((s) => ({ ...s, sortBy: v as SortBy }))}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recent">Recently Edited</SelectItem>
+                      <SelectItem value="year_desc">Year (Newest)</SelectItem>
+                      <SelectItem value="year_asc">Year (Oldest)</SelectItem>
+                      <SelectItem value="name">Name (A-Z)</SelectItem>
+                      <SelectItem value="rating">Rating (Highest)</SelectItem>
+                      <SelectItem value="missing">Missing Data</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Edited Period</Label>
+                  <Select
+                    value={filterState.recentlyEdited}
+                    onValueChange={(v) => setFilterState((s) => ({ ...s, recentlyEdited: v as RecentlyEditedFilter }))}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="24h">Last 24 Hours</SelectItem>
+                      <SelectItem value="7d">Last 7 Days</SelectItem>
+                      <SelectItem value="30d">Last 30 Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Missing Fields</Label>
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={filterState.missingPoster}
+                      onCheckedChange={(c) => setFilterState((s) => ({ ...s, missingPoster: !!c }))}
+                    />
+                    Poster
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={filterState.missingBackdrop}
+                      onCheckedChange={(c) => setFilterState((s) => ({ ...s, missingBackdrop: !!c }))}
+                    />
+                    Backdrop
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={filterState.missingLogo}
+                      onCheckedChange={(c) => setFilterState((s) => ({ ...s, missingLogo: !!c }))}
+                    />
+                    Logo
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={filterState.missingOverview}
+                      onCheckedChange={(c) => setFilterState((s) => ({ ...s, missingOverview: !!c }))}
+                    />
+                    Overview
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={filterState.missingGenres}
+                      onCheckedChange={(c) => setFilterState((s) => ({ ...s, missingGenres: !!c }))}
+                    />
+                    Genres
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={filterState.missingCast}
+                      onCheckedChange={(c) => setFilterState((s) => ({ ...s, missingCast: !!c }))}
+                    />
+                    Cast
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Search Results */}
           {searchResults.length > 0 && (
-            <ScrollArea className="h-48 border rounded-md p-2">
+            <ScrollArea className="h-64 border rounded-md p-2">
               <div className="space-y-2">
                 {searchResults.map((result) => (
                   <div
@@ -756,11 +1301,7 @@ export function PostMetadataEditor() {
                     onClick={() => handleSelectEntry(result)}
                   >
                     {result.posterUrl ? (
-                      <img
-                        src={result.posterUrl}
-                        alt={result.title}
-                        className="w-10 h-14 object-cover rounded"
-                      />
+                      <img src={result.posterUrl} alt={result.title} className="w-10 h-14 object-cover rounded" />
                     ) : (
                       <div className="w-10 h-14 bg-muted rounded flex items-center justify-center">
                         {result.type === "movie" ? (
@@ -772,7 +1313,7 @@ export function PostMetadataEditor() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{result.title}</p>
-                      <div className="flex gap-2 mt-1">
+                      <div className="flex gap-2 mt-1 flex-wrap">
                         <Badge variant="outline" className="text-xs">
                           {result.type === "movie" ? "Movie" : "Series"}
                         </Badge>
@@ -782,8 +1323,12 @@ export function PostMetadataEditor() {
                         <Badge variant="secondary" className="text-xs">
                           ID: {result.id}
                         </Badge>
-                        {result.inDb && (
-                          <Badge className="text-xs bg-green-600">In DB</Badge>
+                        {result.inDb && <Badge className="text-xs bg-green-600">In DB</Badge>}
+                        {result.adminEdited && <Badge className="text-xs bg-amber-600">Admin Edited</Badge>}
+                        {result.missingFields && result.missingFields.length > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            Missing: {result.missingFields.join(", ")}
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -806,45 +1351,28 @@ export function PostMetadataEditor() {
         {selectedEntry && !isLoadingEntry && (
           <div className="space-y-6 border-t pt-6">
             {/* Header with actions */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                {posterUrl && (
-                  <img src={posterUrl} alt={title} className="w-16 h-24 object-cover rounded" />
-                )}
+                {posterUrl && <img src={posterUrl} alt={title} className="w-16 h-24 object-cover rounded" />}
                 <div>
                   <h3 className="font-semibold text-lg">{title || `ID: ${selectedEntry.id}`}</h3>
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant="outline">
-                      {selectedEntry.type === "movie" ? "Movie" : "Series"}
-                    </Badge>
+                  <div className="flex gap-2 mt-1 flex-wrap">
+                    <Badge variant="outline">{selectedEntry.type === "movie" ? "Movie" : "Series"}</Badge>
                     <Badge variant="secondary">ID: {selectedEntry.id}</Badge>
                     {adminEdited && <Badge className="bg-amber-600">Admin Edited</Badge>}
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={handleClearSelection}>
                   <X className="w-4 h-4 mr-1" /> Close
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSyncFromTmdb}
-                  disabled={isSyncing}
-                >
-                  {isSyncing ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-1" />
-                  )}
+                <Button variant="outline" size="sm" onClick={handleSyncFromTmdb} disabled={isSyncing}>
+                  {isSyncing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
                   Sync from TMDB
                 </Button>
                 <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-1" />
-                  )}
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
                   Save Changes
                 </Button>
               </div>
@@ -867,12 +1395,7 @@ export function PostMetadataEditor() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Title"
-                />
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-2">
@@ -886,12 +1409,7 @@ export function PostMetadataEditor() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
-                  <Input
-                    id="status"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    placeholder="Released"
-                  />
+                  <Input id="status" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="Released" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rating">Rating</Label>
@@ -919,7 +1437,7 @@ export function PostMetadataEditor() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="episodes">Episodes</Label>
+                  <Label htmlFor="episodes">Total Episodes</Label>
                   <Input
                     id="episodes"
                     type="number"
@@ -952,47 +1470,18 @@ export function PostMetadataEditor() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="poster">Poster URL</Label>
-                  <Input
-                    id="poster"
-                    value={posterUrl}
-                    onChange={(e) => setPosterUrl(e.target.value)}
-                    placeholder="https://..."
-                  />
-                  {posterUrl && (
-                    <img src={posterUrl} alt="Poster" className="w-20 h-30 object-cover rounded mt-1" />
-                  )}
+                  <Input id="poster" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} placeholder="https://..." />
+                  {posterUrl && <img src={posterUrl} alt="Poster" className="w-20 h-30 object-cover rounded mt-1" />}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="backdrop">Backdrop URL</Label>
-                  <Input
-                    id="backdrop"
-                    value={backdropUrl}
-                    onChange={(e) => setBackdropUrl(e.target.value)}
-                    placeholder="https://..."
-                  />
-                  {backdropUrl && (
-                    <img
-                      src={backdropUrl}
-                      alt="Backdrop"
-                      className="w-32 h-18 object-cover rounded mt-1"
-                    />
-                  )}
+                  <Input id="backdrop" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} placeholder="https://..." />
+                  {backdropUrl && <img src={backdropUrl} alt="Backdrop" className="w-32 h-18 object-cover rounded mt-1" />}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="logo">Logo URL</Label>
-                  <Input
-                    id="logo"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    placeholder="https://..."
-                  />
-                  {logoUrl && (
-                    <img
-                      src={logoUrl}
-                      alt="Logo"
-                      className="w-24 h-12 object-contain rounded mt-1 bg-black/50 p-1"
-                    />
-                  )}
+                  <Input id="logo" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
+                  {logoUrl && <img src={logoUrl} alt="Logo" className="w-24 h-12 object-contain rounded mt-1 bg-black/50 p-1" />}
                 </div>
               </div>
             </div>
@@ -1001,52 +1490,35 @@ export function PostMetadataEditor() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="overview">Overview</Label>
-                <Textarea
-                  id="overview"
-                  value={overview}
-                  onChange={(e) => setOverview(e.target.value)}
-                  rows={4}
-                  placeholder="Enter overview..."
-                />
+                <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} rows={4} placeholder="Enter overview..." />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tagline">Tagline</Label>
-                <Input
-                  id="tagline"
-                  value={tagline}
-                  onChange={(e) => setTagline(e.target.value)}
-                  placeholder="Enter tagline..."
-                />
+                <Input id="tagline" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Enter tagline..." />
               </div>
             </div>
 
             {/* Genres */}
             <div className="space-y-2">
-              <Label>Genres</Label>
+              <div className="flex items-center justify-between">
+                <Label>Genres</Label>
+                <Button variant="outline" size="sm" onClick={openGenreModal} className="gap-1">
+                  <Edit3 className="w-3 h-3" /> Edit Genres
+                </Button>
+              </div>
               <div className="flex flex-wrap gap-2">
-                {genres.map((genre) => (
-                  <Badge key={genre.id} variant="secondary" className="gap-1">
-                    {genre.name}
-                    <button
-                      onClick={() => handleRemoveGenre(genre.id)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-                <div className="flex gap-1">
-                  <Input
-                    value={newGenreName}
-                    onChange={(e) => setNewGenreName(e.target.value)}
-                    placeholder="Add genre..."
-                    className="w-32 h-6 text-xs"
-                    onKeyDown={(e) => e.key === "Enter" && handleAddGenre()}
-                  />
-                  <Button size="sm" variant="ghost" onClick={handleAddGenre} className="h-6 px-2">
-                    <Check className="w-3 h-3" />
-                  </Button>
-                </div>
+                {genres.length === 0 ? (
+                  <span className="text-muted-foreground text-sm">No genres selected</span>
+                ) : (
+                  genres.map((genre) => (
+                    <Badge key={genre.id} variant="secondary" className="gap-1">
+                      {genre.name}
+                      <button onClick={() => handleRemoveGenre(genre.id)} className="ml-1 hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))
+                )}
               </div>
             </div>
 
@@ -1054,54 +1526,33 @@ export function PostMetadataEditor() {
             <div className="space-y-2">
               <Label>Cast (Top 12)</Label>
               <div className="flex flex-wrap gap-2">
-                {castData.map((member) => (
-                  <Badge key={member.id} variant="outline" className="gap-1">
-                    {member.name}
-                    <span className="text-muted-foreground">as {member.character}</span>
-                    <button
-                      onClick={() => handleRemoveCast(member.id)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
+                {castData.length === 0 ? (
+                  <span className="text-muted-foreground text-sm">No cast data</span>
+                ) : (
+                  castData.map((member) => (
+                    <Badge key={member.id} variant="outline" className="gap-1">
+                      {member.name}
+                      {member.character && <span className="text-muted-foreground">as {member.character}</span>}
+                      <button onClick={() => handleRemoveCast(member.id)} className="ml-1 hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))
+                )}
               </div>
-            </div>
-
-            {/* Admin Edited Checkbox */}
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="adminEdited"
-                checked={adminEdited}
-                onCheckedChange={(checked) => setAdminEdited(!!checked)}
-              />
-              <Label htmlFor="adminEdited" className="cursor-pointer">
-                Mark as Admin Edited (protects from auto-prefill)
-              </Label>
             </div>
 
             {/* Episode Metadata Section (Series Only) */}
             {selectedEntry.type === "series" && (
               <div className="border-t pt-6 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <h4 className="font-medium">Episode Metadata</h4>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSyncSeason(selectedSeason)}
-                      disabled={isSyncing}
-                    >
+                  <div className="flex gap-2 flex-wrap">
+                    <Button variant="outline" size="sm" onClick={() => handleSyncSeason(selectedSeason)} disabled={isSyncing}>
                       <RefreshCw className="w-4 h-4 mr-1" />
                       Sync Season {selectedSeason}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSyncAllSeasons}
-                      disabled={isSyncing}
-                    >
+                    <Button variant="outline" size="sm" onClick={handleSyncAllSeasons} disabled={isSyncing}>
                       <RefreshCw className="w-4 h-4 mr-1" />
                       Sync All Seasons
                     </Button>
@@ -1109,24 +1560,57 @@ export function PostMetadataEditor() {
                 </div>
 
                 {/* Season Selector */}
-                <div className="flex gap-2 flex-wrap">
-                  {getAvailableSeasons().map((s) => (
-                    <Button
-                      key={s}
-                      variant={selectedSeason === s ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedSeason(s)}
-                    >
-                      Season {s}
-                    </Button>
-                  ))}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Label>Season:</Label>
+                  <Select value={String(selectedSeason)} onValueChange={(v) => setSelectedSeason(Number(v))}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSeasons.map((s) => (
+                        <SelectItem key={s} value={String(s)}>
+                          Season {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const nextSeason = Math.max(...availableSeasons, 0) + 1;
+                      setNewSeasonNumber(nextSeason);
+                      setShowAddSeasonDialog(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Season
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowDeleteSeasonConfirm(true)} className="text-destructive">
+                    <Trash2 className="w-4 h-4 mr-1" /> Delete Season
+                  </Button>
+                </div>
+
+                {/* Episode count and add button */}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">Episodes in Season {selectedSeason}: {seasonEpisodes.length}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const maxEp = seasonEpisodes.length > 0 ? Math.max(...seasonEpisodes.map((e) => e.episode_number)) : 0;
+                      setNewEpisodeNumber(maxEp + 1);
+                      setShowAddEpisodeDialog(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Episode
+                  </Button>
                 </div>
 
                 {/* Episodes List */}
                 <ScrollArea className="h-80 border rounded-md p-2">
                   {seasonEpisodes.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No episodes found for Season {selectedSeason}. Click "Sync Season" to fetch from TMDB.
+                      No episodes found for Season {selectedSeason}. Click "Sync Season" to fetch from TMDB or "Add Episode" to create manually.
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1139,11 +1623,7 @@ export function PostMetadataEditor() {
                           <div className="border rounded-md">
                             <CollapsibleTrigger className="w-full p-3 flex items-center gap-3 hover:bg-secondary/50 transition-colors">
                               {ep.still_path ? (
-                                <img
-                                  src={ep.still_path}
-                                  alt={ep.name || `Episode ${ep.episode_number}`}
-                                  className="w-16 h-9 object-cover rounded"
-                                />
+                                <img src={ep.still_path} alt={ep.name || `Episode ${ep.episode_number}`} className="w-16 h-9 object-cover rounded" />
                               ) : (
                                 <div className="w-16 h-9 bg-muted rounded flex items-center justify-center">
                                   <Film className="w-4 h-4 text-muted-foreground" />
@@ -1153,9 +1633,7 @@ export function PostMetadataEditor() {
                                 <p className="font-medium">
                                   E{ep.episode_number}: {ep.name || "Untitled"}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate max-w-md">
-                                  {ep.overview || "No description"}
-                                </p>
+                                <p className="text-xs text-muted-foreground truncate max-w-md">{ep.overview || "No description"}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 {ep.admin_edited && (
@@ -1163,44 +1641,50 @@ export function PostMetadataEditor() {
                                     Edited
                                   </Badge>
                                 )}
-                                {expandedEpisode === ep.episode_number ? (
-                                  <ChevronUp className="w-4 h-4" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4" />
-                                )}
+                                {expandedEpisode === ep.episode_number ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               </div>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="p-3 border-t space-y-3">
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                  <Label className="text-xs">Name</Label>
+                                  <Label className="text-xs">Episode Number</Label>
                                   <Input
-                                    value={ep.name || ""}
+                                    type="number"
+                                    value={ep.episode_number}
                                     onChange={(e) =>
-                                      updateEpisodeField(
-                                        ep.season_number,
-                                        ep.episode_number,
-                                        "name",
-                                        e.target.value || null
-                                      )
+                                      updateEpisodeField(ep.season_number, ep.episode_number, "episode_number", Number(e.target.value))
                                     }
                                     className="h-8 text-sm"
                                   />
                                 </div>
                                 <div className="space-y-1">
+                                  <Label className="text-xs">Name</Label>
+                                  <Input
+                                    value={ep.name || ""}
+                                    onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "name", e.target.value || null)}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
                                   <Label className="text-xs">Air Date</Label>
                                   <Input
                                     value={ep.air_date || ""}
-                                    onChange={(e) =>
-                                      updateEpisodeField(
-                                        ep.season_number,
-                                        ep.episode_number,
-                                        "air_date",
-                                        e.target.value || null
-                                      )
-                                    }
+                                    onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "air_date", e.target.value || null)}
                                     className="h-8 text-sm"
                                     placeholder="YYYY-MM-DD"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Runtime (min)</Label>
+                                  <Input
+                                    type="number"
+                                    value={ep.runtime ?? ""}
+                                    onChange={(e) =>
+                                      updateEpisodeField(ep.season_number, ep.episode_number, "runtime", e.target.value ? Number(e.target.value) : null)
+                                    }
+                                    className="h-8 text-sm"
                                   />
                                 </div>
                               </div>
@@ -1208,14 +1692,7 @@ export function PostMetadataEditor() {
                                 <Label className="text-xs">Thumbnail URL</Label>
                                 <Input
                                   value={ep.still_path || ""}
-                                  onChange={(e) =>
-                                    updateEpisodeField(
-                                      ep.season_number,
-                                      ep.episode_number,
-                                      "still_path",
-                                      e.target.value || null
-                                    )
-                                  }
+                                  onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "still_path", e.target.value || null)}
                                   className="h-8 text-sm"
                                 />
                               </div>
@@ -1223,79 +1700,23 @@ export function PostMetadataEditor() {
                                 <Label className="text-xs">Overview</Label>
                                 <Textarea
                                   value={ep.overview || ""}
-                                  onChange={(e) =>
-                                    updateEpisodeField(
-                                      ep.season_number,
-                                      ep.episode_number,
-                                      "overview",
-                                      e.target.value || null
-                                    )
-                                  }
+                                  onChange={(e) => updateEpisodeField(ep.season_number, ep.episode_number, "overview", e.target.value || null)}
                                   rows={2}
                                   className="text-sm"
                                 />
                               </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Runtime (min)</Label>
-                                  <Input
-                                    type="number"
-                                    value={ep.runtime ?? ""}
-                                    onChange={(e) =>
-                                      updateEpisodeField(
-                                        ep.season_number,
-                                        ep.episode_number,
-                                        "runtime",
-                                        e.target.value ? Number(e.target.value) : null
-                                      )
-                                    }
-                                    className="h-8 text-sm"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Rating</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={ep.vote_average ?? ""}
-                                    onChange={(e) =>
-                                      updateEpisodeField(
-                                        ep.season_number,
-                                        ep.episode_number,
-                                        "vote_average",
-                                        e.target.value ? Number(e.target.value) : null
-                                      )
-                                    }
-                                    className="h-8 text-sm"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Checkbox
-                                  checked={ep.admin_edited}
-                                  onCheckedChange={(checked) =>
-                                    updateEpisodeField(
-                                      ep.season_number,
-                                      ep.episode_number,
-                                      "admin_edited",
-                                      !!checked
-                                    )
-                                  }
-                                />
-                                <Label className="text-xs cursor-pointer">Admin Edited</Label>
-                              </div>
-                              <div className="flex gap-2 pt-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleSyncSingleEpisode(ep)}
-                                >
+                              <div className="flex gap-2 pt-2 flex-wrap">
+                                <Button size="sm" variant="outline" onClick={() => handleSyncSingleEpisode(ep)}>
                                   <RefreshCw className="w-3 h-3 mr-1" />
                                   Sync from TMDB
                                 </Button>
                                 <Button size="sm" onClick={() => handleSaveEpisode(ep)}>
                                   <Save className="w-3 h-3 mr-1" />
                                   Save Episode
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => setShowDeleteEpisodeConfirm(ep)}>
+                                  <Trash2 className="w-3 h-3 mr-1" />
+                                  Delete
                                 </Button>
                               </div>
                             </CollapsibleContent>
@@ -1309,6 +1730,135 @@ export function PostMetadataEditor() {
             )}
           </div>
         )}
+
+        {/* Genre Selection Modal */}
+        <Dialog open={showGenreModal} onOpenChange={setShowGenreModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Select Genres</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input placeholder="Search genres..." value={genreSearch} onChange={(e) => setGenreSearch(e.target.value)} />
+              <ScrollArea className="h-64 border rounded-md p-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {filteredGenres.map((genre) => {
+                    const isSelected = tempSelectedGenres.some((g) => g.id === genre.id);
+                    return (
+                      <label
+                        key={genre.id}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                          isSelected ? "bg-primary/20" : "hover:bg-secondary"
+                        }`}
+                      >
+                        <Checkbox checked={isSelected} onCheckedChange={() => toggleGenre(genre)} />
+                        <span className="text-sm">{genre.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add custom genre..."
+                  value={newCustomGenre}
+                  onChange={(e) => setNewCustomGenre(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddCustomGenre()}
+                />
+                <Button variant="outline" onClick={handleAddCustomGenre}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Selected: {tempSelectedGenres.map((g) => g.name).join(", ") || "None"}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowGenreModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={applyGenreSelection}>Apply</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Season Dialog */}
+        <Dialog open={showAddSeasonDialog} onOpenChange={setShowAddSeasonDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Season</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Season Number</Label>
+                <Input type="number" value={newSeasonNumber} onChange={(e) => setNewSeasonNumber(Number(e.target.value))} min={1} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddSeasonDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddSeason}>Add Season</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Season Confirmation */}
+        <AlertDialog open={showDeleteSeasonConfirm} onOpenChange={setShowDeleteSeasonConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Season {selectedSeason}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove all episodes for Season {selectedSeason}. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteSeason} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Add Episode Dialog */}
+        <Dialog open={showAddEpisodeDialog} onOpenChange={setShowAddEpisodeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Episode to Season {selectedSeason}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Episode Number</Label>
+                <Input type="number" value={newEpisodeNumber} onChange={(e) => setNewEpisodeNumber(Number(e.target.value))} min={1} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddEpisodeDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddEpisode}>Add Episode</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Episode Confirmation */}
+        <AlertDialog open={!!showDeleteEpisodeConfirm} onOpenChange={() => setShowDeleteEpisodeConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Episode {showDeleteEpisodeConfirm?.episode_number}?</AlertDialogTitle>
+              <AlertDialogDescription>This will remove the episode metadata. This action cannot be undone.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => showDeleteEpisodeConfirm && handleDeleteEpisode(showDeleteEpisodeConfirm)}
+                className="bg-destructive text-destructive-foreground"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
