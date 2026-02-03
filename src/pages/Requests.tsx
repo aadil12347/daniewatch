@@ -21,6 +21,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useToast } from "@/hooks/use-toast";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
