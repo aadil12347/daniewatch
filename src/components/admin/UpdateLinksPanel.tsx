@@ -58,6 +58,7 @@ import {
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
 import { MetadataPrefillTool } from "@/components/admin/MetadataPrefillTool";
 import { EpisodeMetadataEditor } from "@/components/admin/EpisodeMetadataEditor";
+import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
 import { Progress } from "@/components/ui/progress";
 
 const UPDATE_LINKS_CACHE_KEY = "updateLinksPanelState_v1";
@@ -1464,6 +1465,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         <TabsContent value="tools" className="space-y-4">
           <ManifestUpdateTool />
           <MetadataPrefillTool />
+          <PostMetadataEditor />
         </TabsContent>
       </Tabs>
 
