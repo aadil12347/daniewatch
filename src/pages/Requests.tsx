@@ -22,8 +22,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2, Shield } from "lucide-react";
+import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2, Shield, ChevronDown, ChevronUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { ChatWindow } from "@/components/ChatWindow";
 import { useToast } from "@/hooks/use-toast";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
@@ -56,6 +57,7 @@ const RequestCard = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -76,93 +78,117 @@ const RequestCard = ({
   };
 
   return (
-    <Card className="bg-black/40 backdrop-blur-md border-white/10 hover:bg-white/5 transition-all duration-300">
-      <CardHeader className="pb-3">
+    <Card className="bg-black/40 backdrop-blur-md border border-white/10 hover:border-white/20 transition-all duration-300">
+      <CardHeader className="pb-3 cursor-pointer select-none" onClick={() => setIsChatOpen(!isChatOpen)}>
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-lg text-white">{request.title}</CardTitle>
-            <CardDescription className="mt-1 flex items-center gap-2 text-xs">
-              <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-semibold text-white leading-tight">
+                {request.title}
+              </CardTitle>
+              {getStatusBadge(request.status)}
+            </div>
+            <CardDescription className="flex items-center gap-2 text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-400 font-medium">
                 {request.request_type === 'movie' && 'Movie'}
                 {request.request_type === 'tv_season' && `Season ${request.season_number}`}
                 {request.request_type === 'general' && 'General'}
               </span>
-              <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-gray-400">{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
             </CardDescription>
           </div>
-          {getStatusBadge(request.status)}
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+            {isChatOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-gray-300 mb-4 bg-white/5 p-3 rounded-lg border border-white/5">
-          {request.message}
-        </p>
 
-        {request.admin_response && (
-          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 mb-4">
-            <div className="flex items-center gap-2 mb-2 text-primary">
-              <Shield className="w-4 h-4" />
-              <p className="text-xs font-bold uppercase tracking-wider">Admin Response</p>
+      {isChatOpen && (
+        <CardContent className="pt-0 animate-in slide-in-from-top-2 duration-200">
+          <div className="mb-4 text-sm text-gray-300 bg-white/5 p-3 rounded-md border border-white/5">
+            <span className="font-semibold text-gray-400 block mb-1 text-xs uppercase tracking-wider">Request Details</span>
+            {request.message || "No additional details provided."}
+          </div>
+
+          {request.admin_response && (
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 mb-4">
+              <div className="flex items-center gap-2 mb-2 text-primary">
+                <Shield className="w-4 h-4" />
+                <p className="text-xs font-bold uppercase tracking-wider">Admin Update</p>
+              </div>
+              <p className="text-sm text-white/90 leading-relaxed">{request.admin_response}</p>
             </div>
-            <p className="text-sm text-white/90 leading-relaxed">{request.admin_response}</p>
-          </div>
-        )}
+          )}
 
-        <div className="flex items-center justify-between mt-4 border-t border-white/10 pt-4">
-          <div className="flex items-center gap-2">
-            {request.closed_by === 'admin' ? (
-              <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20 gap-1 rounded-md px-2 py-1">
-                <Shield className="w-3 h-3" /> Chat Closed by Admin
-              </Badge>
-            ) : request.closed_by === 'user' ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleReopenChat}
-                disabled={isReopening}
-                className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/10"
-              >
-                {isReopening ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                Reopen Chat
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleCloseChat}
-                disabled={isClosing}
-                className="h-8 text-xs text-muted-foreground hover:text-white hover:bg-white/10"
-              >
-                {isClosing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                Close Chat
-              </Button>
-            )}
+          <div className="mt-4 mb-4">
+            <ChatWindow
+              requestId={request.id}
+              role="user"
+              isClosed={!!request.closed_by}
+              closedBy={request.closed_by}
+            />
           </div>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 -mr-2">
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                Remove
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Remove from History?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will hide this request from your view. The admin will still have a record of it.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90">
+          <div className="flex items-center justify-between border-t border-white/10 pt-4">
+            <div className="flex items-center gap-2">
+              {request.closed_by === 'admin' ? (
+                <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20 gap-1 px-2 py-1">
+                  <Shield className="w-3 h-3" /> Chat Closed by Admin
+                </Badge>
+              ) : request.closed_by === 'user' ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => { e.stopPropagation(); handleReopenChat(); }}
+                  disabled={isReopening}
+                  className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                >
+                  {isReopening ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                  Reopen Chat
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => { e.stopPropagation(); handleCloseChat(); }}
+                  disabled={isClosing}
+                  className="h-8 text-xs text-muted-foreground hover:text-white hover:bg-white/10"
+                >
+                  {isClosing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                  Close Chat
+                </Button>
+              )}
+            </div>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 -mr-2" onClick={(e) => e.stopPropagation()}>
+                  {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
                   Remove
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </CardContent>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove Request?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently remove this request from history.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90">
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </CardContent>
+      )}
+      {!isChatOpen && (
+        <div className="px-6 pb-4"></div>
+      )}
     </Card>
   );
 };
