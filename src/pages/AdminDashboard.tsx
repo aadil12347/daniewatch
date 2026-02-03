@@ -97,7 +97,9 @@ const RequestCard = ({
   onDelete,
   isSelected,
   onSelectChange,
-  showCheckbox
+  showCheckbox,
+  onCloseChat,
+  onReopenChat
 }: {
   request: AdminRequest;
   onUpdateStatus: (id: string, status: AdminRequest['status'], response?: string) => Promise<void>;
@@ -327,6 +329,7 @@ const RequestCard = ({
                 </AlertDialog>
               </div>
             </div>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>
