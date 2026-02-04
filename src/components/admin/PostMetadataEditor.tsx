@@ -12,7 +12,7 @@ import {
   X,
   Database,
   Globe,
-  Edit3,
+  Pencil,
   Image as ImageIcon,
   Filter,
   Plus,
@@ -1294,7 +1294,7 @@ export function PostMetadataEditor() {
     <Card className="bg-black/40 backdrop-blur-md border-white/10 shadow-xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
-          <Edit3 className="w-5 h-5 text-primary" />
+          <Pencil className="w-5 h-5 text-primary" />
           Post Metadata Editor
         </CardTitle>
         <CardDescription className="text-muted-foreground">
@@ -1621,7 +1621,7 @@ export function PostMetadataEditor() {
             <Collapsible open={isMainMetadataOpen} onOpenChange={setIsMainMetadataOpen} className="border rounded-md bg-card">
               <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setIsMainMetadataOpen(!isMainMetadataOpen)}>
                 <div className="flex items-center gap-2 font-semibold">
-                  <Edit3 className="w-5 h-5" />
+                  <Pencil className="w-5 h-5" />
                   Main Metadata
                   {!isMainMetadataOpen && <span className="text-sm font-normal text-muted-foreground ml-2">Click to expand</span>}
                 </div>
@@ -1741,7 +1741,7 @@ export function PostMetadataEditor() {
                   <div className="flex items-center justify-between">
                     <Label>Genres</Label>
                     <Button variant="outline" size="sm" onClick={openGenreModal} className="gap-1">
-                      <Edit3 className="w-3 h-3" /> Edit Genres
+                      <Pencil className="w-3 h-3" /> Edit Genres
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-2">

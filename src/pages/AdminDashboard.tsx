@@ -69,7 +69,7 @@ import {
   Film,
   Tv,
   ArrowLeft,
-  Edit3,
+  Pencil,
 } from "lucide-react";
 
 
@@ -1097,7 +1097,7 @@ const AdminDashboard = () => {
                 )}
               </TabsTrigger>
               <TabsTrigger value="metadata" className="gap-2">
-                <Edit3 className="w-4 h-4" />
+                <Pencil className="w-4 h-4" />
                 Metadata Editor
               </TabsTrigger>
               <TabsTrigger value="links" className="gap-2" asChild>
