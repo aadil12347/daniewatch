@@ -508,6 +508,8 @@ const AdminDashboard = () => {
     deleteRequest,
     deleteRequests,
     refetchRequests,
+    closeRequestChat,
+    reopenRequestChat,
   } = useAdmin();
 
   // Mark this as an admin session for cache management
