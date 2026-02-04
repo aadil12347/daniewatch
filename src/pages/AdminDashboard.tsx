@@ -80,6 +80,7 @@ import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
 import { ChatWindow } from "@/components/ChatWindow";
 import { cn } from "@/lib/utils";
+import { UpdateLinksPanel } from "@/components/admin/UpdateLinksPanel";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
   switch (status) {
@@ -1111,13 +1112,9 @@ const AdminDashboard = () => {
                 <TabsTrigger
                   value="links"
                   className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
-                  asChild
                 >
-                  <Link to="/admin/update-links">
-                    <Link2 className="w-4 h-4" />
-                    <span className="text-sm font-medium">Update Links</span>
-                    <ExternalLink className="w-3 h-3 ml-1 opacity-50" />
-                  </Link>
+                  <Link2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">Update Links</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="blocked"
@@ -1441,6 +1438,10 @@ const AdminDashboard = () => {
               <div className="space-y-6">
                 <PostMetadataEditor />
               </div>
+            </TabsContent>
+
+            <TabsContent value="links">
+              <UpdateLinksPanel embedded />
             </TabsContent>
 
             <TabsContent value="blocked">
