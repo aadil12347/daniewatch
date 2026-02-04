@@ -195,24 +195,6 @@ export function GlobalRouteLoader() {
   // Cleanup timers on unmount
   useEffect(() => clearTimers, []);
 
-  if (!isMounted) return null;
-
-  return (
-    <div
-      className="app-loader-overlay"
-      data-state={isOpen ? "open" : "closed"}
-      role="status"
-      aria-label="Loading"
-    >
-      <div className="app-loader" aria-hidden="true">
-        <div className="circle" />
-        <div className="circle" />
-        <div className="circle" />
-        <div className="shadow" />
-        <div className="shadow" />
-        <div className="shadow" />
-      </div>
-    </div>
-  );
+  return null;
 }
 

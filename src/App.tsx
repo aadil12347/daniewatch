@@ -13,7 +13,6 @@ import { TutorialProvider } from "./contexts/TutorialContext";
 import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
 import { SearchOverlayProvider } from "./contexts/SearchOverlayContext";
 import { PageTransition } from "./components/PageTransition";
-import { GlobalRouteLoader } from "./components/GlobalRouteLoader";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -158,11 +157,11 @@ const App = () => {
                                 <>
                                   <Navbar />
                                   <SearchOverlay />
-                                  <GlobalRouteLoader />
+
                                   <PerformanceModeSwitchOverlay />
                                   <EditLinksModeIndicator />
                                   <EditLinksModal />
-                                  
+
                                   <AppContent />
                                   <FloatingRequestButton />
                                   <TutorialOverlay />
