@@ -69,6 +69,7 @@ import {
   Film,
   Tv,
   ArrowLeft,
+  Edit3,
 } from "lucide-react";
 
 
