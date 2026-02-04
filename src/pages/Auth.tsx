@@ -22,7 +22,7 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -57,7 +57,7 @@ const Auth = () => {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim()) {
       toast({
         title: "Error",
@@ -169,6 +169,8 @@ const Auth = () => {
     setShowPassword(false);
   };
 
+  useRouteContentReady(true);
+
   return (
     <>
       <Helmet>
@@ -181,7 +183,7 @@ const Auth = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
-        
+
         {/* Floating particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {[...Array(6)].map((_, i) => (
@@ -197,7 +199,7 @@ const Auth = () => {
             />
           ))}
         </div>
-        
+
         <div className="relative z-10 w-full max-w-md mx-4">
           {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-8 animate-fade-in">
@@ -222,13 +224,13 @@ const Auth = () => {
           </div>
 
           {/* Auth Card */}
-          <div 
+          <div
             className="relative bg-card/80 backdrop-blur-xl rounded-3xl p-8 border border-border/50 shadow-2xl shadow-primary/5 overflow-hidden"
           >
             {/* Card glow effect */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
-            
+
             <div className="relative z-10">
               {/* Method Selection Screen */}
               {mode === "select" && (
@@ -239,7 +241,7 @@ const Auth = () => {
                   </div>
 
                   {/* Google Sign In */}
-                  <Button 
+                  <Button
                     onClick={handleGoogleSignIn}
                     disabled={isLoading}
                     className="w-full h-14 bg-white hover:bg-gray-50 text-gray-900 font-medium rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
@@ -269,7 +271,7 @@ const Auth = () => {
                   </div>
 
                   {/* Email Option */}
-                  <Button 
+                  <Button
                     onClick={() => switchMode("login")}
                     variant="outline"
                     className="w-full h-14 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:bg-secondary/50 flex items-center justify-center gap-3"
@@ -290,8 +292,8 @@ const Auth = () => {
                         onClick={() => switchMode("login")}
                         className={cn(
                           "flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-500",
-                          mode === "login" 
-                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
+                          mode === "login"
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                             : "text-muted-foreground hover:text-foreground"
                         )}
                       >
@@ -301,8 +303,8 @@ const Auth = () => {
                         onClick={() => switchMode("signup")}
                         className={cn(
                           "flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-500",
-                          mode === "signup" 
-                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
+                          mode === "signup"
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                             : "text-muted-foreground hover:text-foreground"
                         )}
                       >
@@ -417,9 +419,9 @@ const Auth = () => {
                     )}
 
                     {/* Submit Button */}
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30" 
+                    <Button
+                      type="submit"
+                      className="w-full h-12 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30"
                       disabled={isLoading}
                     >
                       {isLoading ? (
