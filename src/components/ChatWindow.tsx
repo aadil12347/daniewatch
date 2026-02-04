@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, User, Shield } from 'lucide-react';
+import { Send, User, Shield } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,13 +43,17 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
     };
 
     return (
-        <div className="flex flex-col h-[300px] md:h-[400px] border border-white/10 rounded-lg bg-black/20 overflow-hidden backdrop-blur-sm">
+        <div className="chat-window-animate flex flex-col h-[300px] md:h-[400px] border border-white/10 rounded-lg bg-black/20 overflow-hidden backdrop-blur-sm">
             {/* Messages Area */}
             <ScrollArea className="flex-1 p-3 md:p-4">
                 {loading ? (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
-                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                        Loading chat...
+                        <div className="flex items-center gap-1">
+                            <span className="chat-loading-dot"></span>
+                            <span className="chat-loading-dot"></span>
+                            <span className="chat-loading-dot"></span>
+                        </div>
+                        <span className="ml-3 text-sm">Loading chat...</span>
                     </div>
                 ) : messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
@@ -58,7 +62,7 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {messages.map((msg) => {
+                        {messages.map((msg, index) => {
                             const isMe = msg.sender_role === role;
                             const isAdminMsg = msg.sender_role === 'admin';
 
@@ -66,16 +70,17 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
                                 <div
                                     key={msg.id}
                                     className={cn(
-                                        "flex flex-col max-w-[80%]",
+                                        "chat-message-animate flex flex-col max-w-[80%]",
                                         isMe ? "ml-auto items-end" : "mr-auto items-start"
                                     )}
+                                    style={{ animationDelay: `${Math.min(index * 0.05, 0.3)}s` }}
                                 >
                                     <div className={cn(
                                         "flex items-center gap-2 mb-1 text-xs",
                                         isMe ? "flex-row-reverse" : "flex-row"
                                     )}>
                                         <span className={cn(
-                                            "flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0",
+                                            "flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 transition-transform duration-200 hover:scale-110",
                                             isAdminMsg ? "bg-red-500/20 text-red-500" : "bg-blue-500/20 text-blue-500"
                                         )}>
                                             {isAdminMsg ? <Shield className="w-3 h-3" /> : <User className="w-3 h-3" />}
@@ -90,10 +95,10 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
 
                                     <div
                                         className={cn(
-                                            "px-2.5 md:px-3 py-1.5 md:py-2 rounded-2xl text-xs md:text-sm break-words shadow-sm",
+                                            "px-2.5 md:px-3 py-1.5 md:py-2 rounded-2xl text-xs md:text-sm break-words transition-all duration-200",
                                             isMe
-                                                ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                                : "bg-white/10 text-white rounded-tl-sm"
+                                                ? "bg-primary text-primary-foreground rounded-tr-sm shadow-lg shadow-primary/10 hover:shadow-primary/20"
+                                                : "bg-white/10 text-white rounded-tl-sm hover:bg-white/15"
                                         )}
                                     >
                                         {msg.content}
@@ -119,16 +124,24 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Type a message..."
-                            className="bg-black/20 border-white/10 focus-visible:ring-primary/50 text-sm"
+                            className="chat-input-glow bg-black/20 border-white/10 focus-visible:ring-primary/50 text-sm"
                             disabled={isSending}
                         />
                         <Button
                             type="submit"
                             size="icon"
                             disabled={isSending || !newMessage.trim()}
-                            className="bg-primary hover:bg-primary/90 transition-all flex-shrink-0 h-9 w-9 md:h-10 md:w-10"
+                            className="send-btn-animate bg-primary hover:bg-primary/90 flex-shrink-0 h-9 w-9 md:h-10 md:w-10"
                         >
-                            {isSending ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <Send className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                            {isSending ? (
+                                <div className="flex items-center justify-center">
+                                    <span className="chat-loading-dot" style={{ width: '4px', height: '4px' }}></span>
+                                    <span className="chat-loading-dot" style={{ width: '4px', height: '4px' }}></span>
+                                    <span className="chat-loading-dot" style={{ width: '4px', height: '4px' }}></span>
+                                </div>
+                            ) : (
+                                <Send className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            )}
                         </Button>
                     </form>
                 )}

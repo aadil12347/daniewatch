@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Loader2, Shield, ChevronDown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useToast } from "@/hooks/use-toast";
@@ -80,7 +80,7 @@ const RequestCard = ({
   };
 
   return (
-    <Card className="bg-black/40 backdrop-blur-md border border-white/10 hover:border-white/20 transition-all duration-300">
+    <Card className="chat-card-glow bg-black/40 backdrop-blur-md border border-white/10">
       <CardHeader className="pb-3 cursor-pointer select-none" onClick={() => setIsChatOpen(!isChatOpen)}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -101,13 +101,13 @@ const RequestCard = ({
             </CardDescription>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-            {isChatOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <ChevronDown className={`w-4 h-4 chevron-animate ${isChatOpen ? 'rotate-180' : ''}`} />
           </Button>
         </div>
       </CardHeader>
 
       {isChatOpen && (
-        <CardContent className="pt-0 animate-in slide-in-from-top-2 duration-200">
+        <CardContent className="pt-0 chat-window-animate">
           <div className="mb-4 text-sm text-gray-300 bg-white/5 p-3 rounded-md border border-white/5">
             <span className="font-semibold text-gray-400 block mb-1 text-xs uppercase tracking-wider">Request Details</span>
             {request.message || "No additional details provided."}
@@ -144,7 +144,7 @@ const RequestCard = ({
                   variant="secondary"
                   onClick={(e) => { e.stopPropagation(); handleReopenChat(); }}
                   disabled={isReopening}
-                  className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                  className="btn-smooth h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 >
                   {isReopening ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
                   Reopen Chat
@@ -155,7 +155,7 @@ const RequestCard = ({
                   variant="ghost"
                   onClick={(e) => { e.stopPropagation(); handleCloseChat(); }}
                   disabled={isClosing}
-                  className="h-8 text-xs text-muted-foreground hover:text-white hover:bg-white/10"
+                  className="btn-smooth h-8 text-xs text-muted-foreground hover:text-white hover:bg-white/10"
                 >
                   {isClosing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
                   Close Chat
@@ -330,20 +330,21 @@ const Requests = () => {
             </Card>
           ) : (
             <div className="space-y-4">
-              {requests.map((request) => (
-                <RequestCard
-                  key={request.id}
-                  request={request}
-                  onDelete={handleDelete}
-                  onCloseChat={async (id) => {
-                    const { error } = await closeRequestChat(id);
-                    if (error) { toast({ title: "Error", description: "Failed to close chat", variant: "destructive" }); }
-                  }}
-                  onReopenChat={async (id) => {
-                    const { error } = await reopenRequestChat(id);
-                    if (error) { toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" }); }
-                  }}
-                />
+              {requests.map((request, index) => (
+                <div key={request.id} className="card-reveal-animate" style={{ animationDelay: `${Math.min(index * 0.05, 0.4)}s` }}>
+                  <RequestCard
+                    request={request}
+                    onDelete={handleDelete}
+                    onCloseChat={async (id) => {
+                      const { error } = await closeRequestChat(id);
+                      if (error) { toast({ title: "Error", description: "Failed to close chat", variant: "destructive" }); }
+                    }}
+                    onReopenChat={async (id) => {
+                      const { error } = await reopenRequestChat(id);
+                      if (error) { toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" }); }
+                    }}
+                  />
+                </div>
               ))}
             </div>
           )}

@@ -65,7 +65,6 @@ import {
   ExternalLink,
   Ban,
   ChevronDown,
-  ChevronUp,
   Film,
   Tv,
 } from "lucide-react";
@@ -136,7 +135,7 @@ const RequestCard = ({
   };
 
   return (
-    <div className={`transition-all duration-300 border rounded-xl overflow-hidden ${isSelected ? "ring-2 ring-primary border-primary/50" : "border-white/10"}`}>
+    <div className={`chat-card-glow transition-all duration-300 border rounded-xl overflow-hidden ${isSelected ? "ring-2 ring-primary border-primary/50" : "border-white/10"}`}>
       <div
         className={`bg-black/40 backdrop-blur-md p-4 cursor-pointer hover:bg-white/5 transition-colors ${isOpen ? 'bg-white/5' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
@@ -178,7 +177,7 @@ const RequestCard = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+            <ChevronDown className={`w-5 h-5 text-muted-foreground chevron-animate ${isOpen ? 'rotate-180' : ''}`} />
           </div>
         </div>
       </div>
@@ -1195,32 +1194,33 @@ const AdminDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {currentRequests.map((request) => (
-                    <RequestCard
-                      key={request.id}
-                      request={request}
-                      onUpdateStatus={handleUpdateStatus}
-                      onDelete={handleDeleteRequest}
-                      onCloseChat={async (id) => {
-                        const { error } = await closeRequestChat(id);
-                        if (error) {
-                          toast({ title: "Error", description: "Failed to close chat", variant: "destructive" });
-                        } else {
-                          toast({ title: "Success", description: "Chat closed and request completed", variant: "default" });
-                        }
-                      }}
-                      onReopenChat={async (id) => {
-                        const { error } = await reopenRequestChat(id);
-                        if (error) {
-                          toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" });
-                        } else {
-                          toast({ title: "Success", description: "Chat reopened", variant: "default" });
-                        }
-                      }}
-                      isSelected={selectedIds.includes(request.id)}
-                      onSelectChange={(checked) => toggleSelection(request.id, checked)}
-                      showCheckbox={isSelectionMode}
-                    />
+                  {currentRequests.map((request, index) => (
+                    <div key={request.id} className="card-reveal-animate" style={{ animationDelay: `${Math.min(index * 0.05, 0.4)}s` }}>
+                      <RequestCard
+                        request={request}
+                        onUpdateStatus={handleUpdateStatus}
+                        onDelete={handleDeleteRequest}
+                        onCloseChat={async (id) => {
+                          const { error } = await closeRequestChat(id);
+                          if (error) {
+                            toast({ title: "Error", description: "Failed to close chat", variant: "destructive" });
+                          } else {
+                            toast({ title: "Success", description: "Chat closed and request completed", variant: "default" });
+                          }
+                        }}
+                        onReopenChat={async (id) => {
+                          const { error } = await reopenRequestChat(id);
+                          if (error) {
+                            toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" });
+                          } else {
+                            toast({ title: "Success", description: "Chat reopened", variant: "default" });
+                          }
+                        }}
+                        isSelected={selectedIds.includes(request.id)}
+                        onSelectChange={(checked) => toggleSelection(request.id, checked)}
+                        showCheckbox={isSelectionMode}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
