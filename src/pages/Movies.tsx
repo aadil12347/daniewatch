@@ -227,8 +227,22 @@ const Movies = () => {
     return map;
   }, [dbOnlyHydrated, getKey, movies]);
 
+  // Merge hydrated TMDB data with manifest stub data, PRESERVING manifest fields
   const dbVisibleItems = useMemo(() => {
-    return dbStubItems.map((stub) => hydratedByKey.get(getKey(stub)) ?? stub);
+    return dbStubItems.map((stub) => {
+      const hydrated = hydratedByKey.get(getKey(stub));
+      if (!hydrated) return stub;
+
+      // Merge: use manifest data for logo/rating/poster if available, otherwise use hydrated TMDB data
+      return {
+        ...hydrated,
+        // Preserve manifest-provided fields (don't let TMDB overwrite them)
+        logo_url: (stub as any).logo_url ?? (hydrated as any).logo_url,
+        vote_average: (stub as any).vote_average ?? hydrated.vote_average,
+        poster_path: (stub as any).poster_path ?? hydrated.poster_path,
+        backdrop_path: (stub as any).backdrop_path ?? hydrated.backdrop_path,
+      } as Movie;
+    });
   }, [dbStubItems, getKey, hydratedByKey]);
 
   const tmdbOnlyItems = useMemo(() => {

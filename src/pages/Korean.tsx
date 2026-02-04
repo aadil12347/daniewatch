@@ -226,10 +226,21 @@ const Korean = () => {
     });
   }, [dbCandidates, manifestMetaByKey]);
 
+  // Merge hydrated TMDB data with manifest stub data, PRESERVING manifest fields
   const dbVisibleItems = useMemo(() => {
     const replaced = dbStubItems.map((stub) => {
       const k = getKey(stub);
-      return hydratedByKey.get(k) ?? stub;
+      const hydrated = hydratedByKey.get(k);
+      if (!hydrated) return stub;
+
+      // Merge: use manifest data for logo/rating/poster if available, otherwise use hydrated TMDB data
+      return {
+        ...hydrated,
+        // Preserve manifest-provided fields (don't let TMDB overwrite them)
+        logo_url: (stub as any).logo_url ?? (hydrated as any).logo_url,
+        vote_average: (stub as any).vote_average ?? hydrated.vote_average,
+        poster_path: (stub as any).poster_path ?? hydrated.poster_path,
+      } as Movie;
     });
 
     const safe = filterBlockedPosts(replaced);
