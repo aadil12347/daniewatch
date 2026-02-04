@@ -60,6 +60,45 @@ const RequestCard = ({
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread messages
+  useEffect(() => {
+    // Initial fetch
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from('request_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('request_id', request.id)
+        .eq('sender_role', 'admin') // Messages FROM admin
+        .is('read_at', null);
+
+      setUnreadCount(count || 0);
+    };
+
+    fetchUnread();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel(`unread:${request.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'request_messages',
+          filter: `request_id=eq.${request.id}`,
+        },
+        () => {
+          fetchUnread(); // Re-fetch on any message change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [request.id, isChatOpen]); // Refetch when chat opens/closes too
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -100,9 +139,23 @@ const RequestCard = ({
               <span className="text-gray-400">{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
             </CardDescription>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-            <ChevronDown className={`w-4 h-4 chevron-animate ${isChatOpen ? 'rotate-180' : ''}`} />
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* Unread Indicator - Red Dot */}
+            {!isChatOpen && unreadCount > 0 && (
+              <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+                <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-full border border-red-500/20">
+                  {unreadCount} new
+                </span>
+              </div>
+            )}
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground relative">
+              <ChevronDown className={`w-4 h-4 chevron-animate ${isChatOpen ? 'rotate-180' : ''}`} />
+            </Button>
+          </div>
         </div>
       </CardHeader>
 

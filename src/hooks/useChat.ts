@@ -8,6 +8,7 @@ export interface ChatMessage {
     sender_role: 'user' | 'admin';
     content: string;
     created_at: string;
+    read_at?: string | null;
     // Edit/Delete tracking fields
     is_deleted?: boolean;
     deleted_at?: string | null;
@@ -80,6 +81,34 @@ export const useChat = (requestId: string) => {
             supabase.removeChannel(channel);
         };
     }, [requestId]);
+
+    const markAsRead = async (role: 'user' | 'admin') => {
+        if (!user) return;
+
+        // We want to mark messages AS read where sender is NOT me and read_at is null
+        // i.e. if I am 'user', I mark 'admin' messages as read.
+        const senderToMark = role === 'user' ? 'admin' : 'user';
+
+        // Check if there are any unread messages to avoid unnecessary API calls
+        const hasUnread = messages.some(m => m.sender_role === senderToMark && !m.read_at);
+        if (!hasUnread) return;
+
+        // Optimistic update
+        setMessages(prev => prev.map(msg =>
+            (msg.sender_role === senderToMark && !msg.read_at)
+                ? { ...msg, read_at: new Date().toISOString() }
+                : msg
+        ));
+
+        const { error } = await supabase
+            .from('request_messages')
+            .update({ read_at: new Date().toISOString() })
+            .eq('request_id', requestId)
+            .eq('sender_role', senderToMark)
+            .is('read_at', null);
+
+        if (error) console.error("Error marking messages as read:", error);
+    };
 
     const sendMessage = async (content: string, role: 'user' | 'admin') => {
         if (!user || !content.trim()) return;
@@ -174,5 +203,6 @@ export const useChat = (requestId: string) => {
         sendMessage,
         editMessage,
         deleteMessage,
+        markAsRead,
     };
 };
