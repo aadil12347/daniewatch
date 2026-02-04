@@ -58,7 +58,8 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     loadGenres();
   }, []);
 
-  // Fetch logos for featured items
+  // MANIFEST-ONLY ARCHITECTURE: Fetch logos for featured items
+  // If item is in manifest, use manifest data only - no TMDB fallback
   useEffect(() => {
     const fetchLogos = async () => {
       const logoPromises = featured.map(async (item) => {
@@ -72,11 +73,12 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
         // 2. Check manifest using composite key
         const manifestData = availabilityById.get(manifestKey);
-        if (manifestData?.logoUrl) {
-          return { id: item.id, logoUrl: manifestData.logoUrl };
+        if (manifestData) {
+          // Item is in manifest - use manifest logo (even if null), NO TMDB fallback
+          return { id: item.id, logoUrl: manifestData.logoUrl || null };
         }
 
-        // 3. TMDB fallback
+        // 3. TMDB fallback - ONLY for items NOT in manifest
         try {
           const images = mediaType === "tv" ? await getTVImages(item.id) : await getMovieImages(item.id);
           const logo = images.logos?.find((l) => l.iso_639_1 === "en") || images.logos?.[0];
