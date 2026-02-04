@@ -675,30 +675,15 @@ export function PostMetadataEditor() {
     setEpisodes([]);
 
     try {
-      // If result has full metadata from DB search (entries with links), use it directly
-      if (result.inDb && result.hasLinks && result.backdropUrl !== undefined) {
-        // Create entry from cached result data
-        const entry: EntryData = {
-          id: result.id,
-          type: result.type,
-          content: {}, // Content not needed for metadata editing
-          title: result.title,
-          poster_url: result.posterUrl,
-          backdrop_url: result.backdropUrl,
-          logo_url: result.logoUrl,
-          overview: result.overview,
-          tagline: result.tagline,
-          status: result.status,
-          vote_average: result.voteAverage ?? null,
-          runtime: result.runtime,
-          release_year: result.year ? parseInt(result.year, 10) : null,
-          number_of_seasons: result.numberOfSeasons,
-          number_of_episodes: result.numberOfEpisodes,
-          genres: result.genres || [],
-          cast_data: result.castData || [],
-          admin_edited: result.adminEdited || false,
-        };
+      // Always fetch fresh data from DB to ensure we have the full content (including links)
+      // This prevents overwriting content with empty objects during save
+      const { data: dbEntry, error } = await supabase.from("entries").select("*").eq("id", result.id).maybeSingle();
 
+      if (error) throw error;
+
+      if (dbEntry) {
+        // Entry exists in DB
+        const entry = dbEntry as EntryData;
         setSelectedEntry(entry);
         populateFormFromEntry(entry);
 
@@ -707,46 +692,23 @@ export function PostMetadataEditor() {
           const allEpisodes = await fetchAllEpisodeMetadata(entry.id);
           setEpisodes(allEpisodes);
 
-          // Set initial season from number_of_seasons
-          if (entry.number_of_seasons && entry.number_of_seasons > 0) {
+          // Set initial season
+          const content = entry.content as Record<string, any>;
+          const seasons = Object.keys(content)
+            .filter((k) => k.startsWith("season_"))
+            .map((k) => parseInt(k.replace("season_", ""), 10))
+            .filter((n) => !isNaN(n))
+            .sort((a, b) => a - b);
+
+          if (seasons.length > 0) {
+            setSelectedSeason(seasons[0]);
+          } else if (entry.number_of_seasons && entry.number_of_seasons > 0) {
             setSelectedSeason(1);
           }
         }
       } else {
-        // Standard DB fetch for full data
-        const { data: dbEntry, error } = await supabase.from("entries").select("*").eq("id", result.id).maybeSingle();
-
-        if (error) throw error;
-
-        if (dbEntry) {
-          // Entry exists in DB
-          const entry = dbEntry as EntryData;
-          setSelectedEntry(entry);
-          populateFormFromEntry(entry);
-
-          // Load episodes if series
-          if (entry.type === "series") {
-            const allEpisodes = await fetchAllEpisodeMetadata(entry.id);
-            setEpisodes(allEpisodes);
-
-            // Set initial season
-            const content = entry.content as Record<string, any>;
-            const seasons = Object.keys(content)
-              .filter((k) => k.startsWith("season_"))
-              .map((k) => parseInt(k.replace("season_", ""), 10))
-              .filter((n) => !isNaN(n))
-              .sort((a, b) => a - b);
-
-            if (seasons.length > 0) {
-              setSelectedSeason(seasons[0]);
-            } else if (entry.number_of_seasons && entry.number_of_seasons > 0) {
-              setSelectedSeason(1);
-            }
-          }
-        } else {
-          // Entry not in DB - fetch from TMDB and create stub
-          await loadFromTmdb(result.id, result.type);
-        }
+        // Entry not in DB - fetch from TMDB and create stub
+        await loadFromTmdb(result.id, result.type);
       }
     } catch (error) {
       console.error("Error loading entry:", error);
