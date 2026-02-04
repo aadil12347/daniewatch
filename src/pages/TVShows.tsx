@@ -327,16 +327,22 @@ const TVShows = () => {
   }, [displayCount, fetchTmdbPage, filteredDbItems.length, getKey, hasMoreTmdb, pendingLoadMore, tmdbPage, unifiedItems.length, setIsLoadingMore]);
 
   // Try to restore from cache on mount
+  // Try to restore from cache on mount
   useEffect(() => {
-    const cached = getCache("default", selectedGenres);
-    if (cached && cached.items.length > 0) {
-      restoreScrollYRef.current = cached.scrollY ?? 0;
-      setTmdbItems(cached.items);
-      setDisplayCount(cached.items.length);
-      setAnimateFromIndex(null);
-      setTmdbPage(cached.page);
-      setHasMoreTmdb(cached.hasMore);
-      setIsRestoredFromCache(true);
+    try {
+      const cached = getCache("default", selectedGenres);
+      if (cached && cached.items.length > 0) {
+        restoreScrollYRef.current = cached.scrollY ?? 0;
+        setTmdbItems(cached.items);
+        setDisplayCount(cached.items.length);
+        setAnimateFromIndex(null);
+        setTmdbPage(cached.page);
+        setHasMoreTmdb(cached.hasMore);
+        setIsRestoredFromCache(true);
+      }
+    } catch (e) {
+      console.error("Error restoring cache", e);
+      sessionStorage.removeItem("listCache_/tv"); // Hardcoded key clear for safety
     }
   }, []);
 
