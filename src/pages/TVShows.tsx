@@ -37,6 +37,8 @@ const TVShows = () => {
   const [tmdbPage, setTmdbPage] = useState(1);
   const [hasMoreTmdb, setHasMoreTmdb] = useState(true);
 
+  const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const restoreScrollYRef = useRef<number | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
