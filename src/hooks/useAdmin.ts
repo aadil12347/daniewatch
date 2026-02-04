@@ -326,6 +326,18 @@ export const useAdmin = () => {
 
       if (error) throw error;
 
+      // Clear all admin-related caches
+      try {
+        sessionStorage.removeItem('admin_session_cache');
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes('admin') || key.includes('request')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('Cache clear warning:', e);
+      }
+
       setAllRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: 'admin', status: 'completed' } : r));
       return { error: null };
     } catch (error) {
@@ -345,6 +357,18 @@ export const useAdmin = () => {
         .eq('id', requestId);
 
       if (error) throw error;
+
+      // Clear all admin-related caches
+      try {
+        sessionStorage.removeItem('admin_session_cache');
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes('admin') || key.includes('request')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('Cache clear warning:', e);
+      }
 
       setAllRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: null } : r));
       return { error: null };

@@ -29,7 +29,9 @@ const clearAllCaches = () => {
       'list_state_cache',
       'admin_session_cache',
       'page_preload_cache',
-      'navbar_search_open'
+      'navbar_search_open',
+      'admin',
+      'request'
     ];
 
     Object.keys(localStorage).forEach(key => {
@@ -67,8 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Clear cache on sign out
-        if (event === 'SIGNED_OUT') {
+        // Clear cache on ANY auth state change for fresh data
+        if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           clearAllCaches();
         }
 

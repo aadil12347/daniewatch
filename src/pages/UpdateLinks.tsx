@@ -79,7 +79,7 @@ const UpdateLinks = () => {
       <div className="min-h-screen bg-background">
 
 
-        <div className="container mx-auto px-4 pt-14 pb-12">
+        <div className="container mx-auto px-4 pt-20 pb-12">
           <UpdateLinksPanel />
         </div>
 
@@ -90,4 +90,3 @@ const UpdateLinks = () => {
 };
 
 export default UpdateLinks;
-

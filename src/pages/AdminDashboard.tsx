@@ -1199,8 +1199,22 @@ const AdminDashboard = () => {
                       request={request}
                       onUpdateStatus={handleUpdateStatus}
                       onDelete={handleDeleteRequest}
-                      onCloseChat={(id) => closeRequestChat(id).then(res => { if (res.error) toast({ title: "Error", description: "Failed to close chat", variant: "destructive" }) })}
-                      onReopenChat={(id) => reopenRequestChat(id).then(res => { if (res.error) toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" }) })}
+                      onCloseChat={async (id) => {
+                        const { error } = await closeRequestChat(id);
+                        if (error) {
+                          toast({ title: "Error", description: "Failed to close chat", variant: "destructive" });
+                        } else {
+                          toast({ title: "Success", description: "Chat closed and request completed", variant: "default" });
+                        }
+                      }}
+                      onReopenChat={async (id) => {
+                        const { error } = await reopenRequestChat(id);
+                        if (error) {
+                          toast({ title: "Error", description: "Failed to reopen chat", variant: "destructive" });
+                        } else {
+                          toast({ title: "Success", description: "Chat reopened", variant: "default" });
+                        }
+                      }}
                       isSelected={selectedIds.includes(request.id)}
                       onSelectChange={(checked) => toggleSelection(request.id, checked)}
                       showCheckbox={isSelectionMode}
