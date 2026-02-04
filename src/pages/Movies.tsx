@@ -11,7 +11,7 @@ import { usePostModeration } from "@/hooks/usePostModeration";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
-import { isAllowedOnMoviesPage } from "@/lib/contentScope";
+import { KOREAN_LANGS, isAllowedOnMoviesPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { getPosterUrl } from "@/lib/tmdb";
 import { queuePriorityCache } from "@/lib/priorityCacheBridge";
@@ -101,6 +101,10 @@ const Movies = () => {
       const origin = item.origin_country ?? [];
 
       const isAnime = lang === "ja" && genreIds.includes(16);
+      const isKorean =
+        (!!lang && (KOREAN_LANGS as readonly string[]).includes(lang)) ||
+        origin.some((c) => ["KR", "CN", "TW", "HK", "TR"].includes(c));
+
       if (isAnime || isKorean) continue;
 
       const sortYear = item.release_year ?? new Date().getFullYear();

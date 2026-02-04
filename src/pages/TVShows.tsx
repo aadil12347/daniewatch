@@ -76,6 +76,11 @@ const TVShows = () => {
       const lang = item.original_language ?? null;
       const origin = item.origin_country ?? [];
 
+      const isAnime = lang === "ja" && genreIds.includes(16);
+      const isKorean =
+        (!!lang && (KOREAN_LANGS as readonly string[]).includes(lang)) ||
+        origin.some((c) => ["KR", "CN", "TW", "HK", "TR"].includes(c));
+
       if (isAnime || isKorean) return false;
 
       return true;
