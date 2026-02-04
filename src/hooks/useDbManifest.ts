@@ -21,6 +21,7 @@ export interface ManifestItem {
 
 interface Manifest {
   version: number;
+  app_version: string;
   generated_at: string;
   items: ManifestItem[];
 }
@@ -52,9 +53,10 @@ const ADMIN_CACHE_KEY = "admin_db_manifest_cache";
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 const SESSION_CHECK_KEY = "manifest_session_checked";
 const ADMIN_SESSION_KEY = "admin_session_active";
+const APP_VERSION_KEY = "dw_app_version";
 
 export const useDbManifest = () => {
-  const [manifest, setManifest] = useState<Manifest | null>(null);
+  const [manifestData, setManifestData] = useState<Manifest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
 
@@ -106,6 +108,24 @@ export const useDbManifest = () => {
     }
   };
 
+  /**
+   * Forces a total cache wipe and hard reload of the application.
+   * This is triggered when the admin updates site data (manifest version changes).
+   */
+  const selfDestructAndReload = (newVersion: string) => {
+    console.warn(`[useDbManifest] Version mismatch detected. Triggering global cache clear and hard reload...`);
+
+    // 1. Wipe everything
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 2. Set the NEW version so we don't reload again immediately
+    localStorage.setItem(APP_VERSION_KEY, newVersion);
+
+    // 3. Force hard reload from server (bypass disk cache)
+    window.location.reload();
+  };
+
   // Load manifest on mount
   useEffect(() => {
     let mounted = true;
@@ -147,7 +167,7 @@ export const useDbManifest = () => {
 
             if (age < CACHE_DURATION) {
               if (mounted) {
-                setManifest(data);
+                setManifestData(data);
                 setIsLoading(false);
               }
               return;
@@ -164,7 +184,7 @@ export const useDbManifest = () => {
 
       if (mounted) {
         if (fetched) {
-          setManifest(fetched);
+          setManifestData(fetched);
         }
         setIsLoading(false);
         setIsFetching(false);
@@ -188,26 +208,41 @@ export const useDbManifest = () => {
 
   // Background refresh - check for updates immediately after initial load
   useEffect(() => {
-    if (!manifest || isFetching) return;
+    if (!manifestData || isFetching) return;
 
     const checkForUpdates = async () => {
       const fetched = await fetchManifest();
-      if (fetched && fetched.generated_at !== manifest.generated_at) {
-        console.log("[useDbManifest] New manifest version detected, updating...");
-        setManifest(fetched);
+      if (fetched) {
+        // 1. Check for app_version change first (hard reset)
+        const localVersion = localStorage.getItem(APP_VERSION_KEY);
+        if (localVersion && fetched.app_version && localVersion !== fetched.app_version) {
+          selfDestructAndReload(fetched.app_version);
+          return;
+        }
+
+        // 2. Otherwise update version key if it was missing
+        if (fetched.app_version) {
+          localStorage.setItem(APP_VERSION_KEY, fetched.app_version);
+        }
+
+        // 3. Check for softer data update
+        if (fetched.generated_at !== manifestData.generated_at) {
+          console.log("[useDbManifest] New manifest version detected, updating...");
+          setManifestData(fetched);
+        }
       }
     };
 
     // Check immediately, no delay
     checkForUpdates();
-  }, [manifest?.generated_at, isFetching]);
+  }, [manifestData?.generated_at, isFetching]);
 
   // Build lookup maps from manifest
   const { metaByKey, availabilityById, items } = useMemo(() => {
-    if (!manifest) {
+    if (!manifestData) {
       return {
         metaByKey: new Map<string, ManifestMetadata>(),
-        availabilityById: new Map<number, ManifestAvailability>(),
+        availabilityById: new Map<string, ManifestAvailability>(),
         items: [] as ManifestItem[],
       };
     }
@@ -215,7 +250,7 @@ export const useDbManifest = () => {
     const metaByKey = new Map<string, ManifestMetadata>();
     const availabilityById = new Map<string, ManifestAvailability>();
 
-    manifest.items.forEach((item) => {
+    manifestData.items.forEach((item) => {
       const key = `${item.id}-${item.media_type}`;
 
       metaByKey.set(key, {
@@ -241,8 +276,8 @@ export const useDbManifest = () => {
       });
     });
 
-    return { metaByKey, availabilityById, items: manifest.items };
-  }, [manifest]);
+    return { metaByKey, availabilityById, items: manifestData.items };
+  }, [manifestData]);
 
   const isInManifest = (tmdbId: number, mediaType: "movie" | "tv") => {
     return metaByKey.has(`${tmdbId}-${mediaType}`);
@@ -258,7 +293,7 @@ export const useDbManifest = () => {
   };
 
   return {
-    manifest,
+    manifest: manifestData,
     items,
     metaByKey,
     availabilityById,

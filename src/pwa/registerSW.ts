@@ -8,19 +8,15 @@ export function registerSW() {
     registerSW({
       immediate: true,
       onNeedRefresh() {
-        // Show non-intrusive toast or simple log
-        console.log("[PWA] New content available, click reload button to update.");
-        // We can expose this info to UI via a store or event if needed, but for now 
-        // we ensure the SW waits for user action or next visit unless we force it.
-        // User requested: "simple browser refresh is enough" -> this means skipWaiting/clientsClaim in SW.
-        // We assume the SW is configured with skipWaiting: true in vite config or sw code.
+        console.log("[PWA] New version detected. Auto-updating service worker...");
+        // Use window.location.reload() as a fallback if update fails or is void
+        window.location.reload();
       },
       onRegistered(r) {
-        // Immediate claim logic implies calling update() if stuck? 
-        // Or simply ensuring interval checks.
-        r && setInterval(() => {
+        if (!r) return;
+        setInterval(() => {
           r.update();
-        }, 60 * 60 * 1000); // Check every hour
+        }, 10 * 60 * 1000);
       },
     });
   });

@@ -29,6 +29,7 @@ interface ManifestItem {
 
 interface Manifest {
   version: number;
+  app_version: string;
   generated_at: string;
   items: ManifestItem[];
 }
@@ -150,8 +151,10 @@ export function ManifestUpdateTool() {
       });
 
       // 3. Build manifest object
+      const appVersion = `v${Date.now()}`;
       const manifest: Manifest = {
         version: 1,
+        app_version: appVersion,
         generated_at: new Date().toISOString(),
         items,
       };
@@ -178,6 +181,7 @@ export function ManifestUpdateTool() {
       localStorage.setItem(
         "db_manifest_meta",
         JSON.stringify({
+          app_version: appVersion,
           generated_at: generatedAt,
           item_count: items.length,
         })
