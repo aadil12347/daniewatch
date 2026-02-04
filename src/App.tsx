@@ -38,7 +38,6 @@ import Search from "./pages/Search";
 import Auth from "./pages/Auth";
 import Requests from "./pages/Requests";
 import AdminDashboard from "./pages/AdminDashboard";
-import UpdateLinks from "./pages/UpdateLinks";
 import AdminMetadataEditor from "./pages/AdminMetadataEditor";
 import NotFound from "./pages/NotFound";
 
@@ -94,7 +93,6 @@ const AnimatedRoutes = () => {
           <Route path="/auth" element={<Auth />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/update-links" element={<UpdateLinks />} />
           <Route path="/admin/metadata-editor" element={<AdminMetadataEditor />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

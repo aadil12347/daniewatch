@@ -63,7 +63,6 @@ import {
   RotateCcw,
   Archive,
   Link2,
-  ExternalLink,
   Ban,
   ChevronDown,
   Film,
