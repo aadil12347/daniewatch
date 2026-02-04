@@ -70,7 +70,7 @@ import {
   Tv,
 } from "lucide-react";
 
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+
 
 import { useToast } from "@/hooks/use-toast";
 import { BlockedPostsPanel } from "@/components/admin/BlockedPostsPanel";
@@ -188,7 +188,7 @@ const RequestCard = ({
     <div className={`chat-card-glow transition-all duration-300 border rounded-xl overflow-hidden ${isSelected ? "ring-2 ring-primary border-primary/50" : "border-white/10"}`}>
       <div
         className={`bg-black/40 backdrop-blur-md p-4 cursor-pointer hover:bg-white/5 transition-colors ${isOpen ? 'bg-white/5' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(true)}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -274,174 +274,187 @@ const RequestCard = ({
                 </span>
               </div>
             )}
-            <ChevronDown className={`w-5 h-5 text-muted-foreground chevron-animate ${isOpen ? 'rotate-180' : ''}`} />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground relative">
+              <ChevronDown className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </div>
 
 
-      <Collapsible open={isOpen} className="border-t border-white/10 bg-black/20">
-        <CollapsibleContent className="p-4 space-y-4">
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">User Message</h4>
-            <div className="p-3 rounded-lg bg-white/5 text-sm leading-relaxed">
-              {request.message}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-3xl w-[95vw] h-[90vh] md:h-auto md:max-h-[90vh] p-0 gap-0 bg-black/95 border-white/10 backdrop-blur-xl flex flex-col overflow-hidden">
+          <DialogHeader className="p-4 border-b border-white/10 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <DialogTitle className="text-lg font-semibold text-white truncate max-w-[70%]">
+                {request.title}
+              </DialogTitle>
+              {getStatusBadge(request.status)}
             </div>
-          </div>
+          </DialogHeader>
 
-          {request.admin_response && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-primary">Your Response</h4>
-              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm leading-relaxed">
-                {request.admin_response}
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0 bg-black/20">
+            <div className="space-y-2 mb-4">
+              <h4 className="text-sm font-medium text-muted-foreground">User Message</h4>
+              <div className="p-3 rounded-lg bg-white/5 text-sm leading-relaxed">
+                {request.message}
               </div>
             </div>
-          )}
 
-          {/* Chat Window */}
-          <div className="mt-4">
-            <h4 className="text-xs md:text-sm font-medium text-muted-foreground mb-2 md:mb-3">Chat with User</h4>
-            <ChatWindow
-              requestId={request.id}
-              role="admin"
-              isClosed={!!request.closed_by}
-              closedBy={request.closed_by}
-            />
-          </div>
+            {request.admin_response && (
+              <div className="space-y-2 mb-4">
+                <h4 className="text-sm font-medium text-primary">Your Response</h4>
+                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm leading-relaxed">
+                  {request.admin_response}
+                </div>
+              </div>
+            )}
 
-          <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-white/10">
-            <div className="flex gap-2">
-              {request.request_type !== 'general' && meta?.tmdb_id && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="bg-white/10 hover:bg-white/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const path = meta.media_type === 'movie' ? `/movie/${meta.tmdb_id}` : `/tv/${meta.tmdb_id}`;
-                    navigate(path, { state: { backgroundLocation: location } });
-                  }}
-                >
-                  <Link2 className="w-4 h-4 mr-2" />
-                  View Post
-                </Button>
-              )}
+            {/* Chat Window */}
+            <div className="flex-1 min-h-0 flex flex-col mb-4">
+              <h4 className="text-xs md:text-sm font-medium text-muted-foreground mb-2 md:mb-3">Chat with User</h4>
+              <ChatWindow
+                requestId={request.id}
+                role="admin"
+                isClosed={!!request.closed_by}
+                closedBy={request.closed_by}
+                className="h-full border-0 rounded-none bg-transparent shadow-none"
+              />
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col gap-2 pt-3 md:pt-4 border-t border-white/10 mt-3 md:mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</p>
-                {request.closed_by && (
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded border ${request.closed_by === 'admin'
-                      ? 'bg-destructive/10 text-destructive border-destructive/20'
-                      : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                      }`}>
-                      Chat Closed by {request.closed_by === 'admin' ? 'Admin' : 'User'}
-                    </span>
-                  </div>
+            <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-white/10 mt-auto flex-shrink-0">
+              <div className="flex gap-2">
+                {request.request_type !== 'general' && meta?.tmdb_id && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="bg-white/10 hover:bg-white/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const path = meta.media_type === 'movie' ? `/movie/${meta.tmdb_id}` : `/tv/${meta.tmdb_id}`;
+                      navigate(path, { state: { backgroundLocation: location } });
+                    }}
+                  >
+                    <Link2 className="w-4 h-4 mr-2" />
+                    View Post
+                  </Button>
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
-                      Update Status
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-                    <DialogHeader>
-                      <DialogTitle>Update Request</DialogTitle>
-                      <DialogDescription>
-                        Update status and reply to the user.
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Status</label>
-                        <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
-                          <SelectTrigger className="bg-white/5 border-white/10">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Response (optional)</label>
-                        <Textarea
-                          placeholder="Type your message..."
-                          value={adminResponse}
-                          onChange={(e) => setAdminResponse(e.target.value)}
-                          className="min-h-[100px] bg-white/5 border-white/10"
-                        />
-                      </div>
+              {/* Actions */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-end mb-2">
+                  {request.closed_by && (
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded border ${request.closed_by === 'admin'
+                        ? 'bg-destructive/10 text-destructive border-destructive/20'
+                        : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                        }`}>
+                        Chat Closed by {request.closed_by === 'admin' ? 'Admin' : 'User'}
+                      </span>
                     </div>
+                  )}
+                </div>
 
-                    <DialogFooter>
-                      <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                      <Button onClick={handleUpdate} disabled={isUpdating} className="bg-cinema-red hover:bg-cinema-red/90">
-                        {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Update & Notify'}
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
+                        Update Status
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="bg-black/90 border-white/10 backdrop-blur-xl z-[70]">
+                      <DialogHeader>
+                        <DialogTitle>Update Request</DialogTitle>
+                        <DialogDescription>
+                          Update status and reply to the user.
+                        </DialogDescription>
+                      </DialogHeader>
 
-                {request.closed_by ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onReopenChat(request.id)}
-                    className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20"
-                  >
-                    <CheckCircle className="w-3 h-3 mr-1" /> Reopen Chat
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onCloseChat(request.id)}
-                    className="bg-white/5 border-white/10 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
-                  >
-                    <XCircle className="w-3 h-3 mr-1" /> Close Chat
-                  </Button>
-                )}
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Status</label>
+                          <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
+                            <SelectTrigger className="bg-white/5 border-white/10">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto">
-                      {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Response (optional)</label>
+                          <Textarea
+                            placeholder="Type your message..."
+                            value={adminResponse}
+                            onChange={(e) => setAdminResponse(e.target.value)}
+                            className="min-h-[100px] bg-white/5 border-white/10"
+                          />
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleUpdate} disabled={isUpdating} className="bg-cinema-red hover:bg-cinema-red/90">
+                          {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Update & Notify'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {request.closed_by ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onReopenChat(request.id)}
+                      className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20"
+                    >
+                      <CheckCircle className="w-3 h-3 mr-1" /> Reopen Chat
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Request?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. User will lose this request from their history.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-white">
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onCloseChat(request.id)}
+                      className="bg-white/5 border-white/10 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                    >
+                      <XCircle className="w-3 h-3 mr-1" /> Close Chat
+                    </Button>
+                  )}
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl z-[80]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Request?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. User will lose this request from their history.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-white">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
           </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div >
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

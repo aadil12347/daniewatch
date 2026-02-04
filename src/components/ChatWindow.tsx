@@ -24,9 +24,10 @@ interface ChatWindowProps {
     role: 'user' | 'admin';
     isClosed: boolean;
     closedBy?: 'user' | 'admin' | null;
+    className?: string; // Allow custom styling/height
 }
 
-export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowProps) => {
+export const ChatWindow = ({ requestId, role, isClosed, closedBy, className }: ChatWindowProps) => {
     const { messages, loading, sendMessage, editMessage, deleteMessage, markAsRead } = useChat(requestId);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -278,7 +279,7 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
     };
 
     return (
-        <div className="chat-window-animate flex flex-col h-[450px] md:h-[500px] border border-white/10 rounded-xl bg-black/40 overflow-hidden backdrop-blur-md shadow-2xl ring-1 ring-white/5">
+        <div className={cn("chat-window-animate flex flex-col h-[450px] md:h-[500px] border border-white/10 rounded-xl bg-black/40 overflow-hidden backdrop-blur-md shadow-2xl ring-1 ring-white/5", className)}>
             {/* Header / Info Bar could go here if needed, simplified for now to keep focus on messages */}
 
             {/* Messages Area - Flexible height, scrollable */}
