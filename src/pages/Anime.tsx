@@ -37,7 +37,7 @@ const INITIAL_REVEAL_COUNT = 24;
 
 const Anime = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
-  
+
   // Use manifest for DB metadata (fast, cached)
   const {
     items: manifestItems,
@@ -245,10 +245,59 @@ const Anime = () => {
   const filteredDbItems = baseDbVisible;
   const filteredTmdbItems = baseTmdbVisible;
 
-  const visibleItems = useMemo(() => [...filteredDbItems, ...filteredTmdbItems], [filteredDbItems, filteredTmdbItems]);
+  // --- Consolidated Sorting & Grouping ---
+  const unifiedItems = useMemo(() => {
+    // Merge DB and TMDB items.
+    const merged = [...filteredDbItems, ...filteredTmdbItems];
+
+    // Helper to get sortable date value
+    const getDateValue = (m: Movie) => {
+      const dateStr = (m as any).first_air_date || m.release_date;
+      if (!dateStr) return -8640000000000000; // Push to bottom
+      return new Date(dateStr).getTime();
+    };
+
+    // Helper to get Year for grouping
+    const getYear = (m: Movie) => {
+      const dateStr = (m as any).first_air_date || m.release_date;
+      if (!dateStr) return null;
+      return new Date(dateStr).getFullYear();
+    };
+
+    // Sort: Date Descending (Newest First)
+    merged.sort((a, b) => {
+      const dA = getDateValue(a);
+      const dB = getDateValue(b);
+      if (dB !== dA) return dB - dA;
+      return b.id - a.id;
+    });
+
+    // Grouping with Headers
+    const results: Array<{ type: 'header'; year: number | string } | { type: 'item'; movie: Movie }> = [];
+    let lastYear: number | string | null = -1;
+
+    for (const m of merged) {
+      const y = getYear(m);
+      const displayYear = y === null ? "Others" : y;
+
+      if (displayYear !== lastYear) {
+        results.push({ type: 'header', year: displayYear });
+        lastYear = displayYear;
+      }
+      results.push({ type: 'item', movie: m });
+    }
+
+    return results;
+  }, [filteredDbItems, filteredTmdbItems]);
+
+  const visibleMoviesOnly = useMemo(() => {
+    return unifiedItems
+      .filter(x => x.type === 'item')
+      .map(x => (x as any).movie as Movie);
+  }, [unifiedItems]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
-  usePageHoverPreload(visibleItems, { enabled: !isLoading });
+  usePageHoverPreload(visibleMoviesOnly, { enabled: !isLoading });
 
   // If we have DB items from the manifest, show them immediately (even before TMDB fetch/hydration finishes).
   useEffect(() => {
@@ -262,7 +311,7 @@ const Anime = () => {
   }, [displayCount, filteredDbItems.length, isManifestLoading, isRestoredFromCache]);
 
   // Only show skeletons before we have any real items to render.
-  const pageIsLoading = visibleItems.length === 0 && (isLoading || isModerationLoading || isManifestLoading);
+  const pageIsLoading = displayCount === 0 && (isLoading || isModerationLoading || isManifestLoading);
 
   const { saveCache, getCache } = useListStateCache<Movie>();
 
@@ -414,7 +463,7 @@ const Anime = () => {
 
   // Keep the global fullscreen loader until the first 24 tiles are actually visible.
   const routeReady =
-    !pageIsLoading && (visibleItems.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, visibleItems.length));
+    !pageIsLoading && (visibleMoviesOnly.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, visibleMoviesOnly.length));
   useRouteContentReady(routeReady);
 
 
@@ -427,7 +476,7 @@ const Anime = () => {
         if (!entries[0].isIntersecting) return;
         if (isLoading || isLoadingMore || pendingLoadMore) return;
 
-        const hasBuffered = displayCount < visibleItems.length;
+        const hasBuffered = displayCount < unifiedItems.length;
         if (!hasBuffered && !hasMore) return;
 
         setPendingLoadMore(true);
@@ -438,25 +487,25 @@ const Anime = () => {
     if (loadMoreRef.current) observerRef.current.observe(loadMoreRef.current);
 
     return () => observerRef.current?.disconnect();
-  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, visibleItems.length]);
+  }, [displayCount, hasMore, isLoading, isLoadingMore, pendingLoadMore, unifiedItems.length]);
 
   useEffect(() => {
     if (pageIsLoading) return;
-    const first = visibleItems.slice(0, 10);
+    const first = visibleMoviesOnly.slice(0, 10);
     const posterUrls = first
       .map((m) => getPosterUrl((m as any)?.poster_path ?? null, "w342"))
       .filter(Boolean) as string[];
     queuePriorityCache("/anime", posterUrls);
-  }, [pageIsLoading, visibleItems]);
+  }, [pageIsLoading, visibleMoviesOnly]);
 
   // Resolve pending "load more": reveal from buffer first. Only fetch next TMDB page AFTER all DB items are revealed.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
-    const hasBuffered = displayCount < visibleItems.length;
+    const hasBuffered = displayCount < unifiedItems.length;
     if (hasBuffered) {
       setAnimateFromIndex(displayCount);
-      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleItems.length));
+      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, unifiedItems.length));
       setPendingLoadMore(false);
 
       if (displayCount < filteredDbItems.length) {
@@ -464,11 +513,6 @@ const Anime = () => {
         void hydrateDbOnly(tmdbKeys, 30);
       }
 
-      return;
-    }
-
-    if (displayCount < filteredDbItems.length) {
-      setPendingLoadMore(false);
       return;
     }
 
@@ -482,7 +526,7 @@ const Anime = () => {
     setIsLoadingMore(true);
     setPendingLoadMore(false);
     setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, visibleItems.length, filteredDbItems.length, hasMore, items, getKey, hydrateDbOnly, setIsLoadingMore]);
+  }, [pendingLoadMore, displayCount, unifiedItems.length, filteredDbItems.length, hasMore, items, getKey, hydrateDbOnly, setIsLoadingMore]);
 
   // Fetch more when page changes
   useEffect(() => {
@@ -535,34 +579,44 @@ const Anime = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
               ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                  </div>
-                ))
-              : visibleItems.slice(0, displayCount).map((item, index) => {
-                  const shouldAnimate =
-                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
-
+                <div key={i}>
+                  <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                  <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                  <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                </div>
+              ))
+              : unifiedItems.slice(0, displayCount).map((item, index) => {
+                if (item.type === 'header') {
                   return (
-                    <div
-                      key={getKey(item)}
-                      className={shouldAnimate ? "animate-fly-in" : undefined}
-                    >
-                      <MovieCard
-                        movie={item}
-                        animationDelay={Math.min(index * 30, 300)}
-                        enableReveal={false}
-                        enableHoverPortal={false}
-                      />
+                    <div key={`header-${item.year}`} className="col-span-full pt-8 pb-4 border-b border-white/10 mb-4 flex items-baseline gap-3">
+                      <h2 className="text-2xl font-bold text-white/90">{item.year}</h2>
+                      <span className="text-sm text-white/40 font-medium tracking-wide uppercase">Releases</span>
                     </div>
                   );
-                })}
+                }
+
+                const movie = item.movie;
+                const shouldAnimate =
+                  animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
+                return (
+                  <div
+                    key={getKey(movie)}
+                    className={shouldAnimate ? "animate-fly-in" : undefined}
+                  >
+                    <MovieCard
+                      movie={movie}
+                      animationDelay={Math.min(index * 30, 300)}
+                      enableReveal={false}
+                      enableHoverPortal={false}
+                    />
+                  </div>
+                );
+              })}
           </div>
 
           {/* No results message */}
-          {!pageIsLoading && visibleItems.length === 0 && (
+          {!pageIsLoading && visibleMoviesOnly.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No anime found with the selected filters.</p>
               <button
@@ -579,7 +633,7 @@ const Anime = () => {
             {/* Sentinel (observer watches this) */}
             <div ref={loadMoreRef} className="h-px w-full" />
 
-            {!isLoadingMore && !hasMore && visibleItems.length > 0 && (
+            {!isLoadingMore && !hasMore && visibleMoviesOnly.length > 0 && (
               <div className="flex justify-center py-6">
                 <p className="text-muted-foreground">You've reached the end</p>
               </div>

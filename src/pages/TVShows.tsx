@@ -151,17 +151,61 @@ const TVShows = () => {
   const filteredDbItems = baseDbVisible;
   const filteredTmdbItems = baseTmdbVisible;
 
-  // Hide TMDB section until user exhausts the DB partition.
-  const visibleAll = useMemo(() => {
+  // --- Consolidated Sorting & Grouping ---
+  const unifiedItems = useMemo(() => {
+    // Merge DB and TMDB items.
     const dbKeys = new Set(filteredDbItems.map((m) => getKey(m)));
     const tmdbDeduped = filteredTmdbItems.filter((m) => !dbKeys.has(getKey(m)));
+    const merged = [...filteredDbItems, ...tmdbDeduped];
 
-    const dbExhausted = displayCount >= filteredDbItems.length;
-    return dbExhausted ? [...filteredDbItems, ...tmdbDeduped] : filteredDbItems;
-  }, [displayCount, filteredDbItems, filteredTmdbItems, getKey]);
+    // Helper to get sortable date value
+    const getDateValue = (m: Movie) => {
+      const dateStr = (m as any).first_air_date || m.release_date;
+      if (!dateStr) return -8640000000000000; // Push to bottom
+      return new Date(dateStr).getTime();
+    };
+
+    // Helper to get Year for grouping
+    const getYear = (m: Movie) => {
+      const dateStr = (m as any).first_air_date || m.release_date;
+      if (!dateStr) return null;
+      return new Date(dateStr).getFullYear();
+    };
+
+    // Sort: Date Descending (Newest First)
+    merged.sort((a, b) => {
+      const dA = getDateValue(a);
+      const dB = getDateValue(b);
+      if (dB !== dA) return dB - dA;
+      return b.id - a.id;
+    });
+
+    // Grouping with Headers
+    const results: Array<{ type: 'header'; year: number | string } | { type: 'item'; movie: Movie }> = [];
+    let lastYear: number | string | null = -1;
+
+    for (const m of merged) {
+      const y = getYear(m);
+      const displayYear = y === null ? "Others" : y;
+
+      if (displayYear !== lastYear) {
+        results.push({ type: 'header', year: displayYear });
+        lastYear = displayYear;
+      }
+      results.push({ type: 'item', movie: m });
+    }
+
+    return results;
+  }, [filteredDbItems, filteredTmdbItems, getKey]);
+
+  const visibleMoviesOnly = useMemo(() => {
+    return unifiedItems
+      .filter(x => x.type === 'item')
+      .map(x => (x as any).movie as Movie);
+  }, [unifiedItems]);
 
   // Preload hover images in the background ONLY (never gate the grid render on this).
-  usePageHoverPreload(visibleAll, { enabled: displayCount > 0 });
+  usePageHoverPreload(visibleMoviesOnly, { enabled: displayCount > 0 });
 
   const pageIsLoading = displayCount === 0 && (isManifestLoading || isModerationLoading);
 
@@ -224,7 +268,7 @@ const TVShows = () => {
         if (!entries[0].isIntersecting) return;
         if (isLoadingMore || pendingLoadMore) return;
 
-        const hasBuffered = displayCount < visibleAll.length;
+        const hasBuffered = displayCount < unifiedItems.length;
         if (!hasBuffered && !hasMoreTmdb) return;
 
         setPendingLoadMore(true);
@@ -235,31 +279,25 @@ const TVShows = () => {
     if (loadMoreRef.current) observerRef.current.observe(loadMoreRef.current);
 
     return () => observerRef.current?.disconnect();
-  }, [displayCount, hasMoreTmdb, isLoadingMore, pendingLoadMore, visibleAll.length]);
+  }, [displayCount, hasMoreTmdb, isLoadingMore, pendingLoadMore, unifiedItems.length]);
 
   useEffect(() => {
     if (pageIsLoading) return;
-    const first = visibleAll.slice(0, 10);
+    const first = visibleMoviesOnly.slice(0, 10);
     const posterUrls = first
       .map((m) => getPosterUrl((m as any)?.poster_path ?? null, "w342"))
       .filter(Boolean) as string[];
     queuePriorityCache("/tv", posterUrls);
-  }, [pageIsLoading, visibleAll]);
+  }, [pageIsLoading, visibleMoviesOnly]);
 
   // Resolve pending load more: reveal DB first; only then start fetching TMDB pages.
   useEffect(() => {
     if (!pendingLoadMore) return;
 
-    const hasBuffered = displayCount < visibleAll.length;
+    const hasBuffered = displayCount < unifiedItems.length;
     if (hasBuffered) {
       setAnimateFromIndex(displayCount);
-      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, visibleAll.length));
-      setPendingLoadMore(false);
-      return;
-    }
-
-    // Still inside DB partition: don't fetch TMDB yet.
-    if (displayCount < filteredDbItems.length) {
+      setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, unifiedItems.length));
       setPendingLoadMore(false);
       return;
     }
@@ -301,7 +339,7 @@ const TVShows = () => {
         setIsLoadingMore(false);
       }
     })();
-  }, [displayCount, fetchTmdbPage, filteredDbItems.length, getKey, hasMoreTmdb, pendingLoadMore, tmdbPage, visibleAll.length, setIsLoadingMore]);
+  }, [displayCount, fetchTmdbPage, filteredDbItems.length, getKey, hasMoreTmdb, pendingLoadMore, tmdbPage, unifiedItems.length, setIsLoadingMore]);
 
   // Reset TMDB state when filters change.
   useEffect(() => {
@@ -333,7 +371,7 @@ const TVShows = () => {
 
   // Keep the global fullscreen loader until the first 24 tiles are actually visible.
   const routeReady =
-    !pageIsLoading && (visibleAll.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, visibleAll.length));
+    !pageIsLoading && (visibleMoviesOnly.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, visibleMoviesOnly.length));
   useRouteContentReady(routeReady);
 
 
@@ -383,31 +421,41 @@ const TVShows = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
               ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                    <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                    <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                  </div>
-                ))
-              : visibleAll.slice(0, displayCount).map((show, index) => {
-                  const shouldAnimate =
-                    animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
-
+                <div key={i}>
+                  <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                  <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
+                  <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                </div>
+              ))
+              : unifiedItems.slice(0, displayCount).map((item, index) => {
+                if (item.type === 'header') {
                   return (
-                    <div key={getKey(show)} className={shouldAnimate ? "animate-fly-in" : undefined}>
-                      <MovieCard
-                        movie={show as any}
-                        animationDelay={Math.min(index * 30, 300)}
-                        enableReveal={false}
-                        enableHoverPortal={false}
-                      />
+                    <div key={`header-${item.year}`} className="col-span-full pt-8 pb-4 border-b border-white/10 mb-4 flex items-baseline gap-3">
+                      <h2 className="text-2xl font-bold text-white/90">{item.year}</h2>
+                      <span className="text-sm text-white/40 font-medium tracking-wide uppercase">Releases</span>
                     </div>
                   );
-                })}
+                }
+
+                const show = item.movie;
+                const shouldAnimate =
+                  animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
+
+                return (
+                  <div key={getKey(show)} className={shouldAnimate ? "animate-fly-in" : undefined}>
+                    <MovieCard
+                      movie={show as any}
+                      animationDelay={Math.min(index * 30, 300)}
+                      enableReveal={false}
+                      enableHoverPortal={false}
+                    />
+                  </div>
+                );
+              })}
           </div>
 
           {/* No results message */}
-          {!pageIsLoading && visibleAll.length === 0 && (
+          {!pageIsLoading && visibleMoviesOnly.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No TV shows found with the selected filters.</p>
               <button
@@ -424,7 +472,7 @@ const TVShows = () => {
             {/* Sentinel (observer watches this) */}
             <div ref={loadMoreRef} className="h-px w-full" />
 
-            {!isLoadingMore && !hasMoreTmdb && displayCount >= visibleAll.length && visibleAll.length > 0 && (
+            {!isLoadingMore && !hasMoreTmdb && displayCount >= unifiedItems.length && visibleMoviesOnly.length > 0 && (
               <div className="flex justify-center py-6">
                 <p className="text-muted-foreground">You've reached the end</p>
               </div>
