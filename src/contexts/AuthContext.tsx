@@ -17,10 +17,47 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Cache cleanup utility
+const clearAllCaches = () => {
+  try {
+    // Clear all session storage
+    sessionStorage.clear();
+
+    // Clear specific localStorage cache keys (preserve user preferences)
+    const cachePatterns = [
+      'homepage_cache',
+      'list_state_cache',
+      'admin_session_cache',
+      'page_preload_cache',
+      'navbar_search_open'
+    ];
+
+    Object.keys(localStorage).forEach(key => {
+      if (cachePatterns.some(pattern => key.includes(pattern))) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    console.log('✅ Cache cleared for fresh session');
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Clear cache on app initialization (new session)
+  useEffect(() => {
+    const sessionId = sessionStorage.getItem('app_session_id');
+    if (!sessionId) {
+      // New session detected
+      clearAllCaches();
+      sessionStorage.setItem('app_session_id', Date.now().toString());
+    }
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -30,6 +67,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Clear cache on sign out
+        if (event === 'SIGNED_OUT') {
+          clearAllCaches();
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -105,6 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    clearAllCaches();
     await supabase.auth.signOut();
   };
 

@@ -203,7 +203,7 @@ const RequestCard = ({
 
           {/* Chat Window */}
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-muted-foreground mb-3">Chat with User</h4>
+            <h4 className="text-xs md:text-sm font-medium text-muted-foreground mb-2 md:mb-3">Chat with User</h4>
             <ChatWindow
               requestId={request.id}
               role="admin"
@@ -212,7 +212,7 @@ const RequestCard = ({
             />
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-white/10">
             <div className="flex gap-2">
               {request.request_type !== 'general' && meta?.tmdb_id && (
                 <Button
@@ -232,12 +232,12 @@ const RequestCard = ({
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col gap-2 pt-4 border-t border-white/10 mt-4">
+            <div className="flex flex-col gap-2 pt-3 md:pt-4 border-t border-white/10 mt-3 md:mt-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</p>
+                <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</p>
                 {request.closed_by && (
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded border ${request.closed_by === 'admin'
+                    <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded border ${request.closed_by === 'admin'
                       ? 'bg-destructive/10 text-destructive border-destructive/20'
                       : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
                       }`}>

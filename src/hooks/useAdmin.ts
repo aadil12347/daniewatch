@@ -318,12 +318,15 @@ export const useAdmin = () => {
     try {
       const { error } = await supabase
         .from('requests')
-        .update({ closed_by: 'admin' }) // Permanent close
+        .update({
+          closed_by: 'admin',
+          status: 'completed' // Also mark as completed when admin closes
+        })
         .eq('id', requestId);
 
       if (error) throw error;
 
-      setAllRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: 'admin' } : r));
+      setAllRequests((prev) => prev.map(r => r.id === requestId ? { ...r, closed_by: 'admin', status: 'completed' } : r));
       return { error: null };
     } catch (error) {
       console.error('Error closing chat (admin):', error);

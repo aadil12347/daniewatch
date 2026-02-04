@@ -245,8 +245,8 @@ export const Navbar = () => {
     { to: "/", label: "Home", icon: Home },
     ...navLinks,
     ...(user && !isAdmin ? [{ to: "/requests", label: "My Requests", icon: FileText }] : []),
-    ...(user && !isAdmin ? [{ to: "/requests", label: "My Requests", icon: FileText }] : []),
     ...(user && isAdmin ? [{ to: "/admin", label: "Admin Panel", icon: Shield }] : []),
+    ...(user && isAdmin ? [{ to: "/admin/update-links", label: "Update Links", icon: Globe }] : []),
   ];
 
   return (
@@ -463,6 +463,23 @@ export const Navbar = () => {
                       >
                         <Shield className="w-4 h-4 mr-2" />
                         Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        to="/admin/update-links"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          scrollToTopInstant();
+                          clearSearchResults();
+                          haptic("tap");
+                        }}
+                      >
+                        <Globe className="w-4 h-4 mr-2" />
+                        Update Links
                       </Link>
                     </DropdownMenuItem>
                   )}

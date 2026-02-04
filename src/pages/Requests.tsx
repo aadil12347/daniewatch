@@ -123,7 +123,7 @@ const RequestCard = ({
             </div>
           )}
 
-          <div className="mt-4 mb-4">
+          <div className="mt-3 md:mt-4 mb-3 md:mb-4">
             <ChatWindow
               requestId={request.id}
               role="user"
@@ -132,7 +132,7 @@ const RequestCard = ({
             />
           </div>
 
-          <div className="flex items-center justify-between border-t border-white/10 pt-4">
+          <div className="flex items-center justify-between border-t border-white/10 pt-3 md:pt-4">
             <div className="flex items-center gap-2">
               {request.closed_by === 'admin' ? (
                 <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20 gap-1 px-2 py-1">

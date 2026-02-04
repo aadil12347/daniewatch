@@ -43,9 +43,9 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
     };
 
     return (
-        <div className="flex flex-col h-[400px] border border-white/10 rounded-lg bg-black/20 overflow-hidden backdrop-blur-sm">
+        <div className="flex flex-col h-[300px] md:h-[400px] border border-white/10 rounded-lg bg-black/20 overflow-hidden backdrop-blur-sm">
             {/* Messages Area */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-3 md:p-4">
                 {loading ? (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                         <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -75,22 +75,22 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
                                         isMe ? "flex-row-reverse" : "flex-row"
                                     )}>
                                         <span className={cn(
-                                            "flex items-center justify-center w-5 h-5 rounded-full",
+                                            "flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0",
                                             isAdminMsg ? "bg-red-500/20 text-red-500" : "bg-blue-500/20 text-blue-500"
                                         )}>
                                             {isAdminMsg ? <Shield className="w-3 h-3" /> : <User className="w-3 h-3" />}
                                         </span>
-                                        <span className="text-muted-foreground opacity-70">
+                                        <span className="text-muted-foreground opacity-70 text-[10px] md:text-xs">
                                             {isAdminMsg ? 'Admin' : 'You'}
                                         </span>
-                                        <span className="text-[10px] text-muted-foreground opacity-50">
+                                        <span className="text-[9px] md:text-[10px] text-muted-foreground opacity-50">
                                             {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
                                         </span>
                                     </div>
 
                                     <div
                                         className={cn(
-                                            "px-3 py-2 rounded-2xl text-sm break-words shadow-sm",
+                                            "px-2.5 md:px-3 py-1.5 md:py-2 rounded-2xl text-xs md:text-sm break-words shadow-sm",
                                             isMe
                                                 ? "bg-primary text-primary-foreground rounded-tr-sm"
                                                 : "bg-white/10 text-white rounded-tl-sm"
@@ -107,10 +107,10 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
             </ScrollArea>
 
             {/* Input Area */}
-            <div className="p-3 bg-white/5 border-t border-white/5">
+            <div className="p-2 md:p-3 bg-white/5 border-t border-white/5">
                 {isClosed ? (
-                    <div className="text-center text-sm text-muted-foreground py-2 flex items-center justify-center gap-2">
-                        <Shield className="w-4 h-4" />
+                    <div className="text-center text-xs md:text-sm text-muted-foreground py-2 flex items-center justify-center gap-2">
+                        <Shield className="w-3 h-3 md:w-4 md:h-4" />
                         Chat closed by {closedBy === 'admin' ? 'Admin' : 'User'}
                     </div>
                 ) : (
@@ -119,16 +119,16 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy }: ChatWindowPr
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Type a message..."
-                            className="bg-black/20 border-white/10 focus-visible:ring-primary/50"
+                            className="bg-black/20 border-white/10 focus-visible:ring-primary/50 text-sm"
                             disabled={isSending}
                         />
                         <Button
                             type="submit"
                             size="icon"
                             disabled={isSending || !newMessage.trim()}
-                            className="bg-primary hover:bg-primary/90 transition-all"
+                            className="bg-primary hover:bg-primary/90 transition-all flex-shrink-0 h-9 w-9 md:h-10 md:w-10"
                         >
-                            {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            {isSending ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <Send className="w-3.5 h-3.5 md:w-4 md:h-4" />}
                         </Button>
                     </form>
                 )}
