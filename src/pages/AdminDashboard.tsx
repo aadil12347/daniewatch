@@ -79,6 +79,7 @@ import { BlockedPostsPanel } from "@/components/admin/BlockedPostsPanel";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
 import { ChatWindow } from "@/components/ChatWindow";
+import { cn } from "@/lib/utils";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
   switch (status) {
