@@ -7,6 +7,7 @@ import { CategoryNav } from "@/components/CategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { getTVGenres, filterAdultContent, Movie, Genre } from "@/lib/tmdb";
+import { useListStateCache } from "@/hooks/useListStateCache";
 import { useMinDurationLoading } from "@/hooks/useMinDurationLoading";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
@@ -39,6 +40,7 @@ const TVShows = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  const { saveCache, getCache } = useListStateCache<Movie>();
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
 
   // Use manifest for DB metadata (fast, cached)
@@ -322,9 +324,84 @@ const TVShows = () => {
     })();
   }, [displayCount, fetchTmdbPage, filteredDbItems.length, getKey, hasMoreTmdb, pendingLoadMore, tmdbPage, unifiedItems.length, setIsLoadingMore]);
 
+  // Try to restore from cache on mount
+  useEffect(() => {
+    const cached = getCache("default", selectedGenres);
+    if (cached && cached.items.length > 0) {
+      restoreScrollYRef.current = cached.scrollY ?? 0;
+      setTmdbItems(cached.items);
+      setDisplayCount(cached.items.length);
+      setAnimateFromIndex(null);
+      setTmdbPage(cached.page);
+      setHasMoreTmdb(cached.hasMore);
+      setIsRestoredFromCache(true);
+    }
+  }, []);
+
+  // Restore scroll position after cache is applied
+  useEffect(() => {
+    if (!isRestoredFromCache) return;
+    if (unifiedItems.length === 0) return;
+
+    const y = restoreScrollYRef.current;
+    if (y === null) return;
+    restoreScrollYRef.current = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, left: 0, behavior: "auto" });
+      });
+    });
+  }, [isRestoredFromCache, unifiedItems.length]);
+
+  // Auto-save cache on state changes (debounced)
+  useEffect(() => {
+    if (unifiedItems.length === 0 || pageIsLoading) return;
+
+    const handle = window.setTimeout(() => {
+      saveCache({
+        items: tmdbItems,
+        page: tmdbPage,
+        hasMore: hasMoreTmdb,
+        activeTab: "default",
+        selectedFilters: selectedGenres,
+        scrollY: window.scrollY,
+      });
+    }, 500);
+
+    return () => window.clearTimeout(handle);
+  }, [tmdbItems, tmdbPage, hasMoreTmdb, selectedGenres, saveCache, pageIsLoading, unifiedItems.length]);
+
+  // Also save on scroll (debounced)
+  useEffect(() => {
+    if (pageIsLoading || unifiedItems.length === 0) return;
+
+    const handleScroll = () => {
+      const handle = window.setTimeout(() => {
+        saveCache({
+          items: tmdbItems,
+          page: tmdbPage,
+          hasMore: hasMoreTmdb,
+          activeTab: "default",
+          selectedFilters: selectedGenres,
+          scrollY: window.scrollY,
+        });
+      }, 1000);
+      return () => window.clearTimeout(handle);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [tmdbItems, tmdbPage, hasMoreTmdb, selectedGenres, saveCache, pageIsLoading, unifiedItems.length]);
+
   // Reset TMDB state when filters change OR manifest becomes ready
   useEffect(() => {
     if (isManifestLoading) return;
+
+    if (isRestoredFromCache) {
+      setIsRestoredFromCache(false);
+      return;
+    }
 
     setTmdbItems([]);
     setTmdbPage(1);

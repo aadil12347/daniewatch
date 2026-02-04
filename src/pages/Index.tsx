@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { HeroSection } from "@/components/HeroSection";
@@ -21,12 +21,15 @@ import {
   filterAdultContent,
   Movie,
 } from "@/lib/tmdb";
+import { useListStateCache } from "@/hooks/useListStateCache";
 
 const Index = () => {
   const { isPerformance } = usePerformanceMode();
-  const { saveCache, getCache } = useHomepageCache();
+  const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
+  const restoreScrollYRef = useRef<number | null>(null);
+  const { saveCache, getCache } = useListStateCache<Movie>();
   const { sections: dbSections } = useDbSections();
-  
+
   const [trending, setTrending] = useState<Movie[]>([]);
   const [indianPopular, setIndianPopular] = useState<Movie[]>([]);
   const [koreanPopular, setKoreanPopular] = useState<Movie[]>([]);
@@ -48,7 +51,7 @@ const Index = () => {
     // Try loading from session cache first
     const cached = getCache();
     console.log("[Index] useEffect ran, cache result:", cached ? "HIT" : "MISS");
-    
+
     // Only use cache if it has the new structure (indianPopular exists)
     if (cached && cached.indianPopular) {
       console.log("[Index] Loading from cache");
@@ -59,6 +62,11 @@ const Index = () => {
       setTopRatedMovies(cached.topRatedMovies || []);
       setTopRatedTV(cached.topRatedTV || []);
       setIsLoading(false);
+      setIsRestoredFromCache(true);
+
+      if (cached.scrollY) {
+        restoreScrollYRef.current = cached.scrollY;
+      }
       return;
     }
 
@@ -113,9 +121,50 @@ const Index = () => {
       }
     };
 
-    fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void fetchData();
+  }, [getCache, saveCache]);
+
+  // Restore scroll position after content is loaded and rendered
+  useEffect(() => {
+    if (isRestoredFromCache && restoreScrollYRef.current !== null) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: restoreScrollYRef.current!, left: 0, behavior: "auto" });
+          restoreScrollYRef.current = null; // Clear ref after restoring
+        });
+      });
+    }
+  }, [isRestoredFromCache]);
+
+  // Save on scroll (debounced)
+  useEffect(() => {
+    if (isLoading || trending.length === 0) return;
+
+    const handleScroll = () => {
+      saveCache({
+        trending,
+        indianPopular,
+        koreanPopular,
+        animePopular,
+        topRatedMovies,
+        topRatedTV,
+        scrollY: window.scrollY,
+        activeTab: "default",
+        items: [], // Satisfy interface
+        page: 1,
+        hasMore: true,
+        selectedFilters: [],
+      });
+    };
+
+    const debouncedScroll = () => {
+      const h = window.setTimeout(handleScroll, 1000);
+      return () => window.clearTimeout(h);
+    };
+
+    window.addEventListener("scroll", debouncedScroll, { passive: true });
+    return () => window.removeEventListener("scroll", debouncedScroll);
+  }, [trending, indianPopular, koreanPopular, animePopular, topRatedMovies, topRatedTV, saveCache, isLoading]);
 
   return (
     <>
@@ -163,7 +212,7 @@ const Index = () => {
           {/* Trending Now */}
           <TabbedContentRow
             title="Trending Now"
-            moviesItems={isModerationLoading 
+            moviesItems={isModerationLoading
               ? trending.filter((item) => item.media_type === "movie")
               : filterBlockedPosts(trending.filter((item) => item.media_type === "movie"), "movie")}
             tvItems={isModerationLoading

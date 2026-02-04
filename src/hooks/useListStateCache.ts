@@ -25,10 +25,9 @@ export const useListStateCache = <T>(options: UseListStateCacheOptions = {}) => 
   const storageKey = `${CACHE_KEY_PREFIX}${location.pathname}${includeSearch ? location.search : ""}`;
 
   const saveCache = useCallback(
-    (data: Omit<CacheData<T>, "timestamp" | "scrollY">) => {
+    (data: Omit<CacheData<T>, "timestamp">) => {
       const cacheData: CacheData<T> = {
         ...data,
-        scrollY: typeof window !== "undefined" ? window.scrollY : 0,
         timestamp: Date.now(),
       };
       try {

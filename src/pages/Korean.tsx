@@ -359,20 +359,45 @@ const Korean = () => {
     });
   }, [isRestoredFromCache, items.length]);
 
-  // Save cache before unmount
+  // Auto-save cache on state changes (debounced)
   useEffect(() => {
-    return () => {
-      if (items.length > 0) {
+    if (unifiedItems.length === 0 || isLoading) return;
+
+    const handle = window.setTimeout(() => {
+      saveCache({
+        items,
+        page,
+        hasMore,
+        activeTab: "default",
+        selectedFilters: selectedTags,
+        scrollY: window.scrollY,
+      });
+    }, 500);
+
+    return () => window.clearTimeout(handle);
+  }, [items, page, hasMore, selectedTags, saveCache, isLoading, unifiedItems.length]);
+
+  // Also save on scroll (debounced)
+  useEffect(() => {
+    if (isLoading || unifiedItems.length === 0) return;
+
+    const handleScroll = () => {
+      const handle = window.setTimeout(() => {
         saveCache({
           items,
           page,
           hasMore,
           activeTab: "default",
           selectedFilters: selectedTags,
+          scrollY: window.scrollY,
         });
-      }
+      }, 1000);
+      return () => window.clearTimeout(handle);
     };
-  }, [items, page, hasMore, selectedTags, saveCache]);
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [items, page, hasMore, selectedTags, saveCache, isLoading, unifiedItems.length]);
 
   const fetchKorean = useCallback(
     async (pageNum: number, reset: boolean = false) => {

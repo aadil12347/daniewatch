@@ -12,6 +12,8 @@ interface HomepageCacheData {
   animePopular: Movie[];
   topRatedMovies: Movie[];
   topRatedTV: Movie[];
+  top_rated_count?: number;
+  scrollY?: number;
   timestamp: number;
 }
 

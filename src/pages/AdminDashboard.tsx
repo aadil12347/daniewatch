@@ -1087,36 +1087,54 @@ const AdminDashboard = () => {
           </div>
 
           <Tabs defaultValue="requests" className="w-full">
-            <TabsList className="mb-6 w-full flex justify-start overflow-x-auto no-scrollbar pb-1">
-              <TabsTrigger value="requests" className="gap-2">
-                <FileText className="w-4 h-4" />
-                Requests
-                {newRequests.length > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 justify-center">
-                    {newRequests.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="metadata" className="gap-2">
-                <Pencil className="w-4 h-4" />
-                Metadata Editor
-              </TabsTrigger>
-              <TabsTrigger value="links" className="gap-2" asChild>
-                <Link to="/admin/update-links">
-                  <Link2 className="w-4 h-4" />
-                  Update Links
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger value="blocked" className="gap-2">
-                <Ban className="w-4 h-4" />
-                Blocked Posts
-              </TabsTrigger>
-              <TabsTrigger value="admins" className="gap-2">
-                <Users className="w-4 h-4" />
-                Admins
-              </TabsTrigger>
-            </TabsList>
+            <div className="relative mb-6">
+              <TabsList className="w-full flex justify-start overflow-x-auto no-scrollbar pb-1 bg-transparent border-b rounded-none h-auto gap-2 md:gap-6">
+                <TabsTrigger
+                  value="requests"
+                  className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="text-sm font-medium">Requests</span>
+                  {newRequests.length > 0 && (
+                    <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 justify-center">
+                      {newRequests.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="metadata"
+                  className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
+                >
+                  <Pencil className="w-4 h-4" />
+                  <span className="text-sm font-medium">Metadata Editor</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="links"
+                  className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
+                  asChild
+                >
+                  <Link to="/admin/update-links">
+                    <Link2 className="w-4 h-4" />
+                    <span className="text-sm font-medium">Update Links</span>
+                    <ExternalLink className="w-3 h-3 ml-1 opacity-50" />
+                  </Link>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="blocked"
+                  className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
+                >
+                  <Ban className="w-4 h-4" />
+                  <span className="text-sm font-medium">Blocked</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="admins"
+                  className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
+                >
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm font-medium">Admins</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="requests">
               {/* Request category tabs - REMOVED (Use Filters at top) */}
