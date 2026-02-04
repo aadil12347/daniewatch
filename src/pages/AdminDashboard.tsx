@@ -290,7 +290,18 @@ const RequestCard = ({
       </div>
 
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        setIsOpen(open);
+        if (open) {
+          if (!request.is_read) {
+            onMarkAsSeen(request.id);
+          }
+          // specific requirement: if completed and admin opens chat, move to pending
+          if (request.status === 'completed') {
+            onUpdateStatus(request.id, 'pending', request.admin_response);
+          }
+        }
+      }}>
         <DialogContent className="max-w-3xl w-[95vw] h-[90vh] md:h-auto md:max-h-[90vh] p-0 gap-0 bg-black/95 border-white/10 backdrop-blur-xl flex flex-col overflow-hidden">
           <DialogHeader className="p-4 border-b border-white/10 flex-shrink-0">
             <div className="flex items-center gap-3">
@@ -386,7 +397,7 @@ const RequestCard = ({
                             <SelectTrigger className="bg-white/5 border-white/10">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-black border-white/10 z-[200]">
                               <SelectItem value="pending">Pending</SelectItem>
                               <SelectItem value="in_progress">In Progress</SelectItem>
                               <SelectItem value="completed">Completed</SelectItem>
@@ -925,9 +936,9 @@ const AdminDashboard = () => {
   const isRequestNew = (r: AdminRequest) => (!r.is_read) || ((r.unread_count || 0) > 0);
 
   const newRequests = allRequests.filter(r => isRequestNew(r));
-  const pendingRequests = allRequests.filter(r => r.status === 'pending' && !isRequestNew(r));
-  const inProgressRequests = allRequests.filter(r => r.status === 'in_progress' && !isRequestNew(r));
-  const doneRequests = allRequests.filter(r => (r.status === 'completed' || r.status === 'rejected') && !isRequestNew(r));
+  const pendingRequests = allRequests.filter(r => r.status === 'pending');
+  const inProgressRequests = allRequests.filter(r => r.status === 'in_progress');
+  const doneRequests = allRequests.filter(r => (r.status === 'completed' || r.status === 'rejected'));
 
   const getCurrentRequests = (): AdminRequest[] => {
     switch (requestsTab) {
