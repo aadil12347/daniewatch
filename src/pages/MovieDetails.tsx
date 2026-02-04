@@ -279,7 +279,7 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
                 inline
                 fill
                 controlsPlacement={modal ? "modal" : "page"}
-                className="player-reveal-fast"
+                className=""
                 style={{
                   ["--reveal-x" as any]: revealOrigin ? `${revealOrigin.x}px` : "18%",
                   ["--reveal-y" as any]: revealOrigin ? `${revealOrigin.y}px` : "85%",
@@ -300,14 +300,14 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
           <div
             className={
               "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform " +
-              (modal ? "" : "transition-[margin] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ") +
+              (modal ? "" : "") +
               // IMPORTANT: avoid translateY when player is open (transforms don't take layout space and can overlap the Actors section)
               (isPlayerOpen ? "mt-6 md:mt-10" : "-mt-44 md:details-overlap-desktop")
             }
           >
             <div
               className={
-                (modal ? "" : "animate-slide-up ") +
+                (modal ? "" : "") +
                 "max-w-xl lg:max-w-2xl md:px-8 lg:px-12 " +
                 (isPlayerOpen
                   ? "rounded-2xl bg-card/80 backdrop-blur-xl border border-border p-4 md:p-0 md:bg-transparent md:border-0 md:backdrop-blur-none"
