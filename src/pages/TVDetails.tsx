@@ -497,14 +497,16 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           {/* Details block (animates below player; overlays trailer when not playing) */}
           <div
             className={
-              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform transition-[margin] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] " +
+              "container mx-auto px-4 md:px-0 relative z-10 transform-gpu will-change-transform " +
+              (modal ? "" : "transition-[margin] duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ") +
               // IMPORTANT: avoid translateY when player is open (transforms don't take layout space and can overlap the Actors section)
               (playerState.isOpen ? "mt-6 md:mt-10" : "-mt-44 md:details-overlap-desktop")
             }
           >
             <div
               className={
-                "animate-slide-up max-w-xl lg:max-w-2xl md:px-8 lg:px-12 " +
+                (modal ? "" : "animate-slide-up ") +
+                "max-w-xl lg:max-w-2xl md:px-8 lg:px-12 " +
                 (playerState.isOpen
                   ? "rounded-2xl bg-card/80 backdrop-blur-xl border border-border p-4 md:p-0 md:bg-transparent md:border-0 md:backdrop-blur-none"
                   : "")
