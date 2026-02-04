@@ -217,7 +217,13 @@ export const useAdmin = () => {
         request_id: requestId,
       });
 
+
+
       if (notifError) console.error('Error creating notification:', notifError);
+
+      // Cache Invalidation on Mutation
+      localStorage.removeItem("db_manifest_cache");
+      localStorage.removeItem("dw_homepage_cache");
 
       await fetchAllRequests();
       return { error: null };
@@ -287,6 +293,11 @@ export const useAdmin = () => {
       }
 
       await fetchAllRequests();
+
+      // Cache Invalidation on Mutation
+      localStorage.removeItem("db_manifest_cache");
+      localStorage.removeItem("dw_homepage_cache");
+
       return { error: null, count: requestIds.length };
     } catch (error) {
       console.error('Error updating multiple requests:', error);
@@ -307,7 +318,13 @@ export const useAdmin = () => {
         .eq('id', requestId);
 
       if (error) throw error;
+
       setAllRequests((prev) => prev.filter((r) => r.id !== requestId));
+
+      // Cache Invalidation on Mutation
+      localStorage.removeItem("db_manifest_cache");
+      localStorage.removeItem("dw_homepage_cache");
+
       return { error: null };
     } catch (error) {
       console.error('Error deleting request:', error);
@@ -329,6 +346,11 @@ export const useAdmin = () => {
 
       if (error) throw error;
       setAllRequests((prev) => prev.filter((r) => !requestIds.includes(r.id)));
+
+      // Cache Invalidation on Mutation
+      localStorage.removeItem("db_manifest_cache");
+      localStorage.removeItem("dw_homepage_cache");
+
       return { error: null };
     } catch (error) {
       console.error('Error deleting requests:', error);

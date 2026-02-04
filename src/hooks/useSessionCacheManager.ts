@@ -10,25 +10,39 @@ const HOMEPAGE_CACHE_KEY = "dw_homepage_cache";
  * - Admin: uses sessionStorage exclusively (auto-clears on browser close)
  * - User: refreshes localStorage cache on each new session
  */
+// Current app version - increment this when shipping breaking data changes
+const CURRENT_APP_VERSION = "1.1.0";
+const CACHE_VERSION_KEY = "dw_cache_version";
+
 export function useSessionCacheManager() {
   useEffect(() => {
-    const sessionActive = sessionStorage.getItem(SESSION_ACTIVE_KEY);
-    const isAdminSession = sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+    // 1. Smart Invalidation: Check version compatibility
+    const cachedVersion = localStorage.getItem(CACHE_VERSION_KEY);
 
-    if (!sessionActive) {
-      // New session detected
-      sessionStorage.setItem(SESSION_ACTIVE_KEY, "1");
+    if (cachedVersion !== CURRENT_APP_VERSION) {
+      console.log(`[CacheManager] Version mismatch (${cachedVersion} vs ${CURRENT_APP_VERSION}). Clearing stale cache.`);
 
-      // For regular users: clear old localStorage cache so they get fresh data
-      if (!isAdminSession) {
-        localStorage.removeItem(USER_MANIFEST_CACHE_KEY);
-        console.log("[SessionCache] New user session - cleared localStorage manifest cache");
-      }
-      // Admin sessions use sessionStorage which auto-clears on browser close
+      // Clear specific functional caches but KEEP session tokens logic if handled elsewhere
+      localStorage.removeItem(USER_MANIFEST_CACHE_KEY);
+      localStorage.removeItem(HOMEPAGE_CACHE_KEY);
+
+      // Update version
+      localStorage.setItem(CACHE_VERSION_KEY, CURRENT_APP_VERSION);
     }
 
-    // Visibility listener removed to prevent unwanted session resets/rehashing on tab switch.
-    // The initial session check (above) is sufficient for start-up cache clearing.
+    // 2. Persistent Session:
+    // We NO LONGER clear localStorage just because sessionStorage is empty.
+    // This allows data to survive tab close/minimize on mobile.
+
+    // 3. Admin Bypass:
+    // If we are in an admin session, we might want to hint to the app to force-fresh
+    // (This is mostly handled by useAdmin and useRequests checking the flag)
+    const isAdmin = sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+    if (isAdmin) {
+      // Ensure we don't rely on potentially stale user caches
+      console.log("[CacheManager] Admin session active - enforcing fresh data fetch");
+    }
+
   }, []);
 }
 
