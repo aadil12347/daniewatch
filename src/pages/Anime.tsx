@@ -253,12 +253,8 @@ const Anime = () => {
       return new Date(dateStr).getTime();
     };
 
-    const sortedDb = [...filteredDbItems].sort((a, b) => {
-      const dA = getDateValue(a);
-      const dB = getDateValue(b);
-      if (dB !== dA) return dB - dA;
-      return b.id - a.id;
-    });
+    // DB items are already sorted by Pinned -> Year -> Links in dbCandidates + sortWithPinnedFirst.
+    const sortedDb = filteredDbItems;
 
     const dbKeys = new Set(sortedDb.map((m) => getKey(m)));
     const tmdbDeduped = filteredTmdbItems.filter((m) => !dbKeys.has(getKey(m)));

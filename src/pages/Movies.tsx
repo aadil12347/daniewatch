@@ -253,13 +253,11 @@ const Movies = () => {
       return new Date(dateStr).getTime();
     };
 
-    const sortedDb = [...filteredDbItems].sort((a, b) => {
-      const dA = getDateValue(a);
-      const dB = getDateValue(b);
-      if (dB !== dA) return dB - dA;
-      return b.id - a.id;
-    });
+    // DB items are already sorted by Pinned -> Year -> Links in dbCandidates + sortWithPinnedFirst.
+    // We just keep that order.
+    const sortedDb = filteredDbItems;
 
+    // TMDB items are sorted by date.
     const sortedTmdb = [...filteredTmdbItems].sort((a, b) => {
       const dA = getDateValue(a);
       const dB = getDateValue(b);
@@ -446,6 +444,9 @@ const Movies = () => {
     } else {
       setDisplayCount(0);
     }
+    setAnimateFromIndex(null);
+    setHasMore(true);
+    fetchMovies(1, true);
   }, [selectedGenres, selectedYear, isInitialized, filteredDbItems.length, isManifestLoading]);
 
   // Keep the global fullscreen loader until the first 24 tiles are actually visible.

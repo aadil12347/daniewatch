@@ -327,6 +327,7 @@ const TVShows = () => {
     } else {
       setDisplayCount(0);
     }
+    fetchTmdbPage(1);
   }, [selectedGenres, selectedYear, filteredDbItems.length, isManifestLoading]);
 
   // Fetch genres on mount
