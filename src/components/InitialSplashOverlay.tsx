@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "dw_splash_seen_v1";
+const STORAGE_KEY = "dw_splash_seen_v2";
 
 export function getShouldShowInitialSplash(): boolean {
   // Once per session: show only when the key is missing.

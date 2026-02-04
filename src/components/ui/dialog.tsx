@@ -19,7 +19,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-300 ease-out",
+      "fixed inset-0 z-50 bg-black/80 backdrop-blur-[2px]",
       className,
     )}
     {...props}
@@ -50,8 +50,8 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         contentVariant === "fullscreenBelowHeader"
-          ? "fixed left-0 right-0 bottom-0 top-[var(--app-header-offset,0px)] z-40 w-full max-w-none translate-x-0 translate-y-0 gap-4 border bg-background p-6 shadow-lg duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-2 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95"
-          : "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+          ? "fixed left-0 right-0 bottom-0 top-[var(--app-header-offset,0px)] z-40 w-full max-w-none translate-x-0 translate-y-0 gap-4 border bg-background p-6 shadow-lg"
+          : "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
         className,
       )}
       {...props}
