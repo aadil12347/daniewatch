@@ -182,29 +182,40 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           fetchEntry(id),
         ]);
 
-        // Determine if DB entry has active links
-        const hasActiveLinks = dbEntry?.content && (
-          (dbEntry.type === "movie" && (
-            (dbEntry.content as { watch_link?: string }).watch_link?.trim() ||
-            (dbEntry.content as { download_link?: string }).download_link?.trim()
-          )) ||
-          (dbEntry.type === "series" && Object.values(dbEntry.content).some(
-            (s: any) => s.watch_links?.some((l: string) => l?.trim()) || s.download_links?.some((l: string) => l?.trim())
-          ))
-        );
+        // Determine if DB entry has active links (for series, check any season)
+        let hasActiveLinks = false;
+        if (dbEntry?.content) {
+          if (dbEntry.type === "series") {
+            hasActiveLinks = Object.values(dbEntry.content).some((season: any) => {
+              const watchLinks = season?.watch_links as string[] | undefined;
+              const downloadLinks = season?.download_links as string[] | undefined;
+              return (
+                watchLinks?.some((l) => l && l.trim().length > 0) ||
+                downloadLinks?.some((l) => l && l.trim().length > 0)
+              );
+            });
+          } else if (dbEntry.type === "movie") {
+            const content = dbEntry.content as { watch_link?: string; download_link?: string };
+            hasActiveLinks = !!(content.watch_link?.trim() || content.download_link?.trim());
+          }
+        }
 
-        // Merge DB data with TMDB data, prioritizing DB fields ONLY if entry has active links
+        console.log("[TVDetails] ID:", id, "hasActiveLinks:", hasActiveLinks, "dbEntry:", dbEntry);
+
+        // Merge DB data with TMDB data.
+        // When entry has active links, use DB fields if they are NOT null/undefined.
+        // This prevents empty strings or 0 values from being overwritten.
         const mergedShow: TVDetailsType = {
           ...showRes,
-          name: (hasActiveLinks && dbEntry?.title) || showRes.name,
-          overview: (hasActiveLinks && dbEntry?.overview) || showRes.overview,
-          poster_path: (hasActiveLinks && dbEntry?.poster_url) || showRes.poster_path,
-          backdrop_path: (hasActiveLinks && dbEntry?.backdrop_url) || showRes.backdrop_path,
-          vote_average: (hasActiveLinks && dbEntry?.vote_average) || showRes.vote_average,
-          tagline: (hasActiveLinks && dbEntry?.tagline) || showRes.tagline,
+          name: hasActiveLinks && dbEntry?.title != null ? dbEntry.title : showRes.name,
+          overview: hasActiveLinks && dbEntry?.overview != null ? dbEntry.overview : showRes.overview,
+          poster_path: hasActiveLinks && dbEntry?.poster_url != null ? dbEntry.poster_url : showRes.poster_path,
+          backdrop_path: hasActiveLinks && dbEntry?.backdrop_url != null ? dbEntry.backdrop_url : showRes.backdrop_path,
+          vote_average: hasActiveLinks && dbEntry?.vote_average != null ? dbEntry.vote_average : showRes.vote_average,
+          tagline: hasActiveLinks && dbEntry?.tagline != null ? dbEntry.tagline : showRes.tagline,
         };
 
-        if (hasActiveLinks && dbEntry?.genres) {
+        if (hasActiveLinks && dbEntry?.genres != null) {
           mergedShow.genres = dbEntry.genres;
         }
 
@@ -218,8 +229,8 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
         )) as Movie[];
         setSimilar(filteredSimilar.slice(0, 14));
 
-        // Priority for Logo: DB (if has links) -> TMDB
-        const dbLogo = hasActiveLinks ? dbEntry?.logo_url : null;
+        // Priority for Logo: DB (if has links and logo exists) -> TMDB
+        const dbLogo = hasActiveLinks && dbEntry?.logo_url != null ? dbEntry.logo_url : null;
         if (dbLogo) {
           setLogoUrl(dbLogo);
         } else {

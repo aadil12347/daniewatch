@@ -62,19 +62,21 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   useEffect(() => {
     const fetchLogos = async () => {
       const logoPromises = featured.map(async (item) => {
+        const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
+        const manifestKey = `${item.id}-${mediaType}`;
+
         // 1. Check direct prop
         if ((item as any).logo_url) {
           return { id: item.id, logoUrl: (item as any).logo_url };
         }
 
-        // 2. Check manifest
-        const manifestData = availabilityById.get(item.id);
+        // 2. Check manifest using composite key
+        const manifestData = availabilityById.get(manifestKey);
         if (manifestData?.logoUrl) {
           return { id: item.id, logoUrl: manifestData.logoUrl };
         }
 
         // 3. TMDB fallback
-        const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
         try {
           const images = mediaType === "tv" ? await getTVImages(item.id) : await getMovieImages(item.id);
           const logo = images.logos?.find((l) => l.iso_639_1 === "en") || images.logos?.[0];
@@ -250,10 +252,11 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
   const title = getDisplayTitle(current);
   const year = getYear(getReleaseDate(current));
-  const currentManifest = availabilityById.get(current.id);
+  const mediaType = current.media_type || (current.first_air_date ? "tv" : "movie");
+  const currentManifestKey = `${current.id}-${mediaType}`;
+  const currentManifest = availabilityById.get(currentManifestKey);
   const ratingValue = currentManifest?.voteAverage ?? current.vote_average;
   const rating = ratingValue?.toFixed(1);
-  const mediaType = current.media_type || (current.first_air_date ? "tv" : "movie");
   const genreNames = current.genre_ids?.slice(0, 3).map((id) => genres[id]).filter(Boolean) || [];
   const currentLogo = logos[current.id];
 
@@ -400,8 +403,8 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
             onClick={() => setCurrentIndex(idx)}
             aria-label={`Go to slide ${idx + 1}`}
             className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${idx === currentIndex
-                ? "w-8 bg-primary"
-                : "w-2 bg-foreground/30 hover:bg-foreground/50"
+              ? "w-8 bg-primary"
+              : "w-2 bg-foreground/30 hover:bg-foreground/50"
               }`}
           />
         ))}

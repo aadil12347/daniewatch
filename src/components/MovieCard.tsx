@@ -78,10 +78,13 @@ export const MovieCard = ({
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
-  const manifestAvailability = availabilityById.get(movie.id);
-  const dbRating = (manifestAvailability?.voteAverage !== undefined && manifestAvailability?.voteAverage !== null)
-    ? manifestAvailability.voteAverage
-    : movie.vote_average;
+
+  // Use composite key (id-mediaType) to match manifest lookup
+  const manifestKey = `${movie.id}-${mediaType}`;
+  const manifestAvailability = availabilityById.get(manifestKey);
+
+  // Prioritize manifest rating, then movie prop
+  const dbRating = manifestAvailability?.voteAverage ?? (movie as any).vote_average;
   const rating = dbRating?.toFixed(1);
 
   const blocked = isBlocked(movie.id, mediaType as "movie" | "tv");

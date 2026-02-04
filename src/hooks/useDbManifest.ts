@@ -213,7 +213,7 @@ export const useDbManifest = () => {
     }
 
     const metaByKey = new Map<string, ManifestMetadata>();
-    const availabilityById = new Map<number, ManifestAvailability>();
+    const availabilityById = new Map<string, ManifestAvailability>();
 
     manifest.items.forEach((item) => {
       const key = `${item.id}-${item.media_type}`;
@@ -231,7 +231,8 @@ export const useDbManifest = () => {
         voteCount: item.vote_count,
       });
 
-      availabilityById.set(item.id, {
+      // Use composite key (id-mediaType) to prevent movie/tv collisions
+      availabilityById.set(key, {
         hasWatch: item.hasWatch,
         hasDownload: item.hasDownload,
         hoverImageUrl: item.hover_image_url,
