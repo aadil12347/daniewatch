@@ -296,7 +296,7 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
 
     fetchData();
     if (!modal) window.scrollTo(0, 0);
-  }, [id, blockedForUser, modal]);
+  }, [id, blockedForUser, modal, fetchEntry]);
 
   const handleSeasonChange = async (partOrSeasonNumber: number) => {
     if (!id || partOrSeasonNumber === selectedSeason) return;
