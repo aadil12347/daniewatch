@@ -75,6 +75,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { BlockedPostsPanel } from "@/components/admin/BlockedPostsPanel";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { ChatWindow } from "@/components/ChatWindow";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
   switch (status) {
@@ -199,6 +200,17 @@ const RequestCard = ({
               </div>
             </div>
           )}
+
+          {/* Chat Window */}
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Chat with User</h4>
+            <ChatWindow
+              requestId={request.id}
+              role="admin"
+              isClosed={!!request.closed_by}
+              closedBy={request.closed_by}
+            />
+          </div>
 
           <div className="flex items-center justify-between pt-4 border-t border-white/10">
             <div className="flex gap-2">
