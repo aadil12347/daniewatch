@@ -991,6 +991,7 @@ export function PostMetadataEditor() {
       const { error } = await supabase.from("entries").upsert({
         id: selectedEntry.id,
         type: selectedEntry.type,
+        content: selectedEntry.content || (selectedEntry.type === 'movie' ? { watch_link: "", download_link: "" } : {}),
         ...updateData
       });
 
