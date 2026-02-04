@@ -663,7 +663,15 @@ const AdminDashboard = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   const [isClearingCategory, setIsClearingCategory] = useState(false);
-  const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done' | 'trash'>('new');
+
+  // Persist tab selection
+  const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done' | 'trash'>(() => {
+    return (localStorage.getItem('admin_requests_tab') as any) || 'new';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('admin_requests_tab', requestsTab);
+  }, [requestsTab]);
 
   // Bulk update state
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);

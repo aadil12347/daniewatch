@@ -70,25 +70,7 @@ export function GlobalRouteLoader() {
     return () => window.removeEventListener("load", onLoad);
   }, []);
 
-  // Patch fetch to know when content is still loading.
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    let mounted = true;
-
-    window.fetch = (async (...args: Parameters<typeof originalFetch>) => {
-      if (mounted) setInflight((v) => v + 1);
-      try {
-        return await originalFetch(...args);
-      } finally {
-        if (mounted) setInflight((v) => Math.max(0, v - 1));
-      }
-    }) as typeof window.fetch;
-
-    return () => {
-      mounted = false;
-      window.fetch = originalFetch;
-    };
-  }, []);
+  // Fetch patching removed to prevent background syncs from triggering global loader.
 
   // Pages can tell us "first content rendered" so we can stop the fullscreen loader earlier.
   useEffect(() => {
@@ -114,12 +96,9 @@ export function GlobalRouteLoader() {
     }
   }, [currentRouteKey]);
 
-  // If everything is settled, clear timeout suppression so the next load can show normally.
   // IMPORTANT: we only *show* the global overlay for initial doc load + route navigations.
   // Background fetches (e.g., infinite scroll) should use inline loaders, not a fullscreen overlay.
-  // To prevent visual "flashes" during SPA navigation, we only use the global overlay
-  // for the initial document load. Route transitions rely on PageTransition + inline loaders.
-  const rawWanted = docPending;
+  const rawWanted = docPending || routePending;
   useEffect(() => {
     if (!rawWanted && timedOut) setTimedOut(false);
   }, [rawWanted, timedOut]);
@@ -127,8 +106,6 @@ export function GlobalRouteLoader() {
   // IMPORTANT: we no longer auto-hide just because network is idle.
   // Pages must explicitly report "content ready" (after their first meaningful render),
   // otherwise the loader stays up until the hard timeout.
-  // This prevents the overlay from disappearing before the initial grid batch is actually visible.
-
 
   const wanted = rawWanted && !timedOut;
 

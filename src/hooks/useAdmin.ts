@@ -65,7 +65,7 @@ export const useAdmin = () => {
   const [admins, setAdmins] = useState<UserRole[]>([]);
   const [requestsError, setRequestsError] = useState<string | null>(null);
 
-  // Check if user is admin/owner (database-driven; do not trust client-side checks)
+  // Check if user is admin/owner (database-driven)
   const checkAdminStatus = async () => {
     if (!user || !isSupabaseConfigured) {
       setIsAdmin(false);
@@ -74,7 +74,11 @@ export const useAdmin = () => {
       return;
     }
 
-    setIsLoading(true);
+    // Only show loading state if we haven't determined status yet.
+    // This prevents "flash of skeleton" when re-focusing the window.
+    if (!isAdmin) {
+      setIsLoading(true);
+    }
 
     try {
       // NOTE: `is_owner` must exist on `user_roles` (boolean, default false)

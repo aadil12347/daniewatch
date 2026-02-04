@@ -27,19 +27,8 @@ export function useSessionCacheManager() {
       // Admin sessions use sessionStorage which auto-clears on browser close
     }
 
-    // Listen for visibility changes (tab switching)
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Tab became visible again - refresh session timestamp
-        sessionStorage.setItem(SESSION_ACTIVE_KEY, "1");
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    // Visibility listener removed to prevent unwanted session resets/rehashing on tab switch.
+    // The initial session check (above) is sufficient for start-up cache clearing.
   }, []);
 }
 
