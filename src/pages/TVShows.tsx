@@ -216,18 +216,24 @@ const TVShows = () => {
         params.set("with_genres", selectedGenres.join(","));
       }
 
-      const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
-      const response = await res.json();
+      try {
+        const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+        if (!res.ok) throw new Error("TMDB fetch failed");
+        const response = await res.json();
 
-      const scoped = (filterAdultContent(response.results) as Movie[])
-        .map((m) => ({ ...m, media_type: "tv" as const }))
-        .filter(isAllowedOnTvPage);
+        const scoped = (filterAdultContent(response.results || []) as Movie[])
+          .map((m) => ({ ...m, media_type: "tv" as const }))
+          .filter(isAllowedOnTvPage);
 
-      return {
-        page: response.page as number,
-        totalPages: response.total_pages as number,
-        results: scoped,
-      };
+        return {
+          page: response.page || pageNum,
+          totalPages: response.total_pages || 1,
+          results: scoped,
+        };
+      } catch (error) {
+        console.error("fetchTmdbPage failed:", error);
+        return { page: pageNum, totalPages: 1, results: [] };
+      }
     },
     [selectedGenres, selectedYear]
   );
@@ -288,17 +294,19 @@ const TVShows = () => {
       try {
         const { results, totalPages } = await fetchTmdbPage(tmdbPage);
 
-        setTmdbItems((prev) => {
-          const seen = new Set(prev.map((m) => getKey(m)));
-          const next = [...prev];
-          for (const m of results) {
-            const k = getKey(m);
-            if (seen.has(k)) continue;
-            seen.add(k);
-            next.push(m);
-          }
-          return next;
-        });
+        if (results.length > 0) {
+          setTmdbItems((prev) => {
+            const seen = new Set(prev.map((m) => getKey(m)));
+            const next = [...prev];
+            for (const m of results) {
+              const k = getKey(m);
+              if (seen.has(k)) continue;
+              seen.add(k);
+              next.push(m);
+            }
+            return next;
+          });
+        }
 
         setHasMoreTmdb(tmdbPage < totalPages);
         setTmdbPage((p) => p + 1);

@@ -183,9 +183,11 @@ export function ManifestUpdateTool() {
         })
       );
 
-      // Clear both caches so manifest will be re-fetched
+      // Clear all caches so manifest will be re-fetched immediately
       localStorage.removeItem("db_manifest_cache");
+      sessionStorage.removeItem("admin_db_manifest_cache");
       sessionStorage.removeItem("manifest_session_checked");
+      sessionStorage.removeItem("db_manifest_cache"); // Just in case it's in sessionStorage too
 
       // Invalidate availability cache so admin dots update immediately
       queryClient.invalidateQueries({ queryKey: ["entry-availability"] });

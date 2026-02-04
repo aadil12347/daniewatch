@@ -467,6 +467,10 @@ const Korean = () => {
         const tvUrls = TMDB_KOREAN_LANGS.map((lang) => `https://api.themoviedb.org/3/discover/tv?${makeTvParams(lang)}`);
 
         const responses = await Promise.all([...movieUrls, ...tvUrls].map((u) => fetch(u)));
+        // Check for any failed responses
+        const failed = responses.find(r => !r.ok);
+        if (failed) throw new Error(`TMDB fetch failed with status ${failed.status}`);
+
         const json = await Promise.all(responses.map((r) => r.json()));
 
         const movieJson = json.slice(0, movieUrls.length);

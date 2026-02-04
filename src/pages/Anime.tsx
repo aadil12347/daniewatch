@@ -380,9 +380,10 @@ const Anime = () => {
         }
 
         const res = await fetch(`https://api.themoviedb.org/3/discover/tv?${params}`);
+        if (!res.ok) throw new Error("TMDB fetch failed");
         const response = await res.json();
 
-        const filteredResults = (filterAdultContent(response.results) as Movie[])
+        const filteredResults = (filterAdultContent(response.results || []) as Movie[])
           .map((m) => ({ ...m, media_type: "tv" as const }))
           .filter(isAnimeScope);
 

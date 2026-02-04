@@ -3,7 +3,7 @@
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from "workbox-precaching";
 import { registerRoute, NavigationRoute } from "workbox-routing";
-import { CacheFirst, StaleWhileRevalidate } from "workbox-strategies";
+import { CacheFirst, StaleWhileRevalidate, NetworkFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 
 declare const self: ServiceWorkerGlobalScope;
@@ -38,13 +38,28 @@ registerRoute(
   ({ url, request }) =>
     request.destination === "" &&
     (url.pathname.includes("/storage/v1/") || url.pathname.endsWith(".json")) &&
-    url.origin.includes("supabase"),
+    url.origin.includes("supabase") &&
+    !url.pathname.includes("db_manifest_v1.json"),
   new StaleWhileRevalidate({
     cacheName: "app-data-v1",
     plugins: [
       new ExpirationPlugin({
         maxEntries: 200,
         maxAgeSeconds: 14 * 24 * 60 * 60,
+      }),
+    ],
+  })
+);
+
+// Specific rule for manifest: NetworkFirst to ensure fresh data while allowing offline fallback
+registerRoute(
+  ({ url }) => url.pathname.includes("db_manifest_v1.json") && url.origin.includes("supabase"),
+  new NetworkFirst({
+    cacheName: "manifest-cache-v1",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 1,
+        maxAgeSeconds: 24 * 60 * 60, // 1 day is fine for NetworkFirst fallback
       }),
     ],
   })

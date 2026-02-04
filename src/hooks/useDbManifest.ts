@@ -66,7 +66,10 @@ export const useDbManifest = () => {
   // Fetch manifest from Supabase Storage
   const fetchManifest = async () => {
     try {
-      const { data, error } = await supabase.storage.from("manifests").download("db_manifest_v1.json");
+      // Use cache: 'no-cache' and a timestamp to bypass browser and Service Worker caches
+      const { data, error } = await supabase.storage
+        .from("manifests")
+        .download(`db_manifest_v1.json?t=${Date.now()}`);
 
       if (error) {
         console.warn("[useDbManifest] Error fetching manifest:", error);

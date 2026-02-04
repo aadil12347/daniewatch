@@ -392,9 +392,10 @@ const Movies = () => {
         }
 
         const res = await fetch(`https://api.themoviedb.org/3/discover/movie?${params}`);
+        if (!res.ok) throw new Error("TMDB fetch failed");
         const response = await res.json();
 
-        const filteredResults = (filterAdultContent(response.results) as Movie[])
+        const filteredResults = (filterAdultContent(response.results || []) as Movie[])
           .map((m) => ({ ...m, media_type: "movie" as const }))
           .filter(isAllowedOnMoviesPage);
 
@@ -417,8 +418,10 @@ const Movies = () => {
         }
 
         setHasMore(response.page < response.total_pages);
+        return { page: response.page, totalPages: response.total_pages, results: unique };
       } catch (error) {
         console.error("Failed to fetch movies:", error);
+        return { page: pageNum, totalPages: 1, results: [] };
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -496,12 +499,10 @@ const Movies = () => {
       setDisplayCount((prev) => Math.min(prev + BATCH_SIZE, unifiedItems.length));
       setPendingLoadMore(false);
 
-      // Background hydration
       if (displayCount < filteredDbItems.length) {
         const tmdbKeys = new Set(movies.map((m) => getKey(m)));
         void hydrateDbOnly(tmdbKeys, 30);
       }
-
       return;
     }
 
@@ -511,18 +512,34 @@ const Movies = () => {
     }
 
     setAnimateFromIndex(displayCount);
-    loadMoreFetchRequestedRef.current = true;
     setIsLoadingMore(true);
     setPendingLoadMore(false);
-    setPage((prev) => prev + 1);
-  }, [pendingLoadMore, displayCount, unifiedItems.length, filteredDbItems.length, hasMore, movies, getKey, hydrateDbOnly, setIsLoadingMore]);
 
-  // Fetch more when page changes
-  useEffect(() => {
-    if (page > 1 && !isRestoredFromCache) {
-      fetchMovies(page);
-    }
-  }, [page, fetchMovies, isRestoredFromCache]);
+    void (async () => {
+      try {
+        const { results } = await fetchMovies(page + 1);
+        if (results.length > 0) {
+          setMovies((prev) => {
+            const seen = new Set(prev.map((m) => getKey(m)));
+            const next = [...prev];
+            for (const m of results) {
+              const k = getKey(m);
+              if (seen.has(k)) continue;
+              seen.add(k);
+              next.push(m);
+            }
+            return next;
+          });
+        }
+        setPage((p) => p + 1);
+        setDisplayCount((prev) => prev + BATCH_SIZE);
+      } catch (e) {
+        console.error("Load more failed:", e);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    })();
+  }, [pendingLoadMore, displayCount, unifiedItems.length, filteredDbItems.length, hasMore, movies, getKey, hydrateDbOnly, setIsLoadingMore, fetchMovies, page]);
 
   const toggleGenre = (genreId: number) => {
     setSelectedGenres((prev) => (prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]));
