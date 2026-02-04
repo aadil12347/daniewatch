@@ -182,18 +182,29 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           fetchEntry(id),
         ]);
 
-        // Merge DB data with TMDB data, prioritizing DB fields
+        // Determine if DB entry has active links
+        const hasActiveLinks = dbEntry?.content && (
+          (dbEntry.type === "movie" && (
+            (dbEntry.content as { watch_link?: string }).watch_link?.trim() ||
+            (dbEntry.content as { download_link?: string }).download_link?.trim()
+          )) ||
+          (dbEntry.type === "series" && Object.values(dbEntry.content).some(
+            (s: any) => s.watch_links?.some((l: string) => l?.trim()) || s.download_links?.some((l: string) => l?.trim())
+          ))
+        );
+
+        // Merge DB data with TMDB data, prioritizing DB fields ONLY if entry has active links
         const mergedShow: TVDetailsType = {
           ...showRes,
-          name: dbEntry?.title || showRes.name,
-          overview: dbEntry?.overview || showRes.overview,
-          poster_path: dbEntry?.poster_url || showRes.poster_path,
-          backdrop_path: dbEntry?.backdrop_url || showRes.backdrop_path,
-          vote_average: dbEntry?.vote_average || showRes.vote_average,
-          tagline: dbEntry?.tagline || showRes.tagline,
+          name: (hasActiveLinks && dbEntry?.title) || showRes.name,
+          overview: (hasActiveLinks && dbEntry?.overview) || showRes.overview,
+          poster_path: (hasActiveLinks && dbEntry?.poster_url) || showRes.poster_path,
+          backdrop_path: (hasActiveLinks && dbEntry?.backdrop_url) || showRes.backdrop_path,
+          vote_average: (hasActiveLinks && dbEntry?.vote_average) || showRes.vote_average,
+          tagline: (hasActiveLinks && dbEntry?.tagline) || showRes.tagline,
         };
 
-        if (dbEntry?.genres) {
+        if (hasActiveLinks && dbEntry?.genres) {
           mergedShow.genres = dbEntry.genres;
         }
 
@@ -207,8 +218,8 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
         )) as Movie[];
         setSimilar(filteredSimilar.slice(0, 14));
 
-        // Priority for Logo: DB -> TMDB
-        const dbLogo = dbEntry?.logo_url;
+        // Priority for Logo: DB (if has links) -> TMDB
+        const dbLogo = hasActiveLinks ? dbEntry?.logo_url : null;
         if (dbLogo) {
           setLogoUrl(dbLogo);
         } else {
