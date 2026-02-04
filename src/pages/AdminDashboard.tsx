@@ -121,6 +121,19 @@ const RequestCard = ({
   const navigate = useNavigate();
   const meta = request.request_meta ?? null;
 
+  // Generate poster URL from TMDB
+  const posterUrl = meta?.tmdb_id && meta?.media_type
+    ? `https://image.tmdb.org/t/p/w92/${meta.tmdb_id}`
+    : null;
+
+  const handlePosterClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (meta?.tmdb_id && meta?.media_type) {
+      const path = meta.media_type === 'movie' ? `/movie/${meta.tmdb_id}` : `/tv/${meta.tmdb_id}`;
+      navigate(path, { state: { backgroundLocation: location } });
+    }
+  };
+
   const handleUpdate = async () => {
     setIsUpdating(true);
     await onUpdateStatus(request.id, selectedStatus, adminResponse);
@@ -150,9 +163,44 @@ const RequestCard = ({
                 className="mt-0.5"
               />
             )}
+
+            {/* Poster Thumbnail */}
+            {meta?.tmdb_id && request.request_type !== 'general' && (
+              <div
+                className="relative flex-shrink-0 w-12 h-16 md:w-14 md:h-20 rounded-md overflow-hidden border border-white/10 cursor-pointer hover:border-primary/50 hover:ring-2 hover:ring-primary/20 transition-all group"
+                onClick={handlePosterClick}
+              >
+                {meta.poster_path ? (
+                  <img
+                    src={`https://image.tmdb.org/t/p/w92${meta.poster_path}`}
+                    alt={request.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="92" height="138" viewBox="0 0 92 138"><rect fill="%23333" width="92" height="138"/><text fill="%23666" x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="10">No Poster</text></svg>';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-black/50 flex items-center justify-center">
+                    <Film className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-[8px] text-white font-medium">View</span>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-1 py-0.5">
+                  <span className="text-[8px] text-primary font-mono">{meta.tmdb_id}</span>
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1">
                 <h3 className="text-lg font-semibold truncate text-white">{request.title}</h3>
+                {meta?.tmdb_id && (
+                  <Badge variant="outline" className="text-[10px] border-primary/30 text-primary font-mono">
+                    #{meta.tmdb_id}
+                  </Badge>
+                )}
                 {getStatusBadge(request.status)}
                 {request.is_hidden_from_user && (
                   <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-500">Hidden from User</Badge>

@@ -8,6 +8,12 @@ export interface ChatMessage {
     sender_role: 'user' | 'admin';
     content: string;
     created_at: string;
+    // Edit/Delete tracking fields
+    is_deleted?: boolean;
+    deleted_at?: string | null;
+    is_edited?: boolean;
+    edited_at?: string | null;
+    original_content?: string | null;
 }
 
 export const useChat = (requestId: string) => {
@@ -39,7 +45,7 @@ export const useChat = (requestId: string) => {
 
         fetchMessages();
 
-        // Subscribe to changes
+        // Subscribe to changes (INSERT, UPDATE, DELETE)
         const channel = supabase
             .channel(`chat:${requestId}`)
             .on(
@@ -52,6 +58,20 @@ export const useChat = (requestId: string) => {
                 },
                 (payload) => {
                     setMessages((prev) => [...prev, payload.new as ChatMessage]);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'request_messages',
+                    filter: `request_id=eq.${requestId}`,
+                },
+                (payload) => {
+                    setMessages((prev) =>
+                        prev.map(msg => msg.id === payload.new.id ? payload.new as ChatMessage : msg)
+                    );
                 }
             )
             .subscribe();
@@ -78,10 +98,81 @@ export const useChat = (requestId: string) => {
         }
     };
 
+    const editMessage = async (messageId: string, newContent: string) => {
+        if (!user || !newContent.trim()) return { error: new Error('Invalid input') };
+
+        // Get the original message first
+        const originalMessage = messages.find(m => m.id === messageId);
+        if (!originalMessage) return { error: new Error('Message not found') };
+
+        // Store original content only on first edit
+        const originalToStore = originalMessage.original_content || originalMessage.content;
+
+        const { error } = await supabase
+            .from('request_messages')
+            .update({
+                content: newContent.trim(),
+                is_edited: true,
+                edited_at: new Date().toISOString(),
+                original_content: originalToStore,
+            })
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('Error editing message:', error);
+            return { error };
+        }
+
+        // Update local state
+        setMessages((prev) =>
+            prev.map(msg => msg.id === messageId
+                ? {
+                    ...msg,
+                    content: newContent.trim(),
+                    is_edited: true,
+                    edited_at: new Date().toISOString(),
+                    original_content: originalToStore
+                }
+                : msg
+            )
+        );
+
+        return { error: null };
+    };
+
+    const deleteMessage = async (messageId: string) => {
+        if (!user) return { error: new Error('Not authenticated') };
+
+        const { error } = await supabase
+            .from('request_messages')
+            .update({
+                is_deleted: true,
+                deleted_at: new Date().toISOString(),
+            })
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('Error deleting message:', error);
+            return { error };
+        }
+
+        // Update local state
+        setMessages((prev) =>
+            prev.map(msg => msg.id === messageId
+                ? { ...msg, is_deleted: true, deleted_at: new Date().toISOString() }
+                : msg
+            )
+        );
+
+        return { error: null };
+    };
+
     return {
         messages,
         loading,
         error,
         sendMessage,
+        editMessage,
+        deleteMessage,
     };
 };

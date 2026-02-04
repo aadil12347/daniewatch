@@ -51,6 +51,7 @@ export const useRequests = () => {
     message: string;
     tmdb_id?: string;
     media_type?: 'movie' | 'tv';
+    poster_path?: string;
   }) => {
     if (!user || !isSupabaseConfigured) return { error: new Error('Not authenticated') };
 
@@ -78,6 +79,7 @@ export const useRequests = () => {
           request_id: newRequest.id,
           tmdb_id: data.tmdb_id,
           media_type: data.media_type,
+          poster_path: data.poster_path || null,
         });
         if (metaError) console.error('Error saving request_meta:', metaError);
       }

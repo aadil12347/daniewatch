@@ -19,6 +19,7 @@ export interface UserRole {
 export type RequestMeta = {
   tmdb_id: string;
   media_type: 'movie' | 'tv';
+  poster_path?: string | null;
 };
 
 type AdminRequestRow = {
@@ -105,7 +106,7 @@ export const useAdmin = () => {
     try {
       const { data, error } = await supabase
         .from('requests')
-        .select('*, request_meta ( tmdb_id, media_type )')
+        .select('*, request_meta ( tmdb_id, media_type, poster_path )')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
