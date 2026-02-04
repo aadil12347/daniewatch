@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useEntries } from "@/hooks/useEntries";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedia } from "@/contexts/MediaContext";
@@ -164,6 +165,8 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
     }
   }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin]);
 
+  const { fetchEntry } = useEntries();
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -171,27 +174,48 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
       setIsLoading(true);
 
       try {
-        const [showRes, creditsRes, similarRes, imagesRes] = await Promise.all([
+        const [showRes, creditsRes, similarRes, imagesRes, dbEntry] = await Promise.all([
           getTVDetails(Number(id)),
           getTVCredits(Number(id)),
           getSimilarTV(Number(id)),
           getTVImages(Number(id)),
+          fetchEntry(id),
         ]);
 
-        setShow(showRes);
+        // Merge DB data with TMDB data, prioritizing DB fields
+        const mergedShow: TVDetailsType = {
+          ...showRes,
+          name: dbEntry?.title || showRes.name,
+          overview: dbEntry?.overview || showRes.overview,
+          poster_path: dbEntry?.poster_url || showRes.poster_path,
+          backdrop_path: dbEntry?.backdrop_url || showRes.backdrop_path,
+          vote_average: dbEntry?.vote_average || showRes.vote_average,
+          tagline: dbEntry?.tagline || showRes.tagline,
+        };
+
+        if (dbEntry?.genres) {
+          mergedShow.genres = dbEntry.genres;
+        }
+
+        setShow(mergedShow);
         setCast(creditsRes.cast.slice(0, 12));
 
         // Filter similar shows with strict certification check
-        const filteredSimilar = await filterAdultContentStrict(
+        const filteredSimilar = (await filterAdultContentStrict(
           similarRes.results.map((s) => ({ ...s, media_type: "tv" as const })),
           "tv"
-        );
+        )) as Movie[];
         setSimilar(filteredSimilar.slice(0, 14));
 
-        // Get the first English logo or any available logo
-        const logo = imagesRes.logos?.find((l) => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
-        if (logo) {
-          setLogoUrl(getImageUrl(logo.file_path, "w500"));
+        // Priority for Logo: DB -> TMDB
+        const dbLogo = dbEntry?.logo_url;
+        if (dbLogo) {
+          setLogoUrl(dbLogo);
+        } else {
+          const logo = imagesRes.logos?.find((l) => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
+          if (logo) {
+            setLogoUrl(getImageUrl(logo.file_path, "w500"));
+          }
         }
 
         // Check if this show has a custom episode group
@@ -276,11 +300,11 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
 
   const handleSeasonChange = async (partOrSeasonNumber: number) => {
     if (!id || partOrSeasonNumber === selectedSeason) return;
-    
+
     setSelectedSeason(partOrSeasonNumber);
     setIsLoadingEpisodes(true);
     setEpisodeSearch("");
-    
+
     try {
       if (useEpisodeGroups && episodeGroups) {
         // Use episode groups (Parts)
@@ -392,7 +416,7 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
     (v) => v.type === "Trailer" && v.site === "YouTube"
   );
   const trailerKey = trailer?.key || null;
-  
+
   // Get valid seasons (usually season 0 is specials)
   const validSeasons = show.seasons?.filter(s => s.season_number > 0) || [];
 
@@ -404,11 +428,11 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
+
 
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
-          <div className="relative">
+        <div className="relative">
           <div
             ref={heroRef}
             className="relative h-[70vh] md:h-[calc(100vh-var(--app-header-offset))] md:min-h-[640px]"

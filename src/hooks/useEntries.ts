@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -79,7 +80,7 @@ export const useEntries = () => {
   const { toast } = useToast();
 
   // Fetch single entry by TMDB ID
-  const fetchEntry = async (id: string): Promise<EntryData | null> => {
+  const fetchEntry = useCallback(async (id: string): Promise<EntryData | null> => {
     try {
       const { data, error } = await supabase
         .from("entries")
@@ -100,10 +101,10 @@ export const useEntries = () => {
       console.error("Error fetching entry:", error);
       return null;
     }
-  };
+  }, []);
 
   // Save movie entry
-  const saveMovieEntry = async (
+  const saveMovieEntry = useCallback(async (
     id: string,
     watchLink: string,
     downloadLink: string,
@@ -154,10 +155,10 @@ export const useEntries = () => {
       });
       return { success: false, error: error.message };
     }
-  };
+  }, [toast]);
 
   // Save series season entry (upsert)
-  const saveSeriesSeasonEntry = async (
+  const saveSeriesSeasonEntry = useCallback(async (
     id: string,
     season: number,
     watchLinks: string[],
@@ -228,10 +229,10 @@ export const useEntries = () => {
       });
       return { success: false, error: error.message };
     }
-  };
+  }, [fetchEntry, toast]);
 
   // Delete entire entry
-  const deleteEntry = async (id: string): Promise<{ success: boolean; error?: string }> => {
+  const deleteEntry = useCallback(async (id: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error } = await supabase
         .from("entries")
@@ -255,23 +256,23 @@ export const useEntries = () => {
       });
       return { success: false, error: error.message };
     }
-  };
+  }, [toast]);
 
   // Delete single season from series
-  const deleteSeasonFromEntry = async (
+  const deleteSeasonFromEntry = useCallback(async (
     id: string,
     season: number
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const existing = await fetchEntry(id);
-      
+
       if (!existing || existing.type !== "series") {
         return { success: false, error: "Entry not found or not a series" };
       }
 
       const content = existing.content as SeriesContent;
       const seasonKey = `season_${season}`;
-      
+
       if (!content[seasonKey]) {
         return { success: false, error: "Season not found" };
       }
@@ -280,7 +281,7 @@ export const useEntries = () => {
 
       // Check if any seasons remain
       const remainingSeasons = Object.keys(content).filter(k => k.startsWith("season_"));
-      
+
       if (remainingSeasons.length === 0) {
         // Delete entire entry if no seasons remain
         return deleteEntry(id);
@@ -308,7 +309,7 @@ export const useEntries = () => {
       });
       return { success: false, error: error.message };
     }
-  };
+  }, [fetchEntry, deleteEntry, toast]);
 
   return {
     fetchEntry,

@@ -112,16 +112,26 @@ export const useDbManifest = () => {
       const storage = getCacheStorage();
       const cacheKey = getCacheKey();
 
-      // For admin: always use sessionStorage (fresh per browser session)
-      // For user: check session flag, refresh if new session
       let forceFreshLoad = false;
+      // Persistent session management: 
+      // Treat session as "new" only if inactive for > 4 hours OR if it's the very first visit.
       if (!isAdminSession) {
+        const lastActive = parseInt(localStorage.getItem("dw_last_active") || "0", 10);
+        const now = Date.now();
+        const FOUR_HOURS = 4 * 60 * 60 * 1000;
+
         const sessionChecked = sessionStorage.getItem(SESSION_CHECK_KEY);
-        if (!sessionChecked) {
-          // New user session - clear old cache and force a wait for fresh fetch
+
+        // If it's a new browser session AND we've been inactive for a long time, force fresh fetch.
+        // If it's just a focus regain or a short sleep, keep the cache.
+        if (!sessionChecked && (now - lastActive > FOUR_HOURS)) {
+          console.log("[useDbManifest] Long inactivity detected - clearing cache for fresh session");
           localStorage.removeItem(USER_CACHE_KEY);
           sessionStorage.setItem(SESSION_CHECK_KEY, "1");
           forceFreshLoad = true;
+        } else if (!sessionChecked) {
+          // Mark session checked so we don't repeat the long-inactivity check in this tab instance
+          sessionStorage.setItem(SESSION_CHECK_KEY, "1");
         }
       }
 
@@ -161,8 +171,16 @@ export const useDbManifest = () => {
 
     load();
 
+    // Listen for background refresh events from SessionCacheManager
+    const handleBackgroundRefresh = () => {
+      console.log("[useDbManifest] Background refresh triggered via event");
+      void fetchManifest();
+    };
+    window.addEventListener("manifest:background-refresh", handleBackgroundRefresh);
+
     return () => {
       mounted = false;
+      window.removeEventListener("manifest:background-refresh", handleBackgroundRefresh);
     };
   }, [isAdminSession]);
 

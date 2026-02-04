@@ -21,7 +21,6 @@ export function GlobalRouteLoader() {
   const MAX_VISIBLE_MS = 10000;
   const FADE_OUT_MS = 200;
 
-  const [inflight, setInflight] = useState(0);
   const [routePending, setRoutePending] = useState(false);
   const [docPending, setDocPending] = useState(() => document.readyState !== "complete");
 

@@ -187,7 +187,10 @@ export function ManifestUpdateTool() {
       localStorage.removeItem("db_manifest_cache");
       sessionStorage.removeItem("admin_db_manifest_cache");
       sessionStorage.removeItem("manifest_session_checked");
-      sessionStorage.removeItem("db_manifest_cache"); // Just in case it's in sessionStorage too
+      sessionStorage.removeItem("db_manifest_cache");
+
+      // Trigger background refetch in all active tabs
+      window.dispatchEvent(new CustomEvent("manifest:background-refresh"));
 
       // Invalidate availability cache so admin dots update immediately
       queryClient.invalidateQueries({ queryKey: ["entry-availability"] });

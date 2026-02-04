@@ -19,6 +19,7 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedia } from "@/contexts/MediaContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useEntries } from "@/hooks/useEntries";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import {
   getMovieDetails,
@@ -117,6 +118,8 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
     }
   }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin]);
 
+  const { fetchEntry } = useEntries();
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -124,27 +127,49 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
       setIsLoading(true);
 
       try {
-        const [movieRes, creditsRes, similarRes, imagesRes] = await Promise.all([
+        const [movieRes, creditsRes, similarRes, imagesRes, dbEntry] = await Promise.all([
           getMovieDetails(Number(id)),
           getMovieCredits(Number(id)),
           getSimilarMovies(Number(id)),
           getMovieImages(Number(id)),
+          fetchEntry(id),
         ]);
 
-        setMovie(movieRes);
+        // Merge DB data with TMDB data, prioritizing DB fields
+        const mergedMovie: MovieDetailsType = {
+          ...movieRes,
+          title: dbEntry?.title || movieRes.title,
+          overview: dbEntry?.overview || movieRes.overview,
+          poster_path: dbEntry?.poster_url || movieRes.poster_path,
+          backdrop_path: dbEntry?.backdrop_url || movieRes.backdrop_path,
+          vote_average: dbEntry?.vote_average || movieRes.vote_average,
+          tagline: dbEntry?.tagline || movieRes.tagline,
+          runtime: dbEntry?.runtime || movieRes.runtime,
+        };
+
+        if (dbEntry?.genres) {
+          mergedMovie.genres = dbEntry.genres;
+        }
+
+        setMovie(mergedMovie);
         setCast(creditsRes.cast.slice(0, 12));
 
         // Filter similar movies with strict certification check
-        const filteredSimilar = await filterAdultContentStrict(
+        const filteredSimilar = (await filterAdultContentStrict(
           similarRes.results.map((m) => ({ ...m, media_type: "movie" as const })),
           "movie"
-        );
+        )) as Movie[];
         setSimilar(filteredSimilar.slice(0, 14));
 
-        // Get the first English logo or any available logo
-        const logo = imagesRes.logos?.find((l) => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
-        if (logo) {
-          setLogoUrl(getImageUrl(logo.file_path, "w500"));
+        // Priority for Logo: DB -> TMDB
+        const dbLogo = dbEntry?.logo_url;
+        if (dbLogo) {
+          setLogoUrl(dbLogo);
+        } else {
+          const logo = imagesRes.logos?.find((l) => l.iso_639_1 === 'en') || imagesRes.logos?.[0];
+          if (logo) {
+            setLogoUrl(getImageUrl(logo.file_path, "w500"));
+          }
         }
 
         // Check for media links (Supabase -> Blogger -> fallback)
@@ -159,7 +184,7 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
 
     fetchData();
     if (!modal) window.scrollTo(0, 0);
-  }, [id, blockedForUser, modal]);
+  }, [id, blockedForUser, modal, fetchEntry]);
 
   if (isLoading) {
     return (
@@ -218,11 +243,11 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        
+
 
 
         {/* Hero Section - Full viewport height on desktop, shorter on mobile */}
-          <div className="relative">
+        <div className="relative">
           <div
             ref={heroRef}
             className="relative h-[70vh] md:h-[calc(100vh-var(--app-header-offset))] md:min-h-[640px]"

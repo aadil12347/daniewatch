@@ -31,15 +31,43 @@ export function useSessionCacheManager() {
     }
 
     // 2. Persistent Session:
-    // We NO LONGER clear localStorage just because sessionStorage is empty.
-    // This allows data to survive tab close/minimize on mobile.
+    // Update a "last active" timestamp in localStorage whenever the tab is visible.
+    // This allows us to track "sessions" without relying on sessionStorage which can be cleared by OS.
+    const updateSessionRef = () => {
+      localStorage.setItem("dw_last_active", Date.now().toString());
+    };
 
-    // 3. Admin Bypass:
-    // If we are in an admin session, we might want to hint to the app to force-fresh
-    // (This is mostly handled by useAdmin and useRequests checking the flag)
+    updateSessionRef();
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        updateSessionRef();
+      }
+    });
+
+    // 3. Background Invalidation:
+    // Check if we need to trigger a background manifest refresh (older than 30 mins)
+    const checkBackgroundRefresh = () => {
+      const MANIFEST_CACHE_KEY = "db_manifest_cache";
+      const cached = localStorage.getItem(MANIFEST_CACHE_KEY);
+      if (cached) {
+        try {
+          const { timestamp } = JSON.parse(cached);
+          const age = Date.now() - timestamp;
+          const THIRTY_MINS = 30 * 60 * 1000;
+
+          if (age > THIRTY_MINS) {
+            console.log("[CacheManager] Manifest stale in background - triggering refresh");
+            window.dispatchEvent(new CustomEvent("manifest:background-refresh"));
+          }
+        } catch { /* ignore */ }
+      }
+    };
+
+    checkBackgroundRefresh();
+
+    // 4. Admin Bypass:
     const isAdmin = sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
     if (isAdmin) {
-      // Ensure we don't rely on potentially stale user caches
       console.log("[CacheManager] Admin session active - enforcing fresh data fetch");
     }
 
