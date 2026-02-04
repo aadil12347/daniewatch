@@ -115,7 +115,43 @@ const RequestCard = ({
   const [selectedStatus, setSelectedStatus] = useState(request.status);
   const [adminResponse, setAdminResponse] = useState(request.admin_response || '');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const [isOpen, setIsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread messages (FROM USER)
+  useEffect(() => {
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from('request_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('request_id', request.id)
+        .eq('sender_role', 'user') // Admin needs to see unread messages from USER
+        .is('read_at', null);
+
+      setUnreadCount(count || 0);
+    };
+
+    fetchUnread();
+
+    const channel = supabase
+      .channel(`unread_admin:${request.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'request_messages',
+          filter: `request_id=eq.${request.id}`,
+        },
+        () => fetchUnread()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [request.id, isOpen]);
 
   const location = useLocation();
   const navigate = useNavigate();
