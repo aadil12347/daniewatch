@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useChat, ChatMessage } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, User, Shield, Pencil, Trash2, X, Check, CheckCheck } from 'lucide-react';
+import { Send, User, Shield, Pencil, Trash2, X, Check, CheckCheck, Loader2 } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -279,18 +279,15 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy, className }: C
     };
 
     return (
-        <div className={cn("chat-window-animate flex flex-col h-[450px] md:h-[500px] border border-white/10 rounded-xl bg-black/40 overflow-hidden backdrop-blur-md shadow-2xl ring-1 ring-white/5", className)}>
-            {/* Header / Info Bar could go here if needed, simplified for now to keep focus on messages */}
-
+        <div className={cn("chat-window-animate flex flex-col h-full border border-white/10 rounded-xl bg-black/40 overflow-hidden backdrop-blur-md shadow-2xl ring-1 ring-white/5", className)}>
             {/* Messages Area - Flexible height, scrollable */}
-            <div className="flex-1 overflow-hidden relative bg-black/40 backdrop-blur-sm">
-                {/* Optional subtle background pattern can be added here */}
+            <div className="flex-1 overflow-hidden relative bg-black/20 backdrop-blur-sm">
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
                     backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
-                    backgroundSize: '20px 20px'
+                    backgroundSize: '24px 24px'
                 }}></div>
                 <ScrollArea className="h-full w-full pr-0 chat-scrollbar">
-                    <div className="p-3 md:p-5 flex flex-col justify-end min-h-full">
+                    <div className="p-4 md:p-6 flex flex-col justify-end min-h-full">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
                                 <div className="flex items-center gap-1.5">
@@ -298,65 +295,67 @@ export const ChatWindow = ({ requestId, role, isClosed, closedBy, className }: C
                                     <span className="chat-loading-dot w-2 h-2 bg-primary/80" style={{ animationDelay: "0.2s" }}></span>
                                     <span className="chat-loading-dot w-2 h-2 bg-primary/80" style={{ animationDelay: "0.4s" }}></span>
                                 </div>
-                                <span className="text-xs uppercase tracking-widest opacity-70">Loading History</span>
+                                <span className="text-[10px] uppercase tracking-[0.2em] opacity-70">Securing Connection</span>
                             </div>
                         ) : messages.length === 0 ? (
                             <div className="flex flex-col items-center justify-center flex-1 py-20 text-muted-foreground opacity-50 select-none">
-                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                                    <Send className="w-6 h-6 opacity-30 ml-1" />
+                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6 shadow-inset">
+                                    <Send className="w-6 h-6 opacity-20 ml-1" />
                                 </div>
-                                <p className="text-sm font-medium">No messages yet</p>
-                                <p className="text-xs mt-1">Start the conversation below</p>
+                                <p className="text-sm font-semibold tracking-wide">No messages yet</p>
+                                <p className="text-xs mt-2 opacity-60">Your workspace is ready for collaboration.</p>
                             </div>
                         ) : (
-                            <div className="flex flex-col">
+                            <div className="flex flex-col pb-4">
                                 {messages.map((msg, index) => renderMessage(msg, index, index > 0 ? messages[index - 1] : null))}
-                                <div ref={scrollRef} className="h-2" />
+                                <div ref={scrollRef} className="h-4" />
                             </div>
                         )}
                     </div>
                 </ScrollArea>
             </div>
 
-            {/* Input Area - Fixed at bottom */}
-            <div className="p-3 md:p-4 bg-[#1a1a1a] border-t border-white/10 z-20 shadow-[0_-5px_15px_rgba(0,0,0,0.3)]">
+            {/* Input Area - Fixed at bottom, handles mobile keyboard better */}
+            <div className="p-3 md:p-4 bg-[#0a0a0a]/80 border-t border-white/10 z-20 backdrop-blur-xl shadow-[0_-8px_30px_rgba(0,0,0,0.5)]">
                 {isClosed ? (
-                    <div className="text-center text-xs md:text-sm text-muted-foreground py-3 flex items-center justify-center gap-2 bg-white/5 rounded-lg border border-dashed border-white/10">
-                        <Shield className="w-4 h-4 text-destructive" />
-                        <span>Chat closed by {closedBy === 'admin' ? 'Admin' : 'User'}</span>
+                    <div className="text-center text-xs md:text-sm text-muted-foreground py-4 flex items-center justify-center gap-3 bg-white/5 rounded-2xl border border-dashed border-white/10 px-4">
+                        <Shield className="w-4 h-4 text-destructive opacity-80" />
+                        <span className="font-medium">Secure transcript finalized by {closedBy === 'admin' ? 'Admin' : 'User'}</span>
                     </div>
                 ) : (
-                    <form onSubmit={handleSend} className="flex gap-3 items-end">
-                        <Input
-                            ref={inputRef}
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Type a message..."
-                            className="flex-1 bg-black/20 border-white/10 focus-visible:ring-primary/50 text-sm min-h-[44px] py-3 rounded-xl chat-input-glow transition-all"
-                            disabled={isSending}
-                            autoComplete="off"
-                        />
+                    <form onSubmit={handleSend} className="flex gap-3 items-end max-w-4xl mx-auto w-full">
+                        <div className="flex-1 relative group">
+                            <Input
+                                ref={inputRef}
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                placeholder="Write a response..."
+                                className="w-full bg-white/5 border-white/10 focus-visible:ring-primary/40 focus-visible:border-primary/40 text-sm py-6 px-5 rounded-2xl chat-input-glow transition-all duration-300 placeholder:opacity-40"
+                                disabled={isSending}
+                                autoComplete="off"
+                            />
+                        </div>
                         <Button
                             type="submit"
                             size="icon"
                             disabled={isSending || !newMessage.trim()}
                             className={cn(
-                                "h-11 w-11 rounded-xl shadow-lg transition-all duration-300 flex-shrink-0",
-                                newMessage.trim() ? "bg-primary hover:bg-primary/90 scale-100" : "bg-white/10 hover:bg-white/20 scale-95 opacity-70"
+                                "h-[52px] w-[52px] rounded-2xl shadow-2xl transition-all duration-500 flex-shrink-0 border border-white/5",
+                                newMessage.trim()
+                                    ? "bg-primary hover:bg-primary/90 scale-100 hover:shadow-primary/20 rotate-0"
+                                    : "bg-white/5 hover:bg-white/10 scale-95 opacity-50 grayscale"
                             )}
                         >
                             {isSending ? (
-                                <div className="flex items-center justify-center gap-0.5">
-                                    <span className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                                    <span className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                                    <span className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                                </div>
+                                <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
-                                <Send className={cn("w-5 h-5", newMessage.trim() ? "translate-x-0.5" : "")} />
+                                <Send className={cn("w-5 h-5 transition-transform duration-300", newMessage.trim() ? "translate-x-0.5 -translate-y-0.5" : "")} />
                             )}
                         </Button>
                     </form>
                 )}
+                {/* Visual height buffer for mobile virtual keyboards */}
+                <div className="h-safe-area-inset-bottom sm:hidden" />
             </div>
         </div>
     );

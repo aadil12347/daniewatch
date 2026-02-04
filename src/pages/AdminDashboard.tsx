@@ -68,6 +68,7 @@ import {
   ChevronDown,
   Film,
   Tv,
+  ArrowLeft,
 } from "lucide-react";
 
 
@@ -115,32 +116,44 @@ const RequestCard = ({
   showCheckbox: boolean;
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
-
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(request.status);
   const [adminResponse, setAdminResponse] = useState(request.admin_response || '');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [lastMessages, setLastMessages] = useState<any[]>([]);
 
-  // Fetch unread messages (FROM USER)
+  // Fetch unread messages & last 2 messages
   useEffect(() => {
-    const fetchUnread = async () => {
+    const fetchChatData = async () => {
+      // Fetch unread
       const { count } = await supabase
         .from('request_messages')
         .select('*', { count: 'exact', head: true })
         .eq('request_id', request.id)
-        .eq('sender_role', 'user') // Admin needs to see unread messages from USER
+        .eq('sender_role', 'user')
         .is('read_at', null);
 
       setUnreadCount(count || 0);
+
+      // Fetch last 2 messages
+      const { data: messages } = await supabase
+        .from('request_messages')
+        .select('content, sender_role, created_at')
+        .eq('request_id', request.id)
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      if (messages) {
+        setLastMessages([...messages].reverse());
+      }
     };
 
-    fetchUnread();
+    fetchChatData();
 
     const channel = supabase
-      .channel(`unread_admin:${request.id}`)
+      .channel(`chat_updates_admin:${request.id}`)
       .on(
         'postgres_changes',
         {
@@ -149,7 +162,7 @@ const RequestCard = ({
           table: 'request_messages',
           filter: `request_id=eq.${request.id}`,
         },
-        () => fetchUnread()
+        () => fetchChatData()
       )
       .subscribe();
 
@@ -161,11 +174,6 @@ const RequestCard = ({
   const location = useLocation();
   const navigate = useNavigate();
   const meta = request.request_meta ?? null;
-
-  // Generate poster URL from TMDB
-  const posterUrl = meta?.tmdb_id && meta?.media_type
-    ? `https://image.tmdb.org/t/p/w92/${meta.tmdb_id}`
-    : null;
 
   const handlePosterClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -189,9 +197,16 @@ const RequestCard = ({
   };
 
   return (
-    <div className={`chat-card-glow transition-all duration-300 border rounded-xl overflow-hidden ${isSelected ? "ring-2 ring-primary border-primary/50" : "border-white/10"}`}>
+    <div className={cn(
+      "chat-card-glow transition-all duration-300 border rounded-xl overflow-hidden group",
+      isSelected ? "ring-2 ring-primary border-primary/50" : "border-white/10"
+    )}>
       <div
-        className={`bg-black/40 backdrop-blur-md p-4 cursor-pointer hover:bg-white/5 transition-colors ${isOpen ? 'bg-white/5' : ''} ${!request.is_read ? 'ring-1 ring-cinema-red/50 bg-cinema-red/5' : ''}`}
+        className={cn(
+          "bg-black/40 backdrop-blur-md p-4 cursor-pointer hover:bg-white/5 transition-colors",
+          isOpen && "bg-white/5",
+          !request.is_read && "ring-1 ring-cinema-red/50 bg-cinema-red/5"
+        )}
         onClick={() => {
           setIsOpen(true);
           if (!request.is_read) {
@@ -199,97 +214,116 @@ const RequestCard = ({
           }
         }}
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            {showCheckbox && (
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={onSelectChange}
-                onClick={(e) => e.stopPropagation()}
-                className="mt-0.5"
-              />
-            )}
+        <div className="flex items-start gap-4">
+          {/* Status on the left most side */}
+          <div className="flex-shrink-0 pt-0.5">
+            {getStatusBadge(request.status)}
+          </div>
 
-            {/* Poster Thumbnail */}
-            {meta?.tmdb_id && request.request_type !== 'general' && (
-              <div
-                className="relative flex-shrink-0 w-12 h-16 md:w-14 md:h-20 rounded-md overflow-hidden border border-white/10 cursor-pointer hover:border-primary/50 hover:ring-2 hover:ring-primary/20 transition-all group"
-                onClick={handlePosterClick}
-              >
-                {meta.poster_path ? (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w92${meta.poster_path}`}
-                    alt={request.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="92" height="138" viewBox="0 0 92 138"><rect fill="%23333" width="92" height="138"/><text fill="%23666" x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="10">No Poster</text></svg>';
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-black/50 flex items-center justify-center">
-                    <Film className="w-5 h-5 text-muted-foreground" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-start gap-3">
+              {showCheckbox && (
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={onSelectChange}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1"
+                />
+              )}
+
+              {/* Poster Thumbnail */}
+              {meta?.tmdb_id && request.request_type !== 'general' && (
+                <div
+                  className="relative flex-shrink-0 w-10 h-14 md:w-12 md:h-16 rounded overflow-hidden border border-white/10 cursor-pointer hover:border-primary/50 hover:ring-2 hover:ring-primary/20 transition-all group/poster"
+                  onClick={handlePosterClick}
+                >
+                  {meta.poster_path ? (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w92${meta.poster_path}`}
+                      alt={request.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-black/50 flex items-center justify-center">
+                      <Film className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/poster:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-[8px] text-white font-medium uppercase tracking-tighter">View</span>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="text-[8px] text-white font-medium">View</span>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-black/80 px-1 py-0.5">
-                  <span className="text-[8px] text-primary font-mono">{meta.tmdb_id}</span>
-                </div>
-              </div>
-            )}
+              )}
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-1">
-                <h3 className="text-lg font-semibold truncate text-white">{request.title}</h3>
-                {meta?.tmdb_id && (
-                  <Badge variant="outline" className="text-[10px] border-primary/30 text-primary font-mono">
-                    #{meta.tmdb_id}
-                  </Badge>
-                )}
-                {getStatusBadge(request.status)}
-                {request.is_hidden_from_user && (
-                  <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-500">Hidden from User</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  {request.request_type === 'movie' ? <Film className="w-3 h-3" /> : request.request_type === 'tv_season' ? <Tv className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                  {request.request_type === 'movie' && 'Movie'}
-                  {request.request_type === 'tv_season' && `Season ${request.season_number}`}
-                  {request.request_type === 'general' && 'General'}
-                </span>
-                <span>•</span>
-                <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
-                {request.user_email && (
-                  <>
-                    <span>•</span>
-                    <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {request.user_email}</span>
-                  </>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-base md:text-lg font-bold text-white truncate leading-tight">{request.title}</h3>
+                      {meta?.tmdb_id && (
+                        <Badge variant="outline" className="text-[10px] border-primary/30 text-primary font-mono select-none px-1.5 py-0">
+                          #{meta.tmdb_id}
+                        </Badge>
+                      )}
+                      {request.is_hidden_from_user && (
+                        <Badge variant="outline" className="text-[9px] border-yellow-500/50 text-yellow-500 uppercase tracking-tighter">Hidden</Badge>
+                      )}
+                    </div>
+
+                    <div className="flex items-center flex-wrap gap-2 text-[10px] md:text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5 font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 truncate">
+                        {request.request_type === 'movie' ? <Film className="w-3 h-3" /> : request.request_type === 'tv_season' ? <Tv className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                        {request.request_type === 'movie' && 'Movie'}
+                        {request.request_type === 'tv_season' && `Season ${request.season_number}`}
+                        {request.request_type === 'general' && 'General'}
+                      </span>
+                      <span className="text-gray-700">•</span>
+                      <span className="truncate">{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
+                      {request.user_email && (
+                        <>
+                          <span className="text-gray-700">•</span>
+                          <span className="flex items-center gap-1 opacity-70 truncate max-w-[150px]"><Users className="w-3 h-3" /> {request.user_email}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {!isOpen && unreadCount > 0 && (
+                      <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                        <span className="text-[10px] font-bold text-red-400 whitespace-nowrap">
+                          {unreadCount} new
+                        </span>
+                      </div>
+                    )}
+                    <ChevronDown className="w-4 h-4 text-gray-600 transition-transform group-hover:text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Chat Preview (Last 2 Messages) */}
+                {lastMessages.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5">
+                    {lastMessages.map((msg, i) => (
+                      <div key={i} className="flex items-start gap-2 text-[11px] md:text-xs text-muted-foreground min-w-0">
+                        <span className={cn(
+                          "font-bold uppercase tracking-wider flex-shrink-0",
+                          msg.sender_role === 'admin' ? "text-cinema-red" : "text-blue-500"
+                        )}>
+                          {msg.sender_role === 'admin' ? 'You:' : 'User:'}
+                        </span>
+                        <p className="truncate opacity-80 leading-relaxed">{msg.content}</p>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Unread Indicator - Red Dot */}
-            {!isOpen && unreadCount > 0 && (
-              <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                </span>
-                <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-full border border-red-500/20">
-                  {unreadCount} new
-                </span>
-              </div>
-            )}
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground relative">
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          </div>
         </div>
       </div>
-
 
       <Dialog open={isOpen} onOpenChange={(open) => {
         setIsOpen(open);
@@ -297,179 +331,188 @@ const RequestCard = ({
           if (!request.is_read) {
             onMarkAsSeen(request.id);
           }
-          // specific requirement: if completed and admin opens chat, move to pending
           if (request.status === 'completed') {
             onUpdateStatus(request.id, 'pending', request.admin_response);
           }
         }
       }}>
-        <DialogContent className="max-w-3xl w-[95vw] h-[90vh] md:h-auto md:max-h-[90vh] p-0 gap-0 bg-black/95 border-white/10 backdrop-blur-xl flex flex-col overflow-hidden">
-          <DialogHeader className="p-4 border-b border-white/10 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <DialogTitle className="text-lg font-semibold text-white truncate max-w-[70%]">
-                {request.title}
-              </DialogTitle>
-              {getStatusBadge(request.status)}
+        <DialogContent className="max-w-3xl w-full h-[100dvh] sm:h-[90vh] md:max-h-[90vh] p-0 gap-0 bg-black/95 border-white/10 backdrop-blur-xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200">
+          <DialogHeader className="p-4 border-b border-white/10 flex-shrink-0 bg-black/40 backdrop-blur-md sticky top-0 z-50">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 sm:hidden flex-shrink-0 -ml-1 text-gray-400 hover:text-white"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <div className="flex flex-col min-w-0">
+                  <DialogTitle className="text-base sm:text-lg font-bold text-white truncate pr-2">
+                    {request.title}
+                  </DialogTitle>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(request.status)}
+                    <span className="text-[10px] text-gray-400">•</span>
+                    <span className="text-[10px] text-gray-500 font-medium">{request.user_email}</span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden sm:flex"
+                onClick={() => setIsOpen(false)}
+              >
+                <XCircle className="w-5 h-5" />
+              </Button>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col min-h-0 bg-black/20">
-            <div className="space-y-2 mb-4">
-              <h4 className="text-sm font-medium text-muted-foreground">User Message</h4>
-              <div className="p-3 rounded-lg bg-white/5 text-sm leading-relaxed">
-                {request.message}
-              </div>
-            </div>
-
-            {request.admin_response && (
-              <div className="space-y-2 mb-4">
-                <h4 className="text-sm font-medium text-primary">Your Response</h4>
-                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm leading-relaxed">
-                  {request.admin_response}
+          <div className="flex-1 overflow-y-auto flex flex-col min-h-0 bg-black/20">
+            <div className="p-4 space-y-6">
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Initial User Message</h4>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-sm leading-relaxed shadow-inner">
+                  {request.message}
                 </div>
               </div>
-            )}
 
-            {/* Chat Window */}
-            <div className="flex-1 min-h-0 flex flex-col mb-4">
-              <h4 className="text-xs md:text-sm font-medium text-muted-foreground mb-2 md:mb-3">Chat with User</h4>
-              <ChatWindow
-                requestId={request.id}
-                role="admin"
-                isClosed={!!request.closed_by}
-                closedBy={request.closed_by}
-                className="h-full border-0 rounded-none bg-transparent shadow-none"
-              />
+              {request.admin_response && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Your Stored Response</h4>
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm leading-relaxed shadow-sm">
+                    {request.admin_response}
+                  </div>
+                </div>
+              )}
+
+              <div className="h-px bg-white/5 my-4" />
+
+              <div className="flex-1 min-h-0 flex flex-col">
+                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4">Chat History</h4>
+                <ChatWindow
+                  requestId={request.id}
+                  role="admin"
+                  isClosed={!!request.closed_by}
+                  closedBy={request.closed_by}
+                  className="h-[500px] border-0 rounded-xl bg-black/30 shadow-2xl"
+                />
+              </div>
             </div>
+          </div>
 
-            <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-white/10 mt-auto flex-shrink-0">
-              <div className="flex gap-2">
+          <div className="p-4 border-t border-white/10 flex-shrink-0 bg-black/40 backdrop-blur-md sticky bottom-0 z-50">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 {request.request_type !== 'general' && meta?.tmdb_id && (
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="bg-white/10 hover:bg-white/20"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    className="h-9 px-4 text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/20 transition-all rounded-full"
+                    onClick={() => {
                       const path = meta.media_type === 'movie' ? `/movie/${meta.tmdb_id}` : `/tv/${meta.tmdb_id}`;
                       navigate(path, { state: { backgroundLocation: location } });
                     }}
                   >
                     <Link2 className="w-4 h-4 mr-2" />
-                    View Post
+                    Visit Post
+                  </Button>
+                )}
+
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="h-9 px-4 text-xs font-bold uppercase tracking-wider bg-cinema-red hover:bg-cinema-red/90 text-white rounded-full transition-all shadow-lg shadow-cinema-red/20">
+                      Update State
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-black/95 border-white/10 backdrop-blur-xl z-[100] rounded-2xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold">Update Request Status</DialogTitle>
+                      <DialogDescription className="text-gray-400">
+                        Select new status and optionally send a notification message.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-5 py-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Status</label>
+                        <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
+                          <SelectTrigger className="bg-white/5 border-white/10 h-10 rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-black border-white/10 z-[200]">
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Internal Note / Response</label>
+                        <Textarea
+                          placeholder="This will be stored in request details..."
+                          value={adminResponse}
+                          onChange={(e) => setAdminResponse(e.target.value)}
+                          className="min-h-[120px] bg-white/5 border-white/10 rounded-xl resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    <DialogFooter className="mt-4">
+                      <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-full text-xs font-bold uppercase tracking-wider">Cancel</Button>
+                      <Button onClick={handleUpdate} disabled={isUpdating} className="bg-primary rounded-full px-6 text-xs font-bold uppercase tracking-wider">
+                        {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Save Changes'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {request.closed_by ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onReopenChat(request.id)}
+                    className="h-9 px-4 text-xs font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20 rounded-full transition-all"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-2" /> Reopen Chat
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onCloseChat(request.id)}
+                    className="h-9 px-4 text-xs font-bold uppercase tracking-wider bg-white/5 border-white/10 hover:bg-destructive/10 hover:text-destructive rounded-full transition-all"
+                  >
+                    <XCircle className="w-3 h-3 mr-2" /> Close Chat
                   </Button>
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-end mb-2">
-                  {request.closed_by && (
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded border ${request.closed_by === 'admin'
-                        ? 'bg-destructive/10 text-destructive border-destructive/20'
-                        : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                        }`}>
-                        Chat Closed by {request.closed_by === 'admin' ? 'Admin' : 'User'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2 justify-end">
-                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
-                        Update Status
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-black/90 border-white/10 backdrop-blur-xl z-[70]">
-                      <DialogHeader>
-                        <DialogTitle>Update Request</DialogTitle>
-                        <DialogDescription>
-                          Update status and reply to the user.
-                        </DialogDescription>
-                      </DialogHeader>
-
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Status</label>
-                          <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AdminRequest['status'])}>
-                            <SelectTrigger className="bg-white/5 border-white/10">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-black border-white/10 z-[200]">
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Response (optional)</label>
-                          <Textarea
-                            placeholder="Type your message..."
-                            value={adminResponse}
-                            onChange={(e) => setAdminResponse(e.target.value)}
-                            className="min-h-[100px] bg-white/5 border-white/10"
-                          />
-                        </div>
-                      </div>
-
-                      <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleUpdate} disabled={isUpdating} className="bg-cinema-red hover:bg-cinema-red/90">
-                          {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Update & Notify'}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-
-                  {request.closed_by ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onReopenChat(request.id)}
-                      className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20"
-                    >
-                      <CheckCircle className="w-3 h-3 mr-1" /> Reopen Chat
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onCloseChat(request.id)}
-                      className="bg-white/5 border-white/10 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
-                    >
-                      <XCircle className="w-3 h-3 mr-1" /> Close Chat
-                    </Button>
-                  )}
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl z-[80]">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Request?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. User will lose this request from their history.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-white">
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-full transition-all" onClick={(e) => e.stopPropagation()}>
+                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-black/95 border-white/10 backdrop-blur-xl z-[100] rounded-2xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-xl font-bold">Move to Trash?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-gray-400">
+                      This request will be moved to the trash tab and hidden from the user.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="mt-4">
+                    <AlertDialogCancel className="bg-white/5 border-white/10 rounded-full text-xs font-bold uppercase tracking-wider">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white rounded-full px-6 text-xs font-bold uppercase tracking-wider">
+                      Move to Trash
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </DialogContent>
