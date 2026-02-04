@@ -244,71 +244,32 @@ const Movies = () => {
   const filteredDbItems = dbSorted;
   const filteredTmdbItems = tmdbSorted;
 
-  // --- Consolidated Sorting & Grouping ---
+  // --- Partitioned Sorting ---
   const unifiedItems = useMemo(() => {
-    // Merge DB and TMDB items.
-    // Note: Deduplication is handled upstream (dbKeys check in tmdbOnlyItems).
-    const merged = [...filteredDbItems, ...filteredTmdbItems];
-
-    // Helper to get sortable date value
     const getDateValue = (m: Movie) => {
-      // Use release_date or first_air_date
       const dateStr = m.release_date || (m as any).first_air_date;
-      if (!dateStr) return -8640000000000000; // Very small number (~year -270000) to push to bottom
+      if (!dateStr) return -8640000000000000;
       return new Date(dateStr).getTime();
     };
 
-    // Helper to get Year for grouping
-    const getYear = (m: Movie) => {
-      const dateStr = m.release_date || (m as any).first_air_date;
-      if (!dateStr) return null; // "Missing Info"
-      return new Date(dateStr).getFullYear();
-    };
-
-    // Sort: Date Descending (Newest First)
-    // Secondary Sort: DB items (hasLinks) first if dates are identical? 
-    // User asked for "Latest to Oldest", so Date is primary.
-    merged.sort((a, b) => {
+    const sortedDb = [...filteredDbItems].sort((a, b) => {
       const dA = getDateValue(a);
       const dB = getDateValue(b);
-      if (dB !== dA) return dB - dA; // Descending
-      // Tie-break: Media type (Movie > TV)? Or ID?
+      if (dB !== dA) return dB - dA;
       return b.id - a.id;
     });
 
-    // Grouping with Headers
-    const results: Array<{ type: 'header'; year: number | string } | { type: 'item'; movie: Movie }> = [];
-    let lastYear: number | string | null = -1;
+    const sortedTmdb = [...filteredTmdbItems].sort((a, b) => {
+      const dA = getDateValue(a);
+      const dB = getDateValue(b);
+      if (dB !== dA) return dB - dA;
+      return b.id - a.id;
+    });
 
-    for (const m of merged) {
-      const y = getYear(m);
-      // Group all missing dates under "Others" or similar at the bottom?
-      // Since they have -Infinity date, they will be at end.
-      const displayYear = y === null ? "Others" : y;
-
-      if (displayYear !== lastYear) {
-        results.push({ type: 'header', year: displayYear });
-        lastYear = displayYear;
-      }
-      results.push({ type: 'item', movie: m });
-    }
-
-    return results;
+    return [...sortedDb, ...sortedTmdb];
   }, [filteredDbItems, filteredTmdbItems]);
 
-  // Adjust display count logic: displayCount is now an index into 'unifiedItems'.
-  // We need to ensure we reveal enough ITEMS, not just headers.
-  // But simplistic slicing is fine as long as headers are small.
-
-  // Preload hover images
-  /* Note: usePageHoverPreload only accepts Movie[] */
-  const visibleMoviesOnly = useMemo(() => {
-    return unifiedItems
-      .filter(x => x.type === 'item')
-      .map(x => (x as any).movie as Movie);
-  }, [unifiedItems]);
-
-  usePageHoverPreload(visibleMoviesOnly, { enabled: !isLoading });
+  usePageHoverPreload(unifiedItems, { enabled: !isLoading });
 
   // If we have DB items from the manifest, show them immediately (even before TMDB fetch/hydration finishes).
   useEffect(() => {
@@ -486,7 +447,7 @@ const Movies = () => {
 
   // Keep the global fullscreen loader until the first 24 tiles are actually visible.
   const routeReady =
-    !pageIsLoading && (visibleMoviesOnly.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, visibleMoviesOnly.length));
+    !pageIsLoading && (unifiedItems.length === 0 || displayCount >= Math.min(INITIAL_REVEAL_COUNT, unifiedItems.length));
   useRouteContentReady(routeReady);
 
   // Infinite scroll observer (scrolling down reveals 18 at a time; only fetch when needed)
@@ -514,12 +475,12 @@ const Movies = () => {
   // Priority cache: first 10 posters are treated as "permanent" for instant return visits.
   useEffect(() => {
     if (pageIsLoading) return;
-    const first = visibleMoviesOnly.slice(0, 10);
+    const first = unifiedItems.slice(0, 10);
     const posterUrls = first
       .map((m) => getPosterUrl((m as any)?.poster_path ?? null, "w342"))
       .filter(Boolean) as string[];
     queuePriorityCache("/movies", posterUrls);
-  }, [pageIsLoading, visibleMoviesOnly]);
+  }, [pageIsLoading, unifiedItems]);
 
   // Resolve pending "load more"
   useEffect(() => {
@@ -607,17 +568,7 @@ const Movies = () => {
                   <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
                 </div>
               ))
-              : unifiedItems.slice(0, displayCount).map((item, index) => {
-                if (item.type === 'header') {
-                  return (
-                    <div key={`header-${item.year}`} className="col-span-full pt-8 pb-4 border-b border-white/10 mb-4 flex items-baseline gap-3">
-                      <h2 className="text-2xl font-bold text-white/90">{item.year}</h2>
-                      <span className="text-sm text-white/40 font-medium tracking-wide uppercase">Releases</span>
-                    </div>
-                  );
-                }
-
-                const movie = item.movie;
+              : unifiedItems.slice(0, displayCount).map((movie, index) => {
                 const shouldAnimate =
                   animateFromIndex !== null && index >= animateFromIndex && index < animateFromIndex + BATCH_SIZE;
 
@@ -635,7 +586,7 @@ const Movies = () => {
           </div>
 
           {/* No results message */}
-          {!pageIsLoading && visibleMoviesOnly.length === 0 && (
+          {!pageIsLoading && unifiedItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No movies found with the selected filters.</p>
               <button
@@ -652,7 +603,7 @@ const Movies = () => {
             {/* Sentinel (observer watches this) */}
             <div ref={loadMoreRef} className="h-px w-full" />
 
-            {!isLoadingMore && !hasMore && displayCount >= unifiedItems.length && visibleMoviesOnly.length > 0 && (
+            {!isLoadingMore && !hasMore && displayCount >= unifiedItems.length && unifiedItems.length > 0 && (
               <div className="flex justify-center py-6">
                 <p className="text-muted-foreground">You've reached the end</p>
               </div>
