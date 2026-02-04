@@ -9,6 +9,7 @@ import { useAdminTrash, TrashedRequest } from "@/hooks/useAdminTrash";
 import { markAdminSession } from "@/hooks/useSessionCacheManager";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
