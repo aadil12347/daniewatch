@@ -11,7 +11,8 @@ const HOMEPAGE_CACHE_KEY = "dw_homepage_cache";
  * - User: refreshes localStorage cache on each new session
  */
 // Current app version - increment this when shipping breaking data changes
-const CURRENT_APP_VERSION = "1.1.0";
+// INCREMENTED: 2026-02-04 to force fresh cache after manifest-only architecture change
+const CURRENT_APP_VERSION = "1.2.0";
 const CACHE_VERSION_KEY = "dw_cache_version";
 
 export function useSessionCacheManager() {
