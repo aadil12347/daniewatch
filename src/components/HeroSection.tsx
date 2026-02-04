@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatedPlayButton } from "@/components/AnimatedPlayButton";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { usePostModeration } from "@/hooks/usePostModeration";
+import { useDbManifest } from "@/hooks/useDbManifest";
 
 interface HeroSectionProps {
   items: Movie[];
@@ -27,6 +28,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   const navigate = useNavigate();
   const { toggleWatchlist, isInWatchlist } = useWatchlist();
   const { filterBlockedPosts } = usePostModeration();
+  const { availabilityById } = useDbManifest();
 
   const featured = useMemo(() => filterBlockedPosts(items).slice(0, 5), [filterBlockedPosts, items]);
 
@@ -60,6 +62,18 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
   useEffect(() => {
     const fetchLogos = async () => {
       const logoPromises = featured.map(async (item) => {
+        // 1. Check direct prop
+        if ((item as any).logo_url) {
+          return { id: item.id, logoUrl: (item as any).logo_url };
+        }
+
+        // 2. Check manifest
+        const manifestData = availabilityById.get(item.id);
+        if (manifestData?.logoUrl) {
+          return { id: item.id, logoUrl: manifestData.logoUrl };
+        }
+
+        // 3. TMDB fallback
         const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
         try {
           const images = mediaType === "tv" ? await getTVImages(item.id) : await getMovieImages(item.id);
@@ -81,7 +95,7 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
     if (featured.length > 0) {
       fetchLogos();
     }
-  }, [featured]);
+  }, [featured, availabilityById]);
 
   useEffect(() => {
     if (featured.length === 0) return;
@@ -236,7 +250,9 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
   const title = getDisplayTitle(current);
   const year = getYear(getReleaseDate(current));
-  const rating = current.vote_average?.toFixed(1);
+  const currentManifest = availabilityById.get(current.id);
+  const ratingValue = currentManifest?.voteAverage ?? current.vote_average;
+  const rating = ratingValue?.toFixed(1);
   const mediaType = current.media_type || (current.first_air_date ? "tv" : "movie");
   const genreNames = current.genre_ids?.slice(0, 3).map((id) => genres[id]).filter(Boolean) || [];
   const currentLogo = logos[current.id];
@@ -276,9 +292,9 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
 
           {/* Logo or Title */}
           {currentLogo ? (
-            <img 
-              src={currentLogo} 
-              alt={title} 
+            <img
+              src={currentLogo}
+              alt={title}
               className="h-14 md:h-16 lg:h-20 object-contain object-left mb-2 md:mb-3"
             />
           ) : (
@@ -383,11 +399,10 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
             key={idx}
             onClick={() => setCurrentIndex(idx)}
             aria-label={`Go to slide ${idx + 1}`}
-            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-              idx === currentIndex
+            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${idx === currentIndex
                 ? "w-8 bg-primary"
                 : "w-2 bg-foreground/30 hover:bg-foreground/50"
-            }`}
+              }`}
           />
         ))}
       </div>

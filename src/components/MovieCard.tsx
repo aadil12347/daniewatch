@@ -124,7 +124,7 @@ export const MovieCard = ({
 
   // Preload the hover logo as soon as the card is on/near screen.
   const logoFromManifest = manifestAvailability?.logoUrl;
-  const dbLogoUrl = logoFromManifest || (movie as any).logo_url as string | null | undefined;
+  const dbLogoUrl = (movie as any).logo_url || logoFromManifest;
   const allowLogo = !disableHoverLogo && !isPerformance;
   const shouldFetchTmdbLogo = allowLogo && !dbLogoUrl && (isPosterActive || isNearViewport);
   const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, shouldFetchTmdbLogo);
