@@ -221,41 +221,37 @@ export function BlockedPostsPanel() {
               {activeChoice && (
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="flex gap-4 items-center">
-                      {activeChoice.posterPath ? (
-                        <img
-                          src={getImageUrl(activeChoice.posterPath, "w92")}
-                          alt={activeChoice.title}
-                          className="w-16 h-24 object-cover rounded-lg"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-16 h-24 bg-secondary rounded-lg flex items-center justify-center">
-                          <Ban className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
+                    <div className="flex flex-wrap gap-4 items-center justify-between">
+                      <div className="flex gap-4 items-center flex-1 min-w-0">
+                        {activeChoice.posterPath ? (
+                          <img
+                            src={getImageUrl(activeChoice.posterPath, "w92")}
+                            alt={activeChoice.title}
+                            className="w-12 h-20 md:w-16 md:h-24 object-cover rounded-lg"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-12 h-20 md:w-16 md:h-24 bg-secondary rounded-lg flex items-center justify-center">
+                            <Ban className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                        )}
 
-                      <div className="flex-1">
-                        <h3 className="font-semibold">
-                          {activeChoice.title}
-                          {activeChoice.year ? <span className="text-muted-foreground"> ({activeChoice.year})</span> : null}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          TMDB: {activeChoice.tmdbId} · <span className="capitalize">{activeChoice.mediaType}</span>
-                          {activeChoice.mediaType === "tv" && seasonNumber.trim() ? ` · Season ${seasonNumber.trim()}` : ""}
-                        </p>
-                        {activeChoice.mediaType === "tv" && seasonNumber.trim() ? (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Note: blocking applies to the whole show; season is saved as a label for admins.
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold truncate">
+                            {activeChoice.title}
+                            {activeChoice.year ? <span className="text-muted-foreground md:inline hidden"> ({activeChoice.year})</span> : null}
+                          </h3>
+                          <p className="text-xs md:text-sm text-muted-foreground truncate">
+                            TMDB: {activeChoice.tmdbId} · <span className="capitalize">{activeChoice.mediaType}</span>
                           </p>
-                        ) : null}
+                        </div>
                       </div>
 
                       <Button
                         variant={isActiveBlocked ? "outline" : "default"}
                         size="sm"
                         onClick={handleBlockToggle}
-                        className="gap-1"
+                        className="gap-1 min-w-[100px]"
                       >
                         {isActiveBlocked ? (
                           <>

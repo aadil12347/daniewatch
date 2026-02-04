@@ -39,6 +39,7 @@ import Auth from "./pages/Auth";
 import Requests from "./pages/Requests";
 import AdminDashboard from "./pages/AdminDashboard";
 import UpdateLinks from "./pages/UpdateLinks";
+import AdminMetadataEditor from "./pages/AdminMetadataEditor";
 import NotFound from "./pages/NotFound";
 
 // Disable right-click context menu
@@ -94,6 +95,7 @@ const AnimatedRoutes = () => {
           <Route path="/requests" element={<Requests />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/update-links" element={<UpdateLinks />} />
+          <Route path="/admin/metadata-editor" element={<AdminMetadataEditor />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>

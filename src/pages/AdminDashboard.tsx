@@ -75,6 +75,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { BlockedPostsPanel } from "@/components/admin/BlockedPostsPanel";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
 import { ChatWindow } from "@/components/ChatWindow";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
@@ -1041,7 +1042,7 @@ const AdminDashboard = () => {
           </div>
 
           <Tabs defaultValue="requests" className="w-full">
-            <TabsList className="mb-6">
+            <TabsList className="mb-6 w-full flex justify-start overflow-x-auto no-scrollbar pb-1">
               <TabsTrigger value="requests" className="gap-2">
                 <FileText className="w-4 h-4" />
                 Requests
@@ -1050,6 +1051,10 @@ const AdminDashboard = () => {
                     {newRequests.length}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="metadata" className="gap-2">
+                <Edit3 className="w-4 h-4" />
+                Metadata Editor
               </TabsTrigger>
               <TabsTrigger value="links" className="gap-2" asChild>
                 <Link to="/admin/update-links">
@@ -1367,6 +1372,12 @@ const AdminDashboard = () => {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="metadata">
+              <div className="space-y-6">
+                <PostMetadataEditor />
+              </div>
             </TabsContent>
 
             <TabsContent value="blocked">

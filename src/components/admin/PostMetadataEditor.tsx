@@ -395,7 +395,6 @@ export function PostMetadataEditor() {
 
   // Search DB entries with filters
   const handleSearchDb = async () => {
-    if (!searchQuery.trim()) return;
     setIsSearchingDb(true);
     setSearchResults([]);
 
@@ -409,9 +408,10 @@ export function PostMetadataEditor() {
 
       if (isNumeric) {
         query = query.eq("id", searchQuery.trim());
-      } else {
+      } else if (searchQuery.trim()) {
         query = query.ilike("title", `%${searchQuery.trim()}%`);
       }
+      // If searchQuery is empty, we just fetch based on filters below
 
       // Apply type filter
       if (filterState.type !== "all") {
@@ -988,7 +988,11 @@ export function PostMetadataEditor() {
         media_updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("entries").update(updateData).eq("id", selectedEntry.id);
+      const { error } = await supabase.from("entries").upsert({
+        id: selectedEntry.id,
+        type: selectedEntry.type,
+        ...updateData
+      });
 
       if (error) throw error;
 
@@ -1300,22 +1304,30 @@ export function PostMetadataEditor() {
       <CardContent className="space-y-6">
         {/* Search Section */}
         <div className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Search by title or TMDB ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearchDb()}
-              className="flex-1"
-            />
-            <Button onClick={handleSearchDb} disabled={isSearchingDb || !searchQuery.trim()} className="gap-1 bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
-              {isSearchingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-              Search DB
-            </Button>
-            <Button onClick={handleSearchTmdb} disabled={isSearchingTmdb || !searchQuery.trim()} variant="outline" className="gap-1">
-              {isSearchingTmdb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-              Search TMDB
-            </Button>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder="Search by title or TMDB ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearchDb()}
+                className="w-full"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 w-full md:w-auto">
+              <Button onClick={handleSearchDb} disabled={isSearchingDb} className="flex-1 md:flex-initial gap-1 bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
+                {isSearchingDb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                Search DB
+              </Button>
+              <Button onClick={handleSearchTmdb} disabled={isSearchingTmdb || !searchQuery.trim()} variant="outline" className="flex-1 md:flex-initial gap-1">
+                {isSearchingTmdb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                Search TMDB
+              </Button>
+              <Button variant="outline" onClick={handleClearSelection} className="flex-1 md:flex-initial gap-1 border-primary/30 hover:bg-primary/10">
+                <Plus className="w-4 h-4" />
+                Add New
+              </Button>
+            </div>
           </div>
 
           {/* Filter Toggle */}
@@ -2109,6 +2121,6 @@ export function PostMetadataEditor() {
           </AlertDialogContent>
         </AlertDialog>
       </CardContent>
-    </Card>
+    </Card >
   );
 }
