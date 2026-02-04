@@ -427,15 +427,16 @@ const Anime = () => {
       setIsRestoredFromCache(false);
       return;
     }
-    setPage(1);
-    setItems([]);
-    setDbOnlyHydrated([]);
-    dbHydrationCursorRef.current = 0;
-    setDisplayCount(0);
+    // Reset reveal to DB section
+    if (!isManifestLoading) {
+      setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
+    } else {
+      setDisplayCount(0);
+    }
     setAnimateFromIndex(null);
     setHasMore(true);
     fetchAnime(1, true);
-  }, [selectedTags, selectedYear, isInitialized]);
+  }, [selectedTags, selectedYear, isInitialized, filteredDbItems.length, isManifestLoading]);
 
   // Keep the global fullscreen loader until the first 24 tiles are actually visible.
   const routeReady =

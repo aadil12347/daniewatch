@@ -91,11 +91,11 @@ export const isIndianScopeWithDb = (
 export const isAllowedOnMoviesPage = (m: Pick<Movie, "media_type">): boolean => {
   const media = (m.media_type as string | undefined) ?? "movie";
   if (media !== "movie") return false;
-  return !(isAnimeScope(m) || isIndianScope(m) || isKoreanScope(m));
+  return !(isAnimeScope(m) || isKoreanScope(m));
 };
 
 export const isAllowedOnTvPage = (m: Pick<Movie, "media_type" | "first_air_date">): boolean => {
   const media = (m.media_type as string | undefined) ?? ((m as any)?.first_air_date ? "tv" : undefined);
   if (media !== "tv") return false;
-  return !(isAnimeScope(m) || isIndianScope(m) || isKoreanScope(m));
+  return !(isAnimeScope(m) || isKoreanScope(m));
 };

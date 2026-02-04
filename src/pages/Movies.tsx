@@ -101,10 +101,7 @@ const Movies = () => {
       const origin = item.origin_country ?? [];
 
       const isAnime = lang === "ja" && genreIds.includes(16);
-      const isIndian = ["hi", "ta", "te"].includes(lang ?? "");
-      const isKorean = ["ko", "zh", "tr"].includes(lang ?? "") || origin.some((c) => ["KR", "CN", "TW", "HK", "TR"].includes(c));
-
-      if (isAnime || isIndian || isKorean) continue;
+      if (isAnime || isKorean) continue;
 
       const sortYear = item.release_year ?? new Date().getFullYear();
       const hasLinks = item.hasWatch || item.hasDownload;
@@ -439,11 +436,13 @@ const Movies = () => {
     setMovies([]);
     setDbOnlyHydrated([]);
     dbHydrationCursorRef.current = 0;
-    setDisplayCount(0);
-    setAnimateFromIndex(null);
-    setHasMore(true);
-    fetchMovies(1, true);
-  }, [selectedGenres, selectedYear, isInitialized]);
+    // Reset reveal to DB section
+    if (!isManifestLoading) {
+      setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
+    } else {
+      setDisplayCount(0);
+    }
+  }, [selectedGenres, selectedYear, isInitialized, filteredDbItems.length, isManifestLoading]);
 
   // Keep the global fullscreen loader until the first 24 tiles are actually visible.
   const routeReady =
