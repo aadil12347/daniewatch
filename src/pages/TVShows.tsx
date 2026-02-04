@@ -322,21 +322,27 @@ const TVShows = () => {
     })();
   }, [displayCount, fetchTmdbPage, filteredDbItems.length, getKey, hasMoreTmdb, pendingLoadMore, tmdbPage, unifiedItems.length, setIsLoadingMore]);
 
-  // Reset TMDB state when filters change.
+  // Reset TMDB state when filters change OR manifest becomes ready
   useEffect(() => {
+    if (isManifestLoading) return;
+
     setTmdbItems([]);
     setTmdbPage(1);
     setHasMoreTmdb(true);
     setAnimateFromIndex(null);
 
-    // Reset reveal to DB section
-    if (!isManifestLoading) {
-      setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
-    } else {
-      setDisplayCount(0);
-    }
-    fetchTmdbPage(1);
-  }, [selectedGenres, selectedYear, filteredDbItems.length, isManifestLoading]);
+    // Reveal DB section first
+    setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
+
+    // ONLY fetch from TMDB if manifest is ready, to prevent layout jumping
+    fetchTmdbPage(1).then(res => {
+      if (res.results.length > 0) {
+        setTmdbItems(res.results);
+        setHasMoreTmdb(res.page < res.totalPages);
+        setTmdbPage(2);
+      }
+    });
+  }, [selectedGenres, selectedYear, isManifestLoading, filteredDbItems.length]);
 
   // Fetch genres on mount
   useEffect(() => {

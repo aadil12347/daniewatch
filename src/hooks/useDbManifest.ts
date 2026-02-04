@@ -114,31 +114,35 @@ export const useDbManifest = () => {
 
       // For admin: always use sessionStorage (fresh per browser session)
       // For user: check session flag, refresh if new session
+      let forceFreshLoad = false;
       if (!isAdminSession) {
         const sessionChecked = sessionStorage.getItem(SESSION_CHECK_KEY);
         if (!sessionChecked) {
-          // New user session - clear old cache
+          // New user session - clear old cache and force a wait for fresh fetch
           localStorage.removeItem(USER_CACHE_KEY);
           sessionStorage.setItem(SESSION_CHECK_KEY, "1");
+          forceFreshLoad = true;
         }
       }
 
-      // Try cache
-      const cached = storage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const { timestamp, data } = JSON.parse(cached);
-          const age = Date.now() - timestamp;
+      // Try cache (ONLY if not a fresh session requiring absolute sync)
+      if (!forceFreshLoad) {
+        const cached = storage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const { timestamp, data } = JSON.parse(cached);
+            const age = Date.now() - timestamp;
 
-          if (age < CACHE_DURATION) {
-            if (mounted) {
-              setManifest(data);
-              setIsLoading(false);
+            if (age < CACHE_DURATION) {
+              if (mounted) {
+                setManifest(data);
+                setIsLoading(false);
+              }
+              return;
             }
-            return;
+          } catch {
+            // Ignore cache parse errors
           }
-        } catch {
-          // Ignore cache parse errors
         }
       }
 

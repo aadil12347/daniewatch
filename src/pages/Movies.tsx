@@ -430,27 +430,29 @@ const Movies = () => {
     [getKey, hydrateDbOnly, manifestMetaByKey.size, selectedGenres, selectedYear, setIsLoadingMore]
   );
 
-  // Reset and fetch when filters change
+  // Reset and fetch when filters change OR manifest becomes ready
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || isManifestLoading) return;
+
     if (isRestoredFromCache) {
       setIsRestoredFromCache(false);
       return;
     }
+
     setPage(1);
     setMovies([]);
     setDbOnlyHydrated([]);
     dbHydrationCursorRef.current = 0;
-    // Reset reveal to DB section
-    if (!isManifestLoading) {
-      setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
-    } else {
-      setDisplayCount(0);
-    }
+
+    // Reveal DB section first
+    setDisplayCount(Math.min(INITIAL_REVEAL_COUNT, filteredDbItems.length));
+
     setAnimateFromIndex(null);
     setHasMore(true);
+
+    // ONLY fetch from TMDB if manifest is ready, to prevent layout jumping
     fetchMovies(1, true);
-  }, [selectedGenres, selectedYear, isInitialized, filteredDbItems.length, isManifestLoading]);
+  }, [selectedGenres, selectedYear, isInitialized, isManifestLoading, filteredDbItems.length]);
 
   // Keep the global fullscreen loader until the first 24 tiles are actually visible.
   const routeReady =
