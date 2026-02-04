@@ -78,11 +78,14 @@ export const MovieCard = ({
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
-  const rating = movie.vote_average?.toFixed(1);
+  const manifestAvailability = availabilityById.get(movie.id);
+  const dbRating = (manifestAvailability?.voteAverage !== undefined && manifestAvailability?.voteAverage !== null)
+    ? manifestAvailability.voteAverage
+    : movie.vote_average;
+  const rating = dbRating?.toFixed(1);
 
   const blocked = isBlocked(movie.id, mediaType as "movie" | "tv");
   // Use manifest for link availability (fast, cached from session start)
-  const manifestAvailability = availabilityById.get(movie.id);
   const hasWatch = manifestAvailability?.hasWatch ?? false;
   const hasDownload = manifestAvailability?.hasDownload ?? false;
   const hoverImageUrl = disableHoverCharacter || isPerformance ? null : (manifestAvailability?.hoverImageUrl ?? null);
@@ -120,7 +123,8 @@ export const MovieCard = ({
   }, [hoverImageUrl, isNearViewport, isHovered, isPerformance]);
 
   // Preload the hover logo as soon as the card is on/near screen.
-  const dbLogoUrl = (movie as any).logo_url as string | null | undefined;
+  const logoFromManifest = manifestAvailability?.logoUrl;
+  const dbLogoUrl = logoFromManifest || (movie as any).logo_url as string | null | undefined;
   const allowLogo = !disableHoverLogo && !isPerformance;
   const shouldFetchTmdbLogo = allowLogo && !dbLogoUrl && (isPosterActive || isNearViewport);
   const { data: logoUrl } = useTmdbLogo(mediaType as "movie" | "tv", movie.id, shouldFetchTmdbLogo);
@@ -166,7 +170,7 @@ export const MovieCard = ({
     };
   }, [effectiveHoverPortalSetting, canUseHoverPortal, isHovered]);
 
-  
+
 
   // Smooth enter/exit for the portaled hover image
   useEffect(() => {
@@ -323,7 +327,7 @@ export const MovieCard = ({
                     className={cn(
                       "poster-3d-cover poster-3d-cover--base",
                       isAdmin && blocked &&
-                        "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                      "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                     )}
                   />
 

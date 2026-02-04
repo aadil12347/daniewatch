@@ -42,6 +42,8 @@ export interface ManifestAvailability {
   hasWatch: boolean;
   hasDownload: boolean;
   hoverImageUrl: string | null;
+  logoUrl: string | null;
+  voteAverage: number | null;
 }
 
 // Cache keys
@@ -233,6 +235,8 @@ export const useDbManifest = () => {
         hasWatch: item.hasWatch,
         hasDownload: item.hasDownload,
         hoverImageUrl: item.hover_image_url,
+        logoUrl: item.logo_url,
+        voteAverage: item.vote_average,
       });
     });
 
