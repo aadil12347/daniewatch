@@ -137,6 +137,7 @@ interface FilterState {
   missingOverview: boolean;
   missingGenres: boolean;
   missingCast: boolean;
+  unbalanced: boolean;
 }
 
 interface EditorCacheState {
@@ -186,6 +187,7 @@ export function PostMetadataEditor() {
     missingOverview: false,
     missingGenres: false,
     missingCast: false,
+    unbalanced: false,
   });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -529,6 +531,47 @@ export function PostMetadataEditor() {
       }
       if (filterState.missingCast) {
         results = results.filter((r) => r.missingFields?.includes("Cast"));
+      }
+
+      // Filter by unbalanced (link count != number_of_episodes)
+      if (filterState.unbalanced) {
+        results = results.filter((r) => {
+          // Calculate total links
+          let totalLinks = 0;
+          const entry = data?.find(e => e.id === r.id);
+          if (!entry || !entry.content) return false;
+
+          if (r.type === "movie") {
+            // Movies are rarely "unbalanced" in this context unless we count links vs something else, 
+            // but user specified "episodes", so mostly for series.
+            // For safety, let's ignore movies or check if links exist vs single item.
+            return false;
+          } else {
+            const content = entry.content as Record<string, any>;
+            for (const key of Object.keys(content)) {
+              if (key.startsWith("season_")) {
+                const season = content[key];
+                const watchCount = season?.watch_links?.filter((l: string) => l.trim()).length || 0;
+                const downloadCount = season?.download_links?.filter((l: string) => l.trim()).length || 0;
+                totalLinks += Math.max(watchCount, downloadCount);
+              }
+            }
+          }
+
+          // If number_of_episodes is set, compare
+          if (r.numberOfEpisodes && r.numberOfEpisodes > 0) {
+            return totalLinks !== r.numberOfEpisodes;
+          }
+
+          // If no metadata episode count is set, but we have links, is it unbalanced?
+          // User request implies checking against "admin edited metadata".
+          // If admin hasn't set counts, maybe we skip or show if links > 0?
+          // Let's strictly follow: "show entries where link count != number_of_episodes"
+          // If number_of_episodes is null/0, and we have links, that IS a mismatch (technically 0 vs N).
+          // But usually number_of_episodes comes from TMDB if not admin edited.
+
+          return totalLinks > 0 && (!r.numberOfEpisodes || r.numberOfEpisodes === 0);
+        });
       }
 
       // Sort by missing count if selected
@@ -1450,6 +1493,13 @@ export function PostMetadataEditor() {
                       onCheckedChange={(c) => setFilterState((s) => ({ ...s, missingCast: !!c }))}
                     />
                     Cast
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer border-l pl-3 ml-1 border-border/50">
+                    <Checkbox
+                      checked={filterState.unbalanced}
+                      onCheckedChange={(c) => setFilterState((s) => ({ ...s, unbalanced: !!c }))}
+                    />
+                    <span className="text-amber-500 font-medium">Unbalanced</span>
                   </label>
                 </div>
               </div>

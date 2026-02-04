@@ -286,7 +286,7 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
           let baseEpisodes: Episode[];
 
           if (storedEpisodes && storedEpisodes.length > 0) {
-            // Use stored episode data from database
+            // Use stored episode data from database strictly (don't extend with links)
             baseEpisodes = storedEpisodes.map((ep) => ({
               id: ep.episode_number,
               name: ep.name || `Episode ${ep.episode_number}`,
@@ -298,16 +298,23 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
               runtime: ep.runtime,
               vote_average: ep.vote_average || 0,
             }));
+
+            // Just set episodes directly - do NOT extend with placeholder links if admin defined the list
+            setEpisodes(baseEpisodes);
+
+            // Still fetch media result for download button context if needed elsewhere
+            const mediaRes = await getMediaLinks(Number(id), "tv", firstSeason);
+            setMediaResult(mediaRes);
           } else {
-            // Fall back to TMDB
+            // Fall back to TMDB - use standard behavior (can extend)
             const seasonRes = await getTVSeasonDetails(Number(id), firstSeason);
             baseEpisodes = seasonRes.episodes || [];
-          }
 
-          // Fetch links and extend episode list if DB has more links than TMDB
-          const mediaRes = await getMediaLinks(Number(id), "tv", firstSeason);
-          setMediaResult(mediaRes);
-          setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), firstSeason));
+            // Fetch links and extend episode list if DB has more links than TMDB
+            const mediaRes = await getMediaLinks(Number(id), "tv", firstSeason);
+            setMediaResult(mediaRes);
+            setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), firstSeason));
+          }
         }
       } catch (error) {
         console.error("Failed to fetch TV details:", error);
@@ -354,7 +361,7 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
         let baseEpisodes: Episode[];
 
         if (storedEpisodes && storedEpisodes.length > 0) {
-          // Use stored episode data from database
+          // Use stored episode data from database strictly
           baseEpisodes = storedEpisodes.map((ep) => ({
             id: ep.episode_number,
             name: ep.name || `Episode ${ep.episode_number}`,
@@ -366,15 +373,19 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
             runtime: ep.runtime,
             vote_average: ep.vote_average || 0,
           }));
+
+          setEpisodes(baseEpisodes);
+          const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
+          setMediaResult(mediaRes);
         } else {
           // Fall back to TMDB
           const seasonRes = await getTVSeasonDetails(Number(id), partOrSeasonNumber);
           baseEpisodes = seasonRes.episodes || [];
-        }
 
-        const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
-        setMediaResult(mediaRes);
-        setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), partOrSeasonNumber));
+          const mediaRes = await getMediaLinks(Number(id), "tv", partOrSeasonNumber);
+          setMediaResult(mediaRes);
+          setEpisodes(extendEpisodesWithDbLinks(baseEpisodes, mediaRes, Number(id), partOrSeasonNumber));
+        }
       }
     } catch (error) {
       console.error("Failed to fetch season:", error);
