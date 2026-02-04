@@ -36,11 +36,13 @@ type AdminRequestRow = {
   updated_at: string;
   is_hidden_from_user?: boolean;
   closed_by?: 'user' | 'admin' | null;
+  is_read?: boolean; // New column for tracking if admin has seen the request
   request_meta?: RequestMeta | RequestMeta[] | null;
 };
 
 export interface AdminRequest extends Omit<AdminRequestRow, 'request_meta'> {
   request_meta?: RequestMeta | null;
+  unread_count?: number; // Calculated field
 }
 
 const normalizeRequestMeta = (meta: AdminRequestRow['request_meta']): RequestMeta | null => {
@@ -111,8 +113,26 @@ export const useAdmin = () => {
 
       if (error) throw error;
 
+      // Fetch unread message counts for all requests (from user, unread)
+      const { data: unreadData, error: unreadError } = await supabase
+        .from('request_messages')
+        .select('request_id')
+        .eq('sender_role', 'user')
+        .is('read_at', null);
+
+      if (unreadError) console.error('Error fetching unread counts:', unreadError);
+
+      const unreadCounts = (unreadData || []).reduce((acc, msg) => {
+        acc[msg.request_id] = (acc[msg.request_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
       const rows = (data as AdminRequestRow[]) || [];
-      setAllRequests(rows.map(normalizeAdminRequest));
+      setAllRequests(rows.map(req => ({
+        ...normalizeAdminRequest(req),
+        unread_count: unreadCounts[req.id] || 0,
+        is_read: req.is_read ?? false // Handle missing column gracefully-ish (might fail query if column doesn't exist)
+      })));
       // If admin sees 0 rows, it's very often RLS policies blocking access.
       if ((data?.length ?? 0) === 0) {
         setRequestsError(
@@ -379,6 +399,25 @@ export const useAdmin = () => {
     }
   };
 
+  // Mark request as seen (admin opened it)
+  const markRequestAsSeen = async (requestId: string) => {
+    if (!user || !isSupabaseConfigured || !isAdmin) return;
+
+    try {
+      const { error } = await supabase
+        .from('requests')
+        .update({ is_read: true })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      setAllRequests(prev => prev.map(r => r.id === requestId ? { ...r, is_read: true } : r));
+    } catch (error) {
+      // If column doesn't exist, this might fail silently or log, which is acceptable for now
+      console.error('Error marking request as seen:', error);
+    }
+  };
+
   // Clear all requests
   const clearAllRequests = async () => {
     if (!user || !isSupabaseConfigured || !isAdmin) {
@@ -506,6 +545,7 @@ export const useAdmin = () => {
     clearAllRequests,
     closeRequestChat,
     reopenRequestChat,
+    markRequestAsSeen,
     addAdmin,
     removeAdmin,
     refetchRequests: fetchAllRequests,

@@ -100,18 +100,21 @@ const RequestCard = ({
   onSelectChange,
   showCheckbox,
   onCloseChat,
-  onReopenChat
+  onReopenChat,
+  onMarkAsSeen
 }: {
   request: AdminRequest;
   onUpdateStatus: (id: string, status: AdminRequest['status'], response?: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onCloseChat: (id: string) => Promise<void>;
   onReopenChat: (id: string) => Promise<void>;
+  onMarkAsSeen: (id: string) => Promise<void>;
   isSelected: boolean;
   onSelectChange: (checked: boolean) => void;
   showCheckbox: boolean;
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(request.status);
   const [adminResponse, setAdminResponse] = useState(request.admin_response || '');
@@ -187,8 +190,13 @@ const RequestCard = ({
   return (
     <div className={`chat-card-glow transition-all duration-300 border rounded-xl overflow-hidden ${isSelected ? "ring-2 ring-primary border-primary/50" : "border-white/10"}`}>
       <div
-        className={`bg-black/40 backdrop-blur-md p-4 cursor-pointer hover:bg-white/5 transition-colors ${isOpen ? 'bg-white/5' : ''}`}
-        onClick={() => setIsOpen(true)}
+        className={`bg-black/40 backdrop-blur-md p-4 cursor-pointer hover:bg-white/5 transition-colors ${isOpen ? 'bg-white/5' : ''} ${!request.is_read ? 'ring-1 ring-cinema-red/50 bg-cinema-red/5' : ''}`}
+        onClick={() => {
+          setIsOpen(true);
+          if (!request.is_read) {
+            onMarkAsSeen(request.id);
+          }
+        }}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -620,6 +628,7 @@ const AdminDashboard = () => {
     refetchRequests,
     closeRequestChat,
     reopenRequestChat,
+    markRequestAsSeen,
   } = useAdmin();
 
   // Mark this as an admin session for cache management
@@ -912,10 +921,13 @@ const AdminDashboard = () => {
   }
 
   // Filter requests by status (exclude trashed ones from allRequests - they're tracked in localStorage)
-  const newRequests = allRequests.filter(r => r.status === 'pending' && !r.admin_response);
-  const pendingRequests = allRequests.filter(r => r.status === 'pending');
-  const inProgressRequests = allRequests.filter(r => r.status === 'in_progress');
-  const doneRequests = allRequests.filter(r => r.status === 'completed' || r.status === 'rejected');
+  // Logic: "New" = Unread messages OR Not seen yet. "Pending" = Seen, no messages, status pending.
+  const isRequestNew = (r: AdminRequest) => (!r.is_read) || ((r.unread_count || 0) > 0);
+
+  const newRequests = allRequests.filter(r => isRequestNew(r));
+  const pendingRequests = allRequests.filter(r => r.status === 'pending' && !isRequestNew(r));
+  const inProgressRequests = allRequests.filter(r => r.status === 'in_progress' && !isRequestNew(r));
+  const doneRequests = allRequests.filter(r => (r.status === 'completed' || r.status === 'rejected') && !isRequestNew(r));
 
   const getCurrentRequests = (): AdminRequest[] => {
     switch (requestsTab) {
@@ -1330,6 +1342,7 @@ const AdminDashboard = () => {
                         isSelected={selectedIds.includes(request.id)}
                         onSelectChange={(checked) => toggleSelection(request.id, checked)}
                         showCheckbox={isSelectionMode}
+                        onMarkAsSeen={async (id) => await markRequestAsSeen(id)}
                       />
                     </div>
                   ))}
