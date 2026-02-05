@@ -1026,7 +1026,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive">
+                  <AlertDialogAction onClick={handleDeleteEntry} className="bg-destructive">
                     Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
