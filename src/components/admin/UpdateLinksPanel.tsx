@@ -20,7 +20,8 @@ import {
   FileVideo,
   Download,
   CheckCircle2,
-  X
+  X,
+  ChevronDown
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -50,6 +51,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -862,63 +864,79 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   // COMPACT EMBEDDED MODE - for Edit Mode modal
   if (embedded && tmdbResult) {
     return (
-      <div className="space-y-3 max-w-4xl mx-auto">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between gap-3 p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+      <div className="space-y-4 max-w-5xl mx-auto">
+        {/* Header with Poster, Info & Save Button */}
+        <div className="flex items-start justify-between gap-4 p-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
             {tmdbResult.posterUrl && (
-              <img src={tmdbResult.posterUrl} alt={tmdbResult.title} className="w-12 h-16 object-cover rounded" />
+              <img src={tmdbResult.posterUrl} alt={tmdbResult.title} className="w-20 h-28 object-cover rounded shadow-lg" />
             )}
-            <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-sm truncate">{tmdbResult.title}</h3>
-              <div className="flex gap-1.5 text-xs text-muted-foreground">
-                <Badge variant="outline" className="h-5 text-xs border-white/10">{tmdbResult.year}</Badge>
-                <Badge variant="outline" className="h-5 text-xs border-white/10">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
-                <Badge variant="secondary" className="h-5 text-xs bg-white/10">ID: {tmdbResult.id}</Badge>
+            <div className="min-w-0 flex-1 space-y-2">
+              <h3 className="font-bold text-lg truncate">{tmdbResult.title}</h3>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="border-white/10">{tmdbResult.year}</Badge>
+                <Badge variant="outline" className="border-white/10">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
+                <Badge variant="secondary" className="bg-white/10">TMDB: {tmdbResult.id}</Badge>
+                {entryExists && (
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    In Database
+                  </Badge>
+                )}
               </div>
+              {/* Series Season Selector */}
+              {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
+                <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
+                  <SelectTrigger className="w-48 bg-white/5 border-white/10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tmdbResult.seasonDetails.map((s) => (
+                      <SelectItem key={s.season_number} value={String(s.season_number)}>
+                        Season {s.season_number} ({s.episode_count} episodes)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 
-          {/* Series Season Selector - Inline */}
-          {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
-            <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
-              <SelectTrigger className="w-32 h-8 text-xs bg-white/5 border-white/10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {tmdbResult.seasonDetails.map((s) => (
-                  <SelectItem key={s.season_number} value={String(s.season_number)} className="text-xs">
-                    S{s.season_number} ({s.episode_count} eps)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {/* Save Button - Top Right */}
+          <Button onClick={handleSave} disabled={isSaving} className="bg-cinema-red hover:bg-cinema-red/90 shadow-lg">
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Save
+          </Button>
         </div>
 
-        {/* Compact Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Links Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Watch Links */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-gray-300">Watch Online</Label>
-              <Badge variant="outline" className={cn("h-5 text-[10px] border-white/10", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
-                {getWatchLinkCount()} link{getWatchLinkCount() !== 1 ? 's' : ''}
-              </Badge>
+              <Label className="text-sm font-medium text-gray-300">Watch Online Links</Label>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={cn("border-white/10", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                  {getWatchLinkCount()} link{getWatchLinkCount() !== 1 ? 's' : ''}
+                </Badge>
+                <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-6 px-2 text-xs hover:bg-white/10">
+                  <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
+                </Button>
+              </div>
             </div>
             {tmdbResult.type === "movie" ? (
               <LineNumberedTextarea
                 value={movieWatchLink}
                 onChange={setMovieWatchLink}
                 placeholder="https://..."
-                className="min-h-[60px]"
+                className="min-h-[120px]"
               />
             ) : (
               <LineNumberedTextarea
                 value={seriesWatchLinks}
                 onChange={setSeriesWatchLinks}
                 placeholder="One link per line..."
-                className="min-h-[100px]"
+                className="min-h-[180px]"
               />
             )}
           </div>
@@ -926,69 +944,95 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           {/* Download Links */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-gray-300">Download</Label>
-              <Badge variant="outline" className={cn("h-5 text-[10px] border-white/10", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
-                {getDownloadLinkCount()} link{getDownloadLinkCount() !== 1 ? 's' : ''}
-              </Badge>
+              <Label className="text-sm font-medium text-gray-300">Download Links</Label>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={cn("border-white/10", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                  {getDownloadLinkCount()} link{getDownloadLinkCount() !== 1 ? 's' : ''}
+                </Badge>
+                <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-6 px-2 text-xs hover:bg-white/10">
+                  <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
+                </Button>
+              </div>
             </div>
             {tmdbResult.type === "movie" ? (
               <LineNumberedTextarea
                 value={movieDownloadLink}
                 onChange={setMovieDownloadLink}
                 placeholder="https://..."
-                className="min-h-[60px]"
+                className="min-h-[120px]"
               />
             ) : (
               <LineNumberedTextarea
                 value={seriesDownloadLinks}
                 onChange={setSeriesDownloadLinks}
                 placeholder="One link per line..."
-                className="min-h-[100px]"
+                className="min-h-[180px]"
               />
             )}
           </div>
         </div>
 
-        {/* Compact Action Buttons */}
-        <div className="flex items-center justify-between gap-2 pt-2">
-          <div className="flex gap-2">
-            {entryExists && (
-              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 h-7 text-xs">
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                In Database
-              </Badge>
-            )}
+        {/* Metadata Section */}
+        <details className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg group">
+          <summary className="w-full p-3 flex items-center justify-between hover:bg-white/5 transition-colors rounded-lg cursor-pointer list-none">
+            <div className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Advanced Metadata</span>
+            </div>
+            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="p-4 pt-0 space-y-4 border-t border-white/10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="poster-url" className="text-xs">Poster URL</Label>
+                <Input id="poster-url" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="backdrop-url" className="text-xs">Backdrop URL</Label>
+                <Input id="backdrop-url" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="logo-url" className="text-xs">Logo URL</Label>
+                <Input id="logo-url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hover-img" className="text-xs">Hover Character Image</Label>
+                <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="overview" className="text-xs">Overview</Label>
+              <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} className="bg-black/20 border-white/10 text-sm" rows={3} placeholder="Enter overview..." />
+            </div>
           </div>
-          <div className="flex gap-2">
-            {entryExists && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-white hover:bg-destructive/80">
-                    <Trash2 className="w-3 h-3 mr-1" />
+        </details>
+
+        {/* Bottom Actions */}
+        <div className="flex items-center justify-end gap-2">
+          {entryExists && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-white hover:bg-destructive/80">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Move to Trash
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will move the entry to trash. You can restore it later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive">
                     Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will move the entry to trash. You can restore it later.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            <Button onClick={handleSave} disabled={isSaving} size="sm" className="h-8 bg-cinema-red hover:bg-cinema-red/90 text-xs">
-              {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
-              Save
-            </Button>
-          </div>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
     );

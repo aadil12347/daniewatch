@@ -10,38 +10,16 @@ export function EditLinksModeIndicator() {
   if (!isAdmin || !isEditLinksMode) return null;
 
   return (
-    <div className="fixed right-6 bottom-6 z-50">
-      <div className="rounded-2xl border-2 border-primary/60 bg-background/95 backdrop-blur-md px-5 py-4 shadow-2xl ring-4 ring-primary/20 animate-in slide-in-from-bottom-4 duration-300">
-        <div className="flex items-center gap-4">
-          {/* Animated icon */}
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
-            <div className="relative p-2 rounded-full bg-primary text-primary-foreground">
-              <Pencil className="w-5 h-5" />
-            </div>
-          </div>
-          
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Pencil className="w-3.5 h-3.5 text-primary" />
-              <span className="text-sm font-bold tracking-wide uppercase text-primary">Edit Mode</span>
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">
-              <span className="hidden sm:inline">Ctrl+Shift+E to exit • </span>
-              Click cards to edit links
-            </div>
-          </div>
-          
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            className="h-8 px-4 text-xs font-semibold hover:bg-destructive/20 hover:text-destructive transition-colors" 
-            onClick={() => setEditLinksMode(false)}
-          >
-            Exit
-          </Button>
-        </div>
-      </div>
+    <div className="fixed left-4 bottom-4 z-50">
+      <Button
+        variant="secondary"
+        size="sm"
+        className="h-7 px-3 text-xs font-medium bg-destructive/90 hover:bg-destructive text-white border border-destructive shadow-lg"
+        onClick={() => setEditLinksMode(false)}
+      >
+        <Pencil className="w-3 h-3 mr-1.5" />
+        Exit Edit Mode
+      </Button>
     </div>
   );
 }
