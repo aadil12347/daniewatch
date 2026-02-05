@@ -41,6 +41,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { LineNumberedTextarea } from "@/components/ui/LineNumberedTextarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -1049,19 +1050,18 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                       </div>
                     </div>
                     {tmdbResult.type === "movie" ? (
-                      <Textarea
+                      <LineNumberedTextarea
                         value={movieWatchLink}
-                        onChange={(e) => setMovieWatchLink(e.target.value)}
-                        className="min-h-[100px] bg-black/20 border-white/10 font-mono text-sm focus:ring-blue-500/50"
+                        onChange={setMovieWatchLink}
                         placeholder="https://..."
+                        className="min-h-[80px]"
                       />
                     ) : (
-                      <Textarea
+                      <LineNumberedTextarea
                         value={seriesWatchLinks}
-                        onChange={(e) => setSeriesWatchLinks(e.target.value)}
-                        className="bg-black/20 border-white/10 font-mono text-sm focus:ring-blue-500/50"
-                        style={{ minHeight: "200px" }}
+                        onChange={setSeriesWatchLinks}
                         placeholder="One link per line..."
+                        className="min-h-[120px]"
                       />
                     )}
                   </div>
@@ -1080,19 +1080,18 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                       </div>
                     </div>
                     {tmdbResult.type === "movie" ? (
-                      <Input
+                      <LineNumberedTextarea
                         value={movieDownloadLink}
-                        onChange={(e) => setMovieDownloadLink(e.target.value)}
-                        className="bg-black/20 border-white/10 font-mono text-sm focus:ring-green-500/50"
+                        onChange={setMovieDownloadLink}
                         placeholder="https://..."
+                        className="min-h-[80px]"
                       />
                     ) : (
-                      <Textarea
+                      <LineNumberedTextarea
                         value={seriesDownloadLinks}
-                        onChange={(e) => setSeriesDownloadLinks(e.target.value)}
-                        className="bg-black/20 border-white/10 font-mono text-sm focus:ring-green-500/50"
-                        style={{ minHeight: "150px" }}
+                        onChange={setSeriesDownloadLinks}
                         placeholder="One link per line..."
+                        className="min-h-[120px]"
                       />
                     )}
                   </div>

@@ -13,10 +13,10 @@ export function EditLinksModal() {
     <Dialog open={isEditorOpen} onOpenChange={(open) => (!open ? closeEditor() : undefined)}>
       <DialogContent
         contentVariant="fullscreenBelowHeader"
-        className="p-0 overflow-y-auto"
-        overlayClassName="bg-black/70"
+        className="p-0 max-h-[calc(100vh-80px)] overflow-hidden flex flex-col"
+        overlayClassName="bg-black/80 backdrop-blur-sm"
       >
-        <div className="p-4 sm:p-6">
+        <div className="overflow-y-auto flex-1 p-3 sm:p-4">
           <UpdateLinksPanel embedded initialTmdbId={editorTmdbId ?? undefined} />
         </div>
       </DialogContent>

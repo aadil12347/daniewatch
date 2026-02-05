@@ -6,13 +6,16 @@ export function getShouldShowInitialSplash(): boolean {
   // Once per session: show only when the key is missing.
   try {
     const seen = sessionStorage.getItem(STORAGE_KEY);
-    if (seen === "1") return false;
-    // Set immediately so refresh won't re-trigger.
+    // If already seen this session, don't show again
+    if (seen === "1") {
+      return false;
+    }
+    // First time this session - set the flag and show splash
     sessionStorage.setItem(STORAGE_KEY, "1");
     return true;
   } catch {
-    // If storage is blocked, fail open (show) but still keep it safe.
-    return true;
+    // If storage is blocked, fail safe (don't show to avoid annoyance)
+    return false;
   }
 }
 
