@@ -43,23 +43,41 @@ export function LineNumberedTextarea({
             {label && (
                 <label className="text-sm font-medium text-gray-300">{label}</label>
             )}
-            <div className="relative flex rounded-lg overflow-hidden bg-black/40 backdrop-blur-md border border-white/10">
-                {/* Line Numbers */}
+            {/* WhatsApp-style chat container */}
+            <div
+                className="relative flex rounded-lg overflow-hidden shadow-md"
+                style={{
+                    background: "linear-gradient(to bottom, #0a3d2e 0%, #0f2027 100%)",
+                    backgroundImage: `
+                        linear-gradient(to bottom, rgba(10, 61, 46, 0.95) 0%, rgba(15, 32, 39, 0.95) 100%),
+                        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 20px),
+                        repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255,255,255,0.01) 10px, rgba(255,255,255,0.01) 20px)
+                    `,
+                    border: "1px solid rgba(52, 211, 153, 0.15)",
+                }}
+            >
+                {/* Line Numbers - Scrolls with content */}
                 <div
                     ref={lineNumbersRef}
-                    className="flex-shrink-0 w-12 bg-black/60 border-r border-white/10 overflow-hidden select-none"
+                    className="flex-shrink-0 w-10 overflow-hidden select-none"
                     style={{
                         overflowY: "hidden",
                         lineHeight: "1.5rem",
                         paddingTop: "0.625rem",
                         paddingBottom: "0.625rem",
+                        background: "rgba(0, 0, 0, 0.3)",
+                        borderRight: "1px solid rgba(52, 211, 153, 0.2)",
                     }}
                 >
                     {Array.from({ length: Math.max(lineCount, 1) }, (_, i) => (
                         <div
                             key={i + 1}
-                            className="text-xs text-gray-500 text-right pr-2 font-mono h-6"
-                            style={{ lineHeight: "1.5rem" }}
+                            className="text-xs text-center font-mono h-6"
+                            style={{
+                                lineHeight: "1.5rem",
+                                color: "rgba(52, 211, 153, 0.6)",
+                                fontWeight: "500",
+                            }}
                         >
                             {i + 1}
                         </div>
@@ -73,17 +91,20 @@ export function LineNumberedTextarea({
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     className={cn(
-                        "flex-1 border-0 bg-transparent resize-none font-mono text-sm min-h-[200px] focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-3",
+                        "flex-1 border-0 resize-none font-mono text-sm min-h-[200px] focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-3",
+                        "text-gray-100 placeholder:text-gray-500",
+                        "bg-transparent",
                         className
                     )}
                     style={{
                         lineHeight: "1.5rem",
+                        background: "transparent",
                     }}
                 />
             </div>
             {lines.length > 0 && lines.some(line => line.trim()) && (
-                <p className="text-xs text-gray-500">
-                    {lines.filter(line => line.trim()).length} links
+                <p className="text-xs font-medium" style={{ color: "rgba(52, 211, 153, 0.7)" }}>
+                    {lines.filter(line => line.trim()).length} link{lines.filter(line => line.trim()).length !== 1 ? 's' : ''}
                 </p>
             )}
         </div>

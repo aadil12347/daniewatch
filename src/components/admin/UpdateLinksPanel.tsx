@@ -137,6 +137,8 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [adminEdited, setAdminEdited] = useState(false);
   const [showEpisodeEditor, setShowEpisodeEditor] = useState(false);
   const [isRefreshingTmdb, setIsRefreshingTmdb] = useState(false);
+  const [seasonCount, setSeasonCount] = useState("");
+  const [episodeCount, setEpisodeCount] = useState("");
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
@@ -999,6 +1001,18 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 <Label htmlFor="hover-img" className="text-xs">Hover Character Image</Label>
                 <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
               </div>
+              {tmdbResult?.type === "tv" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="season-count" className="text-xs">Number of Seasons</Label>
+                    <Input id="season-count" type="number" value={seasonCount} onChange={(e) => setSeasonCount(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="episode-count" className="text-xs">Episodes (Current Season)</Label>
+                    <Input id="episode-count" type="number" value={episodeCount} onChange={(e) => setEpisodeCount(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 10" />
+                  </div>
+                </>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="overview" className="text-xs">Overview</Label>
