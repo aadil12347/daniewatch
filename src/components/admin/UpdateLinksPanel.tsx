@@ -1001,7 +1001,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 <Label htmlFor="hover-img" className="text-xs">Hover Character Image</Label>
                 <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
               </div>
-              {tmdbResult?.type === "tv" && (
+              {tmdbResult?.type === "series" && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="season-count" className="text-xs">Number of Seasons</Label>
@@ -1018,7 +1018,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
               <Label htmlFor="overview" className="text-xs">Overview</Label>
               <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} className="bg-black/20 border-white/10 text-sm" rows={3} placeholder="Enter overview..." />
             </div>
-            {tmdbResult?.type === "tv" && (
+            {tmdbResult?.type === "series" && (
               <div className="pt-2 border-t border-white/10">
                 <Button
                   variant="outline"
