@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -18,15 +18,14 @@ export function LineNumberedTextarea({
     label,
 }: LineNumberedTextareaProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const lineNumbersRef = useRef<HTMLDivElement>(null);
+    const overlayRef = useRef<HTMLDivElement>(null);
 
     const lines = value.split("\n");
-    const lineCount = lines.length;
 
-    // Sync scroll between line numbers and textarea
+    // Sync scroll position
     const handleScroll = () => {
-        if (textareaRef.current && lineNumbersRef.current) {
-            lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+        if (textareaRef.current && overlayRef.current) {
+            overlayRef.current.scrollTop = textareaRef.current.scrollTop;
         }
     };
 
@@ -43,9 +42,9 @@ export function LineNumberedTextarea({
             {label && (
                 <label className="text-sm font-medium text-gray-300">{label}</label>
             )}
-            {/* WhatsApp-style chat container */}
+            {/* WhatsApp-style container with overlay */}
             <div
-                className="relative flex rounded-lg overflow-hidden shadow-md"
+                className="relative rounded-lg shadow-md overflow-hidden"
                 style={{
                     background: "linear-gradient(to bottom, #0a3d2e 0%, #0f2027 100%)",
                     backgroundImage: `
@@ -56,24 +55,24 @@ export function LineNumberedTextarea({
                     border: "1px solid rgba(52, 211, 153, 0.15)",
                 }}
             >
-                {/* Line Numbers - Scrolls with content */}
+                {/* Line numbers overlay - scrolls with textarea */}
                 <div
-                    ref={lineNumbersRef}
-                    className="flex-shrink-0 w-10 overflow-hidden select-none"
+                    ref={overlayRef}
+                    className="absolute top-0 left-0 bottom-0 w-10 overflow-hidden pointer-events-none select-none z-10"
                     style={{
                         overflowY: "hidden",
-                        lineHeight: "1.5rem",
                         paddingTop: "0.625rem",
                         paddingBottom: "0.625rem",
                         background: "rgba(0, 0, 0, 0.3)",
                         borderRight: "1px solid rgba(52, 211, 153, 0.2)",
                     }}
                 >
-                    {Array.from({ length: Math.max(lineCount, 1) }, (_, i) => (
+                    {lines.map((_, i) => (
                         <div
-                            key={i + 1}
-                            className="text-xs text-center font-mono h-6"
+                            key={i}
+                            className="text-xs text-center font-mono"
                             style={{
+                                height: "1.5rem",
                                 lineHeight: "1.5rem",
                                 color: "rgba(52, 211, 153, 0.6)",
                                 fontWeight: "500",
@@ -84,29 +83,28 @@ export function LineNumberedTextarea({
                     ))}
                 </div>
 
-                {/* Textarea */}
+                {/* Textarea with left padding for line numbers */}
                 <Textarea
                     ref={textareaRef}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     className={cn(
-                        "flex-1 border-0 resize-none font-mono text-sm min-h-[200px] focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none pl-3",
+                        "border-0 resize-none font-mono text-sm min-h-[200px] w-full",
+                        "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg",
                         "text-gray-100 placeholder:text-gray-500",
                         "bg-transparent",
                         className
                     )}
                     style={{
                         lineHeight: "1.5rem",
+                        paddingLeft: "2.75rem", // Space for line numbers
+                        paddingTop: "0.625rem",
+                        paddingBottom: "0.625rem",
                         background: "transparent",
                     }}
                 />
             </div>
-            {lines.length > 0 && lines.some(line => line.trim()) && (
-                <p className="text-xs font-medium" style={{ color: "rgba(52, 211, 153, 0.7)" }}>
-                    {lines.filter(line => line.trim()).length} link{lines.filter(line => line.trim()).length !== 1 ? 's' : ''}
-                </p>
-            )}
         </div>
     );
 }

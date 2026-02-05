@@ -1018,6 +1018,19 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
               <Label htmlFor="overview" className="text-xs">Overview</Label>
               <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} className="bg-black/20 border-white/10 text-sm" rows={3} placeholder="Enter overview..." />
             </div>
+            {tmdbResult?.type === "tv" && (
+              <div className="pt-2 border-t border-white/10">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowEpisodeEditor(true)}
+                  className="w-full bg-black/20 hover:bg-black/30"
+                >
+                  <Settings2 className="w-4 h-4 mr-2" />
+                  Edit Episode Metadata
+                </Button>
+              </div>
+            )}
           </div>
         </details>
 
