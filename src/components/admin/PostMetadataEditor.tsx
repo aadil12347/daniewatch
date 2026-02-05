@@ -51,6 +51,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { LineNumberedTextarea } from "@/components/ui/LineNumberedTextarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -237,6 +238,13 @@ export function PostMetadataEditor() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{ current: number; total: number; message: string } | null>(null);
+
+  // Full-screen editor state
+  const [isFullScreenEditorOpen, setIsFullScreenEditorOpen] = useState(false);
+  const [movieWatchLink, setMovieWatchLink] = useState("");
+  const [movieDownloadLink, setMovieDownloadLink] = useState("");
+  const [seriesWatchLinks, setSeriesWatchLinks] = useState("");
+  const [seriesDownloadLinks, setSeriesDownloadLinks] = useState("");
 
   // Restore state from sessionStorage on mount
   useEffect(() => {
@@ -739,6 +747,25 @@ export function PostMetadataEditor() {
     setGenres(entry.genres || []);
     setCastData(entry.cast_data || []);
     setAdminEdited(entry.admin_edited || false);
+
+    // Load link data
+    if (entry.type === "movie") {
+      const content = entry.content as { watch_link?: string; download_link?: string };
+      setMovieWatchLink(content.watch_link || "");
+      setMovieDownloadLink(content.download_link || "");
+    } else if (entry.type === "series") {
+      // Load first season's links by default
+      const content = entry.content as Record<string, any>;
+      const firstSeasonKey = Object.keys(content).find(k => k.startsWith("season_"));
+      if (firstSeasonKey) {
+        const seasonData = content[firstSeasonKey];
+        setSeriesWatchLinks(seasonData.watch_links?.join("\n") || "");
+        setSeriesDownloadLinks(seasonData.download_links?.join("\n") || "");
+      }
+    }
+
+    // Open full-screen editor
+    setIsFullScreenEditorOpen(true);
   };
 
   // Load fresh data from TMDB
@@ -974,6 +1001,27 @@ export function PostMetadataEditor() {
     setIsSaving(true);
 
     try {
+      // Prepare content with links
+      let content = selectedEntry.content || {};
+
+      if (selectedEntry.type === "movie") {
+        content = {
+          watch_link: movieWatchLink.trim() || "",
+          download_link: movieDownloadLink.trim() || "",
+        };
+      } else if (selectedEntry.type === "series") {
+        // Update current season's links
+        content = { ...content };
+        const seasonKey = `season_${selectedSeason}`;
+        const watchLinks = seriesWatchLinks.split("\n").filter(l => l.trim());
+        const downloadLinks = seriesDownloadLinks.split("\n").filter(l => l.trim());
+        content[seasonKey] = {
+          ...content[seasonKey],
+          watch_links: watchLinks,
+          download_links: downloadLinks,
+        };
+      }
+
       const updateData = {
         title: title || null,
         poster_url: posterUrl || null,
@@ -996,17 +1044,19 @@ export function PostMetadataEditor() {
       const { error } = await supabase.from("entries").upsert({
         id: selectedEntry.id,
         type: selectedEntry.type,
-        content: selectedEntry.content || (selectedEntry.type === 'movie' ? { watch_link: "", download_link: "" } : {}),
+        content: content,
         ...updateData
       });
 
       if (error) throw error;
 
       setAdminEdited(true);
+      // Update selectedEntry with new content
+      setSelectedEntry({ ...selectedEntry, content });
 
       toast({
         title: "Saved",
-        description: "Entry metadata saved successfully.",
+        description: "Entry metadata and links saved successfully.",
       });
     } catch (error: any) {
       console.error("Error saving entry:", error);
@@ -2133,6 +2183,236 @@ export function PostMetadataEditor() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Full-Screen Link Editor Dialog */}
+        <Dialog open={isFullScreenEditorOpen} onOpenChange={setIsFullScreenEditorOpen}>
+          <DialogContent className="max-w-full h-screen m-0 p-0 gap-0 bg-black/95 border-0 rounded-none flex flex-col">
+            {/* Top bar with Save button (fixed) */}
+            <div className="flex-shrink-0 sticky top-0 z-50 bg-black/60 backdrop-blur-md border-b border-white/10 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Button onClick={handleSave} disabled={isSaving} className="bg-cinema-red hover:bg-cinema-red/90 text-white shadow-lg shadow-cinema-red/20">
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                    Save
+                  </Button>
+                  <div className="flex flex-col">
+                    <h2 className="font-bold text-lg text-white">{title || `ID: ${selectedEntry?.id}`}</h2>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{selectedEntry?.type === "movie" ? "Movie" : "Series"}</Badge>
+                      <Badge variant="secondary">ID: {selectedEntry?.id}</Badge>
+                      {adminEdited && <Badge className="bg-amber-600">Admin Edited</Badge>}
+                    </div>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setIsFullScreenEditorOpen(false)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Scrollable content area */}
+            <ScrollArea className="flex-1">
+              <div className="container mx-auto px-4 py-6 max-w-7xl space-y-6">
+                {/* Links Section */}
+                {selectedEntry?.type === "movie" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <LineNumberedTextarea
+                      label="Watch Online Link"
+                      value={movieWatchLink}
+                      onChange={setMovieWatchLink}
+                      placeholder="Paste watch online link here..."
+                    />
+                    <LineNumberedTextarea
+                      label="Download Link"
+                      value={movieDownloadLink}
+                      onChange={setMovieDownloadLink}
+                      placeholder="Paste download link here..."
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Season Selector */}
+                    <div className="flex items-center gap-3">
+                      <Label className="text-sm font-medium text-gray-300">Season:</Label>
+                      <Select
+                        value={String(selectedSeason)}
+                        onValueChange={async (val) => {
+                          const newSeason = parseInt(val, 10);
+                          setSelectedSeason(newSeason);
+                          // Load season data
+                          if (selectedEntry) {
+                            const content = selectedEntry.content as Record<string, any>;
+                            const seasonKey = `season_${newSeason}`;
+                            const seasonData = content[seasonKey];
+                            setSeriesWatchLinks(seasonData?.watch_links?.join("\n") || "");
+                            setSeriesDownloadLinks(seasonData?.download_links?.join("\n") || "");
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-32 bg-black/40 backdrop-blur-md border-white/10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableSeasons.map(season => (
+                            <SelectItem key={season} value={String(season)}>Season {season}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Links for selected season */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <LineNumberedTextarea
+                        label={`Watch Online Links (Season ${selectedSeason})`}
+                        value={seriesWatchLinks}
+                        onChange={setSeriesWatchLinks}
+                        placeholder="Paste watch online links here (one per line)..."
+                      />
+                      <LineNumberedTextarea
+                        label={`Download Links (Season ${selectedSeason})`}
+                        value={seriesDownloadLinks}
+                        onChange={setSeriesDownloadLinks}
+                        placeholder="Paste download links here (one per line)..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Collapsible Metadata Section */}
+                <Collapsible open={isMainMetadataOpen} onOpenChange={setIsMainMetadataOpen} className="border rounded-lg bg-black/40 backdrop-blur-md border-white/10">
+                  <div
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
+                    onClick={() => setIsMainMetadataOpen(!isMainMetadataOpen)}
+                  >
+                    <div className="flex items-center gap-2 font-semibold text-gray-200">
+                      <Pencil className="w-5 h-5" />
+                      Poster, Movie Details & Metadata
+                      {!isMainMetadataOpen && <span className="text-sm font-normal text-muted-foreground ml-2">Click to expand</span>}
+                    </div>
+                    {isMainMetadataOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
+
+                  <CollapsibleContent className="p-4 pt-0 space-y-6 border-t border-white/10">
+                    {/* Basic Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title-fs">Title</Label>
+                        <Input id="title-fs" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="bg-black/40 backdrop-blur-md border-white/10" />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="year-fs">Year</Label>
+                          <Input
+                            id="year-fs"
+                            type="number"
+                            value={releaseYear ?? ""}
+                            onChange={(e) => setReleaseYear(e.target.value ? Number(e.target.value) : null)}
+                            className="bg-black/40 backdrop-blur-md border-white/10"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="status-fs">Status</Label>
+                          <Input id="status-fs" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="Released" className="bg-black/40 backdrop-blur-md border-white/10" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="rating-fs">Rating</Label>
+                          <Input
+                            id="rating-fs"
+                            type="number"
+                            step="0.1"
+                            value={voteAverage ?? ""}
+                            onChange={(e) => setVoteAverage(e.target.value ? Number(e.target.value) : null)}
+                            className="bg-black/40 backdrop-blur-md border-white/10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Image URLs */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium flex items-center gap-2 text-gray-200">
+                        <ImageIcon className="w-4 h-4" /> Images
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="poster-fs">Poster URL</Label>
+                          <Input id="poster-fs" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} placeholder="https://..." className="bg-black/40 backdrop-blur-md border-white/10" />
+                          {posterUrl && <img src={posterUrl} alt="Poster" className="w-20 h-30 object-cover rounded mt-1" />}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="backdrop-fs">Backdrop URL</Label>
+                          <Input id="backdrop-fs" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} placeholder="https://..." className="bg-black/40 backdrop-blur-md border-white/10" />
+                          {backdropUrl && <img src={backdropUrl} alt="Backdrop" className="w-32 h-18 object-cover rounded mt-1" />}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="logo-fs">Logo URL</Label>
+                          <Input id="logo-fs" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." className="bg-black/40 backdrop-blur-md border-white/10" />
+                          {logoUrl && <img src={logoUrl} alt="Logo" className="w-24 h-12 object-contain rounded mt-1 bg-black/50 p-1" />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Overview & Tagline */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="overview-fs">Overview</Label>
+                        <Textarea id="overview-fs" value={overview} onChange={(e) => setOverview(e.target.value)} rows={4} placeholder="Enter overview..." className="bg-black/40 backdrop-blur-md border-white/10" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tagline-fs">Tagline</Label>
+                        <Input id="tagline-fs" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Enter tagline..." className="bg-black/40 backdrop-blur-md border-white/10" />
+                      </div>
+                    </div>
+
+                    {/* Genres */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Genres</Label>
+                        <Button variant="outline" size="sm" onClick={openGenreModal} className="gap-1 border-white/10">
+                          <Pencil className="w-3 h-3" /> Edit Genres
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {genres.length === 0 ? (
+                          <span className="text-muted-foreground text-sm">No genres selected</span>
+                        ) : (
+                          genres.map((genre) => (
+                            <Badge key={genre.id} variant="secondary" className="gap-1">
+                              {genre.name}
+                              <button onClick={() => handleRemoveGenre(genre.id)} className="ml-1 hover:text-destructive">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Cast */}
+                    <div className="space-y-2">
+                      <Label>Cast (Top 12)</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {castData.length === 0 ? (
+                          <span className="text-muted-foreground text-sm">No cast data</span>
+                        ) : (
+                          castData.map((member) => (
+                            <Badge key={member.id} variant="outline" className="gap-1">
+                              {member.name}
+                              {member.character && <span className="text-muted-foreground">as {member.character}</span>}
+                              <button onClick={() => handleRemoveCast(member.id)} className="ml-1 hover:text-destructive">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card >
   );
