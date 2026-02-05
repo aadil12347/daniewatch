@@ -18,7 +18,9 @@ import {
   Image as ImageIcon,
   Sparkles,
   FileVideo,
-  Download
+  Download,
+  CheckCircle2,
+  X
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -857,6 +859,142 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     return season?.episode_count || 0;
   };
 
+  // COMPACT EMBEDDED MODE - for Edit Mode modal
+  if (embedded && tmdbResult) {
+    return (
+      <div className="space-y-3 max-w-4xl mx-auto">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between gap-3 p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {tmdbResult.posterUrl && (
+              <img src={tmdbResult.posterUrl} alt={tmdbResult.title} className="w-12 h-16 object-cover rounded" />
+            )}
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-sm truncate">{tmdbResult.title}</h3>
+              <div className="flex gap-1.5 text-xs text-muted-foreground">
+                <Badge variant="outline" className="h-5 text-xs border-white/10">{tmdbResult.year}</Badge>
+                <Badge variant="outline" className="h-5 text-xs border-white/10">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
+                <Badge variant="secondary" className="h-5 text-xs bg-white/10">ID: {tmdbResult.id}</Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Series Season Selector - Inline */}
+          {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
+            <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
+              <SelectTrigger className="w-32 h-8 text-xs bg-white/5 border-white/10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {tmdbResult.seasonDetails.map((s) => (
+                  <SelectItem key={s.season_number} value={String(s.season_number)} className="text-xs">
+                    S{s.season_number} ({s.episode_count} eps)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {/* Compact Links Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Watch Links */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-gray-300">Watch Online</Label>
+              <Badge variant="outline" className={cn("h-5 text-[10px] border-white/10", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                {getWatchLinkCount()} link{getWatchLinkCount() !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+            {tmdbResult.type === "movie" ? (
+              <LineNumberedTextarea
+                value={movieWatchLink}
+                onChange={setMovieWatchLink}
+                placeholder="https://..."
+                className="min-h-[60px]"
+              />
+            ) : (
+              <LineNumberedTextarea
+                value={seriesWatchLinks}
+                onChange={setSeriesWatchLinks}
+                placeholder="One link per line..."
+                className="min-h-[100px]"
+              />
+            )}
+          </div>
+
+          {/* Download Links */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-gray-300">Download</Label>
+              <Badge variant="outline" className={cn("h-5 text-[10px] border-white/10", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                {getDownloadLinkCount()} link{getDownloadLinkCount() !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+            {tmdbResult.type === "movie" ? (
+              <LineNumberedTextarea
+                value={movieDownloadLink}
+                onChange={setMovieDownloadLink}
+                placeholder="https://..."
+                className="min-h-[60px]"
+              />
+            ) : (
+              <LineNumberedTextarea
+                value={seriesDownloadLinks}
+                onChange={setSeriesDownloadLinks}
+                placeholder="One link per line..."
+                className="min-h-[100px]"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Compact Action Buttons */}
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <div className="flex gap-2">
+            {entryExists && (
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30 h-7 text-xs">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                In Database
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {entryExists && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-white hover:bg-destructive/80">
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will move the entry to trash. You can restore it later.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button onClick={handleSave} disabled={isSaving} size="sm" className="h-8 bg-cinema-red hover:bg-cinema-red/90 text-xs">
+              {isSaving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+              Save
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FULL MODE - for standalone page
   return (
     <div className={cn("relative min-h-screen", className)}>
       {!embedded && (
