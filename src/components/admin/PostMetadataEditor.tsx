@@ -1187,6 +1187,20 @@ export function PostMetadataEditor() {
         }));
       }
 
+      // If no episodes found (custom season), create placeholder
+      if (episodesToSave.length === 0) {
+        episodesToSave.push({
+          episode_number: 1,
+          name: "Episode 1",
+          overview: null,
+          still_path: null,
+          air_date: null,
+          runtime: null,
+          vote_average: null,
+          admin_edited: false,
+        });
+      }
+
       // Allow creating even with 0 episodes (manual mode)
 
 
