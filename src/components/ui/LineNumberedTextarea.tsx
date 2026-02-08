@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -18,14 +18,14 @@ export function LineNumberedTextarea({
     label,
 }: LineNumberedTextareaProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const overlayRef = useRef<HTMLDivElement>(null);
+    const lineNumbersRef = useRef<HTMLDivElement>(null);
 
     const lines = value.split("\n");
 
-    // Sync scroll position
+    // Sync scroll position (both vertical and horizontal)
     const handleScroll = () => {
-        if (textareaRef.current && overlayRef.current) {
-            overlayRef.current.scrollTop = textareaRef.current.scrollTop;
+        if (textareaRef.current && lineNumbersRef.current) {
+            lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
         }
     };
 
@@ -42,9 +42,9 @@ export function LineNumberedTextarea({
             {label && (
                 <label className="text-sm font-medium text-gray-300">{label}</label>
             )}
-            {/* WhatsApp-style container with overlay */}
+            {/* WhatsApp-style container */}
             <div
-                className="relative rounded-lg shadow-md overflow-hidden"
+                className="relative rounded-lg shadow-md overflow-hidden flex"
                 style={{
                     background: "linear-gradient(to bottom, #0a3d2e 0%, #0f2027 100%)",
                     backgroundImage: `
@@ -55,12 +55,13 @@ export function LineNumberedTextarea({
                     border: "1px solid rgba(52, 211, 153, 0.15)",
                 }}
             >
-                {/* Line numbers overlay - scrolls with textarea */}
+                {/* Line numbers column - scrolls vertically with content */}
                 <div
-                    ref={overlayRef}
-                    className="absolute top-0 left-0 bottom-0 w-10 overflow-hidden pointer-events-none select-none z-10"
+                    ref={lineNumbersRef}
+                    className="flex-shrink-0 w-10 select-none"
                     style={{
                         overflowY: "hidden",
+                        overflowX: "hidden",
                         paddingTop: "0.625rem",
                         paddingBottom: "0.625rem",
                         background: "rgba(0, 0, 0, 0.3)",
@@ -83,25 +84,30 @@ export function LineNumberedTextarea({
                     ))}
                 </div>
 
-                {/* Textarea with left padding for line numbers */}
+                {/* Textarea - single line per link with horizontal scroll */}
                 <Textarea
                     ref={textareaRef}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     className={cn(
-                        "border-0 resize-none font-mono text-sm min-h-[200px] w-full",
-                        "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg",
+                        "border-0 resize-none font-mono text-sm min-h-[200px] flex-1",
+                        "focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none",
                         "text-gray-100 placeholder:text-gray-500",
                         "bg-transparent",
+                        "overflow-y-scroll overflow-x-auto", // Both scrollbars
                         className
                     )}
                     style={{
                         lineHeight: "1.5rem",
-                        paddingLeft: "2.75rem", // Space for line numbers
+                        paddingLeft: "0.75rem",
+                        paddingRight: "0.75rem",
                         paddingTop: "0.625rem",
                         paddingBottom: "0.625rem",
                         background: "transparent",
+                        whiteSpace: "nowrap", // CRITICAL: Prevents wrapping, forces single line
+                        overflowWrap: "normal",
+                        wordWrap: "normal",
                     }}
                 />
             </div>
