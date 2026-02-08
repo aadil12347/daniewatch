@@ -1023,7 +1023,14 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowEpisodeEditor(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Episode editor button clicked! Current state:", showEpisodeEditor);
+                    console.log("tmdbResult:", tmdbResult);
+                    console.log("Season details:", tmdbResult?.seasonDetails);
+                    setShowEpisodeEditor(true);
+                  }}
                   className="w-full bg-black/20 hover:bg-black/30"
                 >
                   <Settings2 className="w-4 h-4 mr-2" />
@@ -1462,10 +1469,13 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       {tmdbResult && tmdbResult.type === "series" && (
         <EpisodeMetadataEditor
           open={showEpisodeEditor}
-          onOpenChange={setShowEpisodeEditor}
+          onOpenChange={(open) => {
+            console.log("Episode editor state changing to:", open);
+            setShowEpisodeEditor(open);
+          }}
           entryId={String(tmdbResult.id)}
           entryTitle={tmdbResult.title}
-          seasonDetails={tmdbResult.seasonDetails}
+          seasonDetails={tmdbResult.seasonDetails || []}
         />
       )}
     </div>
