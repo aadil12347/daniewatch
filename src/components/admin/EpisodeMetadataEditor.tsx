@@ -97,11 +97,12 @@ export function EpisodeMetadataEditor({
   const [selectionModeEnabled, setSelectionModeEnabled] = useState(false);
 
   // Load episodes when season changes
+  // Load episodes when season changes
   useEffect(() => {
     if (!open || !entryId) return;
     loadEpisodes(selectedSeason);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, entryId, selectedSeason]);
+  }, [selectedSeason, open, entryId]);
 
   const loadEpisodes = async (season: number) => {
     setIsLoading(true);
@@ -174,7 +175,7 @@ export function EpisodeMetadataEditor({
           air_date: ep.air_date || null,
           runtime: ep.runtime || null,
           vote_average: ep.vote_average ?? null,
-          admin_edited: false,
+          admin_edited: false, // Syncing resets admin_edited to false
           isExpanded: false,
           isDirty: true,
           selected: false,
@@ -575,6 +576,7 @@ export function EpisodeMetadataEditor({
                 if (v === "new_season") {
                   setShowAddSeasonDialog(true);
                 } else {
+                  // This updates state, which triggers useEffect -> loadEpisodes
                   setSelectedSeason(Number(v));
                 }
               }}
@@ -615,9 +617,11 @@ export function EpisodeMetadataEditor({
 
           <div className="h-6 w-px bg-border mx-2" />
 
-          {/* Bulk Add Episodes */}
+          <div className="flex-1" />
+
+          {/* Add Episodes (Relocated) */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">
+            <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
               Add Episodes:
             </span>
             <div className="flex items-center gap-1">
@@ -627,7 +631,7 @@ export function EpisodeMetadataEditor({
                 max="50"
                 value={bulkEpisodeCount}
                 onChange={(e) => setBulkEpisodeCount(e.target.value)}
-                className="w-16 h-8"
+                className="w-16 h-8 bg-background"
                 placeholder="#"
               />
               <Button variant="outline" size="sm" onClick={handleBulkAdd} className="h-8">
@@ -636,7 +640,7 @@ export function EpisodeMetadataEditor({
             </div>
           </div>
 
-          <div className="flex-1" />
+          <div className="h-6 w-px bg-border mx-2" />
 
           {/* Save Actions */}
           <div className="flex items-center gap-2">

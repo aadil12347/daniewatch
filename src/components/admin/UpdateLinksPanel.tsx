@@ -147,7 +147,6 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
-  const [isDeletingSeason, setIsDeletingSeason] = useState(false);
   const [seasonSaveProgress, setSeasonSaveProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
   // Season management state
