@@ -348,6 +348,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         setOverview(details.overview || "");
       }
 
+      setAdminEdited(false);
       toast({
         title: "Refreshed",
         description: "Metadata fetched from TMDB. Click Save to persist.",
@@ -1360,45 +1361,46 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 {/* Series Season Selector */}
                 {tmdbResult.type === "series" && (
                   <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="text-sm text-muted-foreground block">Active Season</Label>
+                    <Label className="text-sm text-muted-foreground block mb-2">Active Season</Label>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={String(selectedSeason)}
+                        onValueChange={(val) => {
+                          if (val === "new_season") {
+                            setShowAddSeasonDialog(true);
+                          } else {
+                            handleSeasonChange(val);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="flex-1 bg-white/5 border-white/10 h-12">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[70]">
+                          {tmdbResult.seasonDetails?.map((s) => (
+                            <SelectItem key={s.season_number} value={String(s.season_number)}>
+                              Season {s.season_number} <span className="text-muted-foreground ml-2">({s.episode_count} eps)</span>
+                            </SelectItem>
+                          ))}
+                          <SelectItem
+                            value="new_season"
+                            className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10"
+                          >
+                            <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-12 w-12 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-white/10"
                         onClick={() => setShowDeleteSeasonConfirm(true)}
                         title="Delete This Season"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-5 h-5" />
                       </Button>
                     </div>
-                    <Select
-                      value={String(selectedSeason)}
-                      onValueChange={(val) => {
-                        if (val === "new_season") {
-                          setShowAddSeasonDialog(true);
-                        } else {
-                          handleSeasonChange(val);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-full bg-white/5 border-white/10 h-12">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="z-[70]">
-                        {tmdbResult.seasonDetails?.map((s) => (
-                          <SelectItem key={s.season_number} value={String(s.season_number)}>
-                            Season {s.season_number} <span className="text-muted-foreground ml-2">({s.episode_count} eps)</span>
-                          </SelectItem>
-                        ))}
-                        <SelectItem
-                          value="new_season"
-                          className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10"
-                        >
-                          <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 )}
               </div>
