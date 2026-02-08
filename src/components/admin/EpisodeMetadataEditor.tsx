@@ -390,10 +390,11 @@ export function EpisodeMetadataEditor({
     const toDelete = episodes.filter((ep) => ep.selected);
     if (toDelete.length === 0) return;
 
-    setEpisodes(prev => prev.filter(ep => !ep.selected));
+    // Mark remaining episodes as dirty so save button becomes active
+    setEpisodes(prev => prev.filter(ep => !ep.selected).map(ep => ({ ...ep, isDirty: true })));
     toast({
       title: "Episodes Removed",
-      description: `Removed ${toDelete.length} episode(s) from local list.`,
+      description: `Removed ${toDelete.length} episode(s). Click Save to persist changes.`,
     });
   };
 

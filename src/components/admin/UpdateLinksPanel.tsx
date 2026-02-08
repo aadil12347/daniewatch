@@ -141,8 +141,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [currentEntry, setCurrentEntry] = useState<EntryData | null>(null);
   const [showEpisodeEditor, setShowEpisodeEditor] = useState(false);
   const [isRefreshingTmdb, setIsRefreshingTmdb] = useState(false);
-  const [seasonCount, setSeasonCount] = useState("");
-  const [episodeCount, setEpisodeCount] = useState("");
+  const [rating, setRating] = useState("");
+  const [runtime, setRuntime] = useState("");
+  const [releaseYear, setReleaseYear] = useState("");
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
@@ -330,6 +331,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       setBackdropUrl("");
       setLogoUrl("");
       setOverview("");
+      setRating("");
+      setRuntime("");
+      setReleaseYear("");
       setAdminEdited(false);
       setEntryExists(false);
 
@@ -345,12 +349,18 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           setBackdropUrl(entry.backdrop_url || "");
           setLogoUrl(entry.logo_url || "");
           setOverview(entry.overview || "");
+          setRating(entry.vote_average ? String(entry.vote_average) : "");
+          setRuntime(entry.runtime ? String(entry.runtime) : "");
+          setReleaseYear(entry.release_year ? String(entry.release_year) : "");
         } else {
           // If not admin_edited, we'll still show what's in DB but allow refresh
           setPosterUrl(entry.poster_url || "");
           setBackdropUrl(entry.backdrop_url || "");
           setLogoUrl(entry.logo_url || "");
           setOverview(entry.overview || "");
+          setRating(entry.vote_average ? String(entry.vote_average) : "");
+          setRuntime(entry.runtime ? String(entry.runtime) : "");
+          setReleaseYear(entry.release_year ? String(entry.release_year) : "");
         }
 
         setAdminEdited(entry.admin_edited || false);
@@ -413,6 +423,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         setBackdropUrl(getImageUrl(details.backdrop_path, "original") || "");
         setLogoUrl(logoPath ? getImageUrl(logoPath, "w500") || "" : "");
         setOverview(details.overview || "");
+        setRating(details.vote_average ? String(details.vote_average) : "");
+        setRuntime(details.runtime ? String(details.runtime) : "");
+        setReleaseYear(details.release_date ? details.release_date.split("-")[0] : "");
       } else {
         const [details, images] = await Promise.all([
           getTVDetails(tmdbResult.id),
@@ -427,6 +440,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         setBackdropUrl(getImageUrl(details.backdrop_path, "original") || "");
         setLogoUrl(logoPath ? getImageUrl(logoPath, "w500") || "" : "");
         setOverview(details.overview || "");
+        setRating(details.vote_average ? String(details.vote_average) : "");
+        setRuntime(details.episode_run_time?.[0] ? String(details.episode_run_time[0]) : "");
+        setReleaseYear(details.first_air_date ? details.first_air_date.split("-")[0] : "");
       }
 
       setAdminEdited(false);
@@ -650,17 +666,21 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         const customBackdrop = backdropUrl.trim();
         const customLogo = logoUrl.trim();
 
+        const customRating = rating.trim() ? parseFloat(rating) : null;
+        const customRuntime = runtime.trim() ? parseInt(runtime) : null;
+        const customReleaseYear = releaseYear.trim() ? parseInt(releaseYear) : null;
+
         const media = {
           poster_url: customPoster || getImageUrl(details.poster_path, "w342"),
           backdrop_url: customBackdrop || getImageUrl(details.backdrop_path, "original"),
           logo_url: customLogo || pickLogoUrl(images.logos),
-          vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
+          vote_average: customRating !== null ? customRating : (typeof details.vote_average === "number" ? details.vote_average : null),
           vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
           media_updated_at,
           // Extended metadata
           overview: overview.trim() || details.overview || null,
           tagline: details.tagline || null,
-          runtime: details.runtime || null,
+          runtime: customRuntime !== null ? customRuntime : (details.runtime || null),
           status: details.status || null,
           genres: details.genres || null,
           cast_data: topCast,
@@ -676,7 +696,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           finalDownloadLink,
           trimmedHover,
           tmdbResult.genreIds,
-          tmdbResult.releaseYear ?? null,
+          customReleaseYear ?? tmdbResult.releaseYear ?? null,
           tmdbResult.title,
           details.original_language || null,
           details.production_countries?.map((c: any) => c.iso_3166_1) || null,
@@ -716,16 +736,20 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         const customPoster = posterUrl.trim();
         const customBackdrop = backdropUrl.trim();
         const customLogo = logoUrl.trim();
+        const customRating = rating.trim() ? parseFloat(rating) : null;
+        const customRuntime = runtime.trim() ? parseInt(runtime) : null;
+        const customReleaseYear = releaseYear.trim() ? parseInt(releaseYear) : null;
 
         const media = {
           poster_url: customPoster || getImageUrl(details.poster_path, "w342"),
           backdrop_url: customBackdrop || getImageUrl(details.backdrop_path, "original"),
           logo_url: customLogo || pickLogoUrl(images.logos),
-          vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
+          vote_average: customRating !== null ? customRating : (typeof details.vote_average === "number" ? details.vote_average : null),
           vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
           media_updated_at,
           overview: overview.trim() || details.overview || null,
           tagline: details.tagline || null,
+          runtime: customRuntime !== null ? customRuntime : (details.episode_run_time?.[0] || null),
           number_of_seasons: details.number_of_seasons || null,
           number_of_episodes: details.number_of_episodes || null,
           status: details.status || null,
@@ -740,7 +764,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           finalDownloadLinks,
           trimmedHover,
           tmdbResult.genreIds,
-          tmdbResult.releaseYear ?? null,
+          customReleaseYear ?? tmdbResult.releaseYear ?? null,
           tmdbResult.title,
           details.original_language || null,
           details.origin_country || null,
@@ -1173,18 +1197,18 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 <Label htmlFor="hover-img" className="text-xs">Hover Character Image</Label>
                 <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
               </div>
-              {tmdbResult?.type === "series" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="season-count" className="text-xs">Number of Seasons</Label>
-                    <Input id="season-count" type="number" value={seasonCount} onChange={(e) => setSeasonCount(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 5" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="episode-count" className="text-xs">Episodes (Current Season)</Label>
-                    <Input id="episode-count" type="number" value={episodeCount} onChange={(e) => setEpisodeCount(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 10" />
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="rating" className="text-xs">Rating (TMDB)</Label>
+                <Input id="rating" type="number" step="0.1" min="0" max="10" value={rating} onChange={(e) => setRating(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 8.5" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="runtime" className="text-xs">Runtime (minutes)</Label>
+                <Input id="runtime" type="number" value={runtime} onChange={(e) => setRuntime(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 120" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="release-year" className="text-xs">Release Year</Label>
+                <Input id="release-year" type="number" value={releaseYear} onChange={(e) => setReleaseYear(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 2024" />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="overview" className="text-xs">Overview</Label>
