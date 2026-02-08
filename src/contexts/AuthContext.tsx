@@ -20,8 +20,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Cache cleanup utility
 const clearAllCaches = () => {
   try {
-    // Clear all session storage
-    sessionStorage.clear();
+    // List of keys to clear from sessionStorage (targeted instead of .clear())
+    const sessionKeysToClear = [
+      'admin_db_manifest_cache',
+      'db_manifest_cache',
+      'navbar_search_open',
+      'manifest_session_checked',
+      'admin_session_active'
+    ];
+
+    sessionKeysToClear.forEach(key => {
+      sessionStorage.removeItem(key);
+    });
 
     // Clear specific localStorage cache keys (preserve user preferences)
     const cachePatterns = [
@@ -31,7 +41,8 @@ const clearAllCaches = () => {
       'page_preload_cache',
       'navbar_search_open',
       'admin',
-      'request'
+      'request',
+      'db_manifest_cache'
     ];
 
     Object.keys(localStorage).forEach(key => {
@@ -40,7 +51,7 @@ const clearAllCaches = () => {
       }
     });
 
-    console.log('✅ Cache cleared for fresh session');
+    console.log('✅ Targeted cache cleared for fresh session');
   } catch (error) {
     console.error('Error clearing cache:', error);
   }

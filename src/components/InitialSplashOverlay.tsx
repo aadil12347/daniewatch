@@ -3,18 +3,31 @@ import { useEffect, useMemo, useState } from "react";
 const STORAGE_KEY = "dw_splash_seen_v2";
 
 export function getShouldShowInitialSplash(): boolean {
-  // Once per session: show only when the key is missing.
+  // Use a combination of sessionStorage (per tab) and a session cookie (per browser session, shared across tabs)
   try {
-    const seen = sessionStorage.getItem(STORAGE_KEY);
-    // If already seen this session, don't show again
-    if (seen === "1") {
+    // 1. Check if seen in this specific tab session
+    const seenInSession = sessionStorage.getItem(STORAGE_KEY);
+    if (seenInSession === "1") {
       return false;
     }
-    // First time this session - set the flag and show splash
+
+    // 2. Check if seen in any other tab during this browser session (via session cookie)
+    // A cookie without an expiry/max-age clears when the browser is closed.
+    const isCookieSet = document.cookie.split(';').some((item) => item.trim().startsWith(STORAGE_KEY + '='));
+    if (isCookieSet) {
+      // It was seen in another tab this session. Mark this tab too.
+      sessionStorage.setItem(STORAGE_KEY, "1");
+      return false;
+    }
+
+    // 3. True first time this browser session: set both and show splash
+    // We use Path=/ so it's consistent across all routes.
+    document.cookie = `${STORAGE_KEY}=1; Path=/; SameSite=Lax`;
     sessionStorage.setItem(STORAGE_KEY, "1");
     return true;
-  } catch {
-    // If storage is blocked, fail safe (don't show to avoid annoyance)
+  } catch (err) {
+    // Fail safe on restricted environments
+    console.warn("[Splash] Storage/Cookie access blocked:", err);
     return false;
   }
 }
