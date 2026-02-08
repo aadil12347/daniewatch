@@ -247,7 +247,10 @@ export function EpisodeMetadataEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent
+        className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col z-[60]"
+        overlayClassName="z-[60]"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span>Episode Metadata</span>
@@ -313,9 +316,8 @@ export function EpisodeMetadataEditor({
                 onOpenChange={() => toggleExpand(index)}
               >
                 <div
-                  className={`border rounded-lg ${
-                    ep.isDirty ? "border-primary/50 bg-primary/5" : ""
-                  }`}
+                  className={`border rounded-lg ${ep.isDirty ? "border-primary/50 bg-primary/5" : ""
+                    }`}
                 >
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50">
