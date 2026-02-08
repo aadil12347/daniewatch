@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useEntryMetadata } from "@/hooks/useEntryMetadata";
 
 interface MovieContent {
   watch_link: string;
@@ -102,6 +103,8 @@ export const useEntries = () => {
       return null;
     }
   }, []);
+
+  const { deleteSeasonMetadata } = useEntryMetadata();
 
   // Save movie entry
   const saveMovieEntry = useCallback(async (
@@ -293,6 +296,9 @@ export const useEntries = () => {
         .eq("id", id);
 
       if (error) throw error;
+
+      // Also clean up episode metadata for this season
+      await deleteSeasonMetadata(id, season);
 
       toast({
         title: "Deleted",

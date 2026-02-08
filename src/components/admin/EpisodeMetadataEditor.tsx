@@ -613,7 +613,7 @@ export function EpisodeMetadataEditor({
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select Season" />
               </SelectTrigger>
-              <SelectContent className="z-[70]">
+              <SelectContent className="z-[100]">
                 {(localSeasons || []).length > 0 ? (
                   localSeasons.map((s) => (
                     <SelectItem

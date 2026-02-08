@@ -21,7 +21,8 @@ import {
   Download,
   CheckCircle2,
   X,
-  ChevronDown
+  ChevronDown,
+  Plus
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -500,6 +501,11 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
 
   const handleSeasonChange = async (season: string) => {
+    if (season === "new_season") {
+      setShowAddSeasonDialog(true);
+      return;
+    }
+
     const seasonNum = parseInt(season, 10);
     setSelectedSeason(seasonNum);
 
@@ -1022,6 +1028,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                         Season {s.season_number} ({s.episode_count} episodes)
                       </SelectItem>
                     ))}
+                    <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10">
+                      <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               )}
