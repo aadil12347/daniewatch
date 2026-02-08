@@ -60,6 +60,16 @@ import {
   ArrowLeft,
   Pencil,
   Database,
+  Clock,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  FileText,
+  Users,
+  Loader2,
+  Trash2,
+  Plus,
+  Crown,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
@@ -1026,19 +1036,19 @@ const AdminDashboard = () => {
         <div className="container mx-auto px-4 pt-14 pb-12">
           {isUpdating && updateProgress !== null && (
             <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-widest text-cinema-red flex items-center gap-2">
-                  <Database className="w-3 h-3 animate-pulse" />
-                  Database Sync in Progress
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-cinema-red/90 flex items-center gap-2">
+                  <Database className="w-3.5 h-3.5 animate-pulse" />
+                  Syncing Database
                 </span>
-                <span className="text-xs font-mono font-bold text-cinema-red">{updateProgress}%</span>
+                <span className="text-[11px] font-mono font-bold text-cinema-red tabular-nums">{updateProgress}%</span>
               </div>
-              <div className="relative">
-                <Progress value={updateProgress} className="h-1.5 bg-white/5 border border-white/5" />
+              <div className="relative h-1.5 rounded-full overflow-hidden bg-white/[0.04] border border-white/[0.06]">
                 <div
-                  className="absolute top-0 left-0 h-1.5 bg-cinema-red shadow-[0_0_15px_rgba(220,38,38,0.8)] transition-all duration-300 rounded-full"
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-cinema-red to-red-400 shadow-[0_0_12px_rgba(220,38,38,0.6)] transition-all duration-500 ease-out rounded-full"
                   style={{ width: `${updateProgress}%` }}
                 />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer rounded-full" />
               </div>
             </div>
           )}

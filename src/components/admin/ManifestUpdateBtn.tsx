@@ -1,11 +1,17 @@
-
 import { useState, useEffect } from "react";
-import { RefreshCw, Clock } from "lucide-react";
+import { RefreshCw, Clock, Database, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ManifestItem {
     id: number;
@@ -43,6 +49,7 @@ export function ManifestUpdateBtn({ onProgress, onGeneratingStateChange }: Manif
     const [isGenerating, setIsGenerating] = useState(false);
     const [fetchProgress, setFetchProgress] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+    const [justCompleted, setJustCompleted] = useState(false);
 
     // Load last updated time on mount and after generation
     const loadLastUpdated = () => {
@@ -60,6 +67,14 @@ export function ManifestUpdateBtn({ onProgress, onGeneratingStateChange }: Manif
     useEffect(() => {
         loadLastUpdated();
     }, []);
+
+    // Flash success state briefly after completion
+    useEffect(() => {
+        if (justCompleted) {
+            const timer = setTimeout(() => setJustCompleted(false), 2500);
+            return () => clearTimeout(timer);
+        }
+    }, [justCompleted]);
 
     const handleGenerateManifest = async () => {
         setIsGenerating(true);
@@ -83,10 +98,9 @@ export function ManifestUpdateBtn({ onProgress, onGeneratingStateChange }: Manif
             let hasMore = true;
 
             while (hasMore) {
-                const currentBatch = Math.min(from + BATCH_SIZE, total);
                 const percent = total > 0 ? Math.round((from / total) * 100) : 0;
 
-                setFetchProgress(`Fetching ${percent}%...`);
+                setFetchProgress(`Fetching ${percent}%`);
                 onProgress?.(percent);
 
                 const { data, error: fetchError } = await supabase
@@ -218,15 +232,16 @@ export function ManifestUpdateBtn({ onProgress, onGeneratingStateChange }: Manif
             queryClient.invalidateQueries({ queryKey: ["entry-availability"] });
 
             loadLastUpdated();
+            setJustCompleted(true);
 
             toast({
-                title: "Update Successful",
-                description: `${items.length} entries updated in manifest.`,
+                title: "Sync Complete",
+                description: `${items.length} entries synced to manifest.`,
             });
         } catch (error) {
             console.error("[ManifestUpdateBtn] Error:", error);
             toast({
-                title: "Update failed",
+                title: "Sync Failed",
                 description: error instanceof Error ? error.message : "Failed to update data",
                 variant: "destructive",
             });
@@ -238,32 +253,95 @@ export function ManifestUpdateBtn({ onProgress, onGeneratingStateChange }: Manif
         }
     };
 
+    // Determine if the last update is stale (> 24 hours)
+    const isStale = lastUpdated
+        ? (Date.now() - new Date(lastUpdated).getTime()) > 24 * 60 * 60 * 1000
+        : true;
+
     return (
-        <div className="flex flex-col items-end gap-1">
+        <TooltipProvider delayDuration={300}>
             <div className="flex items-center gap-3">
-                {lastUpdated && !isGenerating && (
-                    <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1 font-mono uppercase tracking-tighter">
-                        <Clock className="w-2.5 h-2.5" />
-                        Last Sync: {formatDistanceToNow(new Date(lastUpdated), { addSuffix: true })}
-                    </span>
+                {/* Last sync timestamp */}
+                {lastUpdated && !isGenerating && !justCompleted && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className={cn(
+                                "hidden sm:flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-tight px-2.5 py-1 rounded-full border transition-all duration-300 cursor-default select-none",
+                                isStale
+                                    ? "text-amber-400/80 border-amber-500/20 bg-amber-500/5"
+                                    : "text-emerald-400/70 border-emerald-500/15 bg-emerald-500/5"
+                            )}>
+                                {isStale ? (
+                                    <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />
+                                ) : (
+                                    <CheckCircle2 className="w-2.5 h-2.5 flex-shrink-0" />
+                                )}
+                                <span className="whitespace-nowrap">
+                                    {formatDistanceToNow(new Date(lastUpdated), { addSuffix: true })}
+                                </span>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                            <p>Last database sync: {new Date(lastUpdated).toLocaleString()}</p>
+                            {isStale && <p className="text-amber-400 mt-1">Consider syncing — data may be outdated</p>}
+                        </TooltipContent>
+                    </Tooltip>
                 )}
-                <Button
-                    onClick={handleGenerateManifest}
-                    disabled={isGenerating}
-                    size="sm"
-                    variant="outline"
-                    className="bg-cinema-red hover:bg-cinema-red/90 text-white border-cinema-red hover:border-cinema-red shadow-lg shadow-cinema-red/20 transition-all duration-300 gap-2 h-9 px-4 rounded-full"
-                >
-                    {isGenerating ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <RefreshCw className="w-4 h-4" />
-                    )}
-                    <span className="font-bold uppercase tracking-wider text-xs">
-                        {isGenerating ? (fetchProgress || "Updating...") : "Update"}
-                    </span>
-                </Button>
+
+                {/* Success flash */}
+                {justCompleted && !isGenerating && (
+                    <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 animate-in fade-in slide-in-from-right-2 duration-300">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Synced</span>
+                    </div>
+                )}
+
+                {/* Main sync button */}
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            onClick={handleGenerateManifest}
+                            disabled={isGenerating}
+                            size="sm"
+                            className={cn(
+                                "relative overflow-hidden h-9 px-4 rounded-lg font-semibold text-xs uppercase tracking-wider transition-all duration-300 gap-2",
+                                "border border-transparent",
+                                isGenerating
+                                    ? "bg-white/10 text-white/70 border-white/10 cursor-wait"
+                                    : justCompleted
+                                        ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500/50 shadow-lg shadow-emerald-500/20"
+                                        : "bg-cinema-red hover:bg-cinema-red/85 active:bg-cinema-red/70 text-white shadow-lg shadow-cinema-red/25 hover:shadow-cinema-red/40 hover:scale-[1.02] active:scale-[0.98]"
+                            )}
+                        >
+                            {/* Animated background shimmer when generating */}
+                            {isGenerating && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+                            )}
+
+                            <div className="relative flex items-center gap-2">
+                                {isGenerating ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                ) : justCompleted ? (
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                ) : (
+                                    <Database className="w-3.5 h-3.5" />
+                                )}
+                                <span>
+                                    {isGenerating
+                                        ? (fetchProgress || "Syncing...")
+                                        : justCompleted
+                                            ? "Done"
+                                            : "Sync Data"
+                                    }
+                                </span>
+                            </div>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs max-w-[220px]">
+                        <p>Regenerate the manifest file from all database entries for faster page loads</p>
+                    </TooltipContent>
+                </Tooltip>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }
