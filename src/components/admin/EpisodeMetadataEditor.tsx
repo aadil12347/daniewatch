@@ -82,6 +82,8 @@ export function EpisodeMetadataEditor({
   const { toast } = useToast();
   const { fetchEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode, ensureSeasonInContent, removeSeasonFromContent } = useEntryMetadata();
 
+  /* State */
+  const [localSeasons, setLocalSeasons] = useState(seasonDetails);
   const [selectedSeason, setSelectedSeason] = useState(seasonDetails[0]?.season_number || 1);
   const [episodes, setEpisodes] = useState<LocalEpisode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,7 +100,11 @@ export function EpisodeMetadataEditor({
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
   const [selectionModeEnabled, setSelectionModeEnabled] = useState(false);
 
-  // Load episodes when season changes
+  // Update localSeasons if prop changes
+  useEffect(() => {
+    setLocalSeasons(seasonDetails);
+  }, [seasonDetails]);
+
   // Load episodes when season changes
   useEffect(() => {
     if (!open || !entryId) return;
@@ -497,6 +503,14 @@ export function EpisodeMetadataEditor({
       setShowAddSeasonDialog(false);
       setNewSeasonNumber("");
 
+      // Update local seasons list
+      setLocalSeasons(prev => {
+        const exists = prev.find(s => s.season_number === seasonNum);
+        if (exists) return prev;
+        return [...prev, { season_number: seasonNum, episode_count: episodesToSave.length }]
+          .sort((a, b) => a.season_number - b.season_number);
+      });
+
       if (selectedSeason === seasonNum) {
         await loadEpisodes(seasonNum);
       } else {
@@ -537,7 +551,20 @@ export function EpisodeMetadataEditor({
         description: `All episodes for season ${selectedSeason} have been removed`,
       });
 
+      // Update local seasons and switch
+      const updatedSeasons = localSeasons.filter(s => s.season_number !== selectedSeason);
+      setLocalSeasons(updatedSeasons);
+
       setEpisodes([]);
+
+      // Switch to another season if available
+      if (updatedSeasons.length > 0) {
+        setSelectedSeason(updatedSeasons[0].season_number);
+      } else {
+        // No seasons left? 
+        // Maybe default to 1 but it's empty
+        setSelectedSeason(1);
+      }
     } catch (error: any) {
       console.error("Error deleting season:", error);
       toast({
@@ -587,7 +614,7 @@ export function EpisodeMetadataEditor({
                 <SelectValue placeholder="Select Season" />
               </SelectTrigger>
               <SelectContent>
-                {seasonDetails.map((s) => (
+                {localSeasons.map((s) => (
                   <SelectItem
                     key={s.season_number}
                     value={String(s.season_number)}
@@ -714,43 +741,7 @@ export function EpisodeMetadataEditor({
               )}
 
               <div className="h-4 w-px bg-border mx-2" />
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive h-8 hover:bg-destructive/10"
-                  >
-                    Delete Season {selectedSeason}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Delete Season {selectedSeason}?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete all episodes for season{" "}
-                      {selectedSeason} from the database.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteSeason}
-                      className="bg-destructive hover:bg-destructive/90"
-                    >
-                      {isDeletingSeason ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                      ) : (
-                        <Trash2 className="w-4 h-4 mr-1" />
-                      )}
-                      Delete Season
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {/* Delete Season was here, moved to top bar */}
             </div>
           </div>
         )}
