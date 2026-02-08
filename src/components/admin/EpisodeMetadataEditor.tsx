@@ -261,11 +261,12 @@ export function EpisodeMetadataEditor({
     );
   };
 
-  const handleSaveSelected = async () => {
-    const episodesToSave = episodes.filter((ep) => ep.selected);
+  const handleSaveAll = async () => {
+    // Save all dirty episodes in the current season
+    const episodesToSave = episodes.filter((ep) => ep.isDirty);
 
     if (episodesToSave.length === 0) {
-      toast({ title: "No selection", description: "Select episodes to save." });
+      toast({ title: "No changes", description: "No episodes to save." });
       return;
     }
 
@@ -288,11 +289,13 @@ export function EpisodeMetadataEditor({
 
       if (result.success) {
         setEpisodes((prev) =>
-          prev.map((ep) => ep.selected ? { ...ep, isDirty: false } : ep)
+          prev.map((ep) =>
+            ep.isDirty ? { ...ep, isDirty: false } : ep
+          )
         );
         toast({
           title: "Saved",
-          description: `Saved ${episodesToSave.length} episodes.`,
+          description: `Saved ${episodesToSave.length} episode(s) for Season ${selectedSeason}.`,
         });
       } else {
         throw new Error(result.error);
@@ -709,8 +712,8 @@ export function EpisodeMetadataEditor({
           {/* Save Actions */}
           <div className="flex items-center gap-2">
             <Button
-              onClick={handleSaveSelected}
-              disabled={isSaving || episodes.filter((e) => e.selected).length === 0}
+              onClick={handleSaveAll}
+              disabled={isSaving || episodes.filter((e) => e.isDirty).length === 0}
               className="bg-primary hover:bg-primary/90 h-8"
             >
               {isSaving ? (
@@ -718,7 +721,7 @@ export function EpisodeMetadataEditor({
               ) : (
                 <Save className="w-4 h-4 mr-1" />
               )}
-              Save Selected
+              Save Changes
             </Button>
           </div>
         </div>
