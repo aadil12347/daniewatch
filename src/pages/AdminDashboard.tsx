@@ -711,6 +711,8 @@ const AdminDashboard = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   const [isClearingCategory, setIsClearingCategory] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Persist tab selection
   const [requestsTab, setRequestsTab] = useState<'new' | 'pending' | 'in_progress' | 'done' | 'trash'>(() => {
@@ -1019,9 +1021,6 @@ const AdminDashboard = () => {
   };
 
   const currentRequests = getCurrentRequests();
-
-  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   return (
     <>
