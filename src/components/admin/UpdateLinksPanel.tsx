@@ -100,7 +100,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const { toast } = useToast();
   const { fetchEntry, saveMovieEntry, saveSeriesSeasonEntry, deleteEntry } = useEntries();
   const { trashedEntries, moveToTrash, restoreFromTrash, permanentlyDelete, emptyTrash } = useEntriesTrash();
-  const { saveEpisodeMetadata, markEntryAdminEdited, ensureSeasonInContent, removeSeasonFromContent } = useEntryMetadata();
+  const { saveEpisodeMetadata, markEntryAdminEdited, ensureSeasonInContent, removeSeasonFromContent, deleteSeasonMetadata } = useEntryMetadata();
   const [searchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<"update" | "trash" | "tools">("update");
@@ -1456,7 +1456,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
               {/* Add Season Dialog */}
               <Dialog open={showAddSeasonDialog} onOpenChange={setShowAddSeasonDialog}>
-                <DialogContent className="sm:max-w-[425px] bg-black/90 border-white/10 text-white">
+                <DialogContent className="sm:max-w-[425px] bg-black/90 border-white/10 text-white z-[100]">
                   <DialogHeader>
                     <DialogTitle>Add New Season</DialogTitle>
                     <DialogDescription className="text-gray-400">
