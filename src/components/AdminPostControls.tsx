@@ -30,7 +30,7 @@ export const AdminPostControls = ({
 }: AdminPostControlsProps) => {
   const { isAdmin } = useAdminStatus();
 
-  const [linksOpen, setLinksOpen] = useState(false);
+  const [isDeletingSeason, setIsDeletingSeason] = useState(false);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
 
   const triggerRef = useRef<HTMLButtonElement | null>(null);

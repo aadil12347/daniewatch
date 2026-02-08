@@ -76,7 +76,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { BlockedPostsPanel } from "@/components/admin/BlockedPostsPanel";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
-import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
 import { ChatWindow } from "@/components/ChatWindow";
 import { cn } from "@/lib/utils";
 import { UpdateLinksPanel } from "@/components/admin/UpdateLinksPanel";
@@ -1101,13 +1100,7 @@ const AdminDashboard = () => {
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger
-                  value="metadata"
-                  className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
-                >
-                  <Pencil className="w-4 h-4" />
-                  <span className="text-sm font-medium">Metadata Editor</span>
-                </TabsTrigger>
+
                 <TabsTrigger
                   value="links"
                   className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
@@ -1433,11 +1426,7 @@ const AdminDashboard = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="metadata">
-              <div className="space-y-6">
-                <PostMetadataEditor />
-              </div>
-            </TabsContent>
+
 
             <TabsContent value="links">
               <UpdateLinksPanel embedded />

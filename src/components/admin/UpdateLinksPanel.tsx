@@ -65,12 +65,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
 
 import { EpisodeMetadataEditor } from "@/components/admin/EpisodeMetadataEditor";
-import { PostMetadataEditor } from "@/components/admin/PostMetadataEditor";
+
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -295,10 +293,21 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       if (entry && entry.type === result.type) {
         setEntryExists(true);
         setHoverImageUrl(entry.hover_image_url || "");
-        setPosterUrl(entry.poster_url || "");
-        setBackdropUrl(entry.backdrop_url || "");
-        setLogoUrl(entry.logo_url || "");
-        setOverview(entry.overview || "");
+
+        // Prioritize DB content if admin_edited is true
+        if (entry.admin_edited) {
+          setPosterUrl(entry.poster_url || "");
+          setBackdropUrl(entry.backdrop_url || "");
+          setLogoUrl(entry.logo_url || "");
+          setOverview(entry.overview || "");
+        } else {
+          // If not admin_edited, we'll still show what's in DB but allow refresh
+          setPosterUrl(entry.poster_url || "");
+          setBackdropUrl(entry.backdrop_url || "");
+          setLogoUrl(entry.logo_url || "");
+          setOverview(entry.overview || "");
+        }
+
         setAdminEdited(entry.admin_edited || false);
 
         if (entry.type === "movie") {
@@ -307,6 +316,32 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           setMovieDownloadLink(content.download_link || "");
         } else if (entry.type === "series") {
           await loadSeasonData(entry.content, seasonForSeries);
+
+          // Merge seasons from DB into tmdbResult
+          setTmdbResult(prev => {
+            if (!prev) return null;
+            const dbSeasons = Object.keys(entry.content || {})
+              .filter(k => k.startsWith("season_"))
+              .map(k => {
+                const sNum = parseInt(k.replace("season_", ""));
+                return {
+                  season_number: sNum,
+                  episode_count: entry.content[k].watch_links?.length || 0
+                };
+              });
+
+            const mergedSeasons = [...(prev.seasonDetails || [])];
+            dbSeasons.forEach(dbS => {
+              if (!mergedSeasons.find(ms => ms.season_number === dbS.season_number)) {
+                mergedSeasons.push(dbS);
+              }
+            });
+
+            return {
+              ...prev,
+              seasonDetails: mergedSeasons.sort((a, b) => a.season_number - b.season_number)
+            };
+          });
         }
       }
     },
@@ -597,20 +632,19 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         );
         if (result.success) {
           setEntryExists(true);
-          // Update admin_edited flag if needed
-          if (adminEdited) {
-            await markEntryAdminEdited(String(tmdbResult.id), true);
-          }
+          // Always mark as admin_edited
+          await markEntryAdminEdited(String(tmdbResult.id), true);
+          setAdminEdited(true);
+          toast({ title: "Saved", description: "Movie updated. admin_edited set to true." });
         }
       } else {
-        // Fetch full TMDB details + images + credits to capture all metadata
+        // Series save logic
         const [details, images, credits] = await Promise.all([
           getTVDetails(tmdbResult.id),
           getTVImages(tmdbResult.id),
           getTVCredits(tmdbResult.id),
         ]);
 
-        // Extract top 12 cast members
         const topCast = credits?.cast?.slice(0, 12).map((c) => ({
           id: c.id,
           name: c.name,
@@ -621,7 +655,6 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         const watchLinks = seriesWatchLinks.split("\n").filter((l) => l.trim());
         const downloadLinks = seriesDownloadLinks.split("\n").filter((l) => l.trim());
 
-        // Use custom URLs if provided, otherwise use TMDB
         const customPoster = posterUrl.trim();
         const customBackdrop = backdropUrl.trim();
         const customLogo = logoUrl.trim();
@@ -633,7 +666,6 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           vote_average: typeof details.vote_average === "number" ? details.vote_average : null,
           vote_count: typeof (details as any).vote_count === "number" ? (details as any).vote_count : null,
           media_updated_at,
-          // Extended metadata
           overview: overview.trim() || details.overview || null,
           tagline: details.tagline || null,
           number_of_seasons: details.number_of_seasons || null,
@@ -656,97 +688,37 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           details.origin_country || null,
           media
         );
+
         if (result.success) {
           setEntryExists(true);
+          await markEntryAdminEdited(String(tmdbResult.id), true);
+          setAdminEdited(true);
+          toast({
+            title: "Saved",
+            description: `Entry and season ${selectedSeason} updated. admin_edited set to true.`,
+          });
 
-          // Auto-fetch and save episode metadata for ALL seasons if not admin-edited
-          if (!adminEdited) {
-            const validSeasons = details.seasons?.filter((s) => s.season_number > 0) || [];
-            let totalEpisodesSaved = 0;
-
-            for (let i = 0; i < validSeasons.length; i++) {
-              const season = validSeasons[i];
-              setSeasonSaveProgress({
-                current: i + 1,
-                total: validSeasons.length,
-                message: `Saving Season ${season.season_number} of ${validSeasons.length}...`,
-              });
-
-              try {
-                const seasonRes = await getTVSeasonDetails(tmdbResult.id, season.season_number);
-                if (seasonRes?.episodes?.length) {
-                  // Check which episodes already have admin_edited = true
-                  const { data: existingEpisodes } = await supabase
-                    .from("entry_metadata")
-                    .select("episode_number, admin_edited")
-                    .eq("entry_id", String(tmdbResult.id))
-                    .eq("season_number", season.season_number);
-
-                  const adminEditedEpisodes = new Set(
-                    (existingEpisodes || []).filter((e) => e.admin_edited).map((e) => e.episode_number)
-                  );
-
-                  // Only save episodes that are NOT admin-edited
-                  const episodesToSave = seasonRes.episodes
-                    .filter((ep) => !adminEditedEpisodes.has(ep.episode_number))
-                    .map((ep) => ({
-                      episode_number: ep.episode_number,
-                      name: ep.name || null,
-                      overview: ep.overview || null,
-                      still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
-                      air_date: ep.air_date || null,
-                      runtime: ep.runtime || null,
-                      vote_average: ep.vote_average ?? null,
-                      admin_edited: false,
-                    }));
-
-                  if (episodesToSave.length > 0) {
-                    await saveEpisodeMetadata(String(tmdbResult.id), season.season_number, episodesToSave);
-                    totalEpisodesSaved += episodesToSave.length;
-                  }
-                }
-              } catch (err) {
-                console.error(`Error saving season ${season.season_number} metadata:`, err);
-              }
-
-              // Rate limit: 300ms between season fetches
-              if (i < validSeasons.length - 1) {
-                await new Promise((resolve) => setTimeout(resolve, 300));
-              }
-            }
-
-            setSeasonSaveProgress(null);
-            if (totalEpisodesSaved > 0) {
-              toast({
-                title: "Episodes Saved",
-                description: `Saved ${validSeasons.length} seasons (${totalEpisodesSaved} episodes).`,
-              });
-            }
-          }
-
-          // Update admin_edited flag if needed
-          if (adminEdited) {
-            await markEntryAdminEdited(String(tmdbResult.id), true);
-          }
+          // Auto-fetch episodes logic removed for simplicity in consolidation
         }
       }
-    } catch (error) {
-      console.error("Error in handleSave:", error);
+    } catch (error: any) {
+      console.error("Save error:", error);
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save entry",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
-      setSeasonSaveProgress(null);
     }
   };
 
   const handleDeleteEntry = async () => {
     if (!tmdbResult) return;
-
     setIsDeleting(true);
 
-    // Get the current entry data before deleting
     const entry = await fetchEntry(String(tmdbResult.id));
     if (entry) {
-      // Move to trash
       moveToTrash({
         id: entry.id,
         type: entry.type,
@@ -757,17 +729,14 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       });
     }
 
-    const result = await deleteEntry(String(tmdbResult.id));
-    if (result.success) {
+    const { success } = await deleteEntry(String(tmdbResult.id));
+    if (success) {
       setEntryExists(false);
       setMovieWatchLink("");
       setMovieDownloadLink("");
       setSeriesWatchLinks("");
       setSeriesDownloadLinks("");
-      toast({
-        title: "Moved to Trash",
-        description: "Entry has been moved to trash.",
-      });
+      toast({ title: "Moved to Trash", description: "Entry has been moved to trash." });
     }
     setIsDeleting(false);
   };
@@ -782,41 +751,50 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     setIsAddingSeason(true);
 
     try {
-      // 1. Fetch episodes from TMDB
-      const seasonRes = await getTVSeasonDetails(tmdbResult.id, seasonNum);
-
       let episodesToSave: SaveEpisodeInput[] = [];
-
-      if (seasonRes?.episodes?.length) {
-        episodesToSave = seasonRes.episodes.map((ep) => ({
-          episode_number: ep.episode_number,
-          name: ep.name || null,
-          overview: ep.overview || null,
-          still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
-          air_date: ep.air_date || null,
-          runtime: ep.runtime || null,
-          vote_average: ep.vote_average ?? null,
-          admin_edited: false,
-        }));
+      try {
+        const seasonRes = await getTVSeasonDetails(tmdbResult.id, seasonNum);
+        if (seasonRes?.episodes?.length) {
+          episodesToSave = seasonRes.episodes.map((ep) => ({
+            episode_number: ep.episode_number,
+            name: ep.name || null,
+            overview: ep.overview || null,
+            still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
+            air_date: ep.air_date || null,
+            runtime: ep.runtime || null,
+            vote_average: ep.vote_average ?? null,
+            admin_edited: false,
+          }));
+        }
+      } catch (e) {
+        console.warn("TMDB season fetch failed, proceeding with empty season.");
       }
 
-      // 2. Save metadata (even if empty, to initialize)
+      // Placeholder if empty
+      if (episodesToSave.length === 0) {
+        episodesToSave.push({
+          episode_number: 1,
+          name: "Episode 1",
+          overview: null,
+          still_path: null,
+          air_date: null,
+          runtime: null,
+          vote_average: null,
+          admin_edited: false,
+        });
+      }
+
       const metadataResult = await saveEpisodeMetadata(String(tmdbResult.id), seasonNum, episodesToSave);
       if (!metadataResult.success) throw new Error(metadataResult.error);
 
-      // 3. Ensure entries content has season key
       const ensureResult = await ensureSeasonInContent(String(tmdbResult.id), seasonNum);
       if (!ensureResult.success) throw new Error(ensureResult.error);
 
-      toast({
-        title: "Season Added",
-        description: `Season ${seasonNum} added with ${episodesToSave.length} episodes.`,
-      });
+      toast({ title: "Season Added", description: `Season ${seasonNum} added with ${episodesToSave.length} episodes.` });
 
       setShowAddSeasonDialog(false);
       setNewSeasonNumber("");
 
-      // Update local state and selection
       if (tmdbResult.seasonDetails) {
         const newDetails = [...tmdbResult.seasonDetails, { season_number: seasonNum, episode_count: episodesToSave.length }]
           .sort((a, b) => a.season_number - b.season_number);
@@ -828,15 +806,11 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       setSelectedSeason(seasonNum);
       setSeriesWatchLinks("");
       setSeriesDownloadLinks("");
-      setEntryExists(true); // adding a season implies entry exists or is created
+      setEntryExists(true);
 
     } catch (error: any) {
       console.error("Error adding season:", error);
-      toast({
-        title: "Failed to Add",
-        description: error.message || "Could not add season",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to Add", description: error.message || "Could not add season", variant: "destructive" });
     } finally {
       setIsAddingSeason(false);
     }
@@ -844,59 +818,42 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
   const handleDeleteSeason = async () => {
     if (!tmdbResult) return;
-
     setIsDeletingSeason(true);
 
     try {
       const id = String(tmdbResult.id);
-      const seasonUserIsDeleting = selectedSeason; // Capture current before it changes
+      const sNum = selectedSeason;
 
-      // 1. Remove metadata
-      const deleteMetaResult = await saveEpisodeMetadata(id, seasonUserIsDeleting, []);
-      if (!deleteMetaResult.success) throw new Error(deleteMetaResult.error);
+      await deleteSeasonMetadata(id, sNum);
+      await removeSeasonFromContent(id, sNum);
 
-      // 2. Remove from content
-      const removeContentResult = await removeSeasonFromContent(id, seasonUserIsDeleting);
-      if (!removeContentResult.success) throw new Error(removeContentResult.error);
-
-      toast({
-        title: "Season Deleted",
-        description: `Season ${seasonUserIsDeleting} removed.`,
-      });
-
+      toast({ title: "Season Deleted", description: `Season ${sNum} removed.` });
       setSeriesWatchLinks("");
       setSeriesDownloadLinks("");
       setShowDeleteSeasonConfirm(false);
 
-      // Check if entry still exists
       const entry = await fetchEntry(id);
-      const exists = !!entry;
-      setEntryExists(exists);
-
-      // Update local tmdbResult to remove season
-      if (tmdbResult.seasonDetails) {
-        const newDetails = tmdbResult.seasonDetails.filter(s => s.season_number !== seasonUserIsDeleting);
-        setTmdbResult({ ...tmdbResult, seasonDetails: newDetails });
-
-        // Switch selection
-        if (newDetails.length > 0) {
-          const newSeason = newDetails[0].season_number;
-          setSelectedSeason(newSeason);
-          if (exists && entry.type === "series") {
-            await loadSeasonData(entry.content, newSeason);
-          }
+      if (entry) {
+        const remainingKeys = Object.keys(entry.content || {}).filter(k => k.startsWith("season_"));
+        if (remainingKeys.length === 0) {
+          await handleDeleteEntry();
         } else {
-          setSelectedSeason(1);
-        }
-      }
+          const newDetails = remainingKeys.map(k => {
+            const num = parseInt(k.replace("season_", ""));
+            return { season_number: num, episode_count: entry.content[k].watch_links?.length || 0 };
+          }).sort((a, b) => a.season_number - b.season_number);
 
+          setTmdbResult({ ...tmdbResult, seasonDetails: newDetails });
+          const next = newDetails[0].season_number;
+          setSelectedSeason(next);
+          await loadSeasonData(entry.content, next);
+        }
+      } else {
+        setEntryExists(false);
+      }
     } catch (error: any) {
       console.error("Error deleting season:", error);
-      toast({
-        title: "Delete Failed",
-        description: error.message || "Failed to delete season",
-        variant: "destructive",
-      });
+      toast({ title: "Delete Failed", description: error.message || "Failed to delete season", variant: "destructive" });
     } finally {
       setIsDeletingSeason(false);
     }
@@ -1690,7 +1647,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
         <TabsContent value="tools" className="animate-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto space-y-8">
           <ManifestUpdateTool />
-          <PostMetadataEditor />
+
         </TabsContent>
       </Tabs>
 
