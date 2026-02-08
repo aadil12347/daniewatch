@@ -1066,7 +1066,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          ))}
+          )}
         </div>
 
         {/* Episode Metadata Editor Modal - CRITICAL: Must be in embedded mode! */}
