@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCw, Database, CheckCircle, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,7 +43,7 @@ export function ManifestUpdateTool() {
   const [itemCount, setItemCount] = useState<number | null>(null);
 
   // Try to read last manifest metadata on mount
-  useState(() => {
+  useEffect(() => {
     const cached = localStorage.getItem("db_manifest_meta");
     if (cached) {
       try {
@@ -54,7 +54,7 @@ export function ManifestUpdateTool() {
         // ignore
       }
     }
-  });
+  }, []);
 
   const handleGenerateManifest = async () => {
     setIsGenerating(true);
