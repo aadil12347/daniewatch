@@ -48,16 +48,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Shield,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Users,
-  FileText,
-  Loader2,
-  Trash2,
-  Plus,
-  Crown,
   Sparkles,
   CheckCheck,
   RotateCcw,
@@ -69,7 +59,9 @@ import {
   Tv,
   ArrowLeft,
   Pencil,
+  Database,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 
 
@@ -79,6 +71,7 @@ import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { ChatWindow } from "@/components/ChatWindow";
 import { cn } from "@/lib/utils";
 import { UpdateLinksPanel } from "@/components/admin/UpdateLinksPanel";
+import { ManifestUpdateBtn } from "@/components/admin/ManifestUpdateBtn";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
   switch (status) {
@@ -1017,6 +1010,9 @@ const AdminDashboard = () => {
 
   const currentRequests = getCurrentRequests();
 
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
   return (
     <>
       <Helmet>
@@ -1028,13 +1024,41 @@ const AdminDashboard = () => {
 
 
         <div className="container mx-auto px-4 pt-14 pb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cinema-red to-red-500">Admin Dashboard</h1>
-            {isOwner && (
-              <Badge variant="outline" className="gap-1 border-yellow-500/50 text-yellow-500">
-                <Crown className="w-3 h-3" /> Owner
-              </Badge>
-            )}
+          {isUpdating && updateProgress !== null && (
+            <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-cinema-red flex items-center gap-2">
+                  <Database className="w-3 h-3 animate-pulse" />
+                  Database Sync in Progress
+                </span>
+                <span className="text-xs font-mono font-bold text-cinema-red">{updateProgress}%</span>
+              </div>
+              <div className="relative">
+                <Progress value={updateProgress} className="h-1.5 bg-white/5 border border-white/5" />
+                <div
+                  className="absolute top-0 left-0 h-1.5 bg-cinema-red shadow-[0_0_15px_rgba(220,38,38,0.8)] transition-all duration-300 rounded-full"
+                  style={{ width: `${updateProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Shield className="w-8 h-8 text-primary" />
+              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cinema-red to-red-500">Admin Dashboard</h1>
+              {isOwner && (
+                <Badge variant="outline" className="gap-1 border-yellow-500/50 text-yellow-500">
+                  <Crown className="w-3 h-3" /> Owner
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <ManifestUpdateBtn
+                onProgress={setUpdateProgress}
+                onGeneratingStateChange={setIsUpdating}
+              />
+            </div>
           </div>
 
           {/* Stats */}
