@@ -1100,7 +1100,6 @@ const AdminDashboard = () => {
                     </Badge>
                   )}
                 </TabsTrigger>
-
                 <TabsTrigger
                   value="links"
                   className="gap-2 px-0 py-2 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none shrink-0"
@@ -1425,8 +1424,6 @@ const AdminDashboard = () => {
                 </div>
               )}
             </TabsContent>
-
-
 
             <TabsContent value="links">
               <UpdateLinksPanel embedded />
