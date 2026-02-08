@@ -1064,44 +1064,61 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         <div className="flex items-start justify-between gap-4 p-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
           <div className="flex items-center gap-4 min-w-0 flex-1">
             {tmdbResult.posterUrl && (
-              <img src={tmdbResult.posterUrl} alt={tmdbResult.title} className="w-20 h-28 object-cover rounded shadow-lg" />
+              <img src={tmdbResult.posterUrl} alt={tmdbResult.title} className="w-20 h-28 object-cover rounded-lg shadow-lg border border-white/10" />
             )}
-            <div className="min-w-0 flex-1 space-y-2">
-              <h3 className="font-bold text-lg truncate">{tmdbResult.title}</h3>
+            <div className="min-w-0 flex-1 space-y-2.5">
+              <h3 className="font-bold text-lg truncate text-foreground">{tmdbResult.title}</h3>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-white/10">{tmdbResult.year}</Badge>
-                <Badge variant="outline" className="border-white/10">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
-                <Badge variant="secondary" className="bg-white/10">TMDB: {tmdbResult.id}</Badge>
+                <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.year}</Badge>
+                <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
+                <Badge variant="secondary" className="bg-white/10 font-medium">TMDB: {tmdbResult.id}</Badge>
                 {entryExists && (
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 font-medium">
                     <CheckCircle2 className="w-3 h-3 mr-1" />
                     In Database
                   </Badge>
                 )}
               </div>
-              {/* Series Season Selector */}
-              {tmdbResult.type === "series" && allSeasons.length > 0 && (
-                <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
-                  <SelectTrigger className="w-48 bg-white/5 border-white/10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allSeasons.map((s) => (
-                      <SelectItem key={s.season_number} value={String(s.season_number)}>
-                        Season {s.season_number} {s.source === 'db' ? '(DB)' : `(${s.episode_count} eps)`}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10">
-                      <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Series Season Selector + Episode Editor Button */}
+              {tmdbResult.type === "series" && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {allSeasons.length > 0 && (
+                    <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
+                      <SelectTrigger className="w-48 bg-white/5 border-white/10 h-9 text-sm font-medium">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allSeasons.map((s) => (
+                          <SelectItem key={s.season_number} value={String(s.season_number)}>
+                            Season {s.season_number} {s.source === 'db' ? '(DB)' : `(${s.episode_count} eps)`}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10">
+                          <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowEpisodeEditor(true);
+                    }}
+                    className="h-9 border-white/10 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 font-medium text-sm"
+                  >
+                    <Settings2 className="w-4 h-4 mr-1.5" />
+                    Episodes
+                  </Button>
+                </div>
               )}
             </div>
           </div>
 
           {/* Save Button - Top Right */}
-          <Button onClick={handleSave} disabled={isSaving} className="bg-cinema-red hover:bg-cinema-red/90 shadow-lg">
+          <Button onClick={handleSave} disabled={isSaving} className="bg-cinema-red hover:bg-cinema-red/90 shadow-lg font-semibold">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Save
           </Button>
@@ -1110,14 +1127,14 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
         {/* Links Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Watch Links */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-gray-300">Watch Online Links</Label>
+              <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Watch Online Links</Label>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className={cn("border-white/10", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                <Badge variant="outline" className={cn("border-white/10 font-medium", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
                   {getWatchLinkCount()} link{getWatchLinkCount() !== 1 ? 's' : ''}
                 </Badge>
-                <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-6 px-2 text-xs hover:bg-white/10">
+                <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
                   <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
                 </Button>
               </div>
@@ -1140,14 +1157,14 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
           </div>
 
           {/* Download Links */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-gray-300">Download Links</Label>
+              <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Download Links</Label>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className={cn("border-white/10", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                <Badge variant="outline" className={cn("border-white/10 font-medium", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
                   {getDownloadLinkCount()} link{getDownloadLinkCount() !== 1 ? 's' : ''}
                 </Badge>
-                <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-6 px-2 text-xs hover:bg-white/10">
+                <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
                   <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
                 </Button>
               </div>
@@ -1172,68 +1189,48 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
         {/* Metadata Section */}
         <details className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg group">
-          <summary className="w-full p-3 flex items-center justify-between hover:bg-white/5 transition-colors rounded-lg cursor-pointer list-none">
-            <div className="flex items-center gap-2">
+          <summary className="w-full p-3.5 flex items-center justify-between hover:bg-white/5 transition-colors rounded-lg cursor-pointer list-none">
+            <div className="flex items-center gap-2.5">
               <Settings2 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Advanced Metadata</span>
+              <span className="text-sm font-semibold text-foreground/90">Advanced Metadata</span>
             </div>
             <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
           </summary>
-          <div className="p-4 pt-0 space-y-4 border-t border-white/10">
+          <div className="p-4 pt-2 space-y-4 border-t border-white/10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="poster-url" className="text-xs">Poster URL</Label>
-                <Input id="poster-url" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+                <Label htmlFor="poster-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Poster URL</Label>
+                <Input id="poster-url" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="backdrop-url" className="text-xs">Backdrop URL</Label>
-                <Input id="backdrop-url" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+                <Label htmlFor="backdrop-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Backdrop URL</Label>
+                <Input id="backdrop-url" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="logo-url" className="text-xs">Logo URL</Label>
-                <Input id="logo-url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+                <Label htmlFor="logo-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Logo URL</Label>
+                <Input id="logo-url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="hover-img" className="text-xs">Hover Character Image</Label>
-                <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="https://..." />
+                <Label htmlFor="hover-img" className="text-sm font-semibold text-foreground/80 tracking-wide">Hover Character Image</Label>
+                <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="rating" className="text-xs">Rating (TMDB)</Label>
-                <Input id="rating" type="number" step="0.1" min="0" max="10" value={rating} onChange={(e) => setRating(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 8.5" />
+                <Label htmlFor="rating" className="text-sm font-semibold text-foreground/80 tracking-wide">Rating (TMDB)</Label>
+                <Input id="rating" type="number" step="0.1" min="0" max="10" value={rating} onChange={(e) => setRating(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 8.5" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="runtime" className="text-xs">Runtime (minutes)</Label>
-                <Input id="runtime" type="number" value={runtime} onChange={(e) => setRuntime(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 120" />
+                <Label htmlFor="runtime" className="text-sm font-semibold text-foreground/80 tracking-wide">Runtime (minutes)</Label>
+                <Input id="runtime" type="number" value={runtime} onChange={(e) => setRuntime(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 120" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="release-year" className="text-xs">Release Year</Label>
-                <Input id="release-year" type="number" value={releaseYear} onChange={(e) => setReleaseYear(e.target.value)} className="bg-black/20 border-white/10 text-sm" placeholder="e.g., 2024" />
+                <Label htmlFor="release-year" className="text-sm font-semibold text-foreground/80 tracking-wide">Release Year</Label>
+                <Input id="release-year" type="number" value={releaseYear} onChange={(e) => setReleaseYear(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 2024" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="overview" className="text-xs">Overview</Label>
-              <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} className="bg-black/20 border-white/10 text-sm" rows={3} placeholder="Enter overview..." />
+              <Label htmlFor="overview" className="text-sm font-semibold text-foreground/80 tracking-wide">Overview</Label>
+              <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} className="bg-white/5 border-white/10 text-sm leading-relaxed font-medium placeholder:text-muted-foreground/50" rows={3} placeholder="Enter overview..." />
             </div>
-            {tmdbResult?.type === "series" && (
-              <div className="pt-2 border-t border-white/10">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("Episode editor button clicked! Current state:", showEpisodeEditor);
-                    console.log("tmdbResult:", tmdbResult);
-                    console.log("Season details:", tmdbResult?.seasonDetails);
-                    setShowEpisodeEditor(true);
-                  }}
-                  className="w-full bg-black/20 hover:bg-black/30"
-                >
-                  <Settings2 className="w-4 h-4 mr-2" />
-                  Edit Episode Metadata
-                </Button>
-              </div>
-            )}
           </div>
         </details>
 
@@ -1530,12 +1527,12 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                   {/* Watch Links */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-muted-foreground">Stream URLs</Label>
+                      <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Stream URLs</Label>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={cn("border-white/10", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                        <Badge variant="outline" className={cn("border-white/10 font-medium", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
                           {getWatchLinkCount()} added
                         </Badge>
-                        <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-6 px-2 text-xs hover:bg-white/10">
+                        <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
                           <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
                         </Button>
                       </div>
@@ -1560,12 +1557,12 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                   {/* Download Links */}
                   <div className="space-y-3 pt-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-muted-foreground">Download URLs</Label>
+                      <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Download URLs</Label>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={cn("border-white/10", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5")}>
+                        <Badge variant="outline" className={cn("border-white/10 font-medium", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
                           {getDownloadLinkCount()} added
                         </Badge>
-                        <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-6 px-2 text-xs hover:bg-white/10">
+                        <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
                           <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
                         </Button>
                       </div>
@@ -1610,19 +1607,19 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Poster URL</Label>
-                      <Input value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs" />
+                      <Label className="text-sm font-semibold text-foreground/80 tracking-wide">Poster URL</Label>
+                      <Input value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs h-10" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Backdrop URL</Label>
-                      <Input value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs" />
+                      <Label className="text-sm font-semibold text-foreground/80 tracking-wide">Backdrop URL</Label>
+                      <Input value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs h-10" />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Hover Image (Optional)</Label>
+                    <Label className="text-sm font-semibold text-foreground/80 tracking-wide">Hover Image (Optional)</Label>
                     <div className="flex gap-2">
-                      <Input value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs flex-1" placeholder="https://..." />
+                      <Input value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-white/5 border-white/10 font-mono text-xs h-10 flex-1 placeholder:text-muted-foreground/50" placeholder="https://..." />
                       {hoverImageUrl && <img src={hoverImageUrl} className="w-10 h-10 rounded object-cover border border-white/10" />}
                     </div>
                   </div>
@@ -1630,15 +1627,15 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                   <div className="space-y-4 pt-4 border-t border-white/10">
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
-                        <Label className="text-base">Admin Locked</Label>
-                        <p className="text-xs text-muted-foreground">Prevent auto-updates from overriding these changes</p>
+                        <Label className="text-base font-semibold">Admin Locked</Label>
+                        <p className="text-sm text-muted-foreground/80">Prevent auto-updates from overriding these changes</p>
                       </div>
                       <Switch checked={adminEdited} onCheckedChange={setAdminEdited} />
                     </div>
 
                     {tmdbResult.type === "series" && (
-                      <Button variant="outline" onClick={() => setShowEpisodeEditor(true)} className="w-full border-white/10 hover:bg-white/5">
-                        <ImageIcon className="w-4 h-4 mr-2" /> Manage Episode Thumbnails
+                      <Button variant="outline" onClick={() => setShowEpisodeEditor(true)} className="w-full border-white/10 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 font-semibold">
+                        <ImageIcon className="w-4 h-4 mr-2" /> Manage Episode Metadata
                       </Button>
                     )}
                   </div>

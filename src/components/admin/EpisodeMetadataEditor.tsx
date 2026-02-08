@@ -576,13 +576,13 @@ export function EpisodeMetadataEditor({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-full w-screen h-screen max-h-screen overflow-hidden flex flex-col z-[60] p-0 gap-0"
-        overlayClassName="z-[60]"
+        className="max-w-6xl w-[95vw] h-[90vh] overflow-hidden flex flex-col z-[60] p-0 gap-0 sm:rounded-xl"
+        overlayClassName="z-[60] bg-black/80 backdrop-blur-sm"
       >
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="flex items-center gap-2">
-            <span>Episode Metadata</span>
-            <Badge variant="outline">{entryTitle}</Badge>
+        <DialogHeader className="px-6 pt-5 pb-3">
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <span className="font-bold tracking-tight">Episode Metadata</span>
+            <Badge variant="outline" className="text-sm font-medium border-white/20 bg-white/5 px-3 py-1">{entryTitle}</Badge>
           </DialogTitle>
           <DialogDescription className="sr-only">
             Edit episode metadata for {entryTitle}, season {selectedSeason}
@@ -590,7 +590,7 @@ export function EpisodeMetadataEditor({
         </DialogHeader>
 
         {/* Top Bar: Season Selector, Refresh, Bulk Actions */}
-        <div className="flex flex-wrap items-center gap-4 pb-4 border-b px-6 pt-4">
+        <div className="flex flex-wrap items-center gap-4 pb-4 border-b border-white/10 px-6 pt-3">
           {/* Season Selector */}
           <div className="flex items-center gap-2">
             <Select
@@ -604,7 +604,7 @@ export function EpisodeMetadataEditor({
                 }
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[200px] bg-white/5 border-white/10 h-10 text-sm font-medium">
                 <SelectValue placeholder="Select Season" />
               </SelectTrigger>
               <SelectContent className="z-[80]">
@@ -689,20 +689,20 @@ export function EpisodeMetadataEditor({
 
           {/* Add Episodes (Relocated) */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
+            <span className="text-sm font-semibold text-muted-foreground hidden sm:inline">
               Add Episodes:
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <Input
                 type="number"
                 min="1"
                 max="50"
                 value={bulkEpisodeCount}
                 onChange={(e) => setBulkEpisodeCount(e.target.value)}
-                className="w-16 h-8 bg-background"
+                className="w-16 h-9 bg-white/5 border-white/10 text-sm font-medium"
                 placeholder="#"
               />
-              <Button variant="outline" size="sm" onClick={handleBulkAdd} className="h-8">
+              <Button variant="outline" size="sm" onClick={handleBulkAdd} className="h-9 border-white/10 hover:bg-white/10 font-medium">
                 <Plus className="w-4 h-4 mr-1" /> Add
               </Button>
             </div>
@@ -715,7 +715,7 @@ export function EpisodeMetadataEditor({
             <Button
               onClick={handleSaveAll}
               disabled={isSaving || episodes.filter((e) => e.isDirty).length === 0}
-              className="bg-primary hover:bg-primary/90 h-8"
+              className="bg-primary hover:bg-primary/90 h-9 font-semibold text-sm px-4"
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-1" />
@@ -728,8 +728,8 @@ export function EpisodeMetadataEditor({
         </div>
 
         {/* Sub Bar: Bulk Operations (Select All, Delete) - Always Visible */}
-        <div className="flex items-center justify-between py-2 px-6 bg-muted/30 mb-2">
-          <div className="flex items-center gap-2 ml-2">
+        <div className="flex items-center justify-between py-2.5 px-6 bg-muted/20 border-b border-white/5">
+          <div className="flex items-center gap-2.5 ml-2">
             <Checkbox
               id="select-all-toggle"
               checked={episodes.length > 0 && episodes.every((e) => e.selected)}
@@ -737,7 +737,7 @@ export function EpisodeMetadataEditor({
             />
             <Label
               htmlFor="select-all-toggle"
-              className="text-sm cursor-pointer select-none"
+              className="text-sm font-medium cursor-pointer select-none text-foreground/80"
             >
               Select All
             </Label>
@@ -796,7 +796,7 @@ export function EpisodeMetadataEditor({
         </Dialog>
 
         {/* Episodes list */}
-        <div className="flex-1 overflow-y-auto space-y-2 px-6 pb-6">
+        <div className="flex-1 overflow-y-auto space-y-2.5 px-6 pb-6 pt-2">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-14 w-full" />
@@ -838,7 +838,7 @@ export function EpisodeMetadataEditor({
                         />
                       </div>
 
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs font-medium text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-full bg-secondary text-xs font-bold text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         {ep.isExpanded ? (
                           <ChevronDown className="w-3 h-3" />
                         ) : (
@@ -859,11 +859,11 @@ export function EpisodeMetadataEditor({
                         )}
                       </div>
 
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm truncate">{ep.name || `Episode ${ep.episode_number}`}</span>
+                          <span className="font-semibold text-sm truncate text-foreground">{ep.name || `Episode ${ep.episode_number}`}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground h-4">
+                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground/80 h-4">
                           {ep.air_date && <span>{new Date(ep.air_date).getFullYear()}</span>}
                           {ep.runtime && <span>• {ep.runtime}m</span>}
                           {ep.vote_average && <span>• ★ {ep.vote_average.toFixed(1)}</span>}
@@ -897,62 +897,63 @@ export function EpisodeMetadataEditor({
                   </CollapsibleTrigger>
 
                   <CollapsibleContent>
-                    <div className="px-4 pb-4 space-y-4 border-t pt-4 bg-muted/10">
+                    <div className="px-5 pb-5 space-y-5 border-t border-white/10 pt-5 bg-muted/5">
                       {/* Episode Editing Fields */}
-                      <div className="grid gap-4">
+                      <div className="grid gap-5">
                         <div className="grid gap-2">
-                          <Label className="text-xs font-semibold">Episode Name</Label>
+                          <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Episode Name</Label>
                           <Input
                             value={ep.name || ""}
                             onChange={(e) => handleEpisodeChange(index, "name", e.target.value)}
                             placeholder="Episode title"
+                            className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50"
                           />
                         </div>
 
                         <div className="grid gap-2">
-                          <Label className="text-xs font-semibold">Overview</Label>
+                          <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Overview</Label>
                           <Textarea
                             value={ep.overview || ""}
                             onChange={(e) => handleEpisodeChange(index, "overview", e.target.value)}
                             placeholder="Plot summary..."
                             rows={3}
-                            className="resize-none"
+                            className="resize-none bg-white/5 border-white/10 text-sm leading-relaxed placeholder:text-muted-foreground/50"
                           />
                         </div>
 
                         <div className="grid gap-2">
-                          <Label className="text-xs font-semibold">Thumbnail URL</Label>
+                          <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Thumbnail URL</Label>
                           <div className="flex gap-2">
                             <Input
                               value={ep.still_path || ""}
                               onChange={(e) => handleEpisodeChange(index, "still_path", e.target.value)}
                               placeholder="https://image.tmdb.org/..."
-                              className="font-mono text-xs"
+                              className="font-mono text-xs bg-white/5 border-white/10 h-10 placeholder:text-muted-foreground/50"
                             />
                             {ep.still_path && (
-                              <Button variant="ghost" size="icon" onClick={() => handleEpisodeChange(index, "still_path", null)}>
+                              <Button variant="ghost" size="icon" onClick={() => handleEpisodeChange(index, "still_path", null)} className="hover:bg-white/10">
                                 <X className="w-4 h-4" />
                               </Button>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4 pt-1">
+                          <div className="flex items-center gap-2.5">
                             <Checkbox
                               id={`admin-edited-${index}`}
                               checked={ep.admin_edited}
                               onCheckedChange={(checked) => handleEpisodeChange(index, "admin_edited", !!checked)}
                             />
-                            <Label htmlFor={`admin-edited-${index}`} className="text-xs cursor-pointer text-muted-foreground">
+                            <Label htmlFor={`admin-edited-${index}`} className="text-sm cursor-pointer text-muted-foreground font-medium">
                               Force "Admin Edited" status
                             </Label>
                           </div>
 
                           <div className="flex-1" />
 
-                          <Button size="sm" onClick={() => handleSaveSingle(index)} disabled={!ep.isDirty} className="h-8">
-                            <Save className="w-3 h-3 mr-2" /> Save Changes
+                          <Button size="sm" onClick={() => handleSaveSingle(index)} disabled={!ep.isDirty} className="h-9 font-semibold px-4">
+                            <Save className="w-3.5 h-3.5 mr-2" /> Save Changes
                           </Button>
                         </div>
                       </div>
