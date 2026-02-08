@@ -883,6 +883,9 @@ export function PostMetadataEditor() {
         description: "Metadata refreshed from TMDB. Click Save to persist.",
       });
     } catch (error) {
+      console.error("Error syncing from TMDB:", error);
+      // Syncing resets administration flag even on error, as the user attempted to refresh
+      setAdminEdited(false);
       toast({
         title: "Error",
         description: "Failed to sync from TMDB.",
@@ -1182,9 +1185,22 @@ export function PostMetadataEditor() {
       const metadataResult = await saveEpisodeMetadata(selectedEntry.id, seasonNum, episodesToSave);
       if (!metadataResult.success) throw new Error(metadataResult.error);
 
-      // 3. Ensure entries content has season key
+      // 3. Ensure entries content has season key with correct structure
       const ensureResult = await ensureSeasonInContent(selectedEntry.id, seasonNum);
       if (!ensureResult.success) throw new Error(ensureResult.error);
+
+      // Patch selectedEntry content immediately for local consistency
+      if (selectedEntry) {
+        const newContent = {
+          ...selectedEntry.content,
+          [`season_${seasonNum}`]: {
+            watch_links: [],
+            download_links: [],
+            updated_at: new Date().toISOString()
+          }
+        };
+        setSelectedEntry({ ...selectedEntry, content: newContent });
+      }
 
       toast({
         title: "Season Added",
@@ -1200,12 +1216,10 @@ export function PostMetadataEditor() {
         setNumberOfSeasons(seasonNum);
       }
 
-      // Force refresh of entry data might be good here, but local update suffices for now
-      if (selectedEntry) {
-        // Quick patch of selectedEntry content to avoid full reload
-        const newContent = { ...selectedEntry.content, [`season_${seasonNum}`]: { watch_links: [], download_links: [] } };
-        setSelectedEntry({ ...selectedEntry, content: newContent });
-      }
+      setShowAddSeasonDialog(false);
+      setNewSeasonNumber("");
+      setSelectedSeason(seasonNum);
+
       // Re-fetch all episodes to update the list
       const allEpisodes = await fetchAllEpisodeMetadata(selectedEntry.id);
       setEpisodes(allEpisodes);
@@ -1914,17 +1928,6 @@ export function PostMetadataEditor() {
                     Seasons & Episodes
                   </h3>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const nextSeason = Math.max(...availableSeasons, 0) + 1;
-                        setNewSeasonNumber(nextSeason);
-                        setShowAddSeasonDialog(true);
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Add Season
-                    </Button>
                     <Button variant="outline" size="sm" onClick={handleSyncAllSeasons} disabled={isSyncing}>
                       <RefreshCw className="w-4 h-4 mr-1" />
                       Sync All Seasons
@@ -1955,17 +1958,7 @@ export function PostMetadataEditor() {
                           <Button variant="ghost" size="sm" onClick={() => handleSyncSeason(seasonNum)} disabled={isSyncing} title="Sync Season">
                             <RefreshCw className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary"
-                            onClick={() => {
-                              setSelectedSeason(seasonNum);
-                              const maxEp = seasonEps.length > 0 ? Math.max(...seasonEps.map((e) => e.episode_number)) : 0;
-                              setNewEpisodeNumber(maxEp + 1);
-                              setShowAddEpisodeDialog(true);
-                            }}
-                          >
+                          <Button variant="ghost" size="sm" className="text-primary invisible">
                             <Plus className="w-4 h-4" />
                           </Button>
                           <Button
@@ -2316,11 +2309,19 @@ export function PostMetadataEditor() {
                         <SelectTrigger className="w-40 bg-black/40 backdrop-blur-md border-white/10">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[70]">
                           {availableSeasons.map(season => (
                             <SelectItem key={season} value={String(season)}>Season {season}</SelectItem>
                           ))}
-                          <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-white/10">
+                          <SelectItem
+                            value="new_season"
+                            className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10"
+                            onClick={() => {
+                              const nextSeason = Math.max(...availableSeasons, 0) + 1;
+                              setNewSeasonNumber(nextSeason);
+                              setShowAddSeasonDialog(true);
+                            }}
+                          >
                             <Plus className="w-3 h-3 mr-2 inline" /> Add Season
                           </SelectItem>
                         </SelectContent>
@@ -2334,6 +2335,22 @@ export function PostMetadataEditor() {
                         title="Delete Season"
                       >
                         <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {/* Add Episode Button (Relocated to top of list) */}
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-primary border-primary/20 hover:bg-primary/10"
+                        onClick={() => {
+                          const maxEp = seasonEpisodes.length > 0 ? Math.max(...seasonEpisodes.map((e) => e.episode_number)) : 0;
+                          setNewEpisodeNumber(maxEp + 1);
+                          setShowAddEpisodeDialog(true);
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-1" /> Add Episode to Season {selectedSeason}
                       </Button>
                     </div>
 

@@ -1385,13 +1385,16 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                       <SelectTrigger className="w-full bg-white/5 border-white/10 h-12">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[70]">
                         {tmdbResult.seasonDetails?.map((s) => (
                           <SelectItem key={s.season_number} value={String(s.season_number)}>
                             Season {s.season_number} <span className="text-muted-foreground ml-2">({s.episode_count} eps)</span>
                           </SelectItem>
                         ))}
-                        <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-white/10">
+                        <SelectItem
+                          value="new_season"
+                          className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10"
+                        >
                           <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
                         </SelectItem>
                       </SelectContent>

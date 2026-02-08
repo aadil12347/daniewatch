@@ -98,7 +98,7 @@ export function EpisodeMetadataEditor({
   const [newSeasonNumber, setNewSeasonNumber] = useState("");
   const [isAddingSeason, setIsAddingSeason] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
-  const [selectionModeEnabled, setSelectionModeEnabled] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   // Update localSeasons if prop changes
   useEffect(() => {
@@ -613,7 +613,7 @@ export function EpisodeMetadataEditor({
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select Season" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[70]">
                 {(localSeasons || []).length > 0 ? (
                   localSeasons.map((s) => (
                     <SelectItem
@@ -718,46 +718,36 @@ export function EpisodeMetadataEditor({
 
           {/* Save Actions */}
           <div className="flex items-center gap-2">
+            {/* Multi-select Toggle */}
             <Button
-              variant="outline"
+              variant={isSelectionMode ? "default" : "outline"}
               size="sm"
-              className={`h-8 ${selectionModeEnabled ? "bg-primary/10 border-primary/50 text-primary" : ""}`}
-              onClick={() => setSelectionModeEnabled(!selectionModeEnabled)}
+              onClick={() => setIsSelectionMode(!isSelectionMode)}
+              className="h-8"
             >
-              {selectionModeEnabled ? (
-                <Check className="w-3 h-3 mr-1" />
-              ) : (
-                <ListChecks className="w-3 h-3 mr-1" />
-              )}
-              {selectionModeEnabled ? "Done Selecting" : "Select"}
-            </Button>
-
-            {selectionModeEnabled && (
-              <span className="text-sm text-muted-foreground mr-1">
-                {episodes.filter((e) => e.selected).length} selected
+              <ListChecks className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">
+                {isSelectionMode ? "Exit Selection" : "Multi-Select"}
               </span>
-            )}
+            </Button>
 
             <Button
               onClick={handleSaveSelected}
-              disabled={
-                isSaving ||
-                (selectionModeEnabled &&
-                  episodes.filter((e) => e.selected).length === 0)
-              }
+              disabled={isSaving || (isSelectionMode && episodes.filter((e) => e.selected).length === 0)}
+              className="bg-primary hover:bg-primary/90 h-8"
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-1" />
               ) : (
                 <Save className="w-4 h-4 mr-1" />
               )}
-              {selectionModeEnabled ? "Save Selected" : "Save All"}
+              {isSelectionMode ? "Save Selected" : "Save All"}
             </Button>
           </div>
         </div>
 
         {/* Sub Bar: Bulk Operations (Select All, Delete) */}
-        {selectionModeEnabled && (
+        {isSelectionMode && (
           <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2 animate-in slide-in-from-top-2">
             <div className="flex items-center gap-2 ml-2">
               <Checkbox
@@ -856,7 +846,7 @@ export function EpisodeMetadataEditor({
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 group select-none">
                       {/* Granular Selection Checkbox */}
-                      {selectionModeEnabled && (
+                      {isSelectionMode && (
                         <div
                           onClick={(e) => e.stopPropagation()}
                           className="flex items-center justify-center p-1 animate-in fade-in zoom-in duration-200"
