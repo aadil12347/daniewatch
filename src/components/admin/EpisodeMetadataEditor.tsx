@@ -572,10 +572,10 @@ export function EpisodeMetadataEditor({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col z-[60]"
+        className="max-w-full w-screen h-screen max-h-screen overflow-hidden flex flex-col z-[60] p-0 gap-0"
         overlayClassName="z-[60]"
       >
-        <DialogHeader>
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <span>Episode Metadata</span>
             <Badge variant="outline">{entryTitle}</Badge>
@@ -586,7 +586,7 @@ export function EpisodeMetadataEditor({
         </DialogHeader>
 
         {/* Top Bar: Season Selector, Refresh, Bulk Actions */}
-        <div className="flex flex-wrap items-center gap-4 pb-4 border-b">
+        <div className="flex flex-wrap items-center gap-4 pb-4 border-b px-6 pt-4">
           {/* Season Selector */}
           <div className="flex items-center gap-2">
             <Select
@@ -724,7 +724,7 @@ export function EpisodeMetadataEditor({
         </div>
 
         {/* Sub Bar: Bulk Operations (Select All, Delete) - Always Visible */}
-        <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2">
+        <div className="flex items-center justify-between py-2 px-6 bg-muted/30 mb-2">
           <div className="flex items-center gap-2 ml-2">
             <Checkbox
               id="select-all-toggle"
@@ -792,7 +792,7 @@ export function EpisodeMetadataEditor({
         </Dialog>
 
         {/* Episodes list */}
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-2 px-6 pb-6">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-14 w-full" />
