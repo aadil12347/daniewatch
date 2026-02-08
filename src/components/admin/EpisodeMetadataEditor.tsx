@@ -650,358 +650,356 @@ export function EpisodeMetadataEditor({
             </Button>
           </div>
 
-        </div>
+          <div className="h-6 w-px bg-border mx-2" />
 
-        <div className="h-6 w-px bg-border mx-2" />
-
-        {/* Delete Season Button (Always Visible) */}
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              title={`Delete Season ${selectedSeason}`}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                Delete Season {selectedSeason}?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete all episodes for season{" "}
-                {selectedSeason} from the database.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteSeason}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                {isDeletingSeason ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                ) : (
-                  <Trash2 className="w-4 h-4 mr-1" />
-                )}
-                Delete Season
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <div className="flex-1" />
-
-        {/* Add Episodes (Relocated) */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-            Add Episodes:
-          </span>
-          <div className="flex items-center gap-1">
-            <Input
-              type="number"
-              min="1"
-              max="50"
-              value={bulkEpisodeCount}
-              onChange={(e) => setBulkEpisodeCount(e.target.value)}
-              className="w-16 h-8 bg-background"
-              placeholder="#"
-            />
-            <Button variant="outline" size="sm" onClick={handleBulkAdd} className="h-8">
-              <Plus className="w-4 h-4 mr-1" /> Add
-            </Button>
-          </div>
-        </div>
-
-        <div className="h-6 w-px bg-border mx-2" />
-
-        {/* Save Actions */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className={`h-8 ${selectionModeEnabled ? "bg-primary/10 border-primary/50 text-primary" : ""}`}
-            onClick={() => setSelectionModeEnabled(!selectionModeEnabled)}
-          >
-            {selectionModeEnabled ? (
-              <Check className="w-3 h-3 mr-1" />
-            ) : (
-              <ListChecks className="w-3 h-3 mr-1" />
-            )}
-            {selectionModeEnabled ? "Done Selecting" : "Select"}
-          </Button>
-
-          {selectionModeEnabled && (
-            <span className="text-sm text-muted-foreground mr-1">
-              {episodes.filter((e) => e.selected).length} selected
-            </span>
-          )}
-
-          <Button
-            onClick={handleSaveSelected}
-            disabled={
-              isSaving ||
-              (selectionModeEnabled &&
-                episodes.filter((e) => e.selected).length === 0)
-            }
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-1" />
-            ) : (
-              <Save className="w-4 h-4 mr-1" />
-            )}
-            {selectionModeEnabled ? "Save Selected" : "Save All"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Sub Bar: Bulk Operations (Select All, Delete) */}
-      {selectionModeEnabled && (
-        <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2 animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-2 ml-2">
-            <Checkbox
-              id="select-all-toggle"
-              checked={episodes.length > 0 && episodes.every((e) => e.selected)}
-              onCheckedChange={toggleSelectAll}
-            />
-            <Label
-              htmlFor="select-all-toggle"
-              className="text-sm cursor-pointer select-none"
-            >
-              Select All
-            </Label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {episodes.some((e) => e.selected) && (
+          {/* Delete Season Button (Always Visible) */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
               <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-                className="h-8"
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                title={`Delete Season ${selectedSeason}`}
               >
-                <Trash2 className="w-4 h-4 mr-1" /> Delete Selected
+                <Trash2 className="w-4 h-4" />
               </Button>
-            )}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Delete Season {selectedSeason}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete all episodes for season{" "}
+                  {selectedSeason} from the database.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteSeason}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  {isDeletingSeason ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-1" />
+                  )}
+                  Delete Season
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
-            <div className="h-4 w-px bg-border mx-2" />
-            {/* Delete Season was here, moved to top bar */}
-          </div>
-        </div>
-      )}
+          <div className="flex-1" />
 
-      {/* Add Season Dialog (Nested) */}
-      <Dialog open={showAddSeasonDialog} onOpenChange={setShowAddSeasonDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Season</DialogTitle>
-            <DialogDescription className="sr-only">
-              Fetch a new season with all episodes from TMDB
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="season-number">Season Number</Label>
+          {/* Add Episodes (Relocated) */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
+              Add Episodes:
+            </span>
+            <div className="flex items-center gap-1">
               <Input
-                id="season-number"
                 type="number"
-                min="0"
-                value={newSeasonNumber}
-                onChange={(e) => setNewSeasonNumber(e.target.value)}
-                placeholder="e.g., 2"
+                min="1"
+                max="50"
+                value={bulkEpisodeCount}
+                onChange={(e) => setBulkEpisodeCount(e.target.value)}
+                className="w-16 h-8 bg-background"
+                placeholder="#"
               />
+              <Button variant="outline" size="sm" onClick={handleBulkAdd} className="h-8">
+                <Plus className="w-4 h-4 mr-1" /> Add
+              </Button>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddSeasonDialog(false)}>
-              Cancel
+
+          <div className="h-6 w-px bg-border mx-2" />
+
+          {/* Save Actions */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className={`h-8 ${selectionModeEnabled ? "bg-primary/10 border-primary/50 text-primary" : ""}`}
+              onClick={() => setSelectionModeEnabled(!selectionModeEnabled)}
+            >
+              {selectionModeEnabled ? (
+                <Check className="w-3 h-3 mr-1" />
+              ) : (
+                <ListChecks className="w-3 h-3 mr-1" />
+              )}
+              {selectionModeEnabled ? "Done Selecting" : "Select"}
             </Button>
-            <Button onClick={handleAddSeason} disabled={isAddingSeason}>
-              {isAddingSeason ? (
+
+            {selectionModeEnabled && (
+              <span className="text-sm text-muted-foreground mr-1">
+                {episodes.filter((e) => e.selected).length} selected
+              </span>
+            )}
+
+            <Button
+              onClick={handleSaveSelected}
+              disabled={
+                isSaving ||
+                (selectionModeEnabled &&
+                  episodes.filter((e) => e.selected).length === 0)
+              }
+            >
+              {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-1" />
               ) : (
-                <Download className="w-4 h-4 mr-1" />
+                <Save className="w-4 h-4 mr-1" />
               )}
-              Fetch from TMDB
+              {selectionModeEnabled ? "Save Selected" : "Save All"}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
 
-      {/* Episodes list */}
-      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-        {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full" />
-          ))
-        ) : episodes.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
-            <p>No episodes found for Season {selectedSeason}.</p>
-            <Button variant="link" onClick={() => refreshFromTMDB(selectedSeason)}>
-              Click to refresh from TMDB
-            </Button>
-          </div>
-        ) : (
-          episodes.map((ep, index) => (
-            <Collapsible
-              key={ep.episode_number}
-              open={ep.isExpanded}
-              onOpenChange={() => toggleExpand(index)}
-            >
-              <div
-                className={`border rounded-lg transition-colors ${ep.isDirty ? "border-amber-500/50 bg-amber-500/5" : ""
-                  } ${ep.selected ? "ring-1 ring-primary border-primary" : ""}`}
+        {/* Sub Bar: Bulk Operations (Select All, Delete) */}
+        {selectionModeEnabled && (
+          <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2 animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 ml-2">
+              <Checkbox
+                id="select-all-toggle"
+                checked={episodes.length > 0 && episodes.every((e) => e.selected)}
+                onCheckedChange={toggleSelectAll}
+              />
+              <Label
+                htmlFor="select-all-toggle"
+                className="text-sm cursor-pointer select-none"
               >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 group select-none">
-                    {/* Granular Selection Checkbox */}
-                    {selectionModeEnabled && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center justify-center p-1 animate-in fade-in zoom-in duration-200"
-                      >
-                        <Checkbox
-                          checked={!!ep.selected}
-                          onCheckedChange={(checked) => {
-                            setEpisodes((prev) =>
-                              prev.map((e, i) =>
-                                i === index ? { ...e, selected: !!checked } : e
-                              )
-                            );
-                          }}
-                        />
-                      </div>
-                    )}
+                Select All
+              </Label>
+            </div>
 
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs font-medium text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      {ep.isExpanded ? (
-                        <ChevronDown className="w-3 h-3" />
-                      ) : (
-                        <span className="text-[10px]">
-                          {ep.episode_number}
-                        </span>
-                      )}
-                    </div>
+            <div className="flex items-center gap-2">
+              {episodes.some((e) => e.selected) && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="h-8"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" /> Delete Selected
+                </Button>
+              )}
 
-                    {/* Thumbnail Preview */}
-                    <div className="relative w-16 h-9 rounded overflow-hidden bg-muted">
-                      {ep.still_path ? (
-                        <img src={ep.still_path} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
-                        </div>
-                      )}
-                    </div>
+              <div className="h-4 w-px bg-border mx-2" />
+              {/* Delete Season was here, moved to top bar */}
+            </div>
+          </div>
+        )}
 
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm truncate">{ep.name || `Episode ${ep.episode_number}`}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground h-4">
-                        {ep.air_date && <span>{new Date(ep.air_date).getFullYear()}</span>}
-                        {ep.runtime && <span>• {ep.runtime}m</span>}
-                        {ep.vote_average && <span>• ★ {ep.vote_average.toFixed(1)}</span>}
-                      </div>
-                    </div>
+        {/* Add Season Dialog (Nested) */}
+        <Dialog open={showAddSeasonDialog} onOpenChange={setShowAddSeasonDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Season</DialogTitle>
+              <DialogDescription className="sr-only">
+                Fetch a new season with all episodes from TMDB
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="season-number">Season Number</Label>
+                <Input
+                  id="season-number"
+                  type="number"
+                  min="0"
+                  value={newSeasonNumber}
+                  onChange={(e) => setNewSeasonNumber(e.target.value)}
+                  placeholder="e.g., 2"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddSeasonDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddSeason} disabled={isAddingSeason}>
+                {isAddingSeason ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Download className="w-4 h-4 mr-1" />
+                )}
+                Fetch from TMDB
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0"
-                        onClick={() => handleSyncSingleEpisode(index)}
-                        disabled={isSyncingSingle === ep.episode_number}
-                        title="Sync only this episode from TMDB"
-                      >
-                        <RefreshCw className={`w-3 h-3 ${isSyncingSingle === ep.episode_number ? "animate-spin" : ""}`} />
-                      </Button>
-                    </div>
-
-                    {ep.admin_edited && (
-                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                        Edited
-                      </Badge>
-                    )}
-                    {ep.isDirty && (
-                      <Badge className="text-[10px] h-5 px-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0">
-                        Unsaved
-                      </Badge>
-                    )}
-                  </div>
-                </CollapsibleTrigger>
-
-                <CollapsibleContent>
-                  <div className="px-4 pb-4 space-y-4 border-t pt-4 bg-muted/10">
-                    {/* Episode Editing Fields */}
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label className="text-xs font-semibold">Episode Name</Label>
-                        <Input
-                          value={ep.name || ""}
-                          onChange={(e) => handleEpisodeChange(index, "name", e.target.value)}
-                          placeholder="Episode title"
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label className="text-xs font-semibold">Overview</Label>
-                        <Textarea
-                          value={ep.overview || ""}
-                          onChange={(e) => handleEpisodeChange(index, "overview", e.target.value)}
-                          placeholder="Plot summary..."
-                          rows={3}
-                          className="resize-none"
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label className="text-xs font-semibold">Thumbnail URL</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={ep.still_path || ""}
-                            onChange={(e) => handleEpisodeChange(index, "still_path", e.target.value)}
-                            placeholder="https://image.tmdb.org/..."
-                            className="font-mono text-xs"
-                          />
-                          {ep.still_path && (
-                            <Button variant="ghost" size="icon" onClick={() => handleEpisodeChange(index, "still_path", null)}>
-                              <X className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
+        {/* Episodes list */}
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))
+          ) : episodes.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
+              <p>No episodes found for Season {selectedSeason}.</p>
+              <Button variant="link" onClick={() => refreshFromTMDB(selectedSeason)}>
+                Click to refresh from TMDB
+              </Button>
+            </div>
+          ) : (
+            episodes.map((ep, index) => (
+              <Collapsible
+                key={ep.episode_number}
+                open={ep.isExpanded}
+                onOpenChange={() => toggleExpand(index)}
+              >
+                <div
+                  className={`border rounded-lg transition-colors ${ep.isDirty ? "border-amber-500/50 bg-amber-500/5" : ""
+                    } ${ep.selected ? "ring-1 ring-primary border-primary" : ""}`}
+                >
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 group select-none">
+                      {/* Granular Selection Checkbox */}
+                      {selectionModeEnabled && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center p-1 animate-in fade-in zoom-in duration-200"
+                        >
                           <Checkbox
-                            id={`admin-edited-${index}`}
-                            checked={ep.admin_edited}
-                            onCheckedChange={(checked) => handleEpisodeChange(index, "admin_edited", !!checked)}
+                            checked={!!ep.selected}
+                            onCheckedChange={(checked) => {
+                              setEpisodes((prev) =>
+                                prev.map((e, i) =>
+                                  i === index ? { ...e, selected: !!checked } : e
+                                )
+                              );
+                            }}
                           />
-                          <Label htmlFor={`admin-edited-${index}`} className="text-xs cursor-pointer text-muted-foreground">
-                            Force "Admin Edited" status
-                          </Label>
                         </div>
+                      )}
 
-                        <div className="flex-1" />
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs font-medium text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        {ep.isExpanded ? (
+                          <ChevronDown className="w-3 h-3" />
+                        ) : (
+                          <span className="text-[10px]">
+                            {ep.episode_number}
+                          </span>
+                        )}
+                      </div>
 
-                        <Button size="sm" onClick={() => handleSaveSingle(index)} disabled={!ep.isDirty} className="h-8">
-                          <Save className="w-3 h-3 mr-2" /> Save Changes
+                      {/* Thumbnail Preview */}
+                      <div className="relative w-16 h-9 rounded overflow-hidden bg-muted">
+                        {ep.still_path ? (
+                          <img src={ep.still_path} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{ep.name || `Episode ${ep.episode_number}`}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground h-4">
+                          {ep.air_date && <span>{new Date(ep.air_date).getFullYear()}</span>}
+                          {ep.runtime && <span>• {ep.runtime}m</span>}
+                          {ep.vote_average && <span>• ★ {ep.vote_average.toFixed(1)}</span>}
+                        </div>
+                      </div>
+
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleSyncSingleEpisode(index)}
+                          disabled={isSyncingSingle === ep.episode_number}
+                          title="Sync only this episode from TMDB"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isSyncingSingle === ep.episode_number ? "animate-spin" : ""}`} />
                         </Button>
                       </div>
+
+                      {ep.admin_edited && (
+                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                          Edited
+                        </Badge>
+                      )}
+                      {ep.isDirty && (
+                        <Badge className="text-[10px] h-5 px-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0">
+                          Unsaved
+                        </Badge>
+                      )}
                     </div>
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          ))
-        )}
-      </div>
-    </DialogContent>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    <div className="px-4 pb-4 space-y-4 border-t pt-4 bg-muted/10">
+                      {/* Episode Editing Fields */}
+                      <div className="grid gap-4">
+                        <div className="grid gap-2">
+                          <Label className="text-xs font-semibold">Episode Name</Label>
+                          <Input
+                            value={ep.name || ""}
+                            onChange={(e) => handleEpisodeChange(index, "name", e.target.value)}
+                            placeholder="Episode title"
+                          />
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label className="text-xs font-semibold">Overview</Label>
+                          <Textarea
+                            value={ep.overview || ""}
+                            onChange={(e) => handleEpisodeChange(index, "overview", e.target.value)}
+                            placeholder="Plot summary..."
+                            rows={3}
+                            className="resize-none"
+                          />
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label className="text-xs font-semibold">Thumbnail URL</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={ep.still_path || ""}
+                              onChange={(e) => handleEpisodeChange(index, "still_path", e.target.value)}
+                              placeholder="https://image.tmdb.org/..."
+                              className="font-mono text-xs"
+                            />
+                            {ep.still_path && (
+                              <Button variant="ghost" size="icon" onClick={() => handleEpisodeChange(index, "still_path", null)}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`admin-edited-${index}`}
+                              checked={ep.admin_edited}
+                              onCheckedChange={(checked) => handleEpisodeChange(index, "admin_edited", !!checked)}
+                            />
+                            <Label htmlFor={`admin-edited-${index}`} className="text-xs cursor-pointer text-muted-foreground">
+                              Force "Admin Edited" status
+                            </Label>
+                          </div>
+
+                          <div className="flex-1" />
+
+                          <Button size="sm" onClick={() => handleSaveSingle(index)} disabled={!ep.isDirty} className="h-8">
+                            <Save className="w-3 h-3 mr-2" /> Save Changes
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            ))
+          )}
+        </div>
+      </DialogContent>
     </Dialog >
   );
 }
