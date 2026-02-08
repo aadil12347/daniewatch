@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-import { useEntries } from "@/hooks/useEntries";
+import { useEntries, EntryData } from "@/hooks/useEntries";
 import { useEntriesTrash, TrashedEntry } from "@/hooks/useEntriesTrash";
 import { useEntryMetadata } from "@/hooks/useEntryMetadata";
 import { EpisodeMetadata, SaveEpisodeInput } from "@/hooks/useEntryMetadata";
@@ -65,6 +65,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ManifestUpdateTool } from "@/components/admin/ManifestUpdateTool";
 
 import { EpisodeMetadataEditor } from "@/components/admin/EpisodeMetadataEditor";
@@ -137,6 +138,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   const [logoUrl, setLogoUrl] = useState("");
   const [overview, setOverview] = useState("");
   const [adminEdited, setAdminEdited] = useState(false);
+  const [currentEntry, setCurrentEntry] = useState<EntryData | null>(null);
   const [showEpisodeEditor, setShowEpisodeEditor] = useState(false);
   const [isRefreshingTmdb, setIsRefreshingTmdb] = useState(false);
   const [seasonCount, setSeasonCount] = useState("");
@@ -274,6 +276,49 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     }
   }, []);
 
+  // Helper to extract seasons from database content JSONB
+  const getDbSeasons = useCallback((entry: EntryData | null) => {
+    if (!entry || !entry.content) return [];
+    const content = entry.content as Record<string, any>;
+    return Object.keys(content)
+      .filter(key => key.startsWith('season_'))
+      .map(key => {
+        const seasonNum = parseInt(key.replace('season_', ''));
+        return {
+          season_number: seasonNum,
+          episode_count: 0, // We don't track episode count in content
+          isDbSeason: true
+        };
+      })
+      .sort((a, b) => a.season_number - b.season_number);
+  }, []);
+
+  // Combined seasons - prefer DB seasons when entry exists and is admin_edited
+  const allSeasons = useMemo(() => {
+    const tmdbSeasons = tmdbResult?.seasonDetails || [];
+    const dbSeasons = getDbSeasons(currentEntry);
+
+    // If we have an entry with admin_edited, use DB seasons as primary
+    if (currentEntry?.admin_edited && dbSeasons.length > 0) {
+      const seasonMap = new Map();
+
+      // Add DB seasons first (higher priority)
+      dbSeasons.forEach(s => seasonMap.set(s.season_number, { ...s, source: 'db' }));
+
+      // Fill in missing seasons from TMDB
+      tmdbSeasons.forEach(s => {
+        if (!seasonMap.has(s.season_number)) {
+          seasonMap.set(s.season_number, { ...s, source: 'tmdb' });
+        }
+      });
+
+      return Array.from(seasonMap.values()).sort((a, b) => a.season_number - b.season_number);
+    }
+
+    // Otherwise use TMDB seasons
+    return tmdbSeasons.map(s => ({ ...s, source: 'tmdb' }));
+  }, [tmdbResult, currentEntry, getDbSeasons]);
+
   // Check DB for existing entry
   const checkAndLoadEntry = useCallback(
     async (result: TMDBResult, seasonForSeries: number) => {
@@ -290,6 +335,7 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
       setEntryExists(false);
 
       const entry = await fetchEntry(String(result.id));
+      setCurrentEntry(entry); // Store entry for database-first loading
       if (entry && entry.type === result.type) {
         setEntryExists(true);
         setHoverImageUrl(entry.hover_image_url || "");
@@ -974,15 +1020,15 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 )}
               </div>
               {/* Series Season Selector */}
-              {tmdbResult.type === "series" && tmdbResult.seasonDetails && (
+              {tmdbResult.type === "series" && allSeasons.length > 0 && (
                 <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
                   <SelectTrigger className="w-48 bg-white/5 border-white/10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {tmdbResult.seasonDetails.map((s) => (
+                    {allSeasons.map((s) => (
                       <SelectItem key={s.season_number} value={String(s.season_number)}>
-                        Season {s.season_number} ({s.episode_count} episodes)
+                        Season {s.season_number} {s.source === 'db' ? '(DB)' : `(${s.episode_count} eps)`}
                       </SelectItem>
                     ))}
                     <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10">
@@ -1343,9 +1389,9 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="z-[70]">
-                          {tmdbResult.seasonDetails?.map((s) => (
+                          {allSeasons.map((s) => (
                             <SelectItem key={s.season_number} value={String(s.season_number)}>
-                              Season {s.season_number} <span className="text-muted-foreground ml-2">({s.episode_count} eps)</span>
+                              Season {s.season_number} <span className="text-muted-foreground ml-2">{s.source === 'db' ? '(DB)' : `(${s.episode_count} eps)`}</span>
                             </SelectItem>
                           ))}
                           <SelectItem

@@ -47,6 +47,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useEntryMetadata, EpisodeMetadata, SaveEpisodeInput } from "@/hooks/useEntryMetadata";
+import { useEntries } from "@/hooks/useEntries";
 import { useToast } from "@/hooks/use-toast";
 import { getTVSeasonDetails, getImageUrl } from "@/lib/tmdb";
 
@@ -80,7 +81,8 @@ export function EpisodeMetadataEditor({
   seasonDetails = [],
 }: EpisodeMetadataEditorProps) {
   const { toast } = useToast();
-  const { fetchEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode, ensureSeasonInContent, removeSeasonFromContent } = useEntryMetadata();
+  const { fetchEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode, ensureSeasonInContent } = useEntryMetadata();
+  const { deleteSeasonFromEntry } = useEntries();
 
   /* State */
   const [localSeasons, setLocalSeasons] = useState(seasonDetails);
@@ -531,39 +533,27 @@ export function EpisodeMetadataEditor({
   const handleDeleteSeason = async () => {
     setIsDeletingSeason(true);
     try {
-      // 1. Remove metadata rows
-      const deleteMetaResult = await saveEpisodeMetadata(
-        entryId,
-        selectedSeason,
-        []
-      );
-      if (!deleteMetaResult.success) throw new Error(deleteMetaResult.error);
-
-      // 2. Remove season key from entries.content
-      const removeContentResult = await removeSeasonFromContent(
-        entryId,
-        selectedSeason
-      );
-      if (!removeContentResult.success) throw new Error(removeContentResult.error);
+      // Use deleteSeasonFromEntry which also deletes the entry if no seasons remain
+      const result = await deleteSeasonFromEntry(entryId, selectedSeason);
+      if (!result.success) throw new Error(result.error);
 
       toast({
         title: "Season Deleted",
-        description: `All episodes for season ${selectedSeason} have been removed`,
+        description: `Season ${selectedSeason} has been deleted. Entry will be removed if no seasons remain.`,
       });
 
       // Update local seasons and switch
       const updatedSeasons = localSeasons.filter(s => s.season_number !== selectedSeason);
       setLocalSeasons(updatedSeasons);
-
       setEpisodes([]);
 
       // Switch to another season if available
       if (updatedSeasons.length > 0) {
         setSelectedSeason(updatedSeasons[0].season_number);
       } else {
-        // No seasons left? 
-        // Maybe default to 1 but it's empty
+        // No seasons left - close the editor or show message
         setSelectedSeason(1);
+        onOpenChange(false); // Close the editor since no seasons remain
       }
     } catch (error: any) {
       console.error("Error deleting season:", error);
