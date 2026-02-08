@@ -32,6 +32,7 @@ export const AdminPostControls = ({
 
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  const [linksOpen, setLinksOpen] = useState(false);
 
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
