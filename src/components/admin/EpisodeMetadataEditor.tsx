@@ -100,7 +100,7 @@ export function EpisodeMetadataEditor({
   const [newSeasonNumber, setNewSeasonNumber] = useState("");
   const [isAddingSeason, setIsAddingSeason] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  // Selection mode is now always on - removed toggle
 
   // Update localSeasons if prop changes
   useEffect(() => {
@@ -708,22 +708,9 @@ export function EpisodeMetadataEditor({
 
           {/* Save Actions */}
           <div className="flex items-center gap-2">
-            {/* Multi-select Toggle */}
-            <Button
-              variant={isSelectionMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsSelectionMode(!isSelectionMode)}
-              className="h-8"
-            >
-              <ListChecks className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">
-                {isSelectionMode ? "Exit Selection" : "Multi-Select"}
-              </span>
-            </Button>
-
             <Button
               onClick={handleSaveSelected}
-              disabled={isSaving || (isSelectionMode && episodes.filter((e) => e.selected).length === 0)}
+              disabled={isSaving || episodes.filter((e) => e.selected).length === 0}
               className="bg-primary hover:bg-primary/90 h-8"
             >
               {isSaving ? (
@@ -731,45 +718,40 @@ export function EpisodeMetadataEditor({
               ) : (
                 <Save className="w-4 h-4 mr-1" />
               )}
-              {isSelectionMode ? "Save Selected" : "Save All"}
+              Save Selected
             </Button>
           </div>
         </div>
 
-        {/* Sub Bar: Bulk Operations (Select All, Delete) */}
-        {isSelectionMode && (
-          <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2 animate-in slide-in-from-top-2">
-            <div className="flex items-center gap-2 ml-2">
-              <Checkbox
-                id="select-all-toggle"
-                checked={episodes.length > 0 && episodes.every((e) => e.selected)}
-                onCheckedChange={toggleSelectAll}
-              />
-              <Label
-                htmlFor="select-all-toggle"
-                className="text-sm cursor-pointer select-none"
-              >
-                Select All
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {episodes.some((e) => e.selected) && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBulkDelete}
-                  className="h-8"
-                >
-                  <Trash2 className="w-4 h-4 mr-1" /> Delete Selected
-                </Button>
-              )}
-
-              <div className="h-4 w-px bg-border mx-2" />
-              {/* Delete Season was here, moved to top bar */}
-            </div>
+        {/* Sub Bar: Bulk Operations (Select All, Delete) - Always Visible */}
+        <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2">
+          <div className="flex items-center gap-2 ml-2">
+            <Checkbox
+              id="select-all-toggle"
+              checked={episodes.length > 0 && episodes.every((e) => e.selected)}
+              onCheckedChange={toggleSelectAll}
+            />
+            <Label
+              htmlFor="select-all-toggle"
+              className="text-sm cursor-pointer select-none"
+            >
+              Select All
+            </Label>
           </div>
-        )}
+
+          <div className="flex items-center gap-2">
+            {episodes.some((e) => e.selected) && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="h-8"
+              >
+                <Trash2 className="w-4 h-4 mr-1" /> Delete Selected
+              </Button>
+            )}
+          </div>
+        </div>
 
         {/* Add Season Dialog (Nested) */}
         <Dialog open={showAddSeasonDialog} onOpenChange={setShowAddSeasonDialog}>
@@ -835,24 +817,22 @@ export function EpisodeMetadataEditor({
                 >
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 group select-none">
-                      {/* Granular Selection Checkbox */}
-                      {isSelectionMode && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-center p-1 animate-in fade-in zoom-in duration-200"
-                        >
-                          <Checkbox
-                            checked={!!ep.selected}
-                            onCheckedChange={(checked) => {
-                              setEpisodes((prev) =>
-                                prev.map((e, i) =>
-                                  i === index ? { ...e, selected: !!checked } : e
-                                )
-                              );
-                            }}
-                          />
-                        </div>
-                      )}
+                      {/* Granular Selection Checkbox - Always Visible */}
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center justify-center p-1"
+                      >
+                        <Checkbox
+                          checked={!!ep.selected}
+                          onCheckedChange={(checked) => {
+                            setEpisodes((prev) =>
+                              prev.map((e, i) =>
+                                i === index ? { ...e, selected: !!checked } : e
+                              )
+                            );
+                          }}
+                        />
+                      </div>
 
                       <div className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs font-medium text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         {ep.isExpanded ? (
