@@ -24,7 +24,19 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -467,6 +479,9 @@ export function EpisodeMetadataEditor({
             <span>Episode Metadata</span>
             <Badge variant="outline">{entryTitle}</Badge>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Edit episode metadata for {entryTitle}, season {selectedSeason}
+          </DialogDescription>
         </DialogHeader>
 
         {/* Season selector & actions */}
@@ -613,6 +628,9 @@ export function EpisodeMetadataEditor({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Season</DialogTitle>
+              <DialogDescription className="sr-only">
+                Fetch a new season with all episodes from TMDB
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>

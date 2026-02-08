@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { QuickEditLinksDropdown } from '@/components/admin/QuickEditLinksDropdown';
 import { UpdateLinksPanel } from '@/components/admin/UpdateLinksPanel';
 import { useAdminStatus } from '@/contexts/AdminStatusContext';
@@ -71,9 +71,8 @@ export const AdminPostControls = ({
             ref={triggerRef}
             size="icon"
             variant="ghost"
-            className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className} ${
-              isDisabled ? 'opacity-0 pointer-events-none' : ''
-            }`}
+            className={`w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm ${className} ${isDisabled ? 'opacity-0 pointer-events-none' : ''
+              }`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -114,6 +113,9 @@ export const AdminPostControls = ({
       >
         <DialogHeader className="px-4 py-3 border-b">
           <DialogTitle>Update Links</DialogTitle>
+          <DialogDescription className="sr-only">
+            Edit watch and download links for {title || 'this content'}.
+          </DialogDescription>
         </DialogHeader>
         <div className="h-[calc(90vh-56px)] overflow-y-auto p-4">
           <UpdateLinksPanel embedded initialTmdbId={modalInitialId} />
