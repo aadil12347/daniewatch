@@ -1066,8 +1066,22 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          )}
+          ))}
         </div>
+
+        {/* Episode Metadata Editor Modal - CRITICAL: Must be in embedded mode! */}
+        {tmdbResult && tmdbResult.type === "series" && (
+          <EpisodeMetadataEditor
+            open={showEpisodeEditor}
+            onOpenChange={(open) => {
+              console.log("Episode editor state changing to:", open);
+              setShowEpisodeEditor(open);
+            }}
+            entryId={String(tmdbResult.id)}
+            entryTitle={tmdbResult.title}
+            seasonDetails={tmdbResult.seasonDetails || []}
+          />
+        )}
       </div>
     );
   }
