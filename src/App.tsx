@@ -118,6 +118,12 @@ const App = () => {
   const [splashActive, setSplashActive] = useState(() => getShouldShowInitialSplash());
   const [justExitedSplash, setJustExitedSplash] = useState(false);
 
+  // Force English language and left-to-right direction on app mount
+  useEffect(() => {
+    document.documentElement.lang = "en";
+    document.documentElement.dir = "ltr";
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
     if (!justExitedSplash) {
