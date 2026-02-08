@@ -166,7 +166,7 @@ interface EditorCacheState {
 
 export function PostMetadataEditor() {
   const { toast } = useToast();
-  const { fetchAllEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode } = useEntryMetadata();
+  const { fetchAllEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode, ensureSeasonInContent, removeSeasonFromContent } = useEntryMetadata();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Search state
@@ -219,10 +219,12 @@ export function PostMetadataEditor() {
   const [expandedEpisode, setExpandedEpisode] = useState<number | null>(null);
   const [isMainMetadataOpen, setIsMainMetadataOpen] = useState(true);
   const [expandedSeasons, setExpandedSeasons] = useState<number[]>([1]);
+  const [isAddingSeason, setIsAddingSeason] = useState(false);
+  const [isDeletingSeason, setIsDeletingSeason] = useState(false);
 
   // Season/Episode management
   const [showAddSeasonDialog, setShowAddSeasonDialog] = useState(false);
-  const [newSeasonNumber, setNewSeasonNumber] = useState<number>(1);
+  const [newSeasonNumber, setNewSeasonNumber] = useState<string>("");
   const [showDeleteSeasonConfirm, setShowDeleteSeasonConfirm] = useState(false);
   const [showAddEpisodeDialog, setShowAddEpisodeDialog] = useState(false);
   const [newEpisodeNumber, setNewEpisodeNumber] = useState<number>(1);
@@ -571,11 +573,7 @@ export function PostMetadataEditor() {
             return totalLinks !== r.numberOfEpisodes;
           }
 
-          // If no metadata episode count is set, but we have links, is it unbalanced?
-          // User request implies checking against "admin edited metadata".
-          // If admin hasn't set counts, maybe we skip or show if links > 0?
-          // Let's strictly follow: "show entries where link count != number_of_episodes"
-          // If number_of_episodes is null/0, and we have links, that IS a mismatch (technically 0 vs N).
+          // If no metadata episode count is set, but we have links, that IS a mismatch (technically 0 vs N).
           // But usually number_of_episodes comes from TMDB if not admin edited.
 
           return totalLinks > 0 && (!r.numberOfEpisodes || r.numberOfEpisodes === 0);
@@ -1153,66 +1151,128 @@ export function PostMetadataEditor() {
   // Add new season
   const handleAddSeason = async () => {
     if (!selectedEntry || selectedEntry.type !== "series") return;
-
-    // Create empty episode for the new season
-    const newEpisode: EpisodeMetadata = {
-      entry_id: selectedEntry.id,
-      season_number: newSeasonNumber,
-      episode_number: 1,
-      name: "Episode 1",
-      overview: null,
-      still_path: null,
-      air_date: null,
-      runtime: null,
-      vote_average: null,
-      admin_edited: true,
-    };
-
-    setEpisodes((prev) => [...prev, newEpisode]);
-    setSelectedSeason(newSeasonNumber);
-    setShowAddSeasonDialog(false);
-
-    // Update number_of_seasons if needed
-    if (!numberOfSeasons || newSeasonNumber > numberOfSeasons) {
-      setNumberOfSeasons(newSeasonNumber);
+    if (!newSeasonNumber || isNaN(Number(newSeasonNumber))) {
+      toast({ title: "Invalid Season", description: "Please enter a valid season number", variant: "destructive" });
+      return;
     }
 
-    toast({
-      title: "Season Added",
-      description: `Season ${newSeasonNumber} created. Don't forget to save.`,
-    });
+    const seasonNum = Number(newSeasonNumber);
+    setIsAddingSeason(true);
+
+    try {
+      // 1. Fetch episodes from TMDB
+      const seasonRes = await getTVSeasonDetails(Number(selectedEntry.id), seasonNum);
+
+      let episodesToSave: SaveEpisodeInput[] = [];
+
+      if (seasonRes?.episodes?.length) {
+        episodesToSave = seasonRes.episodes.map((ep) => ({
+          episode_number: ep.episode_number,
+          name: ep.name || null,
+          overview: ep.overview || null,
+          still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
+          air_date: ep.air_date || null,
+          runtime: ep.runtime || null,
+          vote_average: ep.vote_average ?? null,
+          admin_edited: false,
+        }));
+      }
+
+      // 2. Save metadata (even if empty, to initialize)
+      const metadataResult = await saveEpisodeMetadata(selectedEntry.id, seasonNum, episodesToSave);
+      if (!metadataResult.success) throw new Error(metadataResult.error);
+
+      // 3. Ensure entries content has season key
+      const ensureResult = await ensureSeasonInContent(selectedEntry.id, seasonNum);
+      if (!ensureResult.success) throw new Error(ensureResult.error);
+
+      toast({
+        title: "Season Added",
+        description: `Season ${seasonNum} added with ${episodesToSave.length} episodes.`,
+      });
+
+      setShowAddSeasonDialog(false);
+      setNewSeasonNumber("");
+      setSelectedSeason(seasonNum);
+
+      // Update local state if needed (numberOfSeasons)
+      if (seasonNum > (numberOfSeasons || 0)) {
+        setNumberOfSeasons(seasonNum);
+      }
+
+      // Force refresh of entry data might be good here, but local update suffices for now
+      if (selectedEntry) {
+        // Quick patch of selectedEntry content to avoid full reload
+        const newContent = { ...selectedEntry.content, [`season_${seasonNum}`]: { watch_links: [], download_links: [] } };
+        setSelectedEntry({ ...selectedEntry, content: newContent });
+      }
+      // Re-fetch all episodes to update the list
+      const allEpisodes = await fetchAllEpisodeMetadata(selectedEntry.id);
+      setEpisodes(allEpisodes);
+
+    } catch (error: any) {
+      console.error("Error adding season:", error);
+      toast({
+        title: "Failed to Add",
+        description: error.message || "Could not add season",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingSeason(false);
+    }
   };
 
   // Delete season
   const handleDeleteSeason = async () => {
     if (!selectedEntry || selectedEntry.type !== "series") return;
-
-    // Remove episodes for this season from local state
-    setEpisodes((prev) => prev.filter((ep) => ep.season_number !== selectedSeason));
-
-    // Delete from database
+    setIsDeletingSeason(true);
     try {
-      await supabase
-        .from("entry_metadata")
-        .delete()
-        .eq("entry_id", selectedEntry.id)
-        .eq("season_number", selectedSeason);
-    } catch (e) {
-      console.warn("Failed to delete season from DB:", e);
+      const id = selectedEntry.id;
+
+      // 1. Remove metadata
+      const deleteMetaResult = await saveEpisodeMetadata(id, selectedSeason, []);
+      if (!deleteMetaResult.success) throw new Error(deleteMetaResult.error);
+
+      // 2. Remove from content
+      const removeContentResult = await removeSeasonFromContent(id, selectedSeason);
+      if (!removeContentResult.success) throw new Error(removeContentResult.error);
+
+      toast({
+        title: "Season Deleted",
+        description: `Season ${selectedSeason} removed.`,
+      });
+
+      setShowDeleteSeasonConfirm(false);
+
+      // Update local state
+      if (selectedEntry) {
+        const newContent = { ...selectedEntry.content };
+        delete newContent[`season_${selectedSeason}`];
+        setSelectedEntry({ ...selectedEntry, content: newContent });
+      }
+
+      // Re-fetch all episodes to update the list
+      const allEpisodes = await fetchAllEpisodeMetadata(selectedEntry.id);
+      setEpisodes(allEpisodes);
+
+      // Reset selection to 1 or another existing season
+      const remainingSeasons = availableSeasons.filter(s => s !== selectedSeason);
+      if (remainingSeasons.length > 0) {
+        setSelectedSeason(remainingSeasons[0]);
+      } else {
+        setSelectedSeason(1); // Default to 1 if no other seasons exist
+      }
+
+    } catch (error: any) {
+      console.error("Error deleting season:", error);
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete season",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingSeason(false);
     }
-
-    // Select another season
-    const remaining = availableSeasons.filter((s) => s !== selectedSeason);
-    if (remaining.length > 0) {
-      setSelectedSeason(remaining[0]);
-    }
-
-    setShowDeleteSeasonConfirm(false);
-
-    toast({
-      title: "Season Deleted",
-      description: `Season ${selectedSeason} removed.`,
-    });
   };
 
   // Add new episode
@@ -2237,6 +2297,10 @@ export function PostMetadataEditor() {
                       <Select
                         value={String(selectedSeason)}
                         onValueChange={async (val) => {
+                          if (val === "new_season") {
+                            setShowAddSeasonDialog(true);
+                            return;
+                          }
                           const newSeason = parseInt(val, 10);
                           setSelectedSeason(newSeason);
                           // Load season data
@@ -2249,15 +2313,28 @@ export function PostMetadataEditor() {
                           }
                         }}
                       >
-                        <SelectTrigger className="w-32 bg-black/40 backdrop-blur-md border-white/10">
+                        <SelectTrigger className="w-40 bg-black/40 backdrop-blur-md border-white/10">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {availableSeasons.map(season => (
                             <SelectItem key={season} value={String(season)}>Season {season}</SelectItem>
                           ))}
+                          <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-white/10">
+                            <Plus className="w-3 h-3 mr-2 inline" /> Add Season
+                          </SelectItem>
                         </SelectContent>
                       </Select>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setShowDeleteSeasonConfirm(true)}
+                        title="Delete Season"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
 
                     {/* Links for selected season */}
@@ -2414,6 +2491,61 @@ export function PostMetadataEditor() {
           </DialogContent>
         </Dialog>
       </CardContent>
+
+      {/* Add Season Dialog */}
+      <Dialog open={showAddSeasonDialog} onOpenChange={setShowAddSeasonDialog}>
+        <DialogContent className="sm:max-w-[425px] bg-black/90 border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle>Add New Season</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Enter the season number to add. Episodes will be fetched from TMDB.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="season-num" className="text-right">
+                Season
+              </Label>
+              <Input
+                id="season-num"
+                type="number"
+                value={newSeasonNumber}
+                onChange={(e) => setNewSeasonNumber(e.target.value)}
+                className="col-span-3 bg-white/5 border-white/10 text-white"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowAddSeasonDialog(false)} className="hover:bg-white/10">
+              Cancel
+            </Button>
+            <Button onClick={handleAddSeason} disabled={isAddingSeason} className="bg-cinema-red hover:bg-cinema-red/90 text-white">
+              {isAddingSeason ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              Add Season
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Season Alert */}
+      <AlertDialog open={showDeleteSeasonConfirm} onOpenChange={setShowDeleteSeasonConfirm}>
+        <AlertDialogContent className="bg-black/90 border-white/10 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Season {selectedSeason}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              This will permanently delete all metadata and links for Season {selectedSeason}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/10 text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSeason} className="bg-destructive hover:bg-destructive/90 text-white">
+              {isDeletingSeason ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card >
   );
 }

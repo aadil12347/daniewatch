@@ -78,7 +78,7 @@ export function EpisodeMetadataEditor({
   seasonDetails = [],
 }: EpisodeMetadataEditorProps) {
   const { toast } = useToast();
-  const { fetchEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode } = useEntryMetadata();
+  const { fetchEpisodeMetadata, saveEpisodeMetadata, saveSingleEpisode, ensureSeasonInContent, removeSeasonFromContent } = useEntryMetadata();
 
   const [selectedSeason, setSelectedSeason] = useState(seasonDetails[0]?.season_number || 1);
   const [episodes, setEpisodes] = useState<LocalEpisode[]>([]);
@@ -94,6 +94,7 @@ export function EpisodeMetadataEditor({
   const [newSeasonNumber, setNewSeasonNumber] = useState("");
   const [isAddingSeason, setIsAddingSeason] = useState(false);
   const [isDeletingSeason, setIsDeletingSeason] = useState(false);
+  const [selectionModeEnabled, setSelectionModeEnabled] = useState(false);
 
   // Load episodes when season changes
   useEffect(() => {
@@ -460,41 +461,30 @@ export function EpisodeMetadataEditor({
         return;
       }
 
-      const episodesToSave = seasonRes.episodes.map(ep => ({
+      const episodesToSave = seasonRes.episodes.map((ep) => ({
         episode_number: ep.episode_number,
         name: ep.name || null,
         overview: ep.overview || null,
-        still_path: ep.still_path ? getImageUrl(ep.still_path, "w300") : null,
+        still_path: ep.still_path
+          ? getImageUrl(ep.still_path, "w300")
+          : null,
         air_date: ep.air_date || null,
         runtime: ep.runtime || null,
         vote_average: ep.vote_average ?? null,
         admin_edited: false,
       }));
 
-      const metadataResult = await saveEpisodeMetadata(entryId, seasonNum, episodesToSave);
+      const metadataResult = await saveEpisodeMetadata(
+        entryId,
+        seasonNum,
+        episodesToSave
+      );
 
       if (!metadataResult.success) throw new Error(metadataResult.error);
 
       // Ensure entries table content has season key
-      const { data: entryData, error: entryError } = await supabase
-        .from('entries')
-        .select('content')
-        .eq('id', entryId)
-        .single();
-
-      if (!entryError && entryData) {
-        let content = entryData.content;
-        if (typeof content === 'string') {
-          try { content = JSON.parse(content); } catch (e) { content = {}; }
-        }
-        if (!content) content = {};
-
-        const seasonKey = `season_${seasonNum}`;
-        if (!content[seasonKey]) {
-          content[seasonKey] = "";
-          await supabase.from('entries').update({ content }).eq('id', entryId);
-        }
-      }
+      const ensureResult = await ensureSeasonInContent(entryId, seasonNum);
+      if (!ensureResult.success) throw new Error(ensureResult.error);
 
       toast({
         title: "Season Added",
@@ -509,7 +499,6 @@ export function EpisodeMetadataEditor({
       } else {
         setSelectedSeason(seasonNum);
       }
-
     } catch (error: any) {
       console.error("Error adding season:", error);
       toast({
@@ -525,7 +514,20 @@ export function EpisodeMetadataEditor({
   const handleDeleteSeason = async () => {
     setIsDeletingSeason(true);
     try {
-      await saveEpisodeMetadata(entryId, selectedSeason, []);
+      // 1. Remove metadata rows
+      const deleteMetaResult = await saveEpisodeMetadata(
+        entryId,
+        selectedSeason,
+        []
+      );
+      if (!deleteMetaResult.success) throw new Error(deleteMetaResult.error);
+
+      // 2. Remove season key from entries.content
+      const removeContentResult = await removeSeasonFromContent(
+        entryId,
+        selectedSeason
+      );
+      if (!removeContentResult.success) throw new Error(removeContentResult.error);
 
       toast({
         title: "Season Deleted",
@@ -533,11 +535,11 @@ export function EpisodeMetadataEditor({
       });
 
       setEpisodes([]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting season:", error);
       toast({
         title: "Delete Failed",
-        description: "Failed to delete season",
+        description: error.message || "Failed to delete season",
         variant: "destructive",
       });
     } finally {
@@ -582,11 +584,17 @@ export function EpisodeMetadataEditor({
               </SelectTrigger>
               <SelectContent>
                 {seasonDetails.map((s) => (
-                  <SelectItem key={s.season_number} value={String(s.season_number)}>
+                  <SelectItem
+                    key={s.season_number}
+                    value={String(s.season_number)}
+                  >
                     Season {s.season_number} ({s.episode_count} eps)
                   </SelectItem>
                 ))}
-                <SelectItem value="new_season" className="text-primary font-medium border-t mt-1">
+                <SelectItem
+                  value="new_season"
+                  className="text-primary font-medium border-t mt-1"
+                >
                   <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
                 </SelectItem>
               </SelectContent>
@@ -599,7 +607,9 @@ export function EpisodeMetadataEditor({
               disabled={isRefreshing || isLoading}
               title="Refresh from TMDB"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+              />
             </Button>
           </div>
 
@@ -607,7 +617,9 @@ export function EpisodeMetadataEditor({
 
           {/* Bulk Add Episodes */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">Add Episodes:</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              Add Episodes:
+            </span>
             <div className="flex items-center gap-1">
               <Input
                 type="number"
@@ -628,65 +640,114 @@ export function EpisodeMetadataEditor({
 
           {/* Save Actions */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground mr-2">
-              {episodes.filter(e => e.selected).length} selected
-            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`h-8 ${selectionModeEnabled ? "bg-primary/10 border-primary/50 text-primary" : ""}`}
+              onClick={() => setSelectionModeEnabled(!selectionModeEnabled)}
+            >
+              {selectionModeEnabled ? (
+                <Check className="w-3 h-3 mr-1" />
+              ) : (
+                <ListChecks className="w-3 h-3 mr-1" />
+              )}
+              {selectionModeEnabled ? "Done Selecting" : "Select"}
+            </Button>
+
+            {selectionModeEnabled && (
+              <span className="text-sm text-muted-foreground mr-1">
+                {episodes.filter((e) => e.selected).length} selected
+              </span>
+            )}
+
             <Button
               onClick={handleSaveSelected}
-              disabled={isSaving || episodes.filter(e => e.selected).length === 0}
+              disabled={
+                isSaving ||
+                (selectionModeEnabled &&
+                  episodes.filter((e) => e.selected).length === 0)
+              }
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-              Save Selected
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : (
+                <Save className="w-4 h-4 mr-1" />
+              )}
+              {selectionModeEnabled ? "Save Selected" : "Save All"}
             </Button>
           </div>
         </div>
 
         {/* Sub Bar: Bulk Operations (Select All, Delete) */}
-        <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2">
-          <div className="flex items-center gap-2 ml-2">
-            <Checkbox
-              id="select-all-toggle"
-              checked={episodes.length > 0 && episodes.every(e => e.selected)}
-              onCheckedChange={toggleSelectAll}
-            />
-            <Label htmlFor="select-all-toggle" className="text-sm cursor-pointer select-none">
-              Select All
-            </Label>
-          </div>
+        {selectionModeEnabled && (
+          <div className="flex items-center justify-between py-2 px-1 bg-muted/30 rounded-md mb-2 animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 ml-2">
+              <Checkbox
+                id="select-all-toggle"
+                checked={episodes.length > 0 && episodes.every((e) => e.selected)}
+                onCheckedChange={toggleSelectAll}
+              />
+              <Label
+                htmlFor="select-all-toggle"
+                className="text-sm cursor-pointer select-none"
+              >
+                Select All
+              </Label>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {episodes.some(e => e.selected) && (
-              <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="h-8">
-                <Trash2 className="w-4 h-4 mr-1" /> Delete Selected
-              </Button>
-            )}
-
-            <div className="h-4 w-px bg-border mx-2" />
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive h-8 hover:bg-destructive/10">
-                  Delete Season {selectedSeason}
+            <div className="flex items-center gap-2">
+              {episodes.some((e) => e.selected) && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="h-8"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" /> Delete Selected
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Season {selectedSeason}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete all episodes for season {selectedSeason} from the database.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteSeason} className="bg-destructive hover:bg-destructive/90">
-                    {isDeletingSeason ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
-                    Delete Season
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              )}
+
+              <div className="h-4 w-px bg-border mx-2" />
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive h-8 hover:bg-destructive/10"
+                  >
+                    Delete Season {selectedSeason}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Delete Season {selectedSeason}?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all episodes for season{" "}
+                      {selectedSeason} from the database.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteSeason}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      {isDeletingSeason ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-1" />
+                      )}
+                      Delete Season
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Add Season Dialog (Nested) */}
         <Dialog open={showAddSeasonDialog} onOpenChange={setShowAddSeasonDialog}>
@@ -714,11 +775,12 @@ export function EpisodeMetadataEditor({
               <Button variant="outline" onClick={() => setShowAddSeasonDialog(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={handleAddSeason}
-                disabled={isAddingSeason}
-              >
-                {isAddingSeason ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+              <Button onClick={handleAddSeason} disabled={isAddingSeason}>
+                {isAddingSeason ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Download className="w-4 h-4 mr-1" />
+                )}
                 Fetch from TMDB
               </Button>
             </div>
@@ -746,22 +808,38 @@ export function EpisodeMetadataEditor({
                 onOpenChange={() => toggleExpand(index)}
               >
                 <div
-                  className={`border rounded-lg transition-colors ${ep.isDirty ? "border-amber-500/50 bg-amber-500/5" : ""} ${ep.selected ? "ring-1 ring-primary border-primary" : ""}`}
+                  className={`border rounded-lg transition-colors ${ep.isDirty ? "border-amber-500/50 bg-amber-500/5" : ""
+                    } ${ep.selected ? "ring-1 ring-primary border-primary" : ""}`}
                 >
                   <CollapsibleTrigger asChild>
                     <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 group select-none">
                       {/* Granular Selection Checkbox */}
-                      <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-center p-1">
-                        <Checkbox
-                          checked={!!ep.selected}
-                          onCheckedChange={(checked) => {
-                            setEpisodes(prev => prev.map((e, i) => i === index ? { ...e, selected: !!checked } : e));
-                          }}
-                        />
-                      </div>
+                      {selectionModeEnabled && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center p-1 animate-in fade-in zoom-in duration-200"
+                        >
+                          <Checkbox
+                            checked={!!ep.selected}
+                            onCheckedChange={(checked) => {
+                              setEpisodes((prev) =>
+                                prev.map((e, i) =>
+                                  i === index ? { ...e, selected: !!checked } : e
+                                )
+                              );
+                            }}
+                          />
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs font-medium text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        {ep.isExpanded ? <ChevronDown className="w-3 h-3" /> : <span className="text-[10px]">{ep.episode_number}</span>}
+                        {ep.isExpanded ? (
+                          <ChevronDown className="w-3 h-3" />
+                        ) : (
+                          <span className="text-[10px]">
+                            {ep.episode_number}
+                          </span>
+                        )}
                       </div>
 
                       {/* Thumbnail Preview */}

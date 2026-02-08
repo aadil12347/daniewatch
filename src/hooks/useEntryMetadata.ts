@@ -205,6 +205,88 @@ export const useEntryMetadata = () => {
     }
   };
 
+  // Ensure season key exists in entries.content
+  const ensureSeasonInContent = async (
+    entryId: string,
+    seasonNumber: number
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data: entryData, error: fetchError } = await supabase
+        .from("entries")
+        .select("content, number_of_seasons")
+        .eq("id", entryId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const content = (entryData.content as Record<string, any>) || {};
+      const seasonKey = `season_${seasonNumber}`;
+
+      // Only update if missing
+      if (!content[seasonKey]) {
+        content[seasonKey] = {
+          watch_links: [],
+          download_links: [],
+          updated_at: new Date().toISOString()
+        };
+
+        // Also update number_of_seasons if this is a new max season
+        const currentSeasons = entryData.number_of_seasons || 0;
+        const newSeasonsCount = Math.max(currentSeasons, seasonNumber);
+
+        const { error: updateError } = await supabase
+          .from("entries")
+          .update({
+            content,
+            number_of_seasons: newSeasonsCount
+          })
+          .eq("id", entryId);
+
+        if (updateError) throw updateError;
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error ensuring season in content:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Remove season key from entries.content
+  const removeSeasonFromContent = async (
+    entryId: string,
+    seasonNumber: number
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data: entryData, error: fetchError } = await supabase
+        .from("entries")
+        .select("content")
+        .eq("id", entryId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const content = (entryData.content as Record<string, any>) || {};
+      const seasonKey = `season_${seasonNumber}`;
+
+      if (content[seasonKey]) {
+        delete content[seasonKey];
+
+        const { error: updateError } = await supabase
+          .from("entries")
+          .update({ content })
+          .eq("id", entryId);
+
+        if (updateError) throw updateError;
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error removing season from content:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
   return {
     fetchEpisodeMetadata,
     fetchAllEpisodeMetadata,
@@ -213,5 +295,7 @@ export const useEntryMetadata = () => {
     markEntryAdminEdited,
     deleteSeasonMetadata,
     deleteAllMetadata,
+    ensureSeasonInContent,
+    removeSeasonFromContent,
   };
 };
