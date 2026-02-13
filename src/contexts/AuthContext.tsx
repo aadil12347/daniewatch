@@ -8,10 +8,12 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isRecoveryMode: boolean;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -60,6 +62,7 @@ const clearAllCaches = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Clear cache on app initialization (new session)
@@ -80,9 +83,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Clear cache on ANY auth state change for fresh data
-        if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Clear cache only on sign-in/sign-out — NOT on TOKEN_REFRESHED
+        // TOKEN_REFRESHED is normal background activity and should never wipe caches
+        if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
           clearAllCaches();
+        }
+
+        // Detect password recovery flow (user clicked reset link in email)
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecoveryMode(true);
         }
 
         setSession(session);
@@ -159,8 +168,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (!error) {
+      setIsRecoveryMode(false);
+    }
+    return { error };
+  };
+
   const signOut = async () => {
     clearAllCaches();
+    setIsRecoveryMode(false);
     await supabase.auth.signOut();
   };
 
@@ -169,10 +189,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user,
       session,
       loading,
+      isRecoveryMode,
       signInWithGoogle,
       signInWithEmail,
       signUpWithEmail,
       resetPassword,
+      updatePassword,
       signOut
     }}>
       {children}

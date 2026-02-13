@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, ArrowLeft, User, Eye, EyeOff } from "lucide-react";
+import { Loader2, Mail, Lock, ArrowLeft, User, Eye, EyeOff, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 
-type AuthMode = "select" | "login" | "signup" | "forgot";
+type AuthMode = "select" | "login" | "signup" | "forgot" | "reset-password";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,17 +21,27 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
+  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, updatePassword, isRecoveryMode } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Detect recovery mode from Supabase (user clicked reset link)
   useEffect(() => {
-    if (user) {
+    if (isRecoveryMode) {
+      setMode("reset-password");
+    }
+  }, [isRecoveryMode]);
+
+  useEffect(() => {
+    // Don't redirect to home if in recovery mode — user needs to set new password
+    if (user && !isRecoveryMode && mode !== "reset-password") {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, navigate, isRecoveryMode, mode]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -149,6 +159,39 @@ const Auth = () => {
           });
           setMode("login");
         }
+      } else if (mode === "reset-password") {
+        if (newPassword.length < 6) {
+          toast({
+            title: "Error",
+            description: "Password must be at least 6 characters",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          toast({
+            title: "Error",
+            description: "Passwords do not match",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        const { error } = await updatePassword(newPassword);
+        if (error) {
+          toast({
+            title: "Error",
+            description: error.message || "Failed to update password",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Password Updated! 🎉",
+            description: "Your password has been changed successfully.",
+          });
+          navigate("/");
+        }
       }
     } catch (err) {
       toast({
@@ -166,6 +209,8 @@ const Auth = () => {
     setEmail("");
     setUsername("");
     setPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
     setShowPassword(false);
   };
 
@@ -282,11 +327,11 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Login/Signup/Forgot Forms */}
+              {/* Login/Signup/Forgot/Reset-Password Forms */}
               {mode !== "select" && (
                 <>
-                  {/* Mode Tabs */}
-                  {mode !== "forgot" && (
+                  {/* Mode Tabs (not for forgot or reset-password) */}
+                  {mode !== "forgot" && mode !== "reset-password" && (
                     <div className="flex mb-8 bg-secondary/30 rounded-2xl p-1.5">
                       <button
                         onClick={() => switchMode("login")}
@@ -316,17 +361,19 @@ const Auth = () => {
                   {/* Header Text */}
                   <div className={cn(
                     "text-center mb-6 transition-all duration-500",
-                    mode === "forgot" && "mt-2"
+                    (mode === "forgot" || mode === "reset-password") && "mt-2"
                   )}>
                     <h2 className="text-2xl font-bold mb-2">
                       {mode === "login" && "Welcome back!"}
                       {mode === "signup" && "Create account"}
                       {mode === "forgot" && "Reset password"}
+                      {mode === "reset-password" && "Set new password"}
                     </h2>
                     <p className="text-muted-foreground text-sm">
                       {mode === "login" && "Sign in to continue watching"}
                       {mode === "signup" && "Join DanieWatch today"}
                       {mode === "forgot" && "We'll send you a reset link"}
+                      {mode === "reset-password" && "Enter your new password below"}
                     </p>
                   </div>
 
@@ -355,8 +402,11 @@ const Auth = () => {
                       </div>
                     </div>
 
-                    {/* Email */}
-                    <div className="space-y-2">
+                    {/* Email (not for reset-password) */}
+                    <div className={cn(
+                      "space-y-2 transition-all duration-500 overflow-hidden",
+                      mode !== "reset-password" ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+                    )}>
                       <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                       <div className="relative group">
                         <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
@@ -375,10 +425,10 @@ const Auth = () => {
                       </div>
                     </div>
 
-                    {/* Password */}
+                    {/* Password (login & signup only) */}
                     <div className={cn(
                       "space-y-2 transition-all duration-500 overflow-hidden",
-                      mode !== "forgot" ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+                      mode !== "forgot" && mode !== "reset-password" ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
                     )}>
                       <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                       <div className="relative group">
@@ -405,6 +455,61 @@ const Auth = () => {
                       </div>
                     </div>
 
+                    {/* New Password fields (reset-password mode only) */}
+                    <div className={cn(
+                      "space-y-4 transition-all duration-500 overflow-hidden",
+                      mode === "reset-password" ? "max-h-60 opacity-100" : "max-h-0 opacity-0"
+                    )}>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password" className="text-sm font-medium">New Password</Label>
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
+                          <div className="relative">
+                            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                            <Input
+                              id="new-password"
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Enter new password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="pl-11 pr-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
+                              disabled={isLoading}
+                              minLength={6}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
+                        <div className="relative group">
+                          <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0 rounded-xl opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity duration-300 pointer-events-none" />
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                            <Input
+                              id="confirm-password"
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Confirm new password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className="pl-11 h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all duration-300"
+                              disabled={isLoading}
+                              minLength={6}
+                            />
+                          </div>
+                        </div>
+                        {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                          <p className="text-xs text-destructive pl-1">Passwords do not match</p>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Forgot Password Link */}
                     {mode === "login" && (
                       <div className="text-right">
@@ -422,7 +527,7 @@ const Auth = () => {
                     <Button
                       type="submit"
                       className="w-full h-12 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30"
-                      disabled={isLoading}
+                      disabled={isLoading || (mode === "reset-password" && (!newPassword || !confirmPassword))}
                     >
                       {isLoading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -431,6 +536,7 @@ const Auth = () => {
                           {mode === "login" && "Sign In"}
                           {mode === "signup" && "Create Account"}
                           {mode === "forgot" && "Send Reset Link"}
+                          {mode === "reset-password" && "Update Password"}
                         </>
                       )}
                     </Button>
@@ -447,8 +553,22 @@ const Auth = () => {
                     </button>
                   )}
 
+                  {/* Back to sign in for reset-password mode */}
+                  {mode === "reset-password" && (
+                    <button
+                      onClick={() => {
+                        switchMode("login");
+                        navigate("/auth");
+                      }}
+                      className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Back to sign in
+                    </button>
+                  )}
+
                   {/* Back to method selection */}
-                  {mode !== "forgot" && (
+                  {mode !== "forgot" && mode !== "reset-password" && (
                     <button
                       onClick={() => switchMode("select")}
                       className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"

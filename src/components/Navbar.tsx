@@ -1,7 +1,7 @@
 import React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe } from "lucide-react";
+import { Search, Menu, X, Film, Tv, Home, Sparkles, Bookmark, ArrowLeft, Heart, User, LogOut, FileText, Shield, Globe, KeyRound, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,11 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AnimatedBackButton } from "@/components/AnimatedBackButton";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +37,7 @@ const isScrolled = false;
 const setIsScrolled = (_next: boolean) => { };
 
 export const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updatePassword } = useAuth();
   const { isAdmin } = useAdminStatus();
   const { showBlockedPosts, setShowBlockedPosts } = useAdminContentVisibility();
   const { mode, setMode } = usePerformanceMode();
@@ -40,11 +45,20 @@ export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, _setIsSearchOpen] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changePwNew, setChangePwNew] = useState("");
+  const [changePwConfirm, setChangePwConfirm] = useState("");
+  const [changePwLoading, setChangePwLoading] = useState(false);
+  const [showPwField, setShowPwField] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { open: openSearchOverlay, close: closeSearchOverlay, isOpen: isSearchResultsOpen } = useSearchOverlay();
+  const { toast } = useToast();
+
+  // Check if user authenticated via email (not OAuth like Google)
+  const isEmailUser = user?.app_metadata?.provider === 'email';
 
   const clearSearchResults = () => {
     setSearchQuery("");
@@ -498,6 +512,21 @@ export const Navbar = () => {
                   )}
 
                   <DropdownMenuSeparator />
+
+                  {/* Change Password - only for email users */}
+                  {isEmailUser && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        haptic("tap");
+                        setShowChangePassword(true);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <KeyRound className="w-4 h-4 mr-2" />
+                      Change Password
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem
                     onClick={() => {
                       haptic("tap");
@@ -644,6 +673,141 @@ export const Navbar = () => {
           </div>
         </div>
       </div>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showChangePassword} onOpenChange={(open) => {
+        setShowChangePassword(open);
+        if (!open) {
+          setChangePwNew("");
+          setChangePwConfirm("");
+          setShowPwField(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter your new password below. Minimum 6 characters.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (changePwNew.length < 6) {
+                toast({
+                  title: "Error",
+                  description: "Password must be at least 6 characters",
+                  variant: "destructive",
+                });
+                return;
+              }
+              if (changePwNew !== changePwConfirm) {
+                toast({
+                  title: "Error",
+                  description: "Passwords do not match",
+                  variant: "destructive",
+                });
+                return;
+              }
+              setChangePwLoading(true);
+              try {
+                const { error } = await updatePassword(changePwNew);
+                if (error) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to update password",
+                    variant: "destructive",
+                  });
+                } else {
+                  toast({
+                    title: "Password Updated! 🔑",
+                    description: "Your password has been changed successfully.",
+                  });
+                  setShowChangePassword(false);
+                  setChangePwNew("");
+                  setChangePwConfirm("");
+                }
+              } catch {
+                toast({
+                  title: "Error",
+                  description: "Something went wrong. Please try again.",
+                  variant: "destructive",
+                });
+              } finally {
+                setChangePwLoading(false);
+              }
+            }}
+            className="space-y-4 mt-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="nav-new-password">New Password</Label>
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="nav-new-password"
+                  type={showPwField ? "text" : "password"}
+                  placeholder="Enter new password"
+                  value={changePwNew}
+                  onChange={(e) => setChangePwNew(e.target.value)}
+                  className="pl-10"
+                  disabled={changePwLoading}
+                  minLength={6}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nav-confirm-password">Confirm Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="nav-confirm-password"
+                  type={showPwField ? "text" : "password"}
+                  placeholder="Confirm new password"
+                  value={changePwConfirm}
+                  onChange={(e) => setChangePwConfirm(e.target.value)}
+                  className="pl-10"
+                  disabled={changePwLoading}
+                  minLength={6}
+                />
+              </div>
+              {changePwNew && changePwConfirm && changePwNew !== changePwConfirm && (
+                <p className="text-xs text-destructive">Passwords do not match</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="show-pw-toggle"
+                checked={showPwField}
+                onChange={(e) => setShowPwField(e.target.checked)}
+                className="rounded border-border"
+              />
+              <Label htmlFor="show-pw-toggle" className="text-sm text-muted-foreground cursor-pointer">
+                Show passwords
+              </Label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowChangePassword(false)}
+                className="flex-1"
+                disabled={changePwLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={changePwLoading || !changePwNew || !changePwConfirm}
+              >
+                {changePwLoading ? "Updating..." : "Update Password"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
