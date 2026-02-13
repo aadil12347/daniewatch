@@ -25,6 +25,7 @@ interface ManifestItem {
   vote_count: number | null;
   hasWatch: boolean;
   hasDownload: boolean;
+  imdb_id: string | null;
 }
 
 interface Manifest {
@@ -73,7 +74,7 @@ export function ManifestUpdateTool() {
         const { data, error: fetchError } = await supabase
           .from("entries")
           .select(
-            "id, type, title, hover_image_url, genre_ids, release_year, original_language, origin_country, content, poster_url, backdrop_url, logo_url, vote_average, vote_count"
+            "id, type, title, hover_image_url, genre_ids, release_year, original_language, origin_country, content, poster_url, backdrop_url, logo_url, vote_average, vote_count, imdb_id"
           )
           .range(from, from + BATCH_SIZE - 1);
 
@@ -139,6 +140,7 @@ export function ManifestUpdateTool() {
           vote_count: typeof (entry as any).vote_count === "number" ? (entry as any).vote_count : null,
           hasWatch,
           hasDownload,
+          imdb_id: (entry as any).imdb_id || null,
         };
       });
 

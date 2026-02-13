@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
-import { Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2 } from "lucide-react";
+import { Bookmark, Star, Tv, Calendar, ArrowLeft, Search, ChevronDown, Loader2, ExternalLink } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -66,6 +66,7 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
   const [activeTab, setActiveTab] = useState<"episodes" | "similars">("episodes");
   const [episodeSearch, setEpisodeSearch] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [imdbId, setImdbId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
   const [mediaResult, setMediaResult] = useState<MediaLinkResult | null>(null);
@@ -217,6 +218,11 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
 
         if (hasActiveLinks && dbEntry?.genres != null) {
           mergedShow.genres = dbEntry.genres;
+        }
+
+        // Set IMDb ID from DB entry
+        if (dbEntry?.imdb_id) {
+          setImdbId(dbEntry.imdb_id);
         }
 
         setShow(mergedShow);
@@ -541,6 +547,20 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
                 <span className="text-muted-foreground text-[10px] md:text-sm">
                   {show.number_of_seasons} Season{show.number_of_seasons !== 1 ? "s" : ""}
                 </span>
+                {imdbId && (
+                  <>
+                    <span className="text-muted-foreground text-[10px] md:text-sm">•</span>
+                    <a
+                      href={`https://www.imdb.com/title/${imdbId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[10px] md:text-sm text-yellow-500 hover:text-yellow-400 transition-colors"
+                    >
+                      <ExternalLink className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                      <span className="font-medium">IMDb</span>
+                    </a>
+                  </>
+                )}
               </div>
 
               {/* Genres */}

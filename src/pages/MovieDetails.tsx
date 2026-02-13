@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
-import { Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2, Ban, Pin } from "lucide-react";
+import { Bookmark, Download, Star, Clock, Calendar, ArrowLeft, Loader2, Ban, Pin, ExternalLink } from "lucide-react";
 
 import { Footer } from "@/components/Footer";
 import { ActorCard } from "@/components/ActorCard";
@@ -50,6 +50,7 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
   const [cast, setCast] = useState<Cast[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [imdbId, setImdbId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Watchlist optimistic UI + micro-animations
@@ -160,6 +161,11 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
 
         if (hasActiveLinks && dbEntry?.genres) {
           mergedMovie.genres = dbEntry.genres;
+        }
+
+        // Set IMDb ID from DB entry
+        if (dbEntry?.imdb_id) {
+          setImdbId(dbEntry.imdb_id);
         }
 
         setMovie(mergedMovie);
@@ -338,6 +344,20 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
                   <>
                     <span className="text-muted-foreground text-[10px] md:text-sm">•</span>
                     <span className="text-muted-foreground text-[10px] md:text-sm">{formatRuntime(movie.runtime)}</span>
+                  </>
+                )}
+                {imdbId && (
+                  <>
+                    <span className="text-muted-foreground text-[10px] md:text-sm">•</span>
+                    <a
+                      href={`https://www.imdb.com/title/${imdbId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[10px] md:text-sm text-yellow-500 hover:text-yellow-400 transition-colors"
+                    >
+                      <ExternalLink className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                      <span className="font-medium">IMDb</span>
+                    </a>
                   </>
                 )}
               </div>

@@ -75,6 +75,8 @@ export interface EntryData {
   genres?: Genre[] | null;
   cast_data?: CastMember[] | null;
   admin_edited?: boolean;
+  // IMDb ID
+  imdb_id?: string | null;
 }
 
 export const useEntries = () => {

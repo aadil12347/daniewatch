@@ -17,6 +17,7 @@ export interface ManifestItem {
   vote_count: number | null;
   hasWatch: boolean;
   hasDownload: boolean;
+  imdb_id: string | null;
 }
 
 interface Manifest {

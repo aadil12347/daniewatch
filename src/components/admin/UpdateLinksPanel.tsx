@@ -1060,8 +1060,6 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     return season?.episode_count || 0;
   };
 
-  const allSeasons = tmdbResult?.seasonDetails || [];
-
   // COMPACT EMBEDDED MODE - for Edit Mode modal
   if (embedded) {
     // When entering edit mode, prefill with current TMDB ID

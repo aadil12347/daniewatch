@@ -82,6 +82,7 @@ import { ChatWindow } from "@/components/ChatWindow";
 import { cn } from "@/lib/utils";
 import { UpdateLinksPanel } from "@/components/admin/UpdateLinksPanel";
 import { ManifestUpdateBtn } from "@/components/admin/ManifestUpdateBtn";
+import { SyncImdbIdsBtn } from "@/components/admin/SyncImdbIdsBtn";
 
 const getStatusBadge = (status: AdminRequest['status']) => {
   switch (status) {
@@ -1066,6 +1067,10 @@ const AdminDashboard = () => {
               <ManifestUpdateBtn
                 onProgress={setUpdateProgress}
                 onGeneratingStateChange={setIsUpdating}
+              />
+              <SyncImdbIdsBtn
+                onProgress={setUpdateProgress}
+                onSyncingStateChange={setIsUpdating}
               />
             </div>
           </div>

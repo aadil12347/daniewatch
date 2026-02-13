@@ -29,7 +29,7 @@ async function fetchTMDB<T>(endpoint: string, params: Record<string, string> = {
   });
 
   const response = await fetch(`${BASE_URL}${endpoint}?${searchParams}`);
-  
+
   if (!response.ok) {
     throw new Error(`TMDB API error: ${response.status}`);
   }
@@ -108,7 +108,7 @@ export const BLOCKED_IDS = new Set<number>([
 
 // Blocked certifications/ratings that indicate adult content
 const BLOCKED_RATINGS = new Set([
-  "19", "19+", "NC-17", "NC17", "X", "XXX", 
+  "19", "19+", "NC-17", "NC17", "X", "XXX",
   "R18", "R18+", "R-18", "R21", "R-21",
   "ADULTS ONLY", "AO", "TV-MA",
   "청소년관람불가", // Korean "Not for Youth"
@@ -132,8 +132,8 @@ export const getMovieReleaseDates = async (id: number): Promise<{ iso_3166_1: st
     const response = await fetchTMDB<{
       results: { iso_3166_1: string; release_dates: { certification: string }[] }[];
     }>(`/movie/${id}/release_dates`);
-    
-    return response.results.flatMap(country => 
+
+    return response.results.flatMap(country =>
       country.release_dates
         .filter(rd => rd.certification)
         .map(rd => ({ iso_3166_1: country.iso_3166_1, certification: rd.certification }))
@@ -149,7 +149,7 @@ export const getTVContentRatings = async (id: number): Promise<{ iso_3166_1: str
     const response = await fetchTMDB<{
       results: { iso_3166_1: string; rating: string }[];
     }>(`/tv/${id}/content_ratings`);
-    
+
     return response.results.filter(r => r.rating);
   } catch {
     return [];
@@ -159,14 +159,14 @@ export const getTVContentRatings = async (id: number): Promise<{ iso_3166_1: str
 // Check if a single item has a blocked certification
 const hasBlockedCertification = async (id: number, mediaType: string): Promise<boolean> => {
   const cacheKey = `${mediaType}:${id}`;
-  
+
   if (certificationCache.has(cacheKey)) {
     return certificationCache.get(cacheKey)!;
   }
-  
+
   try {
     let isBlocked = false;
-    
+
     if (mediaType === "movie") {
       const certs = await getMovieReleaseDates(id);
       isBlocked = certs.some(c => isBlockedRating(c.certification));
@@ -174,7 +174,7 @@ const hasBlockedCertification = async (id: number, mediaType: string): Promise<b
       const ratings = await getTVContentRatings(id);
       isBlocked = ratings.some(r => isBlockedRating(r.rating));
     }
-    
+
     certificationCache.set(cacheKey, isBlocked);
     return isBlocked;
   } catch {
@@ -184,71 +184,71 @@ const hasBlockedCertification = async (id: number, mediaType: string): Promise<b
 
 // Minimal filter - only blocks admin-blocked IDs and explicit adult flag
 // Used for general search (movies, TV shows, etc.)
-export const filterMinimal = <T extends { 
+export const filterMinimal = <T extends {
   id: number;
-  adult?: boolean; 
+  adult?: boolean;
 }>(items: T[]): T[] => {
   return items.filter(item => {
     // Check blocklist first (admin-blocked content)
     if (BLOCKED_IDS.has(item.id)) return false;
-    
+
     // Check adult flag from TMDB
     if (item.adult) return false;
-    
+
     return true;
   });
 };
 
 // Helper to filter adult content client-side with comprehensive checks
 // Used for Anime and Korean pages only
-export const filterAdultContent = <T extends { 
+export const filterAdultContent = <T extends {
   id: number;
-  adult?: boolean; 
-  title?: string; 
-  name?: string; 
+  adult?: boolean;
+  title?: string;
+  name?: string;
   overview?: string;
 }>(items: T[]): T[] => {
   return items.filter(item => {
     // Check blocklist first
     if (BLOCKED_IDS.has(item.id)) return false;
-    
+
     // Check adult flag
     if (item.adult) return false;
-    
+
     // Check title, name, and overview for blocked words
     const textToCheck = [
       item.title || '',
       item.name || '',
       item.overview || ''
     ].join(' ').toLowerCase();
-    
+
     // Check if any blocked word is present
-    const hasBlockedWord = BLOCKED_WORDS.some(word => 
+    const hasBlockedWord = BLOCKED_WORDS.some(word =>
       textToCheck.includes(word.toLowerCase())
     );
-    
+
     if (hasBlockedWord) return false;
-    
+
     return true;
   });
 };
 
 // Strict async filter that also checks certifications (use for Korean/regional content)
-export const filterAdultContentStrict = async <T extends { 
+export const filterAdultContentStrict = async <T extends {
   id: number;
-  adult?: boolean; 
-  title?: string; 
-  name?: string; 
+  adult?: boolean;
+  title?: string;
+  name?: string;
   overview?: string;
   media_type?: string;
 }>(items: T[], defaultMediaType: "movie" | "tv" = "movie"): Promise<T[]> => {
   // First pass: quick text-based filtering
   const quickFiltered = filterAdultContent(items);
-  
+
   // Second pass: check certifications in batches
   const BATCH_SIZE = 5;
   const results: T[] = [];
-  
+
   for (let i = 0; i < quickFiltered.length; i += BATCH_SIZE) {
     const batch = quickFiltered.slice(i, i + BATCH_SIZE);
     const checks = await Promise.all(
@@ -258,10 +258,10 @@ export const filterAdultContentStrict = async <T extends {
         return { item, isBlocked };
       })
     );
-    
+
     results.push(...checks.filter(c => !c.isBlocked).map(c => c.item));
   }
-  
+
   return results;
 };
 
@@ -432,6 +432,22 @@ export const getSimilarTV = (id: number) =>
 
 export const getTVSeasonDetails = (tvId: number, seasonNumber: number) =>
   fetchTMDB<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
+
+// External IDs endpoints (for fetching IMDb IDs)
+export interface ExternalIds {
+  id: number;
+  imdb_id: string | null;
+  wikidata_id: string | null;
+  facebook_id: string | null;
+  instagram_id: string | null;
+  twitter_id: string | null;
+}
+
+export const getMovieExternalIds = (id: number) =>
+  fetchTMDB<ExternalIds>(`/movie/${id}/external_ids`);
+
+export const getTVExternalIds = (id: number) =>
+  fetchTMDB<ExternalIds>(`/tv/${id}/external_ids`);
 
 // Get episode group details (for shows with custom groupings like Parts)
 export const getTVEpisodeGroupDetails = (groupId: string) =>
@@ -624,7 +640,7 @@ export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> =
   const filteredResults = results.results.filter(
     (item) => item.genre_ids?.includes(16) // Animation genre
   );
-  
+
   // Also search for Japanese origin
   const detailedResults: Movie[] = [];
   for (const item of filteredResults.slice(0, 20)) {
@@ -637,28 +653,28 @@ export const searchAnime = async (query: string): Promise<TMDBResponse<Movie>> =
       // Skip if can't fetch details
     }
   }
-  
+
   return { ...results, results: filterAdultContent(detailedResults) };
 };
 
 // Search for Korean, Chinese, and Turkish dramas
 export const searchKorean = async (query: string): Promise<TMDBResponse<Movie>> => {
   const results = await fetchTMDB<TMDBResponse<Movie>>("/search/tv", { query });
-  
+
   // Supported countries and languages for this category
   const supportedCountries = ["KR", "CN", "TW", "HK", "TR"]; // Korea, China, Taiwan, Hong Kong, Turkey
   const supportedLanguages = ["ko", "zh", "tr"]; // Korean, Chinese, Turkish
-  
+
   // Filter to only Korean, Chinese, and Turkish content
   const detailedResults: Movie[] = [];
   for (const item of results.results.slice(0, 30)) {
     try {
       const details = await fetchTMDB<any>(`/tv/${item.id}`);
-      const hasMatchingCountry = details.origin_country?.some((country: string) => 
+      const hasMatchingCountry = details.origin_country?.some((country: string) =>
         supportedCountries.includes(country)
       );
       const hasMatchingLanguage = supportedLanguages.includes(details.original_language);
-      
+
       if (hasMatchingCountry || hasMatchingLanguage) {
         detailedResults.push({ ...item, media_type: "tv" });
       }
@@ -666,7 +682,7 @@ export const searchKorean = async (query: string): Promise<TMDBResponse<Movie>> 
       // Skip if can't fetch details
     }
   }
-  
+
   return { ...results, results: filterAdultContent(detailedResults) };
 };
 
@@ -683,7 +699,7 @@ export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<M
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
-  
+
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
@@ -700,12 +716,12 @@ export const getIndianPopular = async (page: number = 1): Promise<TMDBResponse<M
       "first_air_date.lte": today,
     }),
   ]);
-  
+
   const combined = [
     ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
     ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
   ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
-  
+
   return { ...movies, results: combined };
 };
 
@@ -714,7 +730,7 @@ export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Mo
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
-  
+
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
@@ -733,12 +749,12 @@ export const getAnimePopular = async (page: number = 1): Promise<TMDBResponse<Mo
       "first_air_date.lte": today,
     }),
   ]);
-  
+
   const combined = [
     ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
     ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
   ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
-  
+
   return { ...movies, results: combined };
 };
 
@@ -747,7 +763,7 @@ export const getKoreanPopular = async (page: number = 1): Promise<TMDBResponse<M
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   const dateFrom = sixMonthsAgo.toISOString().split('T')[0];
-  
+
   const [movies, tv] = await Promise.all([
     fetchTMDB<TMDBResponse<Movie>>("/discover/movie", {
       page: page.toString(),
@@ -764,12 +780,12 @@ export const getKoreanPopular = async (page: number = 1): Promise<TMDBResponse<M
       "first_air_date.lte": today,
     }),
   ]);
-  
+
   const combined = [
     ...filterAdultContent(movies.results).map(m => ({ ...m, media_type: "movie" as const })),
     ...filterAdultContent(tv.results).map(t => ({ ...t, media_type: "tv" as const })),
   ].sort((a, b) => b.vote_average - a.vote_average).slice(0, 20);
-  
+
   return { ...movies, results: combined };
 };
 
