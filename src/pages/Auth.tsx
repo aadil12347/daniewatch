@@ -68,22 +68,25 @@ const Auth = () => {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter your email address",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Skip email/password validation for reset-password mode (fields are hidden)
+    if (mode !== "reset-password") {
+      if (!email.trim()) {
+        toast({
+          title: "Error",
+          description: "Please enter your email address",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (mode !== "forgot" && !password.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter your password",
-        variant: "destructive",
-      });
-      return;
+      if (mode !== "forgot" && !password.trim()) {
+        toast({
+          title: "Error",
+          description: "Please enter your password",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     if (mode === "signup" && password.length < 6) {

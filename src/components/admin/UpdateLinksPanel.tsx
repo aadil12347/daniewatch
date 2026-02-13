@@ -1057,223 +1057,307 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
   };
 
   // COMPACT EMBEDDED MODE - for Edit Mode modal
-  if (embedded && tmdbResult) {
+  if (embedded) {
     return (
       <div className="space-y-4 max-w-5xl mx-auto">
-        {/* Header with Poster, Info & Save Button */}
-        <div className="flex items-start justify-between gap-4 p-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
-          <div className="flex items-center gap-4 min-w-0 flex-1">
-            {tmdbResult.posterUrl && (
-              <img src={tmdbResult.posterUrl} alt={tmdbResult.title} className="w-20 h-28 object-cover rounded-lg shadow-lg border border-white/10" />
-            )}
-            <div className="min-w-0 flex-1 space-y-2.5">
-              <h3 className="font-bold text-lg truncate text-foreground">{tmdbResult.title}</h3>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.year}</Badge>
-                <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
-                <Badge variant="secondary" className="bg-white/10 font-medium">TMDB: {tmdbResult.id}</Badge>
-                {entryExists && (
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 font-medium">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    In Database
-                  </Badge>
-                )}
-              </div>
-              {/* Series Season Selector + Episode Editor Button */}
-              {tmdbResult.type === "series" && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {allSeasons.length > 0 && (
-                    <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
-                      <SelectTrigger className="w-48 bg-white/5 border-white/10 h-9 text-sm font-medium">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allSeasons.map((s) => (
-                          <SelectItem key={s.season_number} value={String(s.season_number)}>
-                            Season {s.season_number} {s.source === 'db' ? '(DB)' : `(${s.episode_count} eps)`}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10">
-                          <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setShowEpisodeEditor(true);
-                    }}
-                    className="h-9 border-white/10 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 font-medium text-sm"
-                  >
-                    <Settings2 className="w-4 h-4 mr-1.5" />
-                    Episodes
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Save Button - Top Right */}
-          <Button onClick={handleSave} disabled={isSaving} className="bg-cinema-red hover:bg-cinema-red/90 shadow-lg font-semibold">
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Save
-          </Button>
-        </div>
-
-        {/* Links Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Watch Links */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Watch Online Links</Label>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className={cn("border-white/10 font-medium", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
-                  {getWatchLinkCount()} link{getWatchLinkCount() !== 1 ? 's' : ''}
-                </Badge>
-                <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
-                  <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
-                </Button>
-              </div>
-            </div>
-            {tmdbResult.type === "movie" ? (
-              <LineNumberedTextarea
-                value={movieWatchLink}
-                onChange={setMovieWatchLink}
-                placeholder="https://..."
-                className="min-h-[120px]"
+        {/* Search Bar for Embedded Mode */}
+        <div className="relative">
+          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-2 sm:p-3 flex gap-2 sm:gap-3 shadow-lg">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                className="w-full bg-white/5 border-white/10 pl-10 h-10 text-sm rounded-lg focus:ring-cinema-red/50 transition-all placeholder:text-muted-foreground/50"
+                placeholder="Enter TMDB ID..."
+                value={tmdbId}
+                onChange={(e) => setTmdbId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
-            ) : (
-              <LineNumberedTextarea
-                value={seriesWatchLinks}
-                onChange={setSeriesWatchLinks}
-                placeholder="One link per line..."
-                className="min-h-[180px]"
-              />
-            )}
+            </div>
+            <Button
+              onClick={() => handleSearch()}
+              disabled={isSearching || !tmdbId.trim()}
+              className="h-10 px-4 sm:px-6 bg-cinema-red hover:bg-cinema-red/90 text-white rounded-lg font-semibold shadow-lg shadow-cinema-red/20 transition-all hover:scale-105"
+            >
+              {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              <span className="ml-1.5 hidden sm:inline">Search</span>
+            </Button>
           </div>
-
-          {/* Download Links */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Download Links</Label>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className={cn("border-white/10 font-medium", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
-                  {getDownloadLinkCount()} link{getDownloadLinkCount() !== 1 ? 's' : ''}
-                </Badge>
-                <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
-                  <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
-                </Button>
-              </div>
+          {searchError && (
+            <div className="mt-1.5 text-sm text-red-400 font-medium flex items-center px-1 animate-in slide-in-from-left-2">
+              <X className="w-3.5 h-3.5 mr-1" /> {searchError}
             </div>
-            {tmdbResult.type === "movie" ? (
-              <LineNumberedTextarea
-                value={movieDownloadLink}
-                onChange={setMovieDownloadLink}
-                placeholder="https://..."
-                className="min-h-[120px]"
-              />
-            ) : (
-              <LineNumberedTextarea
-                value={seriesDownloadLinks}
-                onChange={setSeriesDownloadLinks}
-                placeholder="One link per line..."
-                className="min-h-[180px]"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Metadata Section */}
-        <details className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg group">
-          <summary className="w-full p-3.5 flex items-center justify-between hover:bg-white/5 transition-colors rounded-lg cursor-pointer list-none">
-            <div className="flex items-center gap-2.5">
-              <Settings2 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-semibold text-foreground/90">Advanced Metadata</span>
-            </div>
-            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="p-4 pt-2 space-y-4 border-t border-white/10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="poster-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Poster URL</Label>
-                <Input id="poster-url" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="backdrop-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Backdrop URL</Label>
-                <Input id="backdrop-url" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="logo-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Logo URL</Label>
-                <Input id="logo-url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hover-img" className="text-sm font-semibold text-foreground/80 tracking-wide">Hover Character Image</Label>
-                <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="rating" className="text-sm font-semibold text-foreground/80 tracking-wide">Rating (TMDB)</Label>
-                <Input id="rating" type="number" step="0.1" min="0" max="10" value={rating} onChange={(e) => setRating(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 8.5" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="runtime" className="text-sm font-semibold text-foreground/80 tracking-wide">Runtime (minutes)</Label>
-                <Input id="runtime" type="number" value={runtime} onChange={(e) => setRuntime(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 120" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="release-year" className="text-sm font-semibold text-foreground/80 tracking-wide">Release Year</Label>
-                <Input id="release-year" type="number" value={releaseYear} onChange={(e) => setReleaseYear(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 2024" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="overview" className="text-sm font-semibold text-foreground/80 tracking-wide">Overview</Label>
-              <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} className="bg-white/5 border-white/10 text-sm leading-relaxed font-medium placeholder:text-muted-foreground/50" rows={3} placeholder="Enter overview..." />
-            </div>
-          </div>
-        </details>
-
-        {/* Bottom Actions */}
-        <div className="flex items-center justify-end gap-2">
-          {entryExists && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-white hover:bg-destructive/80">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Move to Trash
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will move the entry to trash. You can restore it later.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteEntry} className="bg-destructive">
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           )}
         </div>
 
-        {/* Episode Metadata Editor Modal - CRITICAL: Must be in embedded mode! */}
-        {tmdbResult && tmdbResult.type === "series" && (
-          <EpisodeMetadataEditor
-            open={showEpisodeEditor}
-            onOpenChange={(open) => {
-              console.log("Episode editor state changing to:", open);
-              setShowEpisodeEditor(open);
-            }}
-            entryId={String(tmdbResult.id)}
-            entryTitle={tmdbResult.title}
-            seasonDetails={tmdbResult.seasonDetails || []}
-          />
+        {/* Searching State */}
+        {isSearching && !tmdbResult && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-cinema-red" />
+            <span className="ml-3 text-muted-foreground font-medium">Searching TMDB...</span>
+          </div>
+        )}
+
+        {/* No Result State */}
+        {!isSearching && !tmdbResult && !searchError && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="p-4 rounded-full bg-white/5 mb-4">
+              <Search className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground font-medium">Enter a TMDB ID to start editing</p>
+            <p className="text-muted-foreground/60 text-sm mt-1">Search for any movie or series by its TMDB ID</p>
+          </div>
+        )}
+
+        {/* Movie/Series Type Switcher */}
+        {tmdbResult && candidates.movie && candidates.series && (
+          <div className="flex gap-2 p-1 bg-black/40 border border-white/10 rounded-lg">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleManualSwitch("movie")}
+              disabled={!candidates.movie}
+              className={cn(
+                "flex-1 rounded-md transition-all h-9",
+                tmdbResult.type === "movie" ? "bg-cinema-red text-white shadow-md" : "text-muted-foreground hover:text-white"
+              )}
+            >
+              <Film className="w-4 h-4 mr-2" />
+              Movie
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleManualSwitch("series")}
+              disabled={!candidates.series}
+              className={cn(
+                "flex-1 rounded-md transition-all h-9",
+                tmdbResult.type === "series" ? "bg-cinema-red text-white shadow-md" : "text-muted-foreground hover:text-white"
+              )}
+            >
+              <Tv className="w-4 h-4 mr-2" />
+              Series
+            </Button>
+          </div>
+        )}
+
+        {tmdbResult && (
+          <>
+            {/* Header with Poster, Info & Save Button */}
+            <div className="flex items-start justify-between gap-4 p-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                {tmdbResult.posterUrl && (
+                  <img src={tmdbResult.posterUrl} alt={tmdbResult.title} className="w-20 h-28 object-cover rounded-lg shadow-lg border border-white/10" />
+                )}
+                <div className="min-w-0 flex-1 space-y-2.5">
+                  <h3 className="font-bold text-lg truncate text-foreground">{tmdbResult.title}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.year}</Badge>
+                    <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
+                    <Badge variant="secondary" className="bg-white/10 font-medium">TMDB: {tmdbResult.id}</Badge>
+                    {entryExists && (
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 font-medium">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        In Database
+                      </Badge>
+                    )}
+                  </div>
+                  {/* Series Season Selector + Episode Editor Button */}
+                  {tmdbResult.type === "series" && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {allSeasons.length > 0 && (
+                        <Select value={String(selectedSeason)} onValueChange={handleSeasonChange}>
+                          <SelectTrigger className="w-48 bg-white/5 border-white/10 h-9 text-sm font-medium">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allSeasons.map((s) => (
+                              <SelectItem key={s.season_number} value={String(s.season_number)}>
+                                Season {s.season_number} {s.source === 'db' ? '(DB)' : `(${s.episode_count} eps)`}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="new_season" className="text-primary font-medium border-t border-white/10 mt-1 hover:bg-primary/10">
+                              <Plus className="w-3 h-3 mr-2 inline" /> Add New Season
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowEpisodeEditor(true);
+                        }}
+                        className="h-9 border-white/10 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-purple-200 font-medium text-sm"
+                      >
+                        <Settings2 className="w-4 h-4 mr-1.5" />
+                        Episodes
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Save Button - Top Right */}
+              <Button onClick={handleSave} disabled={isSaving} className="bg-cinema-red hover:bg-cinema-red/90 shadow-lg font-semibold">
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                Save
+              </Button>
+            </div>
+
+            {/* Links Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Watch Links */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Watch Online Links</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={cn("border-white/10 font-medium", getWatchLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
+                      {getWatchLinkCount()} link{getWatchLinkCount() !== 1 ? 's' : ''}
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={handlePasteWatch} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
+                      <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
+                    </Button>
+                  </div>
+                </div>
+                {tmdbResult.type === "movie" ? (
+                  <LineNumberedTextarea
+                    value={movieWatchLink}
+                    onChange={setMovieWatchLink}
+                    placeholder="https://..."
+                    className="min-h-[120px]"
+                  />
+                ) : (
+                  <LineNumberedTextarea
+                    value={seriesWatchLinks}
+                    onChange={setSeriesWatchLinks}
+                    placeholder="One link per line..."
+                    className="min-h-[180px]"
+                  />
+                )}
+              </div>
+
+              {/* Download Links */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold text-foreground/90 tracking-wide">Download Links</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={cn("border-white/10 font-medium", getDownloadLinkCount() > 0 ? "bg-green-500/10 text-green-400" : "bg-white/5 text-muted-foreground")}>
+                      {getDownloadLinkCount()} link{getDownloadLinkCount() !== 1 ? 's' : ''}
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={handlePasteDownload} className="h-7 px-2.5 text-xs hover:bg-white/10 font-medium">
+                      <ClipboardPaste className="w-3 h-3 mr-1" /> Paste
+                    </Button>
+                  </div>
+                </div>
+                {tmdbResult.type === "movie" ? (
+                  <LineNumberedTextarea
+                    value={movieDownloadLink}
+                    onChange={setMovieDownloadLink}
+                    placeholder="https://..."
+                    className="min-h-[120px]"
+                  />
+                ) : (
+                  <LineNumberedTextarea
+                    value={seriesDownloadLinks}
+                    onChange={setSeriesDownloadLinks}
+                    placeholder="One link per line..."
+                    className="min-h-[180px]"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Metadata Section */}
+            <details className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg group">
+              <summary className="w-full p-3.5 flex items-center justify-between hover:bg-white/5 transition-colors rounded-lg cursor-pointer list-none">
+                <div className="flex items-center gap-2.5">
+                  <Settings2 className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground/90">Advanced Metadata</span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="p-4 pt-2 space-y-4 border-t border-white/10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="poster-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Poster URL</Label>
+                    <Input id="poster-url" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="backdrop-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Backdrop URL</Label>
+                    <Input id="backdrop-url" value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="logo-url" className="text-sm font-semibold text-foreground/80 tracking-wide">Logo URL</Label>
+                    <Input id="logo-url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hover-img" className="text-sm font-semibold text-foreground/80 tracking-wide">Hover Character Image</Label>
+                    <Input id="hover-img" value={hoverImageUrl} onChange={(e) => setHoverImageUrl(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="https://..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rating" className="text-sm font-semibold text-foreground/80 tracking-wide">Rating (TMDB)</Label>
+                    <Input id="rating" type="number" step="0.1" min="0" max="10" value={rating} onChange={(e) => setRating(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 8.5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="runtime" className="text-sm font-semibold text-foreground/80 tracking-wide">Runtime (minutes)</Label>
+                    <Input id="runtime" type="number" value={runtime} onChange={(e) => setRuntime(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 120" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="release-year" className="text-sm font-semibold text-foreground/80 tracking-wide">Release Year</Label>
+                    <Input id="release-year" type="number" value={releaseYear} onChange={(e) => setReleaseYear(e.target.value)} className="bg-white/5 border-white/10 text-sm font-medium h-10 placeholder:text-muted-foreground/50" placeholder="e.g., 2024" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="overview" className="text-sm font-semibold text-foreground/80 tracking-wide">Overview</Label>
+                  <Textarea id="overview" value={overview} onChange={(e) => setOverview(e.target.value)} className="bg-white/5 border-white/10 text-sm leading-relaxed font-medium placeholder:text-muted-foreground/50" rows={3} placeholder="Enter overview..." />
+                </div>
+              </div>
+            </details>
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-end gap-2">
+              {entryExists && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-white hover:bg-destructive/80">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Move to Trash
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Entry?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will move the entry to trash. You can restore it later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteEntry} className="bg-destructive">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+
+            {/* Episode Metadata Editor Modal - CRITICAL: Must be in embedded mode! */}
+            {tmdbResult && tmdbResult.type === "series" && (
+              <EpisodeMetadataEditor
+                open={showEpisodeEditor}
+                onOpenChange={(open) => {
+                  console.log("Episode editor state changing to:", open);
+                  setShowEpisodeEditor(open);
+                }}
+                entryId={String(tmdbResult.id)}
+                entryTitle={tmdbResult.title}
+                seasonDetails={tmdbResult.seasonDetails || []}
+              />
+            )}
+          </>
         )}
       </div>
     );
