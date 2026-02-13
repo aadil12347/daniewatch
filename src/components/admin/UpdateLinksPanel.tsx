@@ -22,7 +22,9 @@ import {
   CheckCircle2,
   X,
   ChevronDown,
-  Plus
+  Plus,
+  Pencil,
+  Check
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -116,6 +118,8 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     series: null,
   });
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [isEditingTmdbId, setIsEditingTmdbId] = useState(false);
+  const [inlineTmdbId, setInlineTmdbId] = useState("");
 
   // Entry state
   const [entryExists, setEntryExists] = useState(false);
@@ -1056,44 +1060,32 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
     return season?.episode_count || 0;
   };
 
+  const allSeasons = tmdbResult?.seasonDetails || [];
+
   // COMPACT EMBEDDED MODE - for Edit Mode modal
   if (embedded) {
+    // When entering edit mode, prefill with current TMDB ID
+    const startEditingTmdbId = () => {
+      setInlineTmdbId(tmdbResult ? String(tmdbResult.id) : tmdbId);
+      setIsEditingTmdbId(true);
+    };
+
     return (
       <div className="space-y-4 max-w-5xl mx-auto">
-        {/* Search Bar for Embedded Mode */}
-        <div className="relative">
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-2 sm:p-3 flex gap-2 sm:gap-3 shadow-lg">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                className="w-full bg-white/5 border-white/10 pl-10 h-10 text-sm rounded-lg focus:ring-cinema-red/50 transition-all placeholder:text-muted-foreground/50"
-                placeholder="Enter TMDB ID..."
-                value={tmdbId}
-                onChange={(e) => setTmdbId(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              />
-            </div>
-            <Button
-              onClick={() => handleSearch()}
-              disabled={isSearching || !tmdbId.trim()}
-              className="h-10 px-4 sm:px-6 bg-cinema-red hover:bg-cinema-red/90 text-white rounded-lg font-semibold shadow-lg shadow-cinema-red/20 transition-all hover:scale-105"
-            >
-              {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              <span className="ml-1.5 hidden sm:inline">Search</span>
-            </Button>
-          </div>
-          {searchError && (
-            <div className="mt-1.5 text-sm text-red-400 font-medium flex items-center px-1 animate-in slide-in-from-left-2">
-              <X className="w-3.5 h-3.5 mr-1" /> {searchError}
-            </div>
-          )}
-        </div>
-
         {/* Searching State */}
-        {isSearching && !tmdbResult && (
+        {isSearching && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-cinema-red" />
-            <span className="ml-3 text-muted-foreground font-medium">Searching TMDB...</span>
+            <span className="ml-3 text-muted-foreground font-medium">Loading...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {searchError && !isSearching && (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="text-sm text-red-400 font-medium flex items-center">
+              <X className="w-4 h-4 mr-1.5" /> {searchError}
+            </div>
           </div>
         )}
 
@@ -1103,44 +1095,12 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
             <div className="p-4 rounded-full bg-white/5 mb-4">
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-muted-foreground font-medium">Enter a TMDB ID to start editing</p>
-            <p className="text-muted-foreground/60 text-sm mt-1">Search for any movie or series by its TMDB ID</p>
+            <p className="text-muted-foreground font-medium">No content loaded</p>
+            <p className="text-muted-foreground/60 text-sm mt-1">Click a poster in edit mode to load it here</p>
           </div>
         )}
 
-        {/* Movie/Series Type Switcher */}
-        {tmdbResult && candidates.movie && candidates.series && (
-          <div className="flex gap-2 p-1 bg-black/40 border border-white/10 rounded-lg">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleManualSwitch("movie")}
-              disabled={!candidates.movie}
-              className={cn(
-                "flex-1 rounded-md transition-all h-9",
-                tmdbResult.type === "movie" ? "bg-cinema-red text-white shadow-md" : "text-muted-foreground hover:text-white"
-              )}
-            >
-              <Film className="w-4 h-4 mr-2" />
-              Movie
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleManualSwitch("series")}
-              disabled={!candidates.series}
-              className={cn(
-                "flex-1 rounded-md transition-all h-9",
-                tmdbResult.type === "series" ? "bg-cinema-red text-white shadow-md" : "text-muted-foreground hover:text-white"
-              )}
-            >
-              <Tv className="w-4 h-4 mr-2" />
-              Series
-            </Button>
-          </div>
-        )}
-
-        {tmdbResult && (
+        {tmdbResult && !isSearching && (
           <>
             {/* Header with Poster, Info & Save Button */}
             <div className="flex items-start justify-between gap-4 p-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-lg">
@@ -1150,10 +1110,88 @@ export function UpdateLinksPanel({ initialTmdbId, embedded = false, className }:
                 )}
                 <div className="min-w-0 flex-1 space-y-2.5">
                   <h3 className="font-bold text-lg truncate text-foreground">{tmdbResult.title}</h3>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.year}</Badge>
-                    <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">{tmdbResult.type === "movie" ? "Movie" : "Series"}</Badge>
-                    <Badge variant="secondary" className="bg-white/10 font-medium">TMDB: {tmdbResult.id}</Badge>
+
+                    {/* Clickable Type Badge - toggles between movie/series */}
+                    {candidates.movie && candidates.series ? (
+                      <button
+                        onClick={() => handleManualSwitch(tmdbResult.type === "movie" ? "series" : "movie")}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer hover:scale-105"
+                        style={{
+                          background: tmdbResult.type === "movie"
+                            ? "hsl(0 84% 55% / 0.15)"
+                            : "hsl(220 84% 55% / 0.15)",
+                          borderColor: tmdbResult.type === "movie"
+                            ? "hsl(0 84% 55% / 0.3)"
+                            : "hsl(220 84% 55% / 0.3)",
+                          color: tmdbResult.type === "movie"
+                            ? "hsl(0 84% 65%)"
+                            : "hsl(220 84% 70%)",
+                        }}
+                        title="Click to switch type"
+                      >
+                        {tmdbResult.type === "movie" ? <Film className="w-3 h-3" /> : <Tv className="w-3 h-3" />}
+                        {tmdbResult.type === "movie" ? "Movie" : "Series"}
+                        <RefreshCw className="w-2.5 h-2.5 opacity-60" />
+                      </button>
+                    ) : (
+                      <Badge variant="outline" className="border-white/15 text-foreground/80 font-medium">
+                        {tmdbResult.type === "movie" ? "Movie" : "Series"}
+                      </Badge>
+                    )}
+
+                    {/* Editable TMDB ID Badge */}
+                    {isEditingTmdbId ? (
+                      <div className="inline-flex items-center gap-1 bg-white/10 rounded-full border border-white/20 pl-2 pr-1 py-0.5">
+                        <span className="text-xs font-medium text-muted-foreground">ID:</span>
+                        <input
+                          type="text"
+                          value={inlineTmdbId}
+                          onChange={(e) => setInlineTmdbId(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              setIsEditingTmdbId(false);
+                              handleSearch(inlineTmdbId.trim());
+                            }
+                            if (e.key === "Escape") {
+                              setIsEditingTmdbId(false);
+                            }
+                          }}
+                          autoFocus
+                          className="w-20 bg-transparent text-xs font-semibold text-foreground outline-none border-none px-0.5"
+                          placeholder="ID..."
+                        />
+                        <button
+                          onClick={() => {
+                            setIsEditingTmdbId(false);
+                            handleSearch(inlineTmdbId.trim());
+                          }}
+                          className="p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                          title="Search"
+                        >
+                          <Check className="w-3 h-3 text-green-400" />
+                        </button>
+                        <button
+                          onClick={() => setIsEditingTmdbId(false)}
+                          className="p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                          title="Cancel"
+                        >
+                          <X className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={startEditingTmdbId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-white/10 border border-white/15 text-foreground/80 transition-all duration-200 hover:bg-white/15 hover:border-white/25 cursor-pointer group"
+                        title="Click to change TMDB ID"
+                      >
+                        TMDB: {tmdbResult.id}
+                        <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-70 transition-opacity" />
+                      </button>
+                    )}
+
                     {entryExists && (
                       <Badge className="bg-green-500/20 text-green-400 border-green-500/30 font-medium">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
