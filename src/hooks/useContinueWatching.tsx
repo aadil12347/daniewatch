@@ -16,7 +16,7 @@ export interface ContinueWatchingItem {
 
 // Storage keys
 const LOCAL_STORAGE_KEY = "daniewatch_continue_watching";
-const MAX_LOCAL_ITEMS = 12;
+const MAX_ITEMS = 10; // Maximum 10 items in continue watching
 
 // Context type
 interface ContinueWatchingContextValue {
@@ -50,17 +50,18 @@ const saveLocalItems = (items: ContinueWatchingItem[]): void => {
     }
 };
 
-// Deduplicate and move to front
+// Deduplicate and move to front - keeps only one entry per tmdbId+mediaType
+// For TV shows, this means only the latest played episode/season is kept
 const dedupeAndReorder = (
     items: ContinueWatchingItem[],
     newItem: ContinueWatchingItem
 ): ContinueWatchingItem[] => {
-    // Remove existing item with same tmdbId and mediaType
+    // Remove existing item with same tmdbId and mediaType (regardless of season/episode)
     const filtered = items.filter(
         (item) => !(item.tmdbId === newItem.tmdbId && item.mediaType === newItem.mediaType)
     );
-    // Add new item at the front
-    return [newItem, ...filtered];
+    // Add new item at the front and limit to MAX_ITEMS
+    return [newItem, ...filtered].slice(0, MAX_ITEMS);
 };
 
 // Map database row to ContinueWatchingItem
@@ -90,7 +91,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
 
             if (!user?.id || !isSupabaseConfigured) {
                 // Guest mode: load from localStorage
-                const localItems = getLocalItems();
+                const localItems = getLocalItems().slice(0, MAX_ITEMS);
                 if (!cancelled) {
                     setItems(localItems);
                     setIsLoading(false);
@@ -127,7 +128,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                     .select("*")
                     .eq("user_id", user.id)
                     .order("timestamp", { ascending: false })
-                    .limit(50);
+                    .limit(MAX_ITEMS);
 
                 if (error) throw error;
 
@@ -140,7 +141,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                 console.error("Failed to load continue watching items:", error);
                 if (!cancelled) {
                     // Fallback to localStorage
-                    const localItems = getLocalItems();
+                    const localItems = getLocalItems().slice(0, MAX_ITEMS);
                     setItems(localItems);
                     setIsLoading(false);
                 }
@@ -192,8 +193,8 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                                 (item) => item.tmdbId === newItem.tmdbId && item.mediaType === newItem.mediaType
                             );
                             if (exists) return prev;
-                            // Add new item at the front
-                            return [newItem, ...prev];
+                            // Add new item at the front and limit
+                            return [newItem, ...prev].slice(0, MAX_ITEMS);
                         });
                     } else if (eventType === 'UPDATE') {
                         const updatedItem = mapRowToItem(newRow);
@@ -202,7 +203,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                             const filtered = prev.filter(
                                 (item) => !(item.tmdbId === updatedItem.tmdbId && item.mediaType === updatedItem.mediaType)
                             );
-                            return [updatedItem, ...filtered];
+                            return [updatedItem, ...filtered].slice(0, MAX_ITEMS);
                         });
                     } else if (eventType === 'DELETE') {
                         const oldItem = mapRowToItem(oldRow);
@@ -234,13 +235,13 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                 timestamp: Date.now(),
             };
 
-            // Optimistic update
+            // Optimistic update - dedupe and limit to MAX_ITEMS
             setItems((prev) => dedupeAndReorder(prev, newItem));
 
             if (!user?.id || !isSupabaseConfigured) {
                 // Guest mode: save to localStorage
                 const localItems = getLocalItems();
-                const updated = dedupeAndReorder(localItems, newItem).slice(0, MAX_LOCAL_ITEMS);
+                const updated = dedupeAndReorder(localItems, newItem);
                 saveLocalItems(updated);
                 return;
             }
@@ -351,7 +352,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                 .select("*")
                 .eq("user_id", user.id)
                 .order("timestamp", { ascending: false })
-                .limit(50);
+                .limit(MAX_ITEMS);
 
             if (!error && data) {
                 const mappedItems = data.map(mapRowToItem);
@@ -403,7 +404,7 @@ export async function saveContinueWatchingItem(
     if (!userId || !isSupabaseConfigured) {
         // Guest mode: save to localStorage
         const localItems = getLocalItems();
-        const updated = dedupeAndReorder(localItems, newItem).slice(0, MAX_LOCAL_ITEMS);
+        const updated = dedupeAndReorder(localItems, newItem);
         saveLocalItems(updated);
         return;
     }
