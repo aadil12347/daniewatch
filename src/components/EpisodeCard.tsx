@@ -28,10 +28,7 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
     <div
       onClick={onClick}
       className={cn(
-        "flex gap-2 md:gap-4 p-2 md:p-3 rounded-lg md:rounded-xl cursor-pointer transition-all duration-300 group/episode",
-        isActive
-          ? "bg-primary/10 border border-primary/30"
-          : "hover:bg-secondary/50 border border-transparent"
+        "flex gap-2 md:gap-4 p-2 md:p-3 rounded-lg md:rounded-xl cursor-pointer transition-all duration-300 group/episode hover:bg-secondary/50"
       )}
     >
       {/* Thumbnail - All playing effects are on the thumbnail only */}
