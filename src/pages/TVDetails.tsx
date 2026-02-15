@@ -852,6 +852,11 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
                         key={episode.id}
                         episode={episode}
                         downloadLink={mediaResult?.seasonDownloadLinks?.[episode.episode_number - 1]}
+                        isActive={
+                          playerState.isOpen &&
+                          playerState.season === selectedSeason &&
+                          playerState.episode === episode.episode_number
+                        }
                         onClick={() => {
                           // Instant scroll (override global scroll-behavior: smooth)
                           const root = document.documentElement;

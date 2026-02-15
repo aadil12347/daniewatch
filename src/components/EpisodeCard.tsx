@@ -12,8 +12,8 @@ interface EpisodeCardProps {
 }
 
 export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: EpisodeCardProps) => {
-  const stillUrl = episode.still_path 
-    ? getImageUrl(episode.still_path, "w300") 
+  const stillUrl = episode.still_path
+    ? getImageUrl(episode.still_path, "w300")
     : null;
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -29,9 +29,9 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
       onClick={onClick}
       className={cn(
         "flex gap-2 md:gap-4 p-2 md:p-3 rounded-lg md:rounded-xl cursor-pointer transition-all duration-300 group/episode",
-        isActive 
-          ? "bg-primary/20 border border-primary/50" 
-          : "hover:bg-secondary/50"
+        isActive
+          ? "bg-primary/20 border-2 border-primary shadow-[0_0_30px_hsl(var(--primary)/0.4)] ring-2 ring-primary/30"
+          : "hover:bg-secondary/50 border-2 border-transparent"
       )}
     >
       {/* Thumbnail */}
