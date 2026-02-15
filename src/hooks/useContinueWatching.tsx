@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 // Data structure for continue watching items
 export interface ContinueWatchingItem {
@@ -62,11 +63,23 @@ const dedupeAndReorder = (
     return [newItem, ...filtered];
 };
 
+// Map database row to ContinueWatchingItem
+const mapRowToItem = (row: any): ContinueWatchingItem => ({
+    tmdbId: row.tmdb_id,
+    mediaType: row.media_type,
+    title: row.title,
+    posterPath: row.poster_path,
+    season: row.season,
+    episode: row.episode,
+    timestamp: new Date(row.timestamp).getTime(),
+});
+
 // Provider component
 export function ContinueWatchingProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
     const [items, setItems] = useState<ContinueWatchingItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const channelRef = useRef<RealtimeChannel | null>(null);
 
     // Load items on mount and when user changes
     useEffect(() => {
@@ -119,15 +132,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                 if (error) throw error;
 
                 if (!cancelled) {
-                    const mappedItems: ContinueWatchingItem[] = (data || []).map((row: any) => ({
-                        tmdbId: row.tmdb_id,
-                        mediaType: row.media_type,
-                        title: row.title,
-                        posterPath: row.poster_path,
-                        season: row.season,
-                        episode: row.episode,
-                        timestamp: new Date(row.timestamp).getTime(),
-                    }));
+                    const mappedItems = (data || []).map(mapRowToItem);
                     setItems(mappedItems);
                     setIsLoading(false);
                 }
@@ -146,6 +151,78 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
 
         return () => {
             cancelled = true;
+        };
+    }, [user?.id]);
+
+    // Set up realtime subscription for authenticated users
+    useEffect(() => {
+        if (!user?.id || !isSupabaseConfigured) {
+            // Clean up any existing channel
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
+            return;
+        }
+
+        // Clean up existing channel before creating new one
+        if (channelRef.current) {
+            supabase.removeChannel(channelRef.current);
+        }
+
+        // Create realtime channel for continue_watching table
+        const channel = supabase
+            .channel(`continue_watching:${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'continue_watching',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    const { eventType, new: newRow, old: oldRow } = payload;
+
+                    if (eventType === 'INSERT') {
+                        const newItem = mapRowToItem(newRow);
+                        setItems((prev) => {
+                            // Check if item already exists (avoid duplicates)
+                            const exists = prev.some(
+                                (item) => item.tmdbId === newItem.tmdbId && item.mediaType === newItem.mediaType
+                            );
+                            if (exists) return prev;
+                            // Add new item at the front
+                            return [newItem, ...prev];
+                        });
+                    } else if (eventType === 'UPDATE') {
+                        const updatedItem = mapRowToItem(newRow);
+                        setItems((prev) => {
+                            // Remove old version and add updated at front
+                            const filtered = prev.filter(
+                                (item) => !(item.tmdbId === updatedItem.tmdbId && item.mediaType === updatedItem.mediaType)
+                            );
+                            return [updatedItem, ...filtered];
+                        });
+                    } else if (eventType === 'DELETE') {
+                        const oldItem = mapRowToItem(oldRow);
+                        setItems((prev) =>
+                            prev.filter(
+                                (item) => !(item.tmdbId === oldItem.tmdbId && item.mediaType === oldItem.mediaType)
+                            )
+                        );
+                    }
+                }
+            )
+            .subscribe();
+
+        channelRef.current = channel;
+
+        return () => {
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
+            }
         };
     }, [user?.id]);
 
@@ -168,7 +245,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                 return;
             }
 
-            // Authenticated: save to Supabase
+            // Authenticated: save to Supabase (realtime will handle the update)
             try {
                 await supabase.from("continue_watching").upsert(
                     {
@@ -210,7 +287,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                 return;
             }
 
-            // Authenticated: delete from Supabase
+            // Authenticated: delete from Supabase (realtime will handle the update)
             try {
                 await supabase
                     .from("continue_watching")
@@ -277,15 +354,7 @@ export function ContinueWatchingProvider({ children }: { children: ReactNode }) 
                 .limit(50);
 
             if (!error && data) {
-                const mappedItems: ContinueWatchingItem[] = data.map((row: any) => ({
-                    tmdbId: row.tmdb_id,
-                    mediaType: row.media_type,
-                    title: row.title,
-                    posterPath: row.poster_path,
-                    season: row.season,
-                    episode: row.episode,
-                    timestamp: new Date(row.timestamp).getTime(),
-                }));
+                const mappedItems = data.map(mapRowToItem);
                 setItems(mappedItems);
             }
         } catch (error) {

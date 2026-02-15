@@ -6,8 +6,7 @@ import { PlayerSwitchOverlay } from "@/components/PlayerSwitchOverlay";
 import { useMedia } from "@/contexts/MediaContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
-import { saveContinueWatchingItem } from "@/hooks/useContinueWatching";
-import { useAuth } from "@/contexts/AuthContext";
+import { useContinueWatching } from "@/hooks/useContinueWatching";
 
 interface VideoPlayerProps {
   tmdbId: number;
@@ -106,7 +105,7 @@ export const VideoPlayer = ({
   const iframeHardTimeoutRef = useRef<number | null>(null);
 
   const { setIsVideoPlaying } = useMedia();
-  const { user } = useAuth();
+  const { saveItem } = useContinueWatching();
   const isMobile = useIsMobile();
 
   const isSandboxed = useMemo(() => {
@@ -243,21 +242,18 @@ export const VideoPlayer = ({
 
     // Save to continue watching when video starts playing
     if (title) {
-      saveContinueWatchingItem(
-        {
-          tmdbId,
-          mediaType: type,
-          title,
-          posterPath: posterPath || null,
-          season: type === "tv" ? season : undefined,
-          episode: type === "tv" ? episode : undefined,
-        },
-        user?.id
-      );
+      saveItem({
+        tmdbId,
+        mediaType: type,
+        title,
+        posterPath: posterPath || null,
+        season: type === "tv" ? season : undefined,
+        episode: type === "tv" ? episode : undefined,
+      });
     }
 
     return () => setIsVideoPlaying(false);
-  }, [setIsVideoPlaying, tmdbId, type, season, episode, title, posterPath, user?.id]);
+  }, [setIsVideoPlaying, tmdbId, type, season, episode, title, posterPath, saveItem]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
