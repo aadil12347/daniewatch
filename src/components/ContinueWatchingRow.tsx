@@ -1,10 +1,10 @@
 import { useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Play, Clock, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Clock, X, Tv } from "lucide-react";
 import { useContinueWatching, ContinueWatchingItem } from "@/hooks/useContinueWatching";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPosterUrl } from "@/lib/tmdb";
+import { getPosterUrl, getImageUrl } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 
 interface ContinueWatchingCardProps {
@@ -15,6 +15,8 @@ interface ContinueWatchingCardProps {
 
 const ContinueWatchingCard = ({ item, onRemove, isPerformance }: ContinueWatchingCardProps) => {
     const navigate = useNavigate();
+
+    // Use poster path for the image
     const posterUrl = getPosterUrl(item.posterPath, "w342");
 
     const handlePlay = () => {
@@ -47,9 +49,9 @@ const ContinueWatchingCard = ({ item, onRemove, isPerformance }: ContinueWatchin
         return new Date(timestamp).toLocaleDateString();
     };
 
-    // Episode label for TV shows
+    // Episode label for TV shows - formatted nicely
     const episodeLabel = item.mediaType === "tv" && item.season && item.episode
-        ? `S${item.season} E${item.episode}`
+        ? `S${String(item.season).padStart(2, '0')} E${String(item.episode).padStart(2, '0')}`
         : null;
 
     return (
@@ -67,10 +69,13 @@ const ContinueWatchingCard = ({ item, onRemove, isPerformance }: ContinueWatchin
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Episode Label (TV shows) - Large and prominent for easy recognition */}
+                {/* Episode Label (TV shows) - Elegant design matching website vibe */}
                 {episodeLabel && (
-                    <div className="absolute top-3 left-3 px-4 py-2 bg-red-500/95 rounded-xl text-base md:text-lg font-extrabold text-white shadow-[0_0_20px_rgba(239,68,68,0.5)] backdrop-blur-sm tracking-wide">
-                        {episodeLabel}
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-primary/90 to-primary/70 rounded-lg backdrop-blur-md border border-primary/30 shadow-lg">
+                        <Tv className="w-3.5 h-3.5 text-primary-foreground" />
+                        <span className="text-xs font-bold text-primary-foreground tracking-wide">
+                            {episodeLabel}
+                        </span>
                     </div>
                 )}
 
