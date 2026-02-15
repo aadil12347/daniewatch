@@ -31,6 +31,7 @@ const ContinueWatchingCard = ({ item, onRemove, isPerformance }: ContinueWatchin
     };
 
     const handleRemove = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
         onRemove();
     };
@@ -78,10 +79,10 @@ const ContinueWatchingCard = ({ item, onRemove, isPerformance }: ContinueWatchin
                     </div>
                 )}
 
-                {/* Remove Button */}
+                {/* Remove Button - z-index higher than play button */}
                 <button
                     onClick={handleRemove}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 backdrop-blur-sm opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-destructive"
+                    className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-black/50 backdrop-blur-sm opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-destructive"
                     aria-label="Remove from history"
                 >
                     <X className="w-3.5 h-3.5" />
@@ -91,7 +92,7 @@ const ContinueWatchingCard = ({ item, onRemove, isPerformance }: ContinueWatchin
                 <button
                     onClick={handlePlay}
                     className={cn(
-                        "absolute inset-0 flex items-center justify-center",
+                        "absolute inset-0 z-10 flex items-center justify-center",
                         "transition-all duration-200",
                         isPerformance
                             ? "opacity-100" // Always visible in performance mode
