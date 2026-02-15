@@ -30,11 +30,11 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
       className={cn(
         "flex gap-2 md:gap-4 p-2 md:p-3 rounded-lg md:rounded-xl cursor-pointer transition-all duration-300 group/episode",
         isActive
-          ? "bg-primary/20 border-2 border-primary shadow-[0_0_30px_hsl(var(--primary)/0.4)] ring-2 ring-primary/30"
-          : "hover:bg-secondary/50 border-2 border-transparent"
+          ? "bg-primary/10 border border-primary/30"
+          : "hover:bg-secondary/50 border border-transparent"
       )}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail - All playing effects are on the thumbnail only */}
       <div className={cn(
         "relative flex-shrink-0 w-24 md:w-40 aspect-video rounded-md md:rounded-lg overflow-hidden bg-muted transition-all duration-300",
         isActive && "ring-2 ring-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]"
@@ -94,18 +94,28 @@ export const EpisodeCard = ({ episode, isActive, onClick, downloadLink }: Episod
       {/* Info */}
       <div className="flex-1 min-w-0 py-0.5 md:py-1">
         <h4 className={cn(
-          "font-semibold text-xs md:text-sm mb-0.5 md:mb-1 line-clamp-1 transition-all duration-300",
+          "font-semibold text-xs md:text-sm mb-0.5 md:mb-1 line-clamp-1 transition-colors duration-300",
           isActive
-            ? "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse"
+            ? "text-red-500"
             : "group-hover/episode:text-primary"
         )}>
           {episode.name}
         </h4>
-        <p className="text-muted-foreground text-[10px] md:text-xs line-clamp-2">
+        <p className={cn(
+          "text-[10px] md:text-xs line-clamp-2 transition-colors duration-300",
+          isActive
+            ? "text-red-400"
+            : "text-muted-foreground"
+        )}>
           {episode.overview || "No description available."}
         </p>
         {episode.runtime && (
-          <span className="text-[10px] md:text-xs text-muted-foreground mt-1 md:mt-2 inline-block">
+          <span className={cn(
+            "text-[10px] md:text-xs mt-1 md:mt-2 inline-block transition-colors duration-300",
+            isActive
+              ? "text-red-400"
+              : "text-muted-foreground"
+          )}>
             {episode.runtime}m
           </span>
         )}
