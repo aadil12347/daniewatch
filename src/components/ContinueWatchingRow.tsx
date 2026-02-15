@@ -67,9 +67,9 @@ const ContinueWatchingCard = ({ item, onRemove, isPerformance }: ContinueWatchin
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Episode Label (TV shows) - Larger and more prominent */}
+                {/* Episode Label (TV shows) - Large and prominent for easy recognition */}
                 {episodeLabel && (
-                    <div className="absolute top-2 left-2 px-3 py-1.5 bg-primary/95 rounded-lg text-sm font-bold text-primary-foreground shadow-lg backdrop-blur-sm">
+                    <div className="absolute top-3 left-3 px-4 py-2 bg-red-500/95 rounded-xl text-base md:text-lg font-extrabold text-white shadow-[0_0_20px_rgba(239,68,68,0.5)] backdrop-blur-sm tracking-wide">
                         {episodeLabel}
                     </div>
                 )}
