@@ -12,6 +12,7 @@ import { MediaProvider } from "./contexts/MediaContext";
 import { TutorialProvider } from "./contexts/TutorialContext";
 import { AdminContentVisibilityProvider } from "./contexts/AdminContentVisibilityContext";
 import { SearchOverlayProvider } from "./contexts/SearchOverlayContext";
+import { ContinueWatchingProvider } from "./hooks/useContinueWatching";
 import { PageTransition } from "./components/PageTransition";
 import { FloatingRequestButton } from "./components/FloatingRequestButton";
 import { TutorialOverlay } from "./components/TutorialOverlay";
@@ -145,39 +146,41 @@ const App = () => {
               <PerformanceModeProvider>
                 <TutorialProvider>
                   <MediaProvider>
-                    <AdminContentVisibilityProvider>
-                      <SearchOverlayProvider>
-                        <TooltipProvider>
-                          <Toaster />
-                          <Sonner />
-                          <BrowserRouter>
-                            <ErrorBoundary>
-                              {splashActive ? (
-                                <InitialSplashOverlay
-                                  onDone={() => {
-                                    setSplashActive(false);
-                                    setJustExitedSplash(true);
-                                  }}
-                                />
-                              ) : (
-                                <>
-                                  <Navbar />
-                                  <SearchOverlay />
+                    <ContinueWatchingProvider>
+                      <AdminContentVisibilityProvider>
+                        <SearchOverlayProvider>
+                          <TooltipProvider>
+                            <Toaster />
+                            <Sonner />
+                            <BrowserRouter>
+                              <ErrorBoundary>
+                                {splashActive ? (
+                                  <InitialSplashOverlay
+                                    onDone={() => {
+                                      setSplashActive(false);
+                                      setJustExitedSplash(true);
+                                    }}
+                                  />
+                                ) : (
+                                  <>
+                                    <Navbar />
+                                    <SearchOverlay />
 
-                                  <PerformanceModeSwitchOverlay />
-                                  <EditLinksModeIndicator />
-                                  <EditLinksModal />
+                                    <PerformanceModeSwitchOverlay />
+                                    <EditLinksModeIndicator />
+                                    <EditLinksModal />
 
-                                  <AppContent />
-                                  <FloatingRequestButton />
-                                  <TutorialOverlay />
-                                </>
-                              )}
-                            </ErrorBoundary>
-                          </BrowserRouter>
-                        </TooltipProvider>
-                      </SearchOverlayProvider>
-                    </AdminContentVisibilityProvider>
+                                    <AppContent />
+                                    <FloatingRequestButton />
+                                    <TutorialOverlay />
+                                  </>
+                                )}
+                              </ErrorBoundary>
+                            </BrowserRouter>
+                          </TooltipProvider>
+                        </SearchOverlayProvider>
+                      </AdminContentVisibilityProvider>
+                    </ContinueWatchingProvider>
                   </MediaProvider>
                 </TutorialProvider>
               </PerformanceModeProvider>

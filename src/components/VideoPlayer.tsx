@@ -6,6 +6,8 @@ import { PlayerSwitchOverlay } from "@/components/PlayerSwitchOverlay";
 import { useMedia } from "@/contexts/MediaContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMediaLinks, MediaLinkResult } from "@/lib/mediaLinks";
+import { saveContinueWatchingItem } from "@/hooks/useContinueWatching";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface VideoPlayerProps {
   tmdbId: number;
@@ -36,6 +38,14 @@ interface VideoPlayerProps {
    * Optional inline styles for the outer container (used for CSS variables like splash origin).
    */
   style?: CSSProperties;
+  /**
+   * Title for continue watching tracking.
+   */
+  title?: string;
+  /**
+   * Poster path for continue watching tracking.
+   */
+  posterPath?: string | null;
 }
 
 function getVideasyEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number, episode: number) {
@@ -74,6 +84,8 @@ export const VideoPlayer = ({
   controlsPlacement = "page",
   className,
   style,
+  title,
+  posterPath,
 }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isIframeLoading, setIsIframeLoading] = useState(true);
@@ -94,6 +106,7 @@ export const VideoPlayer = ({
   const iframeHardTimeoutRef = useRef<number | null>(null);
 
   const { setIsVideoPlaying } = useMedia();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
 
   const isSandboxed = useMemo(() => {
@@ -227,8 +240,24 @@ export const VideoPlayer = ({
 
   useEffect(() => {
     setIsVideoPlaying(true);
+
+    // Save to continue watching when video starts playing
+    if (title) {
+      saveContinueWatchingItem(
+        {
+          tmdbId,
+          mediaType: type,
+          title,
+          posterPath: posterPath || null,
+          season: type === "tv" ? season : undefined,
+          episode: type === "tv" ? episode : undefined,
+        },
+        user?.id
+      );
+    }
+
     return () => setIsVideoPlaying(false);
-  }, [setIsVideoPlaying]);
+  }, [setIsVideoPlaying, tmdbId, type, season, episode, title, posterPath, user?.id]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

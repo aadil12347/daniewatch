@@ -5,6 +5,7 @@ import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
 import { TabbedContentRow } from "@/components/TabbedContentRow";
 import { DbContentRow } from "@/components/DbContentRow";
+import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { Footer } from "@/components/Footer";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
@@ -195,6 +196,9 @@ const Index = () => {
         <HeroSection items={trending} isLoading={!primaryContentReady} />
 
         <div className="relative z-10 -mt-16">
+          {/* Continue Watching - High Priority Row */}
+          <ContinueWatchingRow />
+
           {/* Top 10 Today */}
           <ContentRow
             title="Top 10 Today"

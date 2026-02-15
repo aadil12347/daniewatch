@@ -82,6 +82,20 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
     return new URLSearchParams(location.search).get("watch") === "1";
   }, [location.search]);
 
+  // Check for autoPlay state from continue watching navigation
+  const autoPlayState = useMemo(() => {
+    const state = location.state as { autoPlay?: boolean; season?: number; episode?: number } | null;
+    return state?.autoPlay ? state : null;
+  }, [location.state]);
+
+  // Auto-open player when navigating from continue watching
+  useEffect(() => {
+    if (autoPlayState && movie && !isPlayerOpen) {
+      // Navigate to open the player
+      navigate(`?watch=1`, { replace: true, state: null });
+    }
+  }, [autoPlayState, movie, isPlayerOpen, navigate]);
+
   // Set media context when movie loads
   useEffect(() => {
     if (!movie) return;
@@ -286,6 +300,8 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
                 fill
                 controlsPlacement={modal ? "modal" : "page"}
                 className=""
+                title={movie.title}
+                posterPath={movie.poster_path}
                 style={{
                   ["--reveal-x" as any]: revealOrigin ? `${revealOrigin.x}px` : "18%",
                   ["--reveal-y" as any]: revealOrigin ? `${revealOrigin.y}px` : "85%",

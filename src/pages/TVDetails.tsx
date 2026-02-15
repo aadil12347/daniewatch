@@ -97,6 +97,22 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
     return { isOpen, season, episode };
   }, [location.search]);
 
+  // Check for autoPlay state from continue watching navigation
+  const autoPlayState = useMemo(() => {
+    const state = location.state as { autoPlay?: boolean; season?: number; episode?: number } | null;
+    return state?.autoPlay ? state : null;
+  }, [location.state]);
+
+  // Auto-open player when navigating from continue watching
+  useEffect(() => {
+    if (autoPlayState && show && !playerState.isOpen) {
+      const season = autoPlayState.season || 1;
+      const episode = autoPlayState.episode || 1;
+      // Navigate to open the player with specific season/episode
+      navigate(`?watch=1&s=${season}&e=${episode}`, { replace: true, state: null });
+    }
+  }, [autoPlayState, show, playerState.isOpen, navigate]);
+
   // Set media context when show loads or season changes
   useEffect(() => {
     if (!show) return;
@@ -495,6 +511,8 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
                 fill
                 controlsPlacement={modal ? "modal" : "page"}
                 className=""
+                title={show?.name}
+                posterPath={show?.poster_path}
                 style={{
                   ["--reveal-x" as any]: revealOrigin ? `${revealOrigin.x}px` : "18%",
                   ["--reveal-y" as any]: revealOrigin ? `${revealOrigin.y}px` : "85%",
