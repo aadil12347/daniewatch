@@ -19,7 +19,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Cache cleanup utility
+// Cache cleanup utility - ONLY called on explicit sign out
 const clearAllCaches = () => {
   try {
     // List of keys to clear from sessionStorage (targeted instead of .clear())
@@ -35,7 +35,7 @@ const clearAllCaches = () => {
       sessionStorage.removeItem(key);
     });
 
-    // Clear specific localStorage cache keys (preserve user preferences)
+    // Clear specific localStorage cache keys (preserve user preferences and auth)
     const cachePatterns = [
       'homepage_cache',
       'list_state_cache',
@@ -48,6 +48,10 @@ const clearAllCaches = () => {
     ];
 
     Object.keys(localStorage).forEach(key => {
+      // NEVER clear Supabase auth keys - these keep the user logged in
+      if (key.includes('supabase') || key.includes('sb-')) {
+        return;
+      }
       if (cachePatterns.some(pattern => key.includes(pattern))) {
         localStorage.removeItem(key);
       }
@@ -65,15 +69,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Clear cache on app initialization (new session)
-  useEffect(() => {
-    const sessionId = sessionStorage.getItem('app_session_id');
-    if (!sessionId) {
-      // New session detected
-      clearAllCaches();
-      sessionStorage.setItem('app_session_id', Date.now().toString());
-    }
-  }, []);
+  // REMOVED: Aggressive "new session" detection that was logging users out
+  // on app updates/reloads. Session persistence is now handled entirely by
+  // Supabase's auth storage in localStorage.
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -83,9 +81,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Clear cache only on sign-in/sign-out — NOT on TOKEN_REFRESHED
+        // Only clear cache on explicit SIGN_OUT - NOT on SIGNED_IN or TOKEN_REFRESHED
         // TOKEN_REFRESHED is normal background activity and should never wipe caches
-        if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+        // SIGNED_IN should not clear caches as user may have existing session data
+        if (event === 'SIGNED_OUT') {
           clearAllCaches();
         }
 

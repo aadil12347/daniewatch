@@ -112,18 +112,37 @@ export const useDbManifest = () => {
   /**
    * Forces a total cache wipe and hard reload of the application.
    * This is triggered when the admin updates site data (manifest version changes).
+   * IMPORTANT: Preserves Supabase auth tokens to keep users logged in.
    */
   const selfDestructAndReload = (newVersion: string) => {
     console.warn(`[useDbManifest] Version mismatch detected. Triggering global cache clear and hard reload...`);
 
-    // 1. Wipe everything
+    // 1. Save Supabase auth data before clearing
+    const authKeys: string[] = [];
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('supabase') || key.includes('sb-')) {
+        authKeys.push(key);
+      }
+    });
+    const savedAuth: Record<string, string> = {};
+    authKeys.forEach(key => {
+      const value = localStorage.getItem(key);
+      if (value) savedAuth[key] = value;
+    });
+
+    // 2. Wipe everything
     localStorage.clear();
     sessionStorage.clear();
 
-    // 2. Set the NEW version so we don't reload again immediately
+    // 3. Restore Supabase auth data to keep user logged in
+    Object.entries(savedAuth).forEach(([key, value]) => {
+      localStorage.setItem(key, value);
+    });
+
+    // 4. Set the NEW version so we don't reload again immediately
     localStorage.setItem(APP_VERSION_KEY, newVersion);
 
-    // 3. Force hard reload from server (bypass disk cache)
+    // 5. Force hard reload from server (bypass disk cache)
     window.location.reload();
   };
 
