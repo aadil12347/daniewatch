@@ -13,7 +13,6 @@ import { useDbManifest } from "@/hooks/useDbManifest";
 import { useTmdbLogo } from "@/hooks/useTmdbLogo";
 import { useInViewport } from "@/hooks/useInViewport";
 import { usePerformanceMode } from "@/contexts/PerformanceModeContext";
-import { preloadVibe } from "@/lib/dynamicVibes";
 
 interface MovieCardProps {
   movie: Movie;
@@ -114,9 +113,6 @@ export const MovieCard = ({
   const posterRef = useRef<HTMLDivElement>(null);
   const isNearViewport = useInViewport(cardRef, { rootMargin: isPerformance ? "80px" : "240px" });
 
-  // Dynamic Vibes: Debounced hover preload ref
-  const vibeHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Preload hover character image as the card gets near the viewport (so hover feels instant while scrolling)
   useEffect(() => {
     if (!hoverImageUrl) return;
@@ -128,27 +124,6 @@ export const MovieCard = ({
     img.loading = "eager";
     img.src = hoverImageUrl;
   }, [hoverImageUrl, isNearViewport, isHovered, isPerformance]);
-
-  // Dynamic Vibes: Preload color on hover (debounced 200ms)
-  useEffect(() => {
-    // Skip in performance mode
-    if (isPerformance) return;
-    if (!movie.poster_path) return;
-
-    if (isHovered) {
-      // Debounce the preload to avoid flickering during quick scrolls
-      vibeHoverTimeoutRef.current = setTimeout(() => {
-        preloadVibe(movie.poster_path, movie.id);
-      }, 200);
-    }
-
-    return () => {
-      if (vibeHoverTimeoutRef.current) {
-        clearTimeout(vibeHoverTimeoutRef.current);
-        vibeHoverTimeoutRef.current = null;
-      }
-    };
-  }, [isHovered, isPerformance, movie.poster_path, movie.id]);
 
   // MANIFEST-ONLY ARCHITECTURE: Skip TMDB logo fetch for manifest items
   const logoFromManifest = manifestAvailability?.logoUrl;

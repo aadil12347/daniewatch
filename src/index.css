@@ -410,33 +410,6 @@ html[data-just-exited-splash="1"] .app-navbar {
     /* Navbar dynamic tint (set by HeroSection sampling) */
     --navbar-tint: var(--primary);
     --navbar-tint-alpha: 0.14;
-
-    /* Dynamic Vibes - stored original cinema red for reset */
-    --cinema-primary: 0 84% 60%;
-  }
-
-  /* Dynamic Vibes: Smooth color transition when vibe changes */
-  html.vibe-transitioning {
-    --primary: var(--primary);
-    --navbar-tint: var(--navbar-tint);
-    --ring: var(--ring);
-  }
-
-  html.vibe-transitioning,
-  html.vibe-transitioning * {
-    transition: 
-      background-color 800ms cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 800ms cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 800ms cubic-bezier(0.4, 0, 0.2, 1),
-      color 800ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-  }
-
-  /* Elements that should smoothly transition with vibe changes */
-  .vibe-sensitive {
-    transition: 
-      background-color 800ms cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 800ms cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 800ms cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
   /* Performance mode: reduce GPU-heavy effects while keeping layout the same */

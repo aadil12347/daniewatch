@@ -21,7 +21,6 @@ import { useMedia } from "@/contexts/MediaContext";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useEntries } from "@/hooks/useEntries";
 import { usePostModeration } from "@/hooks/usePostModeration";
-import { usePageVibe } from "@/hooks/useDynamicVibes";
 import {
   getMovieDetails,
   getMovieCredits,
@@ -77,9 +76,6 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
 
   const [blockedForUser, setBlockedForUser] = useState(false);
-
-  // Dynamic Vibes: Apply color theme from movie poster
-  usePageVibe(movie?.poster_path, movie?.id ?? 0, !blockedForUser && !isLoading);
 
   // URL-driven player state
   const isPlayerOpen = useMemo(() => {

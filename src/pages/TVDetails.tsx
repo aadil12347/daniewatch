@@ -22,7 +22,6 @@ import { useEntries } from "@/hooks/useEntries";
 import { usePostModeration } from "@/hooks/usePostModeration";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMedia } from "@/contexts/MediaContext";
-import { usePageVibe } from "@/hooks/useDynamicVibes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,9 +87,6 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
   const { setCurrentMedia, clearCurrentMedia } = useMedia();
 
   const [blockedForUser, setBlockedForUser] = useState(false);
-
-  // Dynamic Vibes: Apply color theme from TV show poster
-  usePageVibe(show?.poster_path, show?.id ?? 0, !blockedForUser && !isLoading);
 
   // URL-driven player state
   const playerState = useMemo(() => {
