@@ -209,61 +209,69 @@ const Index = () => {
           {/* Continue Watching - High Priority Row */}
           <ContinueWatchingRow />
 
-          {/* Top 10 Today — always shows 10 latest trending from TMDB (bypasses role filter) */}
-          <ContentRow
-            title="Top 10 Today"
-            items={isModerationLoading ? trending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
-            isLoading={!primaryContentReady}
-            showRank
-            size="lg"
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-            disableRankFillHover={isPerformance}
-            disableHoverLogo={isPerformance}
-            disableHoverCharacter={isPerformance}
-          />
+          {/* Top 10 Today — shows DB-backed trending items only */}
+          {visibleTrending.length >= 10 && (
+            <ContentRow
+              title="Top 10 Today"
+              items={isModerationLoading ? visibleTrending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(visibleTrending.slice(0, 10)), "home")}
+              isLoading={!primaryContentReady}
+              showRank
+              size="lg"
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
 
-          {/* Regional Sections - Attractive Names */}
-          <TabbedContentRow
-            title="Indian Hits"
-            moviesItems={isModerationLoading
-              ? visibleIndian.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "movie"), "movie")}
-            tvItems={isModerationLoading
-              ? visibleIndian.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "tv"), "tv")}
-            isLoading={!primaryContentReady}
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
+          {/* Regional Sections — only rendered if >= 10 items */}
+          {visibleIndian.length >= 10 && (
+            <TabbedContentRow
+              title="Indian Hits"
+              moviesItems={isModerationLoading
+                ? visibleIndian.filter((item) => item.media_type === "movie")
+                : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "movie"), "movie")}
+              tvItems={isModerationLoading
+                ? visibleIndian.filter((item) => item.media_type === "tv")
+                : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "tv"), "tv")}
+              isLoading={!primaryContentReady}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+            />
+          )}
 
-          <TabbedContentRow
-            title="Korean Wave"
-            moviesItems={isModerationLoading
-              ? visibleKorean.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "movie"), "movie")}
-            tvItems={isModerationLoading
-              ? visibleKorean.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "tv"), "tv")}
-            isLoading={!primaryContentReady}
-            defaultTab="tv"
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
+          {visibleKorean.length >= 10 && (
+            <TabbedContentRow
+              title="Korean Wave"
+              moviesItems={isModerationLoading
+                ? visibleKorean.filter((item) => item.media_type === "movie")
+                : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "movie"), "movie")}
+              tvItems={isModerationLoading
+                ? visibleKorean.filter((item) => item.media_type === "tv")
+                : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "tv"), "tv")}
+              isLoading={!primaryContentReady}
+              defaultTab="tv"
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+            />
+          )}
 
-          <TabbedContentRow
-            title="Anime Picks"
-            moviesItems={isModerationLoading
-              ? visibleAnime.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "movie"), "movie")}
-            tvItems={isModerationLoading
-              ? visibleAnime.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "tv"), "tv")}
-            isLoading={!primaryContentReady}
-            defaultTab="tv"
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
+          {visibleAnime.length >= 10 && (
+            <TabbedContentRow
+              title="Anime Picks"
+              moviesItems={isModerationLoading
+                ? visibleAnime.filter((item) => item.media_type === "movie")
+                : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "movie"), "movie")}
+              tvItems={isModerationLoading
+                ? visibleAnime.filter((item) => item.media_type === "tv")
+                : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "tv"), "tv")}
+              isLoading={!primaryContentReady}
+              defaultTab="tv"
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+            />
+          )}
 
           {/* Database Sections - Lazy Loaded */}
           {dbSections.map((section) => (
@@ -274,15 +282,17 @@ const Index = () => {
             />
           ))}
 
-          {/* Top Rated - Closing Section */}
-          <TabbedContentRow
-            title="Top Rated"
-            moviesItems={isModerationLoading ? visibleTopMovies : filterBlockedPosts(visibleTopMovies, "movie")}
-            tvItems={isModerationLoading ? visibleTopTV : filterBlockedPosts(visibleTopTV, "tv")}
-            isLoading={!primaryContentReady}
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
+          {/* Top Rated - only rendered if >= 10 items combined */}
+          {(visibleTopMovies.length + visibleTopTV.length) >= 10 && (
+            <TabbedContentRow
+              title="Top Rated"
+              moviesItems={isModerationLoading ? visibleTopMovies : filterBlockedPosts(visibleTopMovies, "movie")}
+              tvItems={isModerationLoading ? visibleTopTV : filterBlockedPosts(visibleTopTV, "tv")}
+              isLoading={!primaryContentReady}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+            />
+          )}
         </div>
 
         <Footer />
