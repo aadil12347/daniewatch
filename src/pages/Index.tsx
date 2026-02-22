@@ -223,20 +223,6 @@ const Index = () => {
             disableHoverCharacter={isPerformance}
           />
 
-          {/* Trending Now */}
-          <TabbedContentRow
-            title="Trending Now"
-            moviesItems={isModerationLoading
-              ? visibleTrending.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(visibleTrending.filter((item) => item.media_type === "movie"), "movie")}
-            tvItems={isModerationLoading
-              ? visibleTrending.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(visibleTrending.filter((item) => item.media_type === "tv"), "tv")}
-            isLoading={!primaryContentReady}
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
-
           {/* Regional Sections - Attractive Names */}
           <TabbedContentRow
             title="Indian Hits"
