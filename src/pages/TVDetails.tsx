@@ -430,8 +430,53 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="h-screen relative">
+        {/* Backdrop / trailer area skeleton */}
+        <div className="relative h-[70vh] md:h-[calc(100vh-var(--app-header-offset))] md:min-h-[640px]">
           <Skeleton className="absolute inset-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent pointer-events-none" />
+        </div>
+
+        {/* Content skeleton — matches TV details overlay layout */}
+        <div className="container mx-auto px-4 md:px-0 relative z-10 -mt-44 md:details-overlap-desktop">
+          <div className="max-w-xl lg:max-w-2xl md:px-8 lg:px-12">
+            {/* Logo placeholder */}
+            <Skeleton className="h-16 md:h-20 w-48 md:w-64 mb-3 md:mb-4 rounded-lg" />
+
+            {/* Meta info chips */}
+            <div className="flex items-center gap-2 mb-2 md:mb-4">
+              <Skeleton className="h-6 w-14 rounded" />
+              <Skeleton className="h-4 w-10 rounded" />
+              <Skeleton className="h-4 w-20 rounded" />
+            </div>
+
+            {/* Genre tags */}
+            <div className="flex gap-2 mb-2 md:mb-4">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-14 rounded-full" />
+            </div>
+
+            {/* Overview text lines (hidden on mobile) */}
+            <div className="hidden md:block space-y-2 mb-5">
+              <Skeleton className="h-4 w-full rounded" />
+              <Skeleton className="h-4 w-5/6 rounded" />
+              <Skeleton className="h-4 w-3/4 rounded" />
+            </div>
+
+            {/* Action buttons — real shapes */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-11 md:h-10 px-6 md:px-8 rounded-full bg-primary/20 flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-primary/30" />
+                <Skeleton className="h-4 w-12 rounded" />
+              </div>
+              <div className="h-10 w-10 rounded-full bg-secondary/40" />
+              <div className="h-10 w-10 rounded-full bg-secondary/40" />
+            </div>
+
+            {/* Season selector placeholder */}
+            <Skeleton className="h-9 w-32 rounded-lg" />
+          </div>
         </div>
       </div>
     );
