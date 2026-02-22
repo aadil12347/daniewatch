@@ -209,10 +209,10 @@ const Index = () => {
           {/* Continue Watching - High Priority Row */}
           <ContinueWatchingRow />
 
-          {/* Top 10 Today */}
+          {/* Top 10 Today — always shows 10 latest trending from TMDB (bypasses role filter) */}
           <ContentRow
             title="Top 10 Today"
-            items={isModerationLoading ? visibleTrending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(visibleTrending.slice(0, 10)), "home")}
+            items={isModerationLoading ? trending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
             isLoading={!primaryContentReady}
             showRank
             size="lg"
