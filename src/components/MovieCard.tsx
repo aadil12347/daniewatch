@@ -76,7 +76,7 @@ export const MovieCard = ({
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as "movie" | "tv");
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
-  const posterUrlLQ = movie.poster_path ? getPosterUrl(movie.poster_path, "w185") : null;
+  const posterUrlLQ = movie.poster_path ? getPosterUrl(movie.poster_path, "w92") : null;
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
 

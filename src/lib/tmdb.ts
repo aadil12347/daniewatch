@@ -4,8 +4,13 @@ const IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
 
 export const getImageUrl = (path: string | null, size: string = "w500") => {
   if (!path) return null;
-  // Allow callers to pass a full URL (stored in DB / manifest) without re-prefixing TMDB.
-  if (/^https?:\/\//i.test(path)) return path;
+  // For full TMDB CDN URLs, rewrite the size portion so callers can
+  // request different qualities (e.g. w92 preview → w342 final).
+  if (/^https?:\/\//i.test(path)) {
+    const tmdbMatch = path.match(/^(https?:\/\/image\.tmdb\.org\/t\/p\/)(w\d+|original)(\/.*)/i);
+    if (tmdbMatch) return `${tmdbMatch[1]}${size}${tmdbMatch[3]}`;
+    return path; // non-TMDB URL — return as-is
+  }
   return `${IMAGE_BASE_URL}/${size}${path}`;
 };
 
@@ -13,7 +18,7 @@ export const getBackdropUrl = (path: string | null) => {
   return getImageUrl(path, "original");
 };
 
-export const getPosterUrl = (path: string | null, size: "w185" | "w342" | "w500" | "w780" | "original" = "w500") => {
+export const getPosterUrl = (path: string | null, size: "w92" | "w185" | "w342" | "w500" | "w780" | "original" = "w500") => {
   return getImageUrl(path, size);
 };
 
