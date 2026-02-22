@@ -33,43 +33,43 @@ const SECTION_CONFIGS: SectionConfig[] = [
     id: "action",
     title: "Action",
     filter: (item) => item.genre_ids.some((g) => [28, 10759].includes(g)),
-    limit: 15,
+    limit: 20,
   },
   {
     id: "comedy",
     title: "Comedy",
     filter: (item) => item.genre_ids.includes(35),
-    limit: 15,
+    limit: 20,
   },
   {
     id: "thriller",
     title: "Thriller",
     filter: (item) => item.genre_ids.some((g) => [53, 80, 9648].includes(g)),
-    limit: 15,
+    limit: 20,
   },
   {
     id: "scifi",
     title: "Sci-Fi",
     filter: (item) => item.genre_ids.some((g) => [878, 14, 10765].includes(g)),
-    limit: 15,
+    limit: 20,
   },
   {
     id: "drama",
     title: "Drama",
     filter: (item) => item.genre_ids.includes(18),
-    limit: 15,
+    limit: 20,
   },
   {
     id: "series",
     title: "Series to Binge",
     filter: (item) => item.media_type === "tv",
-    limit: 15,
+    limit: 20,
   },
   {
     id: "movies",
     title: "Movie Night",
     filter: (item) => item.media_type === "movie",
-    limit: 15,
+    limit: 20,
   },
 ];
 
@@ -132,7 +132,7 @@ export const useDbSections = () => {
         title: config.title,
         items: filtered.map(manifestToMovie),
       };
-    }).filter((section) => section.items.length >= 5); // Only show sections with enough content
+    }).filter((section) => section.items.length >= 10); // Only show sections with minimum 10 items
   }, [items]);
 
   return { sections, isLoading };

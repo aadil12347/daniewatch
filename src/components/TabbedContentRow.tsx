@@ -17,6 +17,8 @@ interface TabbedContentRowProps {
   enableHoverPortal?: boolean;
 }
 
+const MIN_ITEMS = 10;
+
 export const TabbedContentRow = ({
   title,
   moviesItems,
@@ -51,11 +53,30 @@ export const TabbedContentRow = ({
     }
   };
 
-  const items = activeTab === "movies" ? moviesItems : tvItems;
-  const visibleItems = useMemo(
-    () => filterBlockedPosts(items, activeTab === "movies" ? "movie" : "tv"),
-    [activeTab, filterBlockedPosts, items]
+  // Filter items and ensure minimum 10 items per tab
+  const filteredMovies = useMemo(
+    () => filterBlockedPosts(moviesItems, "movie"),
+    [filterBlockedPosts, moviesItems]
   );
+
+  const filteredTv = useMemo(
+    () => filterBlockedPosts(tvItems, "tv"),
+    [filterBlockedPosts, tvItems]
+  );
+
+  // Only show tabs that have minimum 10 items
+  const hasMovies = filteredMovies.length >= MIN_ITEMS;
+  const hasTv = filteredTv.length >= MIN_ITEMS;
+
+  // Auto-switch tab if current tab doesn't have enough items
+  const effectiveTab = activeTab === "movies" && !hasMovies && hasTv
+    ? "tv"
+    : activeTab === "tv" && !hasTv && hasMovies
+      ? "movies"
+      : activeTab;
+
+  const items = effectiveTab === "movies" ? filteredMovies : filteredTv;
+  const visibleItems = items;
 
   const renderCards = () => {
     if (isLoading) {
@@ -73,7 +94,7 @@ export const TabbedContentRow = ({
         key={movie.id}
         movie={{
           ...movie,
-          media_type: activeTab === "movies" ? "movie" : "tv",
+          media_type: effectiveTab === "movies" ? "movie" : "tv",
         }}
         index={idx}
         size={size}
@@ -83,6 +104,11 @@ export const TabbedContentRow = ({
     ));
   };
 
+  // Don't render if neither tab has minimum items
+  if (!hasMovies && !hasTv) {
+    return null;
+  }
+
   return (
     <section className="py-6 group/section">
       {/* Header */}
@@ -90,33 +116,35 @@ export const TabbedContentRow = ({
         <div className="flex items-center gap-4">
           <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
         </div>
-        
+
         <div className="flex items-center gap-4">
-          {/* Tab Buttons */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => handleTabChange("movies")}
-              className={cn(
-                "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
-                activeTab === "movies"
-                  ? "text-foreground tab-glow-active"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Movies
-            </button>
-            <button
-              onClick={() => handleTabChange("tv")}
-              className={cn(
-                "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
-                activeTab === "tv"
-                  ? "text-foreground tab-glow-active"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              TV Shows
-            </button>
-          </div>
+          {/* Tab Buttons - only show both if both have minimum items */}
+          {(hasMovies && hasTv) && (
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => handleTabChange("movies")}
+                className={cn(
+                  "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
+                  effectiveTab === "movies"
+                    ? "text-foreground tab-glow-active"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Movies
+              </button>
+              <button
+                onClick={() => handleTabChange("tv")}
+                className={cn(
+                  "px-2 py-1 text-sm font-medium transition-all duration-300 relative",
+                  effectiveTab === "tv"
+                    ? "text-foreground tab-glow-active"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                TV Shows
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
