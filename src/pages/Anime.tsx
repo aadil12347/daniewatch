@@ -15,6 +15,7 @@ import { isAnimeScope } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { getPosterUrl } from "@/lib/tmdb";
 import { queuePriorityCache } from "@/lib/priorityCacheBridge";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 const SECTION_ID = "page_anime";
 
@@ -243,7 +244,10 @@ const Anime = () => {
   const baseTmdbVisible = useMemo(() => filterBlockedPosts(tmdbOnlyItems, "tv"), [filterBlockedPosts, tmdbOnlyItems]);
 
   const filteredDbItems = baseDbVisible;
-  const filteredTmdbItems = baseTmdbVisible;
+
+  // Role-based visibility: non-admins only see DB-backed items
+  const { isAdmin: hasFullAccess } = useContentAccess();
+  const filteredTmdbItems = hasFullAccess ? baseTmdbVisible : [];
 
   // --- Partitioned Sorting ---
   const unifiedItems = useMemo(() => {

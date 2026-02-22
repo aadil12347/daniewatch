@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 
 import { HeroSection } from "@/components/HeroSection";
@@ -23,6 +23,7 @@ import {
   Movie,
 } from "@/lib/tmdb";
 import { useListStateCache } from "@/hooks/useListStateCache";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 const Index = () => {
   const { isPerformance } = usePerformanceMode();
@@ -41,6 +42,15 @@ const Index = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const { filterBlockedPosts, sortWithPinnedFirst, isLoading: isModerationLoading } = usePostModeration();
+  const { filterForRole } = useContentAccess();
+
+  // Apply role-based filtering: non-admins only see DB-backed items
+  const visibleTrending = useMemo(() => filterForRole(trending), [trending, filterForRole]);
+  const visibleIndian = useMemo(() => filterForRole(indianPopular), [indianPopular, filterForRole]);
+  const visibleKorean = useMemo(() => filterForRole(koreanPopular), [koreanPopular, filterForRole]);
+  const visibleAnime = useMemo(() => filterForRole(animePopular), [animePopular, filterForRole]);
+  const visibleTopMovies = useMemo(() => filterForRole(topRatedMovies), [topRatedMovies, filterForRole]);
+  const visibleTopTV = useMemo(() => filterForRole(topRatedTV), [topRatedTV, filterForRole]);
 
   // Primary content is ready as soon as TMDB data is available (from cache or network)
   const primaryContentReady = !isLoading && trending.length > 0;
@@ -193,7 +203,7 @@ const Index = () => {
           </div>
         )}
 
-        <HeroSection items={trending} isLoading={!primaryContentReady} />
+        <HeroSection items={visibleTrending} isLoading={!primaryContentReady} />
 
         <div className="relative z-10 -mt-16">
           {/* Continue Watching - High Priority Row */}
@@ -202,7 +212,7 @@ const Index = () => {
           {/* Top 10 Today */}
           <ContentRow
             title="Top 10 Today"
-            items={isModerationLoading ? trending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(trending.slice(0, 10)), "home")}
+            items={isModerationLoading ? visibleTrending.slice(0, 10) : sortWithPinnedFirst(filterBlockedPosts(visibleTrending.slice(0, 10)), "home")}
             isLoading={!primaryContentReady}
             showRank
             size="lg"
@@ -217,11 +227,11 @@ const Index = () => {
           <TabbedContentRow
             title="Trending Now"
             moviesItems={isModerationLoading
-              ? trending.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(trending.filter((item) => item.media_type === "movie"), "movie")}
+              ? visibleTrending.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(visibleTrending.filter((item) => item.media_type === "movie"), "movie")}
             tvItems={isModerationLoading
-              ? trending.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(trending.filter((item) => item.media_type === "tv"), "tv")}
+              ? visibleTrending.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(visibleTrending.filter((item) => item.media_type === "tv"), "tv")}
             isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
@@ -231,11 +241,11 @@ const Index = () => {
           <TabbedContentRow
             title="Indian Hits"
             moviesItems={isModerationLoading
-              ? indianPopular.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(indianPopular.filter((item) => item.media_type === "movie"), "movie")}
+              ? visibleIndian.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "movie"), "movie")}
             tvItems={isModerationLoading
-              ? indianPopular.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(indianPopular.filter((item) => item.media_type === "tv"), "tv")}
+              ? visibleIndian.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "tv"), "tv")}
             isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}
@@ -244,11 +254,11 @@ const Index = () => {
           <TabbedContentRow
             title="Korean Wave"
             moviesItems={isModerationLoading
-              ? koreanPopular.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(koreanPopular.filter((item) => item.media_type === "movie"), "movie")}
+              ? visibleKorean.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "movie"), "movie")}
             tvItems={isModerationLoading
-              ? koreanPopular.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(koreanPopular.filter((item) => item.media_type === "tv"), "tv")}
+              ? visibleKorean.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "tv"), "tv")}
             isLoading={!primaryContentReady}
             defaultTab="tv"
             hoverCharacterMode="contained"
@@ -258,11 +268,11 @@ const Index = () => {
           <TabbedContentRow
             title="Anime Picks"
             moviesItems={isModerationLoading
-              ? animePopular.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "movie"), "movie")}
+              ? visibleAnime.filter((item) => item.media_type === "movie")
+              : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "movie"), "movie")}
             tvItems={isModerationLoading
-              ? animePopular.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(animePopular.filter((item) => item.media_type === "tv"), "tv")}
+              ? visibleAnime.filter((item) => item.media_type === "tv")
+              : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "tv"), "tv")}
             isLoading={!primaryContentReady}
             defaultTab="tv"
             hoverCharacterMode="contained"
@@ -281,8 +291,8 @@ const Index = () => {
           {/* Top Rated - Closing Section */}
           <TabbedContentRow
             title="Top Rated"
-            moviesItems={isModerationLoading ? topRatedMovies : filterBlockedPosts(topRatedMovies, "movie")}
-            tvItems={isModerationLoading ? topRatedTV : filterBlockedPosts(topRatedTV, "tv")}
+            moviesItems={isModerationLoading ? visibleTopMovies : filterBlockedPosts(visibleTopMovies, "movie")}
+            tvItems={isModerationLoading ? visibleTopTV : filterBlockedPosts(visibleTopTV, "tv")}
             isLoading={!primaryContentReady}
             hoverCharacterMode="contained"
             enableHoverPortal={false}

@@ -48,6 +48,7 @@ import {
   getYear,
 } from "@/lib/tmdb";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { useContentAccess } from "@/hooks/useContentAccess";
 import { supabase } from "@/integrations/supabase/client";
 
 type TVDetailsProps = {
@@ -163,12 +164,16 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
     }
   }, [show?.id, optimisticInWatchlist, isInWatchlist]);
 
+  const { isAccessible, isLoading: isAccessLoading } = useContentAccess();
+
   useEffect(() => {
     if (!id) return;
-    if (isAdminLoading || isModerationLoading) return;
+    if (isAdminLoading || isModerationLoading || isAccessLoading) return;
 
     const blocked = isBlocked(Number(id), 'tv');
-    if (blocked && !isAdmin) {
+    const notInManifest = !isAccessible(Number(id), 'tv');
+
+    if ((blocked && !isAdmin) || notInManifest) {
       setBlockedForUser(true);
       setShow(null);
       setCast([]);
@@ -180,7 +185,7 @@ const TVDetails = ({ modal = false }: TVDetailsProps) => {
     } else {
       setBlockedForUser(false);
     }
-  }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin]);
+  }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin, isAccessible, isAccessLoading]);
 
   const { fetchEntry } = useEntries();
 

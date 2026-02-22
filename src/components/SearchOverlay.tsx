@@ -7,10 +7,12 @@ import { isAllowedOnMoviesPage, isAllowedOnTvPage } from "@/lib/contentScope";
 import { useSearchOverlay } from "@/contexts/SearchOverlayContext";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { MovieCard } from "@/components/MovieCard";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 export const SearchOverlay = () => {
   const { isOpen, query, scope } = useSearchOverlay();
   const { getWatchlistAsMovies } = useWatchlist();
+  const { filterForRole } = useContentAccess();
 
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [loading, setLoading] = useState(false);
@@ -90,6 +92,9 @@ export const SearchOverlay = () => {
           }
         }
 
+        // Role-based filter: non-admins only see DB-backed items
+        items = filterForRole(items);
+
         if (!cancelled && runId === runIdRef.current) setResults(items);
       } catch (e: any) {
         if (!cancelled && runId === runIdRef.current) setError(e?.message || "Search failed");
@@ -106,7 +111,7 @@ export const SearchOverlay = () => {
   }, [debouncedQuery, isOpen, scope, getWatchlistAsMovies]);
 
   return (
-    <Dialog open={isOpen} modal={false} onOpenChange={() => {}}>
+    <Dialog open={isOpen} modal={false} onOpenChange={() => { }}>
       <DialogContent
         hideClose
         contentVariant="fullscreenBelowHeader"

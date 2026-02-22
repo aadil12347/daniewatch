@@ -15,6 +15,7 @@ import { KOREAN_LANGS, isAllowedOnMoviesPage } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { getPosterUrl } from "@/lib/tmdb";
 import { queuePriorityCache } from "@/lib/priorityCacheBridge";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 const SECTION_ID = "page_movies";
 
@@ -242,8 +243,11 @@ const Movies = () => {
   const dbSorted = useMemo(() => sortWithPinnedFirst(baseDbVisible, "movies", "movie"), [baseDbVisible, sortWithPinnedFirst]);
   const tmdbSorted = useMemo(() => sortWithPinnedFirst(baseTmdbVisible, "movies", "movie"), [baseTmdbVisible, sortWithPinnedFirst]);
 
+  // Role-based visibility: non-admins only see DB-backed items
+  const { isAdmin: hasFullAccess } = useContentAccess();
+
   const filteredDbItems = dbSorted;
-  const filteredTmdbItems = tmdbSorted;
+  const filteredTmdbItems = hasFullAccess ? tmdbSorted : [];
 
   // --- Partitioned Sorting ---
   const unifiedItems = useMemo(() => {

@@ -24,6 +24,7 @@ import { PerformanceModeSwitchOverlay } from "@/components/PerformanceModeSwitch
 import { InitialSplashOverlay, getShouldShowInitialSplash } from "@/components/InitialSplashOverlay";
 import { EditLinksModeIndicator } from "@/components/admin/EditLinksModeIndicator";
 import { EditLinksModal } from "@/components/admin/EditLinksModal";
+import { InteractiveDotGrid } from "@/components/InteractiveDotGrid";
 
 import Index from "./pages/Index";
 import MovieDetails from "./pages/MovieDetails";
@@ -163,6 +164,7 @@ const App = () => {
                                   />
                                 ) : (
                                   <>
+                                    <InteractiveDotGrid />
                                     <Navbar />
                                     <SearchOverlay />
 

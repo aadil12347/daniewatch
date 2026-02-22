@@ -37,6 +37,7 @@ import {
 } from "@/lib/tmdb";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { haptic } from "@/lib/haptics";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 type MovieDetailsProps = {
   modal?: boolean;
@@ -115,12 +116,16 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
     }
   }, [movie?.id, optimisticInWatchlist, isInWatchlist]);
 
+  const { isAccessible, isLoading: isAccessLoading } = useContentAccess();
+
   useEffect(() => {
     if (!id) return;
-    if (isAdminLoading || isModerationLoading) return;
+    if (isAdminLoading || isModerationLoading || isAccessLoading) return;
 
     const blocked = isBlocked(Number(id), 'movie');
-    if (blocked && !isAdmin) {
+    const notInManifest = !isAccessible(Number(id), 'movie');
+
+    if ((blocked && !isAdmin) || notInManifest) {
       setBlockedForUser(true);
       setMovie(null);
       setCast([]);
@@ -131,7 +136,7 @@ const MovieDetails = ({ modal = false }: MovieDetailsProps) => {
     } else {
       setBlockedForUser(false);
     }
-  }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin]);
+  }, [id, isAdminLoading, isModerationLoading, isBlocked, isAdmin, isAccessible, isAccessLoading]);
 
   const { fetchEntry } = useEntries();
 

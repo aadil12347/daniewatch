@@ -628,6 +628,70 @@ html {
   }
 }
 
+/* Skeleton shimmer loading effect */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.08) 40%,
+    hsl(var(--muted-foreground) / 0.12) 50%,
+    hsl(var(--muted-foreground) / 0.08) 60%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Progressive poster image crossfade */
+.poster-progressive {
+  position: relative;
+  overflow: hidden;
+}
+
+.poster-progressive__skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: opacity 0.3s ease;
+}
+
+.poster-progressive__lq {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(8px);
+  transform: scale(1.05);
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.poster-progressive__lq.is-loaded {
+  opacity: 1;
+}
+
+.poster-progressive__hq {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.poster-progressive__hq.is-loaded {
+  opacity: 1;
+}
+
 @layer components {
   .navbar-tint-layer {
     /* Subtle cinematic tint that adapts to the hero backdrop */

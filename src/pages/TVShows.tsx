@@ -16,6 +16,7 @@ import { KOREAN_LANGS, INDIAN_LANGS, isAllowedOnTvPage } from "@/lib/contentScop
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
 import { getPosterUrl } from "@/lib/tmdb";
 import { queuePriorityCache } from "@/lib/priorityCacheBridge";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 const SECTION_ID = "page_tv";
 
@@ -152,7 +153,10 @@ const TVShows = () => {
   const baseTmdbVisible = useMemo(() => filterBlockedPosts(tmdbItems, "tv"), [filterBlockedPosts, tmdbItems]);
 
   const filteredDbItems = baseDbVisible;
-  const filteredTmdbItems = baseTmdbVisible;
+
+  // Role-based visibility: non-admins only see DB-backed items
+  const { isAdmin: hasFullAccess } = useContentAccess();
+  const filteredTmdbItems = hasFullAccess ? baseTmdbVisible : [];
 
   // --- Partitioned Sorting ---
   const unifiedItems = useMemo(() => {

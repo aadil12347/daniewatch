@@ -76,6 +76,7 @@ export const MovieCard = ({
   const mediaType = movie.media_type || (movie.first_air_date ? "tv" : "movie");
   const inWatchlist = isInWatchlist(movie.id, mediaType as "movie" | "tv");
   const posterUrl = getPosterUrl(movie.poster_path, size === "sm" ? "w185" : "w342");
+  const posterUrlLQ = movie.poster_path ? getPosterUrl(movie.poster_path, "w185") : null;
   const title = getDisplayTitle(movie);
   const year = getYear(getReleaseDate(movie));
 
@@ -97,6 +98,8 @@ export const MovieCard = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPosterActive, setIsPosterActive] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
+  const [lqLoaded, setLqLoaded] = useState(false);
+  const [hqLoaded, setHqLoaded] = useState(false);
 
   // Hover portal (fixes carousel clipping on Home rows)
   const effectiveHoverPortalSetting = enableHoverPortal && hoverCharacterMode === "popout";
@@ -326,13 +329,37 @@ export const MovieCard = ({
             {/* Clip only the poster layers so the character can pop OUT of the card */}
             <div className="poster-3d-clip absolute inset-0 rounded-xl overflow-hidden">
               {posterUrl ? (
-                <div className="poster-3d-wrapper">
+                <div className="poster-3d-wrapper poster-progressive">
+                  {/* Layer 1: Skeleton shimmer (visible until LQ loads) */}
+                  {!lqLoaded && (
+                    <div className="poster-progressive__skeleton skeleton-shimmer w-full h-full" />
+                  )}
+
+                  {/* Layer 2: Low-quality blurred poster (loads fast ~4KB) */}
+                  {posterUrlLQ && (
+                    <img
+                      src={posterUrlLQ}
+                      alt=""
+                      aria-hidden="true"
+                      loading="eager"
+                      onLoad={() => setLqLoaded(true)}
+                      className={cn(
+                        "poster-progressive__lq",
+                        lqLoaded && "is-loaded",
+                        isAdmin && blocked && "grayscale saturate-0 contrast-75 brightness-75 opacity-70"
+                      )}
+                    />
+                  )}
+
+                  {/* Layer 3: Full quality poster (crossfades in) */}
                   <img
                     src={posterUrl}
                     alt={title}
                     loading={isNearViewport ? "eager" : "lazy"}
+                    onLoad={() => setHqLoaded(true)}
                     className={cn(
-                      "poster-3d-cover poster-3d-cover--base",
+                      "poster-3d-cover poster-3d-cover--base poster-progressive__hq",
+                      hqLoaded && "is-loaded",
                       isAdmin && blocked &&
                       "keep-greyscale grayscale saturate-0 contrast-75 brightness-75 opacity-70"
                     )}

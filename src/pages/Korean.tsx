@@ -13,6 +13,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { isKoreanScope, isAnimeScope, KOREAN_LANGS } from "@/lib/contentScope";
 import { useRouteContentReady } from "@/hooks/useRouteContentReady";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 const SECTION_ID = "page_korean";
 
@@ -268,7 +269,7 @@ const Korean = () => {
     });
   }, [dbVisibleItems, normalizedDbGenreSet, selectedYear]);
 
-  const filteredTmdbItems = useMemo(() => {
+  const filteredTmdbItemsBase = useMemo(() => {
     const base = tmdbOnlyVisibleItems;
 
     if (normalizedDbGenreSet.size === 0 && !selectedYear) return base;
@@ -294,6 +295,10 @@ const Korean = () => {
       return true;
     });
   }, [normalizedDbGenreSet, selectedYear, tmdbOnlyVisibleItems]);
+
+  // Role-based visibility: non-admins only see DB-backed items
+  const { isAdmin: hasFullAccess } = useContentAccess();
+  const filteredTmdbItems = hasFullAccess ? filteredTmdbItemsBase : [];
 
   // --- Partitioned Sorting ---
   const unifiedItems = useMemo(() => {
