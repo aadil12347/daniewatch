@@ -150,8 +150,8 @@ export const ContinueWatchingRow = () => {
             return Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex-shrink-0 w-40 sm:w-48">
                     <Skeleton className="aspect-[2/3] rounded-xl" />
-                    <Skeleton className="h-4 w-3/4 mt-3" />
-                    <Skeleton className="h-3 w-1/2 mt-2" />
+                    <Skeleton className="h-3 w-3/4 mt-2" />
+                    <Skeleton className="h-2.5 w-1/2 mt-1.5" />
                 </div>
             ));
         }

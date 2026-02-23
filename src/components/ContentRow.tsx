@@ -47,11 +47,14 @@ export const ContentRow = ({
 
   const renderCards = () => {
     if (isLoading) {
+      // Match skeleton size to actual poster sizes
+      const skeletonSizeClass = size === "lg" ? "w-48 sm:w-56" : size === "sm" ? "w-32 sm:w-36" : "w-40 sm:w-48";
+
       return Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex-shrink-0 w-40 sm:w-48">
+        <div key={i} className={`flex-shrink-0 ${skeletonSizeClass}`}>
           <Skeleton className="aspect-[2/3] rounded-xl" />
-          <Skeleton className="h-4 w-3/4 mt-3" />
-          <Skeleton className="h-3 w-1/2 mt-2" />
+          <Skeleton className="h-3 w-3/4 mt-2" />
+          <Skeleton className="h-2.5 w-1/2 mt-1.5" />
         </div>
       ));
     }
@@ -79,7 +82,7 @@ export const ContentRow = ({
         <div className="flex items-center gap-4">
           {showRank ? (
             <h2 className="group/title cursor-default">
-              <span 
+              <span
                 className="text-3xl md:text-4xl font-black text-foreground transition-all duration-300 group-hover/title:drop-shadow-[0_0_20px_hsl(var(--primary))] group-hover/title:text-primary"
               >
                 {title}

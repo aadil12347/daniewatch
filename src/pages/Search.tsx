@@ -208,20 +208,20 @@ const Search = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
               {pageIsLoading
                 ? Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i}>
-                      <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                      <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                      <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
-                    </div>
-                  ))
+                  <div key={i}>
+                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
+                    <Skeleton className="h-3 w-3/4 mt-2 animate-none" />
+                    <Skeleton className="h-2.5 w-1/2 mt-1.5 animate-none" />
+                  </div>
+                ))
                 : visibleResults.map((item) => (
-                    <MovieCard
-                      key={`${item.id}-${item.media_type ?? "multi"}`}
-                      movie={item}
-                      enableReveal={false}
-                      enableHoverPortal={false}
-                    />
-                  ))}
+                  <MovieCard
+                    key={`${item.id}-${item.media_type ?? "multi"}`}
+                    movie={item}
+                    enableReveal={false}
+                    enableHoverPortal={false}
+                  />
+                ))}
             </div>
           )}
 

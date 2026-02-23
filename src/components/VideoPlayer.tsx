@@ -276,8 +276,8 @@ export const VideoPlayer = ({
 
   const containerClasses = inline
     ? fill
-      ? "absolute inset-0 w-full h-full bg-background overflow-hidden"
-      : "relative w-full aspect-video bg-background overflow-hidden"
+      ? "absolute inset-0 w-full h-full bg-background overflow-hidden z-30"
+      : "relative w-full aspect-video bg-background overflow-hidden z-30"
     : "fixed left-0 right-0 bottom-0 top-[var(--app-header-offset,0px)] w-screen h-[calc(100vh-var(--app-header-offset,0px))] z-[9999] bg-background";
   // For fullscreen mode we offset the whole player below the fixed header via CSS classes.
   // Keep `style` merging so callers can pass CSS variables (e.g. splash origin).

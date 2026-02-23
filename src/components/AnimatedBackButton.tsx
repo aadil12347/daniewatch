@@ -32,26 +32,19 @@ export function AnimatedBackButton({ label = "Go Back", className, to, size = "d
 
   const isNavbar = size === "navbar";
 
+  // Simplified styling - no animation, smaller size
   const rootCls =
-    "group relative overflow-hidden border border-border/60 font-semibold backdrop-blur transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] " +
+    "flex items-center gap-1.5 font-medium backdrop-blur border border-border/60 " +
     (isNavbar
-      ? "h-11 w-28 rounded-full bg-background/90 shadow-lg "
-      : "h-12 w-44 md:h-14 md:w-48 rounded-2xl bg-card/80 shadow-card ") +
-    "text-foreground " +
+      ? "h-8 px-3 rounded-full bg-background/90 text-sm "
+      : "h-10 px-4 rounded-xl bg-card/80 text-base ") +
+    "text-foreground hover:bg-accent transition-colors " +
     (className ?? "");
-
-  const pillCls =
-    "absolute left-1 top-1 z-10 flex items-center justify-center bg-primary text-primary-foreground transition-[width] duration-500 ease-out group-hover:w-[calc(100%-0.5rem)] " +
-    (isNavbar ? "h-9 w-9 rounded-full" : "h-10 w-12 rounded-xl");
-
-  const labelCls = "relative z-0 block translate-x-2 " + (isNavbar ? "text-sm" : "text-base md:text-lg");
 
   return (
     <button type="button" onClick={handleBack} className={rootCls} aria-label={label}>
-      <span className={pillCls}>
-        <ArrowLeft className="h-5 w-5" />
-      </span>
-      <span className={labelCls}>{label}</span>
+      <ArrowLeft className={isNavbar ? "h-4 w-4" : "h-5 w-5"} />
+      <span>{label}</span>
     </button>
   );
 }

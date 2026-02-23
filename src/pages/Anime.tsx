@@ -585,8 +585,8 @@ const Anime = () => {
               ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
                 <div key={i}>
                   <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                  <Skeleton className="h-4 w-3/4 mt-3 animate-none" />
-                  <Skeleton className="h-3 w-1/2 mt-2 animate-none" />
+                  <Skeleton className="h-3 w-3/4 mt-2 animate-none" />
+                  <Skeleton className="h-2.5 w-1/2 mt-1.5 animate-none" />
                 </div>
               ))
               : unifiedItems.slice(0, displayCount).map((movie, index) => {

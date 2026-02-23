@@ -80,11 +80,14 @@ export const TabbedContentRow = ({
 
   const renderCards = () => {
     if (isLoading) {
+      // Match skeleton size to actual poster sizes (md is default)
+      const skeletonSizeClass = size === "lg" ? "w-48 sm:w-56" : size === "sm" ? "w-32 sm:w-36" : "w-40 sm:w-48";
+
       return Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="flex-shrink-0 w-40 sm:w-48">
+        <div key={i} className={`flex-shrink-0 ${skeletonSizeClass}`}>
           <Skeleton className="aspect-[2/3] rounded-xl" />
-          <Skeleton className="h-4 w-3/4 mt-3" />
-          <Skeleton className="h-3 w-1/2 mt-2" />
+          <Skeleton className="h-3 w-3/4 mt-2" />
+          <Skeleton className="h-2.5 w-1/2 mt-1.5" />
         </div>
       ));
     }
