@@ -583,10 +583,15 @@ const Anime = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {pageIsLoading
               ? Array.from({ length: BATCH_SIZE }).map((_, i) => (
-                <div key={i}>
-                  <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                  <Skeleton className="h-3 w-3/4 mt-2 animate-none" />
-                  <Skeleton className="h-2.5 w-1/2 mt-1.5 animate-none" />
+                <div key={i} className="w-40 sm:w-48">
+                  <div className="aspect-[2/3] rounded-xl skeleton-shimmer" />
+                  <div className="mt-2 px-1">
+                    <div className="h-4 w-3/4 skeleton-shimmer rounded" />
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="h-3.5 w-10 skeleton-shimmer rounded" />
+                      <div className="h-3.5 w-14 skeleton-shimmer rounded" />
+                    </div>
+                  </div>
                 </div>
               ))
               : unifiedItems.slice(0, displayCount).map((movie, index) => {
@@ -622,17 +627,25 @@ const Anime = () => {
             </div>
           )}
 
-          {/* Loading More Indicator */}
-          <div className="relative">
-            {/* Sentinel (observer watches this) */}
-            <div ref={loadMoreRef} className="h-px w-full" />
-
-            {!isLoadingMore && !hasMore && unifiedItems.length > 0 && (
-              <div className="flex justify-center py-6">
-                <p className="text-muted-foreground">You've reached the end</p>
+          {/* End of Results Indicator */}
+          {!hasMore && unifiedItems.length > 0 && (
+            <div className="flex flex-col items-center justify-center gap-3 py-10">
+              <div className="flex items-center gap-4 w-full max-w-xs">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
               </div>
-            )}
-          </div>
+              <p className="text-sm font-medium text-muted-foreground">End of Results</p>
+              <div className="flex items-center gap-4 w-full max-w-xs">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+              </div>
+            </div>
+          )}
+
+          {/* Sentinel for infinite scroll observer - only rendered when hasMore is true */}
+          {hasMore && <div ref={loadMoreRef} className="h-px w-full" />}
         </div>
 
         <Footer />

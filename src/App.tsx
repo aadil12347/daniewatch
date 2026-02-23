@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,22 +26,39 @@ import { EditLinksModeIndicator } from "@/components/admin/EditLinksModeIndicato
 import { EditLinksModal } from "@/components/admin/EditLinksModal";
 import { InteractiveDotGrid } from "@/components/InteractiveDotGrid";
 
+// Eager load critical pages (home, search)
 import Index from "./pages/Index";
-import MovieDetails from "./pages/MovieDetails";
-import TVDetails from "./pages/TVDetails";
-import MovieDetailsModal from "@/components/details/MovieDetailsModal";
-import TVDetailsModal from "@/components/details/TVDetailsModal";
-import Movies from "./pages/Movies";
-import TVShows from "./pages/TVShows";
-import Anime from "./pages/Anime";
-import Korean from "./pages/Korean";
-import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
-import Auth from "./pages/Auth";
-import Requests from "./pages/Requests";
-import AdminDashboard from "./pages/AdminDashboard";
-
 import NotFound from "./pages/NotFound";
+
+// Lazy load heavy pages for better initial bundle size
+const MovieDetails = lazy(() => import("./pages/MovieDetails"));
+const TVDetails = lazy(() => import("./pages/TVDetails"));
+const MovieDetailsModal = lazy(() => import("@/components/details/MovieDetailsModal"));
+const TVDetailsModal = lazy(() => import("@/components/details/TVDetailsModal"));
+const Movies = lazy(() => import("./pages/Movies"));
+const TVShows = lazy(() => import("./pages/TVShows"));
+const Anime = lazy(() => import("./pages/Anime"));
+const Korean = lazy(() => import("./pages/Korean"));
+const Watchlist = lazy(() => import("./pages/Watchlist"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Requests = lazy(() => import("./pages/Requests"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-label="Loading page">
+    <div className="app-loader" aria-hidden="true">
+      <div className="circle" />
+      <div className="circle" />
+      <div className="circle" />
+      <div className="shadow" />
+      <div className="shadow" />
+      <div className="shadow" />
+    </div>
+    <span className="sr-only">Loading...</span>
+  </div>
+);
 
 // Disable right-click context menu
 const useDisableContextMenu = () => {
@@ -83,18 +100,17 @@ const AnimatedRoutes = () => {
       <PageTransition key={(backgroundLocation || location).pathname + (backgroundLocation || location).search}>
         <Routes location={backgroundLocation || location}>
           <Route path="/" element={<Index />} />
-          <Route path="/movie/:id" element={<MovieDetails />} />
-          <Route path="/tv/:id" element={<TVDetails />} />
-          <Route path="/movies" element={<Movies />} />
-          <Route path="/tv" element={<TVShows />} />
-          <Route path="/anime" element={<Anime />} />
-          <Route path="/korean" element={<Korean />} />
-          <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/movie/:id" element={<Suspense fallback={<PageLoader />}><MovieDetails /></Suspense>} />
+          <Route path="/tv/:id" element={<Suspense fallback={<PageLoader />}><TVDetails /></Suspense>} />
+          <Route path="/movies" element={<Suspense fallback={<PageLoader />}><Movies /></Suspense>} />
+          <Route path="/tv" element={<Suspense fallback={<PageLoader />}><TVShows /></Suspense>} />
+          <Route path="/anime" element={<Suspense fallback={<PageLoader />}><Anime /></Suspense>} />
+          <Route path="/korean" element={<Suspense fallback={<PageLoader />}><Korean /></Suspense>} />
+          <Route path="/watchlist" element={<Suspense fallback={<PageLoader />}><Watchlist /></Suspense>} />
           <Route path="/search" element={<Search />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/requests" element={<Requests />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
+          <Route path="/requests" element={<Suspense fallback={<PageLoader />}><Requests /></Suspense>} />
+          <Route path="/admin" element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -102,8 +118,8 @@ const AnimatedRoutes = () => {
 
       {backgroundLocation && (
         <Routes>
-          <Route path="/movie/:id" element={<MovieDetailsModal />} />
-          <Route path="/tv/:id" element={<TVDetailsModal />} />
+          <Route path="/movie/:id" element={<Suspense fallback={<PageLoader />}><MovieDetailsModal /></Suspense>} />
+          <Route path="/tv/:id" element={<Suspense fallback={<PageLoader />}><TVDetailsModal /></Suspense>} />
         </Routes>
       )}
     </>

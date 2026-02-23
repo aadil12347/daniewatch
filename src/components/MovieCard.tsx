@@ -3,7 +3,7 @@ import { Star, Bookmark, Ban, ShieldOff } from "lucide-react";
 import { Movie, getPosterUrl, getDisplayTitle, getReleaseDate, getYear } from "@/lib/tmdb";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
-import { useRef, useState, useEffect, type MouseEvent } from "react";
+import { useRef, useState, useEffect, type MouseEvent, memo } from "react";
 import { createPortal } from "react-dom";
 import { AdminPostControls } from "./AdminPostControls";
 import { usePostModeration } from "@/hooks/usePostModeration";
@@ -44,6 +44,8 @@ interface MovieCardProps {
   disableHoverLogo?: boolean;
   /** Disable the rank-number fill animation on hover (when showRank=true). */
   disableRankFillHover?: boolean;
+  /** Callback when the poster image finishes loading */
+  onPosterLoad?: () => void;
 }
 
 export const MovieCard = ({
@@ -62,6 +64,7 @@ export const MovieCard = ({
   disableHoverCharacter = false,
   disableHoverLogo = false,
   disableRankFillHover = false,
+  onPosterLoad,
 }: MovieCardProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -331,6 +334,7 @@ export const MovieCard = ({
                   src={posterUrl}
                   alt={title}
                   loading={isNearViewport ? "eager" : "lazy"}
+                  onLoad={onPosterLoad}
                   className={cn(
                     "poster-3d-cover poster-3d-cover--base w-full h-full object-cover",
                     isAdmin && blocked &&
@@ -546,4 +550,24 @@ export const MovieCard = ({
     </div>
   );
 };
+
+// Memoize MovieCard to prevent unnecessary re-renders during scroll
+// Only re-render if props actually change
+export const MemoizedMovieCard = memo(MovieCard, (prevProps, nextProps) => {
+  // Custom comparison for better performance
+  return (
+    prevProps.movie.id === nextProps.movie.id &&
+    prevProps.movie.poster_path === nextProps.movie.poster_path &&
+    prevProps.movie.vote_average === nextProps.movie.vote_average &&
+    prevProps.index === nextProps.index &&
+    prevProps.showRank === nextProps.showRank &&
+    prevProps.size === nextProps.size &&
+    prevProps.enableReveal === nextProps.enableReveal &&
+    prevProps.enableHoverPortal === nextProps.enableHoverPortal &&
+    prevProps.hoverCharacterMode === nextProps.hoverCharacterMode &&
+    prevProps.disableHoverCharacter === nextProps.disableHoverCharacter &&
+    prevProps.disableHoverLogo === nextProps.disableHoverLogo &&
+    prevProps.disableRankFillHover === nextProps.disableRankFillHover
+  );
+});
 

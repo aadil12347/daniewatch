@@ -11,6 +11,7 @@ import { filterMinimal, Movie, searchAnimeScoped, searchKoreanScoped, searchMerg
 import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { useDbManifest } from "@/hooks/useDbManifest";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 const MAX_DB_MATCHES = 60;
 
@@ -32,6 +33,9 @@ const Search = () => {
   const { filterBlockedPosts, isLoading: isModerationLoading } = usePostModeration();
 
   const { items: manifestItems, isLoading: isManifestLoading } = useDbManifest();
+
+  // Role-based content access - non-admins only see DB-backed items
+  const { isAdmin, isLoading: isAccessLoading } = useContentAccess();
 
   // DB-first matches come from the manifest (fast + complete posters/logos/ratings)
   const dbStubMatches = useMemo(() => {
@@ -66,20 +70,28 @@ const Search = () => {
     return matches;
   }, [manifestItems, query]);
 
+  // Apply role-based filtering: non-admins only see DB-backed items
+  // TMDB results are filtered to only include items that exist in the DB
   const visibleResults = useMemo(() => {
+    // For non-admins: only show DB matches, filter out TMDB-only results
+    // For admins: show DB matches first, then TMDB results (deduped)
+    if (!isAdmin) {
+      // Non-admin: only DB-backed items, already filtered by post moderation
+      return filterBlockedPosts(dbStubMatches);
+    }
+
+    // Admin: DB matches first, then TMDB results (deduped)
     const dbKeys = new Set(dbStubMatches.map((m) => `${m.id}-${m.media_type}`));
     const tmdbFiltered = tmdbResults.filter((m) => !dbKeys.has(`${m.id}-${m.media_type}`));
-
-    // Strict DB-first ordering
     const combined = [...dbStubMatches, ...tmdbFiltered];
     return filterBlockedPosts(combined);
-  }, [dbStubMatches, filterBlockedPosts, tmdbResults]);
+  }, [dbStubMatches, filterBlockedPosts, tmdbResults, isAdmin]);
 
   // Preload hover images in the background ONLY (never gate the search grid on this).
   usePageHoverPreload(visibleResults, { enabled: !isLoading });
 
   // Only show skeletons before we have any real results to render.
-  const pageIsLoading = visibleResults.length === 0 && (isLoading || isModerationLoading || isManifestLoading);
+  const pageIsLoading = visibleResults.length === 0 && (isLoading || isModerationLoading || isManifestLoading || isAccessLoading);
 
   // Restore cached results+scroll for this exact query on mount.
   useEffect(() => {
@@ -126,6 +138,7 @@ const Search = () => {
         hasMore: false,
         activeTab: "all",
         selectedFilters: [],
+        scrollY: window.scrollY,
       });
     };
   }, [saveCache, tmdbResults, query]);
@@ -208,10 +221,15 @@ const Search = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
               {pageIsLoading
                 ? Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="aspect-[2/3] rounded-xl animate-none" />
-                    <Skeleton className="h-3 w-3/4 mt-2 animate-none" />
-                    <Skeleton className="h-2.5 w-1/2 mt-1.5 animate-none" />
+                  <div key={i} className="w-40 sm:w-48">
+                    <div className="aspect-[2/3] rounded-xl skeleton-shimmer" />
+                    <div className="mt-2 px-1">
+                      <div className="h-4 w-3/4 skeleton-shimmer rounded" />
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="h-3.5 w-10 skeleton-shimmer rounded" />
+                        <div className="h-3.5 w-14 skeleton-shimmer rounded" />
+                      </div>
+                    </div>
                   </div>
                 ))
                 : visibleResults.map((item) => (

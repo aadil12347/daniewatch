@@ -1123,6 +1123,11 @@ html[data-just-exited-splash="1"] .app-navbar {
     transform: translate3d(0%, -12px, 180px);
   }
 
+  /* Performance mode: hide title overlay on hover */
+  html.perf-mode .poster-3d-title {
+    display: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
 
     .poster-3d-wrapper,
