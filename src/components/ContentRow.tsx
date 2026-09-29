@@ -16,6 +16,7 @@ interface ContentRowProps {
   disableHoverCharacter?: boolean;
   disableHoverLogo?: boolean;
   disableRankFillHover?: boolean;
+  onSeeAll?: () => void;
 }
 
 export const ContentRow = ({
@@ -29,6 +30,7 @@ export const ContentRow = ({
   disableHoverCharacter,
   disableHoverLogo,
   disableRankFillHover,
+  onSeeAll,
 }: ContentRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { filterBlockedPosts } = usePostModeration();
@@ -92,6 +94,16 @@ export const ContentRow = ({
             <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
           )}
         </div>
+
+        {onSeeAll && (
+          <button
+            onClick={onSeeAll}
+            className="text-xs md:text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 group/seeall"
+          >
+            See All
+            <ChevronRight className="w-4 h-4 transition-transform group-hover/seeall:translate-x-0.5" />
+          </button>
+        )}
       </div>
 
       {/* Scrollable Content with Navigation Overlay */}

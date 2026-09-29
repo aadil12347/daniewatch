@@ -294,6 +294,14 @@ export function cardToMovie(card: MovieSiteCard, index: number): Movie {
 export interface CuratedHomePosts {
   top5: Movie[];
   top10: Movie[];
+  kdramaPosts: Movie[];
+  chinesePosts: Movie[];
+  animePosts: Movie[];
+  actionPosts: Movie[];
+  comedyPosts: Movie[];
+  thrillerPosts: Movie[];
+  horrorPosts: Movie[];
+  scifiPosts: Movie[];
   vegaPosts: Movie[];
   rogPosts: Movie[];
   seriesPosts: Movie[];
@@ -301,40 +309,179 @@ export interface CuratedHomePosts {
 }
 
 /**
+ * Fetch category/genre cards from VegaMovies / RogMovies.
+ */
+export async function fetchCategoryCards(categoryOrGenre: string): Promise<MovieSiteCard[]> {
+  const key = categoryOrGenre.toLowerCase().trim();
+
+  if (key === "korean" || key === "kdrama" || key === "k-drama") {
+    try {
+      const html = await fetchHtml("https://vegamovies.gallery/korean-series/");
+      return parseVegaCards(html);
+    } catch {
+      return [];
+    }
+  }
+
+  if (key === "chinese") {
+    const cards: MovieSiteCard[] = [];
+    try {
+      const res = await fetch(getFetchUrl("https://vegamovies.gallery/ts-search.php?q=Chinese&page=1"));
+      if (res.ok) {
+        const data = await res.json();
+        const hits = data?.hits;
+        if (Array.isArray(hits)) {
+          for (const hit of hits) {
+            const doc = hit?.document;
+            if (doc?.post_title && doc?.permalink) {
+              const fullUrl = doc.permalink.startsWith("http") ? doc.permalink : `https://vegamovies.gallery${doc.permalink}`;
+              cards.push({
+                site: "vegamovies",
+                postUrl: fullUrl,
+                poster: doc.thumb || "",
+                title: cleanPostTitle(doc.post_title),
+                rating: 7.5,
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[MovieScraper] Chinese ts-search error", e);
+    }
+
+    try {
+      const html = await fetchHtml("https://vegamovies.gallery/chinese-series/");
+      const parsed = parseVegaCards(html);
+      for (const p of parsed) {
+        if (!cards.some((c) => c.postUrl === p.postUrl)) cards.push(p);
+      }
+    } catch {}
+
+    return cards;
+  }
+
+  if (key === "anime") {
+    try {
+      const html = await fetchHtml("https://vegamovies.gallery/anime-series/");
+      return parseVegaCards(html);
+    } catch {
+      return [];
+    }
+  }
+
+  // Genre (Action, Comedy, Thriller, Horror, Sci-Fi) - mixed VegaMovies + RogMovies
+  const genreSlug = key;
+  try {
+    const [vegaHtml, rogHtml] = await Promise.all([
+      fetchHtml(`https://vegamovies.gallery/movies-by-genres/${genreSlug}/`).catch(() => ""),
+      fetchHtml(`https://rogmovies.best/movies-by-genres/${genreSlug}/`).catch(() => ""),
+    ]);
+
+    const vegaCards = vegaHtml ? parseVegaCards(vegaHtml) : [];
+    const rogCards = rogHtml ? parseRogCards(rogHtml) : [];
+    const mixed: MovieSiteCard[] = [];
+    const maxLen = Math.max(vegaCards.length, rogCards.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      if (vegaCards[i]) mixed.push(vegaCards[i]);
+      if (rogCards[i]) mixed.push(rogCards[i]);
+    }
+    return mixed;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Loads the curated posts strictly from VegaMovies and RogMovies:
  * - Top 5 Hero: 3 Vega + 2 Rog
- * - Top 10 Today: 5 Vega + 5 Rog interleaved side by side
- * - VegaMovies list & RogMovies list
- * - Series list & Movies list
+ * - Top 10 Today: 5 Rog + 5 Vega (strictly distinct from Top 5, 0 duplicates)
+ * - K-Drama: https://vegamovies.gallery/korean-series/
+ * - Chinese: https://vegamovies.gallery/search.html?q=Chinese
+ * - Anime: https://vegamovies.gallery/anime-series/
+ * - Action: https://vegamovies.gallery/movies-by-genres/action/ + https://rogmovies.best/movies-by-genres/action/ mixed
+ * - Other genres (Comedy, Thriller, Horror, Sci-Fi) mixed similarly
  */
 export async function getCuratedMovieSitePosts(): Promise<CuratedHomePosts> {
   const [vegaCards, rogCards] = await Promise.all([
-    fetchVegaMoviesCards(16),
-    fetchRogMoviesCards(16),
+    fetchVegaMoviesCards(25),
+    fetchRogMoviesCards(25),
   ]);
 
-  // Top 5: Vega top 3 + Rog top 2
-  const top5Cards: MovieSiteCard[] = [
-    ...vegaCards.slice(0, 3),
-    ...rogCards.slice(0, 2),
-  ];
+  const usedUrls = new Set<string>();
+  const usedTitles = new Set<string>();
 
-  // Top 10: next 5 Vega (3 to 7) and next 5 Rog (2 to 6) interleaved 1-by-1
-  const vegaNext5 = vegaCards.slice(3, 8);
-  const rogNext5 = rogCards.slice(2, 7);
+  const isUsed = (c: MovieSiteCard) =>
+    usedUrls.has(c.postUrl) || usedTitles.has(c.title.toLowerCase().trim());
+
+  const markUsed = (c: MovieSiteCard) => {
+    usedUrls.add(c.postUrl);
+    usedTitles.add(c.title.toLowerCase().trim());
+  };
+
+  // 1. Top 5: 3 from VegaMovies, 2 from RogMovies (interleaved: Vega, Rog, Vega, Rog, Vega)
+  const top5Cards: MovieSiteCard[] = [];
+  let vIdx = 0;
+  let rIdx = 0;
+
+  // Vega 1
+  while (vIdx < vegaCards.length && isUsed(vegaCards[vIdx])) vIdx++;
+  if (vIdx < vegaCards.length) { top5Cards.push(vegaCards[vIdx]); markUsed(vegaCards[vIdx]); vIdx++; }
+
+  // Rog 1
+  while (rIdx < rogCards.length && isUsed(rogCards[rIdx])) rIdx++;
+  if (rIdx < rogCards.length) { top5Cards.push(rogCards[rIdx]); markUsed(rogCards[rIdx]); rIdx++; }
+
+  // Vega 2
+  while (vIdx < vegaCards.length && isUsed(vegaCards[vIdx])) vIdx++;
+  if (vIdx < vegaCards.length) { top5Cards.push(vegaCards[vIdx]); markUsed(vegaCards[vIdx]); vIdx++; }
+
+  // Rog 2
+  while (rIdx < rogCards.length && isUsed(rogCards[rIdx])) rIdx++;
+  if (rIdx < rogCards.length) { top5Cards.push(rogCards[rIdx]); markUsed(rogCards[rIdx]); rIdx++; }
+
+  // Vega 3
+  while (vIdx < vegaCards.length && isUsed(vegaCards[vIdx])) vIdx++;
+  if (vIdx < vegaCards.length) { top5Cards.push(vegaCards[vIdx]); markUsed(vegaCards[vIdx]); vIdx++; }
+
+  // 2. Top 10: 5 from RogMovies, 5 from VegaMovies (strictly distinct from Top 5!)
+  // Interleaved: Rog, Vega, Rog, Vega, Rog, Vega, Rog, Vega, Rog, Vega
   const top10Cards: MovieSiteCard[] = [];
-
   for (let i = 0; i < 5; i++) {
-    if (vegaNext5[i]) top10Cards.push(vegaNext5[i]);
-    if (rogNext5[i]) top10Cards.push(rogNext5[i]);
+    while (rIdx < rogCards.length && isUsed(rogCards[rIdx])) rIdx++;
+    if (rIdx < rogCards.length) { top10Cards.push(rogCards[rIdx]); markUsed(rogCards[rIdx]); rIdx++; }
+
+    while (vIdx < vegaCards.length && isUsed(vegaCards[vIdx])) vIdx++;
+    if (vIdx < vegaCards.length) { top10Cards.push(vegaCards[vIdx]); markUsed(vegaCards[vIdx]); vIdx++; }
   }
 
   const top5Movies = top5Cards.map((card, i) => cardToMovie(card, i));
   const top10Movies = top10Cards.map((card, i) => cardToMovie(card, 10 + i));
 
+  // 3. Sections: K-Drama, Chinese, Anime, Action, Comedy, Thriller, Horror, Sci-Fi
+  const [
+    kdramaCards,
+    chineseCards,
+    animeCards,
+    actionCards,
+    comedyCards,
+    thrillerCards,
+    horrorCards,
+    scifiCards,
+  ] = await Promise.all([
+    fetchCategoryCards("korean"),
+    fetchCategoryCards("chinese"),
+    fetchCategoryCards("anime"),
+    fetchCategoryCards("action"),
+    fetchCategoryCards("comedy"),
+    fetchCategoryCards("thriller"),
+    fetchCategoryCards("horror"),
+    fetchCategoryCards("sci-fi"),
+  ]);
+
   const vegaMovies = vegaCards.map((c, i) => cardToMovie(c, 100 + i));
   const rogMovies = rogCards.map((c, i) => cardToMovie(c, 200 + i));
-
   const allPosts = [...vegaMovies, ...rogMovies];
   const seriesPosts = allPosts.filter((m) => m.media_type === "tv");
   const moviePosts = allPosts.filter((m) => m.media_type === "movie");
@@ -342,6 +489,14 @@ export async function getCuratedMovieSitePosts(): Promise<CuratedHomePosts> {
   return {
     top5: top5Movies,
     top10: top10Movies,
+    kdramaPosts: kdramaCards.map((c, i) => cardToMovie(c, 300 + i)),
+    chinesePosts: chineseCards.map((c, i) => cardToMovie(c, 400 + i)),
+    animePosts: animeCards.map((c, i) => cardToMovie(c, 500 + i)),
+    actionPosts: actionCards.map((c, i) => cardToMovie(c, 600 + i)),
+    comedyPosts: comedyCards.map((c, i) => cardToMovie(c, 700 + i)),
+    thrillerPosts: thrillerCards.map((c, i) => cardToMovie(c, 800 + i)),
+    horrorPosts: horrorCards.map((c, i) => cardToMovie(c, 900 + i)),
+    scifiPosts: scifiCards.map((c, i) => cardToMovie(c, 1000 + i)),
     vegaPosts: vegaMovies,
     rogPosts: rogMovies,
     seriesPosts,

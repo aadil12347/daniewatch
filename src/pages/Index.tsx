@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
 
 import { HeroSection } from "@/components/HeroSection";
 import { ContentRow } from "@/components/ContentRow";
@@ -27,6 +28,7 @@ import { useContentAccess } from "@/hooks/useContentAccess";
 import { getCuratedMovieSitePosts, preResolvePosts } from "@/lib/movieSiteScraper";
 
 const Index = () => {
+  const navigate = useNavigate();
   const { isPerformance } = usePerformanceMode();
   const [isRestoredFromCache, setIsRestoredFromCache] = useState(false);
   const restoreScrollYRef = useRef<number | null>(null);
@@ -59,6 +61,14 @@ const Index = () => {
 
   const [curatedTop5, setCuratedTop5] = useState<Movie[]>([]);
   const [curatedTop10, setCuratedTop10] = useState<Movie[]>([]);
+  const [curatedKdrama, setCuratedKdrama] = useState<Movie[]>([]);
+  const [curatedChinese, setCuratedChinese] = useState<Movie[]>([]);
+  const [curatedAnime, setCuratedAnime] = useState<Movie[]>([]);
+  const [curatedAction, setCuratedAction] = useState<Movie[]>([]);
+  const [curatedComedy, setCuratedComedy] = useState<Movie[]>([]);
+  const [curatedThriller, setCuratedThriller] = useState<Movie[]>([]);
+  const [curatedHorror, setCuratedHorror] = useState<Movie[]>([]);
+  const [curatedScifi, setCuratedScifi] = useState<Movie[]>([]);
   const [curatedVega, setCuratedVega] = useState<Movie[]>([]);
   const [curatedRog, setCuratedRog] = useState<Movie[]>([]);
   const [curatedSeries, setCuratedSeries] = useState<Movie[]>([]);
@@ -72,12 +82,34 @@ const Index = () => {
     async function loadCuratedSitePosts() {
       try {
         setIsCuratedLoading(true);
-        const { top5, top10, vegaPosts, rogPosts, seriesPosts, moviePosts } =
-          await getCuratedMovieSitePosts();
+        const {
+          top5,
+          top10,
+          kdramaPosts,
+          chinesePosts,
+          animePosts,
+          actionPosts,
+          comedyPosts,
+          thrillerPosts,
+          horrorPosts,
+          scifiPosts,
+          vegaPosts,
+          rogPosts,
+          seriesPosts,
+          moviePosts,
+        } = await getCuratedMovieSitePosts();
         if (isCancelled) return;
 
         setCuratedTop5(top5);
         setCuratedTop10(top10);
+        setCuratedKdrama(kdramaPosts);
+        setCuratedChinese(chinesePosts);
+        setCuratedAnime(animePosts);
+        setCuratedAction(actionPosts);
+        setCuratedComedy(comedyPosts);
+        setCuratedThriller(thrillerPosts);
+        setCuratedHorror(horrorPosts);
+        setCuratedScifi(scifiPosts);
         setCuratedVega(vegaPosts);
         setCuratedRog(rogPosts);
         setCuratedSeries(seriesPosts);
@@ -85,18 +117,38 @@ const Index = () => {
         setIsCuratedLoading(false);
 
         // Background pre-resolve IMDb and TMDB IDs
-        void preResolvePosts([...top5, ...top10, ...vegaPosts, ...rogPosts], (updatedMovie) => {
-          if (isCancelled) return;
-          const updater = (prev: Movie[]) =>
-            prev.map((m) => (m.post_url === updatedMovie.post_url ? updatedMovie : m));
+        void preResolvePosts(
+          [
+            ...top5,
+            ...top10,
+            ...kdramaPosts,
+            ...chinesePosts,
+            ...animePosts,
+            ...actionPosts,
+            ...vegaPosts,
+            ...rogPosts,
+          ],
+          (updatedMovie) => {
+            if (isCancelled) return;
+            const updater = (prev: Movie[]) =>
+              prev.map((m) => (m.post_url === updatedMovie.post_url ? updatedMovie : m));
 
-          setCuratedTop5(updater);
-          setCuratedTop10(updater);
-          setCuratedVega(updater);
-          setCuratedRog(updater);
-          setCuratedSeries(updater);
-          setCuratedMovies(updater);
-        });
+            setCuratedTop5(updater);
+            setCuratedTop10(updater);
+            setCuratedKdrama(updater);
+            setCuratedChinese(updater);
+            setCuratedAnime(updater);
+            setCuratedAction(updater);
+            setCuratedComedy(updater);
+            setCuratedThriller(updater);
+            setCuratedHorror(updater);
+            setCuratedScifi(updater);
+            setCuratedVega(updater);
+            setCuratedRog(updater);
+            setCuratedSeries(updater);
+            setCuratedMovies(updater);
+          }
+        );
       } catch (e) {
         console.error("[Index] Failed to load VegaMovies/RogMovies posts:", e);
         if (!isCancelled) setIsCuratedLoading(false);
@@ -265,7 +317,7 @@ const Index = () => {
           {/* Continue Watching - High Priority Row */}
           <ContinueWatchingRow />
 
-          {/* Top 10 Today — VegaMovies & RogMovies interleaved side-by-side (1 Vega, 1 Rog) */}
+          {/* Top 10 Today — 5 RogMovies + 5 VegaMovies (strictly distinct from Top 5) */}
           <ContentRow
             title="Top 10 Today"
             items={
@@ -284,6 +336,134 @@ const Index = () => {
             disableHoverLogo={isPerformance}
             disableHoverCharacter={isPerformance}
           />
+
+          {/* K-Drama Section (vegamovies.gallery/korean-series/) */}
+          {curatedKdrama.length > 0 && (
+            <ContentRow
+              title="K-Drama"
+              items={curatedKdrama}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/korean")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Chinese Section (vegamovies.gallery/search.html?q=Chinese) */}
+          {curatedChinese.length > 0 && (
+            <ContentRow
+              title="Chinese Drama"
+              items={curatedChinese}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/search?category=chinese")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Anime Section (vegamovies.gallery/anime-series/) */}
+          {curatedAnime.length > 0 && (
+            <ContentRow
+              title="Anime Series"
+              items={curatedAnime}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/anime")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Action Section (mixed VegaMovies & RogMovies) */}
+          {curatedAction.length > 0 && (
+            <ContentRow
+              title="Action Movies & Series"
+              items={curatedAction}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/search?category=action")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Comedy (mixed VegaMovies & RogMovies) */}
+          {curatedComedy.length > 0 && (
+            <ContentRow
+              title="Comedy"
+              items={curatedComedy}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/search?category=comedy")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Thriller (mixed VegaMovies & RogMovies) */}
+          {curatedThriller.length > 0 && (
+            <ContentRow
+              title="Thriller & Suspense"
+              items={curatedThriller}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/search?category=thriller")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Horror (mixed VegaMovies & RogMovies) */}
+          {curatedHorror.length > 0 && (
+            <ContentRow
+              title="Horror"
+              items={curatedHorror}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/search?category=horror")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Sci-Fi (mixed VegaMovies & RogMovies) */}
+          {curatedScifi.length > 0 && (
+            <ContentRow
+              title="Sci-Fi & Fantasy"
+              items={curatedScifi}
+              isLoading={isCuratedLoading}
+              size="md"
+              onSeeAll={() => navigate("/search?category=sci-fi")}
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
 
           {/* Latest from VegaMovies */}
           {curatedVega.length > 0 && (

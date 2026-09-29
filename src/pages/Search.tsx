@@ -12,6 +12,7 @@ import { usePageHoverPreload } from "@/hooks/usePageHoverPreload";
 import { useListStateCache } from "@/hooks/useListStateCache";
 import { useDbManifest } from "@/hooks/useDbManifest";
 import { useContentAccess } from "@/hooks/useContentAccess";
+import { fetchCategoryCards, cardToMovie } from "@/lib/movieSiteScraper";
 
 const MAX_DB_MATCHES = 60;
 
@@ -73,8 +74,11 @@ const Search = () => {
   // Apply role-based filtering: non-admins only see DB-backed items
   // TMDB results are filtered to only include items that exist in the DB
   const visibleResults = useMemo(() => {
-    // For non-admins: only show DB matches, filter out TMDB-only results
-    // For admins: show DB matches first, then TMDB results (deduped)
+    // When category is browsed without search query (e.g. from See All), show category items directly
+    if (!query.trim() && category && tmdbResults.length > 0) {
+      return filterBlockedPosts(tmdbResults);
+    }
+
     if (!isAdmin) {
       // Non-admin: only DB-backed items, already filtered by post moderation
       return filterBlockedPosts(dbStubMatches);
@@ -85,7 +89,7 @@ const Search = () => {
     const tmdbFiltered = tmdbResults.filter((m) => !dbKeys.has(`${m.id}-${m.media_type}`));
     const combined = [...dbStubMatches, ...tmdbFiltered];
     return filterBlockedPosts(combined);
-  }, [dbStubMatches, filterBlockedPosts, tmdbResults, isAdmin]);
+  }, [dbStubMatches, filterBlockedPosts, tmdbResults, isAdmin, query, category]);
 
   // Preload hover images in the background ONLY (never gate the search grid on this).
   usePageHoverPreload(visibleResults, { enabled: !isLoading });
@@ -159,6 +163,20 @@ const Search = () => {
 
     const fetchResults = async () => {
       if (!query.trim()) {
+        if (category) {
+          try {
+            const cards = await fetchCategoryCards(category);
+            if (requestId === requestIdRef.current) {
+              const movies = cards.map((c, i) => cardToMovie(c, i));
+              setTmdbResults(movies);
+            }
+          } catch (e) {
+            console.error("Failed to load category cards:", e);
+          } finally {
+            if (requestId === requestIdRef.current) setIsLoading(false);
+          }
+          return;
+        }
         if (requestId === requestIdRef.current) setIsLoading(false);
         return;
       }
@@ -204,9 +222,16 @@ const Search = () => {
           {query ? (
             <>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl md:text-3xl font-bold">Search Results for \"{query}\"</h1>
+                <h1 className="text-2xl md:text-3xl font-bold">Search Results for "{query}"</h1>
               </div>
               <p className="text-muted-foreground mb-8">{pageIsLoading ? "Searching..." : `Found ${visibleResults.length} results`}</p>
+            </>
+          ) : category ? (
+            <>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl md:text-3xl font-bold capitalize">{category} Movies & Series</h1>
+              </div>
+              <p className="text-muted-foreground mb-8">{pageIsLoading ? "Loading..." : `Found ${visibleResults.length} titles from VegaMovies & RogMovies`}</p>
             </>
           ) : (
             <div className="text-center py-20">
