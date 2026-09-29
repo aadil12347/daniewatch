@@ -45,6 +45,10 @@ interface VideoPlayerProps {
    * Poster path for continue watching tracking.
    */
   posterPath?: string | null;
+  /**
+   * Custom stream or embed URL (e.g. V-Cloud or direct link).
+   */
+  customStreamUrl?: string;
 }
 
 function getVideasyEmbedUrl(tmdbId: number, type: "movie" | "tv", season: number, episode: number) {
@@ -85,6 +89,7 @@ export const VideoPlayer = ({
   style,
   title,
   posterPath,
+  customStreamUrl,
 }: VideoPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isIframeLoading, setIsIframeLoading] = useState(true);
@@ -122,6 +127,11 @@ export const VideoPlayer = ({
   const videasyUrl = useMemo(() => getVideasyEmbedUrl(tmdbId, type, season, episode), [tmdbId, type, season, episode]);
 
   useEffect(() => {
+    if (customStreamUrl) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchMediaLinks = async () => {
       setIsLoading(true);
       setUseAlternate(false);
@@ -139,9 +149,11 @@ export const VideoPlayer = ({
     };
 
     fetchMediaLinks();
-  }, [tmdbId, type, season, episode, isSandboxed]);
+  }, [tmdbId, type, season, episode, isSandboxed, customStreamUrl]);
 
   const embedUrl = useMemo(() => {
+    if (customStreamUrl) return customStreamUrl;
+
     // Default to Videasy if we don't have a lookup result yet.
     if (!mediaResult) return videasyUrl;
 
@@ -158,7 +170,7 @@ export const VideoPlayer = ({
     if (mediaResult.watchUrl) return mediaResult.watchUrl;
 
     return videasyUrl;
-  }, [episode, mediaResult, moviesApiUrl, type, useAlternate, videasyUrl]);
+  }, [customStreamUrl, episode, mediaResult, moviesApiUrl, type, useAlternate, videasyUrl]);
 
   const hideIframeLoader = () => {
     setIsIframeLoading(false);

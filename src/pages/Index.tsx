@@ -59,31 +59,43 @@ const Index = () => {
 
   const [curatedTop5, setCuratedTop5] = useState<Movie[]>([]);
   const [curatedTop10, setCuratedTop10] = useState<Movie[]>([]);
+  const [curatedVega, setCuratedVega] = useState<Movie[]>([]);
+  const [curatedRog, setCuratedRog] = useState<Movie[]>([]);
+  const [curatedSeries, setCuratedSeries] = useState<Movie[]>([]);
+  const [curatedMovies, setCuratedMovies] = useState<Movie[]>([]);
   const [isCuratedLoading, setIsCuratedLoading] = useState(true);
 
-  // Fetch VegaMovies & RogMovies posts (Top 5: 3 Vega + 2 Rog; Top 10: 5 Vega + 5 Rog interleaved)
+  // Fetch VegaMovies & RogMovies posts strictly (exclude all other sites)
   useEffect(() => {
     let isCancelled = false;
 
     async function loadCuratedSitePosts() {
       try {
         setIsCuratedLoading(true);
-        const { top5, top10 } = await getCuratedMovieSitePosts();
+        const { top5, top10, vegaPosts, rogPosts, seriesPosts, moviePosts } =
+          await getCuratedMovieSitePosts();
         if (isCancelled) return;
 
         setCuratedTop5(top5);
         setCuratedTop10(top10);
+        setCuratedVega(vegaPosts);
+        setCuratedRog(rogPosts);
+        setCuratedSeries(seriesPosts);
+        setCuratedMovies(moviePosts);
         setIsCuratedLoading(false);
 
         // Background pre-resolve IMDb and TMDB IDs
-        void preResolvePosts([...top5, ...top10], (updatedMovie) => {
+        void preResolvePosts([...top5, ...top10, ...vegaPosts, ...rogPosts], (updatedMovie) => {
           if (isCancelled) return;
-          setCuratedTop5((prev) =>
-            prev.map((m) => (m.post_url === updatedMovie.post_url ? updatedMovie : m))
-          );
-          setCuratedTop10((prev) =>
-            prev.map((m) => (m.post_url === updatedMovie.post_url ? updatedMovie : m))
-          );
+          const updater = (prev: Movie[]) =>
+            prev.map((m) => (m.post_url === updatedMovie.post_url ? updatedMovie : m));
+
+          setCuratedTop5(updater);
+          setCuratedTop10(updater);
+          setCuratedVega(updater);
+          setCuratedRog(updater);
+          setCuratedSeries(updater);
+          setCuratedMovies(updater);
         });
       } catch (e) {
         console.error("[Index] Failed to load VegaMovies/RogMovies posts:", e);
@@ -273,66 +285,65 @@ const Index = () => {
             disableHoverCharacter={isPerformance}
           />
 
-          {/* Regional Sections — TabbedContentRow handles minimum 10 items check internally */}
-          <TabbedContentRow
-            title="Indian Hits"
-            moviesItems={isModerationLoading
-              ? visibleIndian.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "movie"), "movie")}
-            tvItems={isModerationLoading
-              ? visibleIndian.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(visibleIndian.filter((item) => item.media_type === "tv"), "tv")}
-            isLoading={!primaryContentReady}
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
-
-          <TabbedContentRow
-            title="Korean Wave"
-            moviesItems={isModerationLoading
-              ? visibleKorean.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "movie"), "movie")}
-            tvItems={isModerationLoading
-              ? visibleKorean.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(visibleKorean.filter((item) => item.media_type === "tv"), "tv")}
-            isLoading={!primaryContentReady}
-            defaultTab="tv"
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
-
-          <TabbedContentRow
-            title="Anime Picks"
-            moviesItems={isModerationLoading
-              ? visibleAnime.filter((item) => item.media_type === "movie")
-              : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "movie"), "movie")}
-            tvItems={isModerationLoading
-              ? visibleAnime.filter((item) => item.media_type === "tv")
-              : filterBlockedPosts(visibleAnime.filter((item) => item.media_type === "tv"), "tv")}
-            isLoading={!primaryContentReady}
-            defaultTab="tv"
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
-
-          {/* Database Sections - Already filtered for minimum 10 items in useDbSections */}
-          {dbSections.map((section) => (
-            <DbContentRow
-              key={section.id}
-              title={section.title}
-              items={section.items}
+          {/* Latest from VegaMovies */}
+          {curatedVega.length > 0 && (
+            <ContentRow
+              title="Latest from VegaMovies"
+              items={curatedVega}
+              isLoading={isCuratedLoading}
+              size="md"
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
             />
-          ))}
+          )}
 
-          {/* Top Rated - TabbedContentRow handles minimum 10 items check internally */}
-          <TabbedContentRow
-            title="Top Rated"
-            moviesItems={isModerationLoading ? visibleTopMovies : filterBlockedPosts(visibleTopMovies, "movie")}
-            tvItems={isModerationLoading ? visibleTopTV : filterBlockedPosts(visibleTopTV, "tv")}
-            isLoading={!primaryContentReady}
-            hoverCharacterMode="contained"
-            enableHoverPortal={false}
-          />
+          {/* Latest from RogMovies */}
+          {curatedRog.length > 0 && (
+            <ContentRow
+              title="Latest from RogMovies"
+              items={curatedRog}
+              isLoading={isCuratedLoading}
+              size="md"
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Curated TV Series */}
+          {curatedSeries.length > 0 && (
+            <ContentRow
+              title="TV Series & Shows"
+              items={curatedSeries}
+              isLoading={isCuratedLoading}
+              size="md"
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
+
+          {/* Curated Movies */}
+          {curatedMovies.length > 0 && (
+            <ContentRow
+              title="Movies & Blockbusters"
+              items={curatedMovies}
+              isLoading={isCuratedLoading}
+              size="md"
+              hoverCharacterMode="contained"
+              enableHoverPortal={false}
+              disableRankFillHover={isPerformance}
+              disableHoverLogo={isPerformance}
+              disableHoverCharacter={isPerformance}
+            />
+          )}
         </div>
 
         <Footer />

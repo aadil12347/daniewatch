@@ -38,6 +38,39 @@ export default defineConfig(({ mode }) => ({
   },
 
   plugins: [
+    {
+      name: "cors-proxy-plugin",
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          if (req.url && req.url.startsWith("/api/proxy?url=")) {
+            const rawUrl = req.url.slice("/api/proxy?url=".length);
+            const targetUrl = decodeURIComponent(rawUrl);
+            try {
+              const fetchRes = await fetch(targetUrl, {
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36",
+                  Referer: new URL(targetUrl).origin + "/",
+                },
+              });
+              res.setHeader("Access-Control-Allow-Origin", "*");
+              res.setHeader(
+                "Content-Type",
+                fetchRes.headers.get("content-type") || "text/html; charset=utf-8"
+              );
+              const body = await fetchRes.text();
+              res.end(body);
+              return;
+            } catch (e: any) {
+              res.statusCode = 500;
+              res.end(e?.message || "Proxy Error");
+              return;
+            }
+          }
+          next();
+        });
+      },
+    },
     react(),
     VitePWA({
       strategies: "injectManifest",
