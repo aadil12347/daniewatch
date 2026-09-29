@@ -24,6 +24,7 @@ import {
   Movie,
 } from "@/lib/tmdb";
 import { useContentAccess } from "@/hooks/useContentAccess";
+import { getCuratedMovieSitePosts, preResolvePosts } from "@/lib/movieSiteScraper";
 
 const Index = () => {
   const { isPerformance } = usePerformanceMode();
@@ -56,10 +57,51 @@ const Index = () => {
   const visibleTopMovies = useMemo(() => filterForRole(topRatedMovies), [topRatedMovies, filterForRole]);
   const visibleTopTV = useMemo(() => filterForRole(topRatedTV), [topRatedTV, filterForRole]);
 
-  // Primary content is ready as soon as TMDB data is available (from cache or network)
-  const primaryContentReady = !isLoading && trending.length > 0;
+  const [curatedTop5, setCuratedTop5] = useState<Movie[]>([]);
+  const [curatedTop10, setCuratedTop10] = useState<Movie[]>([]);
+  const [isCuratedLoading, setIsCuratedLoading] = useState(true);
 
-  // Signal route ready immediately when TMDB data is available
+  // Fetch VegaMovies & RogMovies posts (Top 5: 3 Vega + 2 Rog; Top 10: 5 Vega + 5 Rog interleaved)
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCuratedSitePosts() {
+      try {
+        setIsCuratedLoading(true);
+        const { top5, top10 } = await getCuratedMovieSitePosts();
+        if (isCancelled) return;
+
+        setCuratedTop5(top5);
+        setCuratedTop10(top10);
+        setIsCuratedLoading(false);
+
+        // Background pre-resolve IMDb and TMDB IDs
+        void preResolvePosts([...top5, ...top10], (updatedMovie) => {
+          if (isCancelled) return;
+          setCuratedTop5((prev) =>
+            prev.map((m) => (m.post_url === updatedMovie.post_url ? updatedMovie : m))
+          );
+          setCuratedTop10((prev) =>
+            prev.map((m) => (m.post_url === updatedMovie.post_url ? updatedMovie : m))
+          );
+        });
+      } catch (e) {
+        console.error("[Index] Failed to load VegaMovies/RogMovies posts:", e);
+        if (!isCancelled) setIsCuratedLoading(false);
+      }
+    }
+
+    void loadCuratedSitePosts();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Primary content is ready as soon as TMDB or curated data is available
+  const primaryContentReady = (!isLoading && trending.length > 0) || curatedTop5.length > 0;
+
+  // Signal route ready immediately when primary content is available
   useRouteContentReady(primaryContentReady);
 
   useEffect(() => {
@@ -202,27 +244,34 @@ const Index = () => {
           </div>
         )}
 
-        <HeroSection items={visibleTrending} isLoading={!primaryContentReady} />
+        <HeroSection
+          items={curatedTop5.length > 0 ? curatedTop5 : visibleTrending}
+          isLoading={isCuratedLoading && !primaryContentReady}
+        />
 
         <div className="relative z-10 -mt-16">
           {/* Continue Watching - High Priority Row */}
           <ContinueWatchingRow />
 
-          {/* Top 10 Today — shows DB-stored trending items only (updated daily via manifest) */}
-          {dbTrendingItems.length >= 10 && (
-            <ContentRow
-              title="Top 10 Today"
-              items={isModerationLoading ? dbTrendingItems : sortWithPinnedFirst(filterBlockedPosts(dbTrendingItems), "home")}
-              isLoading={isTrendingLoading}
-              showRank
-              size="lg"
-              hoverCharacterMode="contained"
-              enableHoverPortal={false}
-              disableRankFillHover={isPerformance}
-              disableHoverLogo={isPerformance}
-              disableHoverCharacter={isPerformance}
-            />
-          )}
+          {/* Top 10 Today — VegaMovies & RogMovies interleaved side-by-side (1 Vega, 1 Rog) */}
+          <ContentRow
+            title="Top 10 Today"
+            items={
+              curatedTop10.length >= 10
+                ? curatedTop10
+                : isModerationLoading
+                ? dbTrendingItems
+                : sortWithPinnedFirst(filterBlockedPosts(dbTrendingItems), "home")
+            }
+            isLoading={isCuratedLoading && isTrendingLoading}
+            showRank
+            size="lg"
+            hoverCharacterMode="contained"
+            enableHoverPortal={false}
+            disableRankFillHover={isPerformance}
+            disableHoverLogo={isPerformance}
+            disableHoverCharacter={isPerformance}
+          />
 
           {/* Regional Sections — TabbedContentRow handles minimum 10 items check internally */}
           <TabbedContentRow

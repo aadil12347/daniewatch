@@ -279,8 +279,14 @@ export const MovieCard = ({
 
       <div className={cn("relative", sizeClasses[size])}>
         <Link
-          to={`/${mediaType}/${movie.id}`}
-          state={{ backgroundLocation }}
+          to={
+            movie.post_url
+              ? `/post-detail?url=${encodeURIComponent(movie.post_url)}&title=${encodeURIComponent(
+                  title
+                )}&poster=${encodeURIComponent(movie.poster_path || "")}&site=${movie.origin_site || ""}`
+              : `/${mediaType}/${movie.id}`
+          }
+          state={{ backgroundLocation: movie.post_url ? undefined : backgroundLocation }}
           className="block"
           onClick={(e) => {
             if (isAdmin && isEditLinksMode) {
@@ -290,6 +296,17 @@ export const MovieCard = ({
               return;
             }
             if (shouldLetBrowserHandleLink(e)) return;
+
+            if (movie.post_url) {
+              e.preventDefault();
+              navigate(
+                `/post-detail?url=${encodeURIComponent(movie.post_url)}&title=${encodeURIComponent(
+                  title
+                )}&poster=${encodeURIComponent(movie.poster_path || "")}&site=${movie.origin_site || ""}`
+              );
+              return;
+            }
+
             if (!posterRef.current) return;
 
             e.preventDefault();
@@ -390,7 +407,7 @@ export const MovieCard = ({
             )}
 
             {/* Logo (DB/manifest preferred, TMDB fallback) - TOP layer; if missing, show the title instead */}
-            {displayedLogoUrl ? (
+            {displayedLogoUrl && !movie.origin_site ? (
               <img
                 src={displayedLogoUrl}
                 alt={`${title} logo`}
@@ -402,6 +419,22 @@ export const MovieCard = ({
               />
             ) : (
               <div className={cn("poster-3d-title", isAdmin && blocked && "opacity-70")}>{title}</div>
+            )}
+
+            {/* Origin Site Pill (VegaMovies / RogMovies) */}
+            {movie.origin_site && (
+              <div className="absolute top-2 left-2 z-30">
+                <span
+                  className={cn(
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md backdrop-blur-md",
+                    movie.origin_site === "vegamovies"
+                      ? "bg-emerald-950/85 text-emerald-300 border border-emerald-500/40"
+                      : "bg-red-950/85 text-red-300 border border-red-500/40"
+                  )}
+                >
+                  {movie.origin_site === "vegamovies" ? "Vega" : "Rog"}
+                </span>
+              </div>
             )}
 
             {/* Extra dull overlay for blocked (admin only) */}
@@ -465,10 +498,23 @@ export const MovieCard = ({
 
           {/* Info */}
           <div className="mt-3 px-1">
-            <h3 className="font-medium text-sm truncate max-w-full">{title}</h3>
+            <h3 className="font-medium text-sm truncate max-w-full" title={title}>{title}</h3>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-muted-foreground">{year}</span>
-              <span className="text-xs text-muted-foreground capitalize">• {mediaType}</span>
+              {movie.origin_site ? (
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold uppercase tracking-wider",
+                    movie.origin_site === "vegamovies" ? "text-emerald-400" : "text-red-400"
+                  )}
+                >
+                  {movie.origin_site === "vegamovies" ? "VegaMovies" : "RogMovies"}
+                </span>
+              ) : (
+                <>
+                  <span className="text-xs text-muted-foreground">{year}</span>
+                  <span className="text-xs text-muted-foreground capitalize">• {mediaType}</span>
+                </>
+              )}
             </div>
           </div>
         </Link>

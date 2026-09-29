@@ -15,13 +15,49 @@ import type { ManifestItem } from "@/hooks/useDbManifest";
  */
 export const isAdminViewEnabled = (isAdmin: boolean): boolean => isAdmin;
 
+// In-memory set of externally resolved/allowed items
+const externalAllowedSet = new Set<string>();
+
 /**
- * Check if an item exists in the DB manifest
+ * Mark a movie/show ID as allowed (e.g. resolved from VegaMovies or RogMovies)
+ */
+export const markExternalAllowed = (id: number | string): void => {
+    externalAllowedSet.add(String(id));
+    if (typeof window !== "undefined") {
+        try {
+            window.sessionStorage.setItem(`external_allowed_${id}`, "1");
+        } catch {
+            // ignore
+        }
+    }
+};
+
+/**
+ * Check if an item is marked as externally allowed
+ */
+export const isExternalAllowed = (id: number | string): boolean => {
+    if (externalAllowedSet.has(String(id))) return true;
+    if (typeof window !== "undefined") {
+        try {
+            return window.sessionStorage.getItem(`external_allowed_${id}`) === "1";
+        } catch {
+            // ignore
+        }
+    }
+    return false;
+};
+
+/**
+ * Check if an item exists in the DB manifest or is an allowed external item
  */
 export const isDbBackedItem = (
-    item: { id: number; media_type?: string },
+    item: { id: number; media_type?: string; origin_site?: string; post_url?: string },
     dbIndex: Map<string, unknown>
 ): boolean => {
+    // VegaMovies / RogMovies posts are always visible
+    if ((item as any).origin_site || (item as any).post_url) return true;
+    if (isExternalAllowed(item.id)) return true;
+
     const mediaType = item.media_type ?? "movie";
     const key = `${item.id}-${mediaType}`;
     return dbIndex.has(key);
@@ -30,32 +66,32 @@ export const isDbBackedItem = (
 /**
  * Check if a user can see a specific item
  * - Admins can see everything
- * - Non-admins can only see DB-backed items
+ * - Non-admins can see DB-backed items and Vega/Rog posts
  */
 export const canUserSeeItem = (
-    item: { id: number; media_type?: string },
+    item: { id: number; media_type?: string; origin_site?: string; post_url?: string },
     options: { isAdmin: boolean; dbIndex: Map<string, unknown> }
 ): boolean => {
     // Admins see everything
     if (options.isAdmin) return true;
 
-    // Non-admins only see DB-backed items
+    // Check DB manifest or external allowance
     return isDbBackedItem(item, options.dbIndex);
 };
 
 /**
  * Filter an array of items based on user role
  * - Admins see all items
- * - Non-admins only see DB-backed items
+ * - Non-admins see DB-backed and external items
  */
-export const filterItemsForUser = <T extends { id: number; media_type?: string }>(
+export const filterItemsForUser = <T extends { id: number; media_type?: string; origin_site?: string; post_url?: string }>(
     items: T[],
     options: { isAdmin: boolean; dbIndex: Map<string, unknown> }
 ): T[] => {
     // Admins see everything
     if (options.isAdmin) return items;
 
-    // Non-admins only see DB-backed items
+    // Non-admins see DB-backed and external items
     return items.filter((item) => isDbBackedItem(item, options.dbIndex));
 };
 
@@ -90,6 +126,7 @@ export const isItemInDatabase = (
     mediaType: "movie" | "tv",
     dbIndex: Map<string, unknown>
 ): boolean => {
+    if (isExternalAllowed(tmdbId)) return true;
     const key = `${tmdbId}-${mediaType}`;
     return dbIndex.has(key);
 };

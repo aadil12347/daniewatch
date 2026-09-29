@@ -11,6 +11,30 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: true,
     port: 8080,
+    proxy: {
+      "/api/vegamovies": {
+        target: "https://vegamovies.gallery",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/vegamovies/, ""),
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36",
+          Referer: "https://vegamovies.gallery/",
+        },
+      },
+      "/api/rogmovies": {
+        target: "https://rogmovies.best",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/rogmovies/, ""),
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36",
+          Referer: "https://rogmovies.best/",
+        },
+      },
+    },
   },
 
   plugins: [

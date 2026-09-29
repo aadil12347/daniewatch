@@ -44,6 +44,7 @@ const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Requests = lazy(() => import("./pages/Requests"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const PostDetail = lazy(() => import("./pages/PostDetail"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -111,6 +112,7 @@ const AnimatedRoutes = () => {
           <Route path="/auth" element={<Suspense fallback={<PageLoader />}><Auth /></Suspense>} />
           <Route path="/requests" element={<Suspense fallback={<PageLoader />}><Requests /></Suspense>} />
           <Route path="/admin" element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
+          <Route path="/post-detail" element={<Suspense fallback={<PageLoader />}><PostDetail /></Suspense>} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

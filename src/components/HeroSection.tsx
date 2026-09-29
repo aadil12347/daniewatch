@@ -285,9 +285,21 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
         <div className="max-w-xl animate-slide-up transform-gpu">
           {/* Meta info */}
           <div className="flex items-center gap-3 mb-3">
-            <span className="px-2 py-0.5 rounded text-xs font-medium uppercase glass">
-              {mediaType === "tv" ? "TV Series" : "Movie"}
-            </span>
+            {current.origin_site ? (
+              <span
+                className={`px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider ${
+                  current.origin_site === "vegamovies"
+                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    : "bg-red-500/20 text-red-400 border border-red-500/30"
+                }`}
+              >
+                {current.origin_site === "vegamovies" ? "VegaMovies" : "RogMovies"}
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded text-xs font-medium uppercase glass">
+                {mediaType === "tv" ? "TV Series" : "Movie"}
+              </span>
+            )}
             <div className="flex items-center gap-1">
               <Star className="w-3.5 h-3.5 text-[hsl(var(--rating))] fill-[hsl(var(--rating))]" />
               <span className="text-sm font-medium">{rating}</span>
@@ -296,14 +308,14 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
           </div>
 
           {/* Logo or Title */}
-          {currentLogo ? (
+          {currentLogo && !current.origin_site ? (
             <img
               src={currentLogo}
               alt={title}
               className="h-14 md:h-16 lg:h-20 object-contain object-left mb-2 md:mb-3"
             />
           ) : (
-            <h1 className="text-4xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 leading-tight">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 md:mb-3 leading-tight line-clamp-3">
               {title}
             </h1>
           )}
@@ -331,6 +343,16 @@ export const HeroSection = ({ items, isLoading }: HeroSectionProps) => {
               className="h-11 md:h-10 px-6 md:px-8 shadow-glow"
               label="Play"
               onClick={() => {
+                if (current.post_url) {
+                  navigate(
+                    `/post-detail?url=${encodeURIComponent(current.post_url)}&title=${encodeURIComponent(
+                      title
+                    )}&poster=${encodeURIComponent(current.poster_path || "")}&site=${
+                      current.origin_site || "vegamovies"
+                    }`
+                  );
+                  return;
+                }
                 const params = new URLSearchParams();
                 params.set("watch", "1");
                 if (mediaType === "tv") {

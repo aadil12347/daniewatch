@@ -60,6 +60,12 @@ export interface Movie {
   runtime?: number;
   number_of_seasons?: number;
   adult?: boolean;
+  origin_site?: "vegamovies" | "rogmovies";
+  post_url?: string;
+  imdb_id?: string;
+  is_resolved?: boolean;
+  resolved_tmdb_id?: number;
+  resolved_media_type?: "movie" | "tv";
 }
 
 // Comprehensive blocked words list for adult content filtering
